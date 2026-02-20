@@ -1,0 +1,33 @@
+[package]
+name = "imf-benchmarks"
+version = "0.1.0"
+edition = "2021"
+description = "Performance benchmarks for IMF-RS parser components"
+publish = false
+
+[[bench]]
+name = "cpl_parsing"
+harness = false
+
+[[bench]]
+name = "assetmap_parsing"
+harness = false
+
+[[bench]]
+name = "mxf_parsing"
+harness = false
+
+[[bench]]
+name = "package_parsing"
+harness = false
+
+[[bench]]
+name = "format_detection"
+harness = false
+
+[dependencies]
+criterion = { workspace = true }
+imferno-core = { path = "../imferno-core" }
+
+[dev-dependencies]
+tempfile = { workspace = true }

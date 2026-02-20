@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none">
+  <defs>
+    <linearGradient id="flame" x1="60" y1="100" x2="60" y2="10" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#d97706"/>
+      <stop offset="50%" stop-color="#f59e0b"/>
+      <stop offset="100%" stop-color="#fef3c7"/>
+    </linearGradient>
+  </defs>
+  <!-- Flame shape -->
+  <path d="M60 10 C60 10 40 35 38 55 C36 65 42 70 45 62 C47 55 48 50 48 50 C48 50 44 75 55 85 C58 88 56 80 56 75 C56 68 58 63 60 60 C62 63 64 68 64 75 C64 80 62 88 65 85 C76 75 72 50 72 50 C72 50 73 55 75 62 C78 70 84 65 82 55 C80 35 60 10 60 10 Z" fill="url(#flame)"/>
+</svg>

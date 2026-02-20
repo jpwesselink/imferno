@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drag and Drop Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+
+        .drop-zone {
+            width: 500px;
+            height: 300px;
+            border: 3px dashed #ccc;
+            border-radius: 10px;
+            text-align: center;
+            padding: 50px;
+            margin: 20px 0;
+            background: #f9f9f9;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .drop-zone.dragover {
+            border-color: #007bff;
+            background: #e7f3ff;
+            transform: scale(1.02);
+        }
+
+        .file-list {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 5px;
+        }
+
+        .file-item {
+            padding: 10px;
+            margin: 5px 0;
+            background: white;
+            border-radius: 3px;
+            border-left: 4px solid #28a745;
+        }
+
+        .tracks-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            font-size: 14px;
+        }
+
+        .tracks-table th,
+        .tracks-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        .tracks-table th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+
+        .tracks-table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        .tracks-table tr:hover {
+            background-color: #f5f5f5;
+        }
+
+        .track-type-video {
+            color: #007bff;
+        }
+
+        .track-type-audio {
+            color: #28a745;
+        }
+
+        .track-type-subtitle {
+            color: #ffc107;
+        }
+
+    </style>
+</head>
+<body>
+    <h1>🎬 Drag and Drop Test</h1>
+
+    <div class="drop-zone" id="dropZone">
+        <h2>📁 Drop files here</h2>
+        <p>Drag XML files onto this area</p>
+        <input type="file" id="fileInput" multiple accept=".xml" style="display: none;">
+        <button onclick="document.getElementById('fileInput').click()">Or click to browse</button>
+    </div>
+
+    <div class="file-list" id="fileList" style="display: none;">
+        <h3>📄 Uploaded Files:</h3>
+        <div id="files"></div>
+    </div>
+
+
+    <div class="file-list" id="results" style="display: none;">
+        <h3>🎬 Analysis Results</h3>
+        <div id="analysisOutput"></div>
+    </div>
+
+    <script type="module">
+        import init, {
+            parseImfPackageFromFiles,
+            analyzeImfFeatures,
+            checkLanguageAvailability,
+            hasDolbyAtmos,
+            hasHdr10,
+            getVersion
+        } from './pkg/imf_wasm.js';
+
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const fileList = document.getElementById('fileList');
+        const filesDiv = document.getElementById('files');
+        const results = document.getElementById('results');
+        const analysisOutput = document.getElementById('analysisOutput');
+
+        let uploadedFiles = {};
+
+        function log(message) {
+            console.log(message);
+        }
+
+        // Initialize WASM
+        async function initWasm() {
+            try {
+                await init();
+                log(`IMF WASM initialized, version: ${getVersion()}`);
+                return true;
+            } catch (err) {
+                log(`Failed to initialize WASM: ${err.message}`);
+                console.error('WASM init error:', err);
+                return false;
+            }
+        }
+
+        // Prevent default drag behaviors globally
+        document.addEventListener('dragover', (e) => {
+            e.preventDefault();
+        });
+
+        document.addEventListener('drop', (e) => {
+            e.preventDefault();
+        });
+
+        // Drop zone events
+        dropZone.addEventListener('dragenter', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropZone.classList.add('dragover');
+            log('DRAGENTER: Files being dragged over drop zone');
+        });
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            log('DRAGOVER: Files hovering over drop zone');
+        });
+
+        dropZone.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropZone.classList.remove('dragover');
+            log('DRAGLEAVE: Files left drop zone');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropZone.classList.remove('dragover');
+
+            const files = e.dataTransfer.files;
+            log(`DROP: ${files.length} files dropped`);
+
+            handleFiles(files);
+        });
+
+        // File input change
+        fileInput.addEventListener('change', (e) => {
+            log(`FILE INPUT: ${e.target.files.length} files selected`);
+            handleFiles(e.target.files);
+        });
+
+        function handleFiles(files) {
+            uploadedFiles = {};
+            filesDiv.innerHTML = '';
+
+            if (files.length === 0) {
+                log('No files to process');
+                return;
+            }
+
+            log(`Processing ${files.length} files...`);
+
+            let filesProcessed = 0;
+            const totalXmlFiles = Array.from(files).filter(f => f.name.endsWith('.xml')).length;
+
+            Array.from(files).forEach(file => {
+                log(`File: ${file.name} (${file.size} bytes, type: ${file.type})`);
+
+                if (file.name.endsWith('.xml')) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        uploadedFiles[file.name] = e.target.result;
+
+                        // Display file
+                        const fileDiv = document.createElement('div');
+                        fileDiv.className = 'file-item';
+                        fileDiv.innerHTML = `
+                            <strong>${file.name}</strong><br>
+                            Size: ${(file.size / 1024).toFixed(2)} KB<br>
+                            Content preview: ${e.target.result.substring(0, 100)}...
+                        `;
+                        filesDiv.appendChild(fileDiv);
+
+                        log(`Successfully read ${file.name}`);
+
+                        filesProcessed++;
+                        if (filesProcessed === totalXmlFiles) {
+                            log(`All ${totalXmlFiles} XML files processed. Checking if ready to analyze...`);
+                            checkAndAnalyze();
+                        }
+                    };
+                    reader.onerror = () => {
+                        log(`Error reading ${file.name}`);
+                        filesProcessed++;
+                        if (filesProcessed === totalXmlFiles) {
+                            checkAndAnalyze();
+                        }
+                    };
+                    reader.readAsText(file);
+                } else {
+                    log(`Skipping ${file.name} - not an XML file`);
+                }
+            });
+
+            fileList.style.display = 'block';
+        }
+
+        function checkAndAnalyze() {
+            const hasVolindex = Object.keys(uploadedFiles).some(name => name.includes('VOLINDEX'));
+            const hasAssetmap = Object.keys(uploadedFiles).some(name => name.includes('ASSETMAP'));
+            const hasCpl = Object.keys(uploadedFiles).some(name => name.includes('CPL'));
+
+            log(`Files check: VOLINDEX=${hasVolindex}, ASSETMAP=${hasAssetmap}, CPL=${hasCpl}`);
+
+            if (hasVolindex && hasAssetmap && hasCpl) {
+                log('All required files present. Starting analysis...');
+                analyzePackage();
+            } else {
+                log('Missing required files. Need VOLINDEX.xml, ASSETMAP.xml, and at least one CPL file.');
+            }
+        }
+
+        async function analyzePackage() {
+            try {
+                log('Parsing IMF package...');
+                const parseResult = parseImfPackageFromFiles(JSON.stringify(uploadedFiles));
+
+                if (!parseResult.success) {
+                    throw new Error(parseResult.error || 'Failed to parse IMF package');
+                }
+
+                const packageData = JSON.parse(parseResult.data);
+                log(`✅ Parsed successfully: ${packageData.cpl_count} CPLs, ${packageData.asset_count} assets`);
+
+                // Features are now included in the parse result
+                const features = packageData.features || {};
+                log(`Features detected: ${Object.keys(features).length > 0 ? 'Yes' : 'No'}`);
+
+                displayResults(features, packageData);
+
+            } catch (err) {
+                log(`❌ Analysis error: ${err.message}`);
+            }
+        }
+
+        function displayTracksTable(features) {
+            // Get track data from features
+            const cplTracks = features.cpl_tracks || {};
+
+            if (Object.keys(cplTracks).length === 0) {
+                return '<h4>🎬 Track Analysis</h4><p>No track information available</p>';
+            }
+
+            let html = '<h4>🎬 Track Analysis</h4>';
+
+            // Create a table for each CPL
+            Object.keys(cplTracks).forEach(cplId => {
+                const tracks = cplTracks[cplId] || [];
+
+                if (tracks.length === 0) {
+                    return;
+                }
+
+                html += `<h5 style="margin-top: 20px; color: #2c5aa0;">📋 CPL: ${cplId}</h5>`;
+                html += `
+                    <table class="tracks-table">
+                        <thead>
+                            <tr>
+                                <th>Type</th>
+                                <th>Track ID</th>
+                                <th>Codec</th>
+                                <th>Language</th>
+                                <th>Channels</th>
+                                <th>Resolution</th>
+                                <th>Framerate</th>
+                                <th>Bit Depth</th>
+                                <th>Sub Type</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+
+                tracks.forEach(track => {
+                    const typeClass = `track-type-${track.track_type}`;
+                    const lang = track.language || '-';
+                    const channels = track.channels || '-';
+                    const resolution = track.resolution || '-';
+                    const framerate = track.framerate || '-';
+                    const bitDepth = track.bit_depth || '-';
+                    const subType = track.subtitle_type || '-';
+
+                    html += `
+                        <tr>
+                            <td class="${typeClass}">${track.track_type}</td>
+                            <td>${track.track_id}</td>
+                            <td>${track.codec}</td>
+                            <td>${lang}</td>
+                            <td>${channels}</td>
+                            <td>${resolution}</td>
+                            <td>${framerate}</td>
+                            <td>${bitDepth}</td>
+                            <td>${subType}</td>
+                        </tr>
+                    `;
+                });
+
+                html += `
+                        </tbody>
+                    </table>
+                    <p style="margin-top: 10px; font-size: 12px; color: #666;">
+                        ${tracks.length} tracks in this CPL
+                    </p>
+                `;
+            });
+
+            return html;
+        }
+
+        function displayResults(features, packageData) {
+            results.style.display = 'block';
+
+            let html = '<h4>📊 Package Information</h4>';
+            html += `<p><strong>Title:</strong> ${features.metadata?.title || packageData.cpls?.[0]?.cpl?.content_title?.text || packageData.cpls?.[0]?.cpl?.content_title || 'Unknown'}</p>`;
+            html += `<p><strong>Content Kind:</strong> ${features.metadata?.content_kind || packageData.cpls?.[0]?.cpl?.content_kind || 'Unknown'}</p>`;
+            html += `<p><strong>CPL Count:</strong> ${packageData.cpl_count}</p>`;
+
+            // CPL Overview Section
+            html += '<h4>📋 CPL Overview</h4>';
+            if (packageData.cpls && packageData.cpls.length > 0) {
+                packageData.cpls.forEach((cplData, index) => {
+                    const cpl = cplData.cpl;
+                    // Debug: Check what we're actually getting
+                    console.log(`CPL ${index + 1} content_title:`, JSON.stringify(cpl.content_title, null, 2));
+
+                    // Handle both LanguageString formats: object with $text, .text, or plain string
+                    let cplTitle;
+                    if (typeof cpl.content_title === 'string') {
+                        cplTitle = cpl.content_title;
+                    } else if (cpl.content_title?.$text) {
+                        cplTitle = cpl.content_title.$text;
+                    } else if (cpl.content_title?.text) {
+                        cplTitle = cpl.content_title.text;
+                    } else if (cpl.content_title && typeof cpl.content_title === 'object') {
+                        // Try to find any text-like property
+                        const textValue = Object.values(cpl.content_title).find(v => typeof v === 'string');
+                        cplTitle = textValue || `CPL ${index + 1}`;
+                    } else {
+                        cplTitle = `CPL ${index + 1}`;
+                    }
+
+                    html += `<div style="border: 1px solid #ddd; border-radius: 5px; padding: 15px; margin: 10px 0; background: #f8f9fa;">`;
+                    html += `<h5 style="margin-top: 0; color: #2c5aa0;">🎬 ${cplTitle}</h5>`;
+
+                    // Basic CPL info
+                    html += `<p><strong>ID:</strong> <code style="font-size: 0.9em;">${cpl.Id || cpl.id || 'Unknown'}</code></p>`;
+                    html += `<p><strong>File:</strong> ${cplData.path}</p>`;
+                    html += `<p><strong>Content Kind:</strong> ${cpl.ContentKind || cpl.content_kind || 'Unknown'}</p>`;
+
+                    if (cpl.issue_date) {
+                        const date = new Date(cpl.issue_date);
+                        html += `<p><strong>Issue Date:</strong> ${date.toLocaleDateString()}</p>`;
+                    }
+
+                    if (cpl.issuer?.text || cpl.issuer?.$text || cpl.issuer) {
+                        const issuer = cpl.issuer?.text || cpl.issuer?.$text || cpl.issuer;
+                        html += `<p><strong>Issuer:</strong> ${issuer}</p>`;
+                    }
+
+                    if (cpl.creator?.text || cpl.creator?.$text || cpl.creator) {
+                        const creator = cpl.creator?.text || cpl.creator?.$text || cpl.creator;
+                        html += `<p><strong>Creator:</strong> ${creator}</p>`;
+                    }
+
+                    // Segments overview
+                    if (cpl.segment_list && cpl.segment_list.segments) {
+                        html += `<p><strong>Segments:</strong> ${cpl.segment_list.segments.length}</p>`;
+
+                        // Track counts from segments
+                        let audioTracks = 0;
+                        let videoTracks = 0;
+                        let subtitleTracks = 0;
+
+                        cpl.segment_list.segments.forEach(segment => {
+                            if (segment.sequence_list) {
+                                if (segment.sequence_list.main_audio_sequences) {
+                                    audioTracks += segment.sequence_list.main_audio_sequences.length;
+                                }
+                                if (segment.sequence_list.main_image_sequences) {
+                                    videoTracks += segment.sequence_list.main_image_sequences.length;
+                                }
+                                if (segment.sequence_list.subtitles_sequences) {
+                                    subtitleTracks += segment.sequence_list.subtitles_sequences.length;
+                                }
+                            }
+                        });
+
+                        html += '<div style="display: flex; gap: 15px; margin-top: 10px;">';
+                        html += `<span style="background: #e3f2fd; padding: 4px 8px; border-radius: 3px; font-size: 0.9em;">🎵 ${audioTracks} Audio</span>`;
+                        html += `<span style="background: #f3e5f5; padding: 4px 8px; border-radius: 3px; font-size: 0.9em;">🎥 ${videoTracks} Video</span>`;
+                        html += `<span style="background: #e8f5e8; padding: 4px 8px; border-radius: 3px; font-size: 0.9em;">📝 ${subtitleTracks} Subtitle</span>`;
+                        html += '</div>';
+                    }
+
+                    // Content versions if available
+                    if (cpl.content_version_list && cpl.content_version_list.content_versions) {
+                        html += '<p><strong>Versions:</strong></p>';
+                        html += '<ul style="margin: 5px 0 10px 20px;">';
+                        cpl.content_version_list.content_versions.forEach(version => {
+                            const label = version.label_text?.text || version.label_text?.$text || version.label_text || 'Unnamed Version';
+                            html += `<li style="font-size: 0.9em;">${label}</li>`;
+                        });
+                        html += '</ul>';
+                    }
+
+                    // Languages detected from this CPL
+                    if (features.audio_languages && features.audio_languages.length > 0) {
+                        html += '<p><strong>Languages:</strong> ';
+                        html += features.audio_languages.map(lang => `<span style="background: #fff3e0; padding: 2px 6px; border-radius: 3px; font-size: 0.9em;">${lang}</span>`).join(' ');
+                        html += '</p>';
+                    }
+
+                    // Track-level codec information for this CPL
+                    const cplId = cpl.Id || cpl.id;
+                    if (features.cpl_tracks && cplId && features.cpl_tracks[cplId]) {
+                        html += '<div style="margin-top: 15px; padding-top: 10px; border-top: 1px solid #eee;">';
+                        html += '<p><strong>Track Details:</strong></p>';
+
+                        const tracks = features.cpl_tracks[cplId];
+                        const videoTracks = tracks.filter(t => t.track_type === 'video');
+                        const audioTracks = tracks.filter(t => t.track_type === 'audio');
+                        const subtitleTracks = tracks.filter(t => t.track_type === 'subtitle');
+
+                        if (videoTracks.length > 0) {
+                            html += '<div style="margin-bottom: 8px;">';
+                            html += '<p style="margin: 5px 0; font-weight: bold; color: #2c5aa0;">🎥 Video Tracks:</p>';
+                            videoTracks.forEach(track => {
+                                html += `<div style="margin-left: 15px; font-size: 0.9em;">`;
+                                html += `<span style="background: #e3f2fd; padding: 2px 6px; border-radius: 3px;">${track.codec}</span>`;
+                                if (track.format_details) {
+                                    html += ` <span style="color: #666;">(${track.format_details})</span>`;
+                                }
+                                html += `</div>`;
+                            });
+                            html += '</div>';
+                        }
+
+                        if (audioTracks.length > 0) {
+                            html += '<div style="margin-bottom: 8px;">';
+                            html += '<p style="margin: 5px 0; font-weight: bold; color: #2c5aa0;">🎵 Audio Tracks:</p>';
+                            audioTracks.forEach(track => {
+                                html += `<div style="margin-left: 15px; font-size: 0.9em;">`;
+                                html += `<span style="background: #f3e5f5; padding: 2px 6px; border-radius: 3px;">${track.codec}</span>`;
+                                if (track.channels) {
+                                    html += ` <span style="background: #e8f5e8; padding: 2px 6px; border-radius: 3px; margin-left: 5px;">${track.channels}</span>`;
+                                }
+                                if (track.language) {
+                                    html += ` <span style="color: #666; margin-left: 5px;">[${track.language}]</span>`;
+                                }
+                                html += `</div>`;
+                            });
+                            html += '</div>';
+                        }
+
+                        if (subtitleTracks.length > 0) {
+                            html += '<div style="margin-bottom: 8px;">';
+                            html += '<p style="margin: 5px 0; font-weight: bold; color: #2c5aa0;">📝 Subtitle Tracks:</p>';
+                            subtitleTracks.forEach(track => {
+                                html += `<div style="margin-left: 15px; font-size: 0.9em;">`;
+                                html += `<span style="background: #fff3e0; padding: 2px 6px; border-radius: 3px;">${track.codec}</span>`;
+                                if (track.language) {
+                                    html += ` <span style="color: #666; margin-left: 5px;">[${track.language}]</span>`;
+                                }
+                                html += `</div>`;
+                            });
+                            html += '</div>';
+                        }
+
+                        html += '</div>';
+                    }
+
+                    html += '</div>';
+                });
+            } else {
+                html += '<p>No CPL files found</p>';
+            }
+
+            // Track Analysis Table
+            html += displayTracksTable(features);
+
+            // Audio formats
+            html += '<h4>🔊 Audio Formats</h4>';
+            if (features.audio_formats && features.audio_formats.length > 0) {
+                const formatNames = {
+                    'DolbyAtmos': 'Dolby Atmos (Immersive)',
+                    'Pcm': 'PCM (Uncompressed)',
+                    'DtsX': 'DTS:X (Immersive)',
+                    'DolbyDigital': 'Dolby Digital (AC-3)',
+                    'DolbyDigitalPlus': 'Dolby Digital Plus (E-AC-3)',
+                    'DolbyTrueHD': 'Dolby TrueHD (Lossless)',
+                    'DtsHdMa': 'DTS-HD Master Audio (Lossless)'
+                };
+                html += '<ul>';
+                features.audio_formats.forEach(format => {
+                    const displayName = formatNames[format] || format;
+                    html += `<li>✅ ${displayName}</li>`;
+                });
+                html += '</ul>';
+            } else {
+                html += '<p>No audio formats detected</p>';
+            }
+
+            // Audio codecs
+            html += '<h4>🎵 Audio Codecs</h4>';
+            if (features.audio_codecs && features.audio_codecs.length > 0) {
+                html += '<ul>';
+                features.audio_codecs.forEach(codec => {
+                    html += `<li>✅ ${codec}</li>`;
+                });
+                html += '</ul>';
+            } else {
+                html += '<p>No audio codecs detected</p>';
+            }
+
+            // Video codecs
+            html += '<h4>🎬 Video Codecs</h4>';
+            if (features.video_codecs && features.video_codecs.length > 0) {
+                html += '<ul>';
+                features.video_codecs.forEach(codec => {
+                    html += `<li>✅ ${codec}</li>`;
+                });
+                html += '</ul>';
+            } else {
+                html += '<p>No video codecs detected</p>';
+            }
+
+            // Video specs
+            html += '<h4>🎬 Video Specifications</h4>';
+            if (features.video_specs) {
+                html += '<ul>';
+                if (features.video_specs.resolution) {
+                    html += `<li><strong>Resolution:</strong> ${features.video_specs.resolution} (${features.video_specs.resolution_category || 'Unknown'})</li>`;
+                }
+                if (features.video_specs.frame_rate) {
+                    html += `<li><strong>Frame Rate:</strong> ${features.video_specs.frame_rate_category || features.video_specs.frame_rate}</li>`;
+                }
+                if (features.video_specs.hdr_format) {
+                    html += `<li><strong>HDR Format:</strong> ${features.video_specs.hdr_format}</li>`;
+                }
+                html += '</ul>';
+            } else {
+                html += '<p>No video specifications detected</p>';
+            }
+
+            // Languages
+            html += '<h4>🌐 Languages</h4>';
+            if (features.audio_languages && features.audio_languages.length > 0) {
+                html += '<ul>';
+                features.audio_languages.forEach(lang => {
+                    html += `<li>✅ ${lang}</li>`;
+                });
+                html += '</ul>';
+            } else {
+                html += '<p>No languages detected</p>';
+            }
+
+            // Requirements check
+            html += '<h4>📋 Requirements Check</h4>';
+            try {
+                const langCheck = checkLanguageAvailability(JSON.stringify(features), JSON.stringify(['en', 'en-US']));
+                const atmosCheck = hasDolbyAtmos(JSON.stringify(features));
+                const hdrCheck = hasHdr10(JSON.stringify(features));
+
+                const langResults = JSON.parse(langCheck.data);
+                const atmosResult = JSON.parse(atmosCheck.data);
+                const hdrResult = JSON.parse(hdrCheck.data);
+
+                html += '<ul>';
+                langResults.forEach(result => {
+                    const icon = result.available ? '✅' : '❌';
+                    html += `<li>${icon} ${result.language} audio</li>`;
+                });
+                html += `<li>${atmosResult.has_dolby_atmos ? '✅' : '❌'} Dolby Atmos</li>`;
+                html += `<li>${hdrResult.has_hdr10 ? '✅' : '❌'} HDR10</li>`;
+                html += '</ul>';
+            } catch (err) {
+                html += '<p>Could not check requirements</p>';
+            }
+
+            analysisOutput.innerHTML = html;
+            log('✅ Analysis complete');
+        }
+
+        // Initialize everything
+        initWasm().then((success) => {
+            if (success) {
+                log('Drag and drop test with IMF analysis ready');
+            } else {
+                log('Failed to initialize WASM - analysis will not work');
+            }
+        });
+    </script>
+</body>
+</html>

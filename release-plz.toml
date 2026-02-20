@@ -1,0 +1,16 @@
+[workspace]
+# Only bump versions based on conventional commits.
+# release-plz opens a Release PR; merging it triggers a crates.io publish.
+
+[[package]]
+name = "imferno-core"
+# Published to crates.io
+
+[[package]]
+name = "imferno"
+# Published to crates.io (the CLI binary)
+
+[[package]]
+name = "imferno-wasm"
+# Built from Rust, published to npm — NOT to crates.io.
+publish = false

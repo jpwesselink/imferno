@@ -1,0 +1,11 @@
+[package]
+name = "corpus-tests"
+version = "0.1.0"
+edition = "2021"
+description = "Corpus-based regression tests ported from Netflix Photon"
+publish = false
+
+[lib]
+
+[dependencies]
+imferno-core = { path = "../imferno-core" }

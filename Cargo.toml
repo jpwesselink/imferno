@@ -1,0 +1,56 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/imferno-core",
+    "crates/imferno",
+    "crates/imferno-wasm",
+    "crates/benchmarks",
+    "crates/corpus-tests",
+    "xtask",
+]
+
+[workspace.dependencies]
+# Shared dependencies
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+quick-xml = "0.31"
+uuid = "1.6"
+thiserror = "1.0"
+anyhow = "1.0"
+chrono = { version = "0.4", features = ["serde"] }
+regex = "1.10"
+sha1 = { version = "0.10", features = ["oid"] }
+sha2 = "0.10"
+base64 = "0.22"
+
+# WASM specific
+wasm-bindgen = "0.2"
+js-sys = "0.3"
+web-sys = "0.3"
+
+# CLI specific
+clap = { version = "4.0", features = ["derive"] }
+tokio = { version = "1.0", features = ["full"] }
+
+# Testing and validation
+tempfile = "3.8"
+pretty_assertions = "1.4"
+
+# Benchmarking
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[profile.release]
+opt-level    = "z"   # optimise for size
+lto          = "fat" # cross-crate dead-code elimination
+codegen-units = 1    # single CGU lets LLVM see the whole program
+panic        = "abort" # drop unwinding + panic-format machinery (~30 % of wasm)
+strip        = "debuginfo"
+
+[workspace.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+# Force getrandom to use version 0.2 with JS support for WASM
+[workspace.dependencies.getrandom]
+version = "0.2"
+features = ["js"]

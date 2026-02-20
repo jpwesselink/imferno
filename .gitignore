@@ -1,0 +1,37 @@
+# Fixture media (large production IMF packages)
+fixture/
+
+# SMPTE specs and registers (copyrighted / large)
+specs/
+
+# Rust
+/target
+**/*.rs.bk
+Cargo.lock
+
+# WASM build output
+imf-wasm/pkg/
+imf-wasm/node_modules/
+bindings/
+
+# Node / JS
+node_modules/
+package-lock.json
+
+# AWS SDK logs
+*.log
+
+# macOS
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Generated files
+test-typed.html
+test-typed-complete.html
+tmp
+.cargo/*
+!.cargo/config.toml

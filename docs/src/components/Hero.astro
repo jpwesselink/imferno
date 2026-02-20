@@ -1,0 +1,186 @@
+---
+import type { Props } from '@astrojs/starlight/props';
+---
+
+<div class="vp-hero">
+  <div class="vp-hero-inner">
+    <h1 class="heading">
+      <span class="name">imferno</span>
+      <span class="text">SMPTE ST 2067<br>for Rust.</span>
+    </h1>
+    <p class="tagline">Parse, validate, and inspect IMF packages. A native Rust implementation of the full ST 2067 standard family — with a WASM target for the browser.</p>
+    <div class="actions">
+      <a href="/imferno/guide/introduction/" class="btn brand">Get Started</a>
+      <a href="/imferno/reference/api/" class="btn alt">API Reference</a>
+      <a href="https://github.com/jpwesselink/imferno" class="btn alt">GitHub</a>
+    </div>
+  </div>
+</div>
+
+<div class="vp-features">
+  <div class="vp-features-inner">
+    <a href="/imferno/guide/packages/" class="feat">
+      <h2>Full IMF support</h2>
+      <p>Parse AssetMaps, PKLs, and CPLs per SMPTE ST 2067-2, -3, -4, and Application profiles.</p>
+    </a>
+    <a href="/imferno/guide/validation/" class="feat">
+      <h2>Strict validation</h2>
+      <p>Validate file manifests, SHA-1 hashes, and structural integrity of any IMP directory.</p>
+    </a>
+    <a href="/imferno/guide/introduction/" class="feat">
+      <h2>WASM ready</h2>
+      <p>Run the parser in the browser via WebAssembly — the same crate, zero rewrites.</p>
+    </a>
+    <a href="/imferno/reference/standards/" class="feat">
+      <h2>Photon test corpus</h2>
+      <p>Test suite ported from Netflix Photon. Full ST 2067 Application profile coverage.</p>
+    </a>
+  </div>
+</div>
+
+<style>
+  /* ── Hero ── */
+  .vp-hero {
+    padding: 80px 48px 64px;
+  }
+
+  .vp-hero-inner {
+    max-width: 640px;
+  }
+
+  .heading {
+    display: flex;
+    flex-direction: column;
+    margin: 0 0 12px;
+  }
+
+  .name,
+  .text {
+    font-size: 48px;
+    font-weight: 700;
+    line-height: 56px;
+    letter-spacing: -0.4px;
+    white-space: pre-wrap;
+    max-width: 576px;
+  }
+
+  .name {
+    color: var(--sl-color-accent);
+  }
+
+  .text {
+    color: var(--sl-color-white);
+  }
+
+  .tagline {
+    padding-top: 12px;
+    max-width: 576px;
+    line-height: 32px;
+    font-size: 20px;
+    font-weight: 500;
+    color: var(--sl-color-gray-3);
+    margin: 0 0 24px;
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid transparent;
+    border-radius: 20px;
+    padding: 0 20px;
+    line-height: 38px;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: color 0.25s, border-color 0.25s, background-color 0.25s;
+    white-space: nowrap;
+  }
+
+  .btn.brand {
+    background: var(--sl-color-accent);
+    color: #fff;
+  }
+
+  .btn.brand:hover {
+    background: #ea580c;
+  }
+
+  .btn.alt {
+    background: var(--sl-color-gray-5);
+    color: var(--sl-color-gray-1);
+  }
+
+  .btn.alt:hover {
+    background: var(--sl-color-gray-4);
+  }
+
+  /* ── Features ── */
+  .vp-features {
+    padding: 0 48px 64px;
+  }
+
+  .vp-features-inner {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 8px;
+  }
+
+  .feat {
+    display: block;
+    padding: 24px;
+    border: 1px solid var(--sl-color-gray-5);
+    border-radius: 12px;
+    background: var(--sl-color-gray-6);
+    text-decoration: none;
+    height: 100%;
+    transition: border-color 0.25s, background 0.25s;
+  }
+
+  .feat:hover {
+    border-color: var(--sl-color-accent);
+  }
+
+  .feat h2 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--sl-color-white);
+    margin: 0 0 8px;
+    border: none;
+    padding: 0;
+  }
+
+  .feat p {
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--sl-color-gray-3);
+    margin: 0;
+  }
+
+  /* ── Mobile ── */
+  @media (max-width: 640px) {
+    .vp-hero {
+      padding: 48px 24px 40px;
+    }
+
+    .vp-features {
+      padding: 0 24px 48px;
+    }
+
+    .name,
+    .text {
+      font-size: 32px;
+      line-height: 40px;
+    }
+
+    .tagline {
+      font-size: 18px;
+      line-height: 28px;
+    }
+  }
+</style>

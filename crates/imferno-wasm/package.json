@@ -1,0 +1,69 @@
+{
+  "name": "imf-js",
+  "version": "1.0.0",
+  "description": "Fast, type-safe IMF (Interoperable Master Format) parser for JavaScript and TypeScript",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "type": "module",
+  "files": [
+    "pkg/",
+    "index.js",
+    "index.d.ts",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "./build.sh",
+    "test": "node demo-auto-init.js",
+    "prepare": "npm run build",
+    "prepublishOnly": "npm run build && npm test"
+  },
+  "keywords": [
+    "imf",
+    "smpte",
+    "media",
+    "cinema",
+    "video",
+    "audio",
+    "parsing",
+    "wasm",
+    "webassembly",
+    "typescript",
+    "st2067-3",
+    "st2067-4",
+    "composition-playlist",
+    "asset-map",
+    "packaging"
+  ],
+  "author": {
+    "name": "JP Wesselink",
+    "email": "jp@wesselink.dev"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jpwesselink/imf-rs.git",
+    "directory": "imf-wasm"
+  },
+  "bugs": {
+    "url": "https://github.com/jpwesselink/imf-rs/issues"
+  },
+  "homepage": "https://github.com/jpwesselink/imf-rs/tree/main/imf-wasm#readme",
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "peerDependencies": {
+    "typescript": ">=4.5.0"
+  },
+  "peerDependenciesMeta": {
+    "typescript": {
+      "optional": true
+    }
+  }
+}

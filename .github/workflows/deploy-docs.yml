@@ -2,23 +2,35 @@ name: Deploy Docs to GitHub Pages
 
 on:
   push:
-    branches: [main]
+    tags: ['v*']
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag to build docs for (e.g. v1.0.0). Leave empty to build "latest" from HEAD.'
+        required: false
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: pages
-  cancel-in-progress: true
+  contents: write
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      # Determine which version string to use
+      - name: Resolve version
+        id: version
+        run: |
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            VERSION="${GITHUB_REF#refs/tags/}"
+          elif [[ -n "${{ github.event.inputs.version }}" ]]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="latest"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Building docs for version: $VERSION"
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
@@ -52,20 +64,92 @@ jobs:
 
       - name: Build Astro site
         working-directory: docs
+        env:
+          DOCS_VERSION: ${{ steps.version.outputs.version }}
         run: pnpm run build
 
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
+      # --- Deploy to gh-pages branch ---
+      - name: Checkout gh-pages
+        uses: actions/checkout@v4
         with:
-          path: docs/dist
+          ref: gh-pages
+          path: gh-pages
+          fetch-depth: 1
+        continue-on-error: true   # branch may not exist yet
 
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Create gh-pages dir if needed
+        run: |
+          if [ ! -d gh-pages ]; then
+            mkdir gh-pages
+            cd gh-pages
+            git init
+            git checkout -b gh-pages
+            git remote add origin "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
+          fi
+
+      - name: Copy versioned docs
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          rm -rf "gh-pages/$VERSION"
+          cp -r docs/dist "gh-pages/$VERSION"
+
+      - name: Generate root redirect and version index
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+
+          # Collect all version directories (sorted newest first)
+          cd gh-pages
+          VERSIONS=$(ls -d v* 2>/dev/null | sort -rV || true)
+
+          # The latest tagged version (skip "latest" directory)
+          LATEST=$(echo "$VERSIONS" | head -n1)
+          if [ -z "$LATEST" ]; then
+            LATEST="$VERSION"
+          fi
+
+          # Root index.html — redirect to latest release
+          cat > index.html <<REDIRECT
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+            <meta charset="utf-8">
+            <meta http-equiv="refresh" content="0; url=/imferno/$LATEST/">
+            <link rel="canonical" href="https://jpwesselink.github.io/imferno/$LATEST/">
+            <title>Redirecting to imferno $LATEST docs</title>
+          </head>
+          <body>
+            <p>Redirecting to <a href="/imferno/$LATEST/">imferno $LATEST</a>…</p>
+          </body>
+          </html>
+          REDIRECT
+
+          # .nojekyll so GitHub serves _astro/ directories
+          touch .nojekyll
+
+          # versions.json — machine-readable list for a future version picker
+          echo "[" > versions.json
+          FIRST=true
+          for V in $VERSIONS; do
+            if [ "$FIRST" = true ]; then
+              FIRST=false
+            else
+              echo "," >> versions.json
+            fi
+            if [ "$V" = "$LATEST" ]; then
+              printf '  {"version":"%s","latest":true}' "$V" >> versions.json
+            else
+              printf '  {"version":"%s"}' "$V" >> versions.json
+            fi
+          done
+          echo "" >> versions.json
+          echo "]" >> versions.json
+
+      - name: Commit and push
+        working-directory: gh-pages
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet && echo "No changes" && exit 0
+          git commit -m "docs: deploy ${{ steps.version.outputs.version }}"
+          git push origin gh-pages

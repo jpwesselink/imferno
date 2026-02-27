@@ -4,9 +4,13 @@ import starlight from '@astrojs/starlight';
 import react from '@astrojs/react';
 import tailwindcss from '@tailwindcss/vite';
 
+// When DOCS_VERSION is set (e.g. "v1.0.0"), docs are built for /imferno/v1.0.0/
+const docsVersion = process.env.DOCS_VERSION;
+const base = docsVersion ? `/imferno/${docsVersion}` : '/imferno';
+
 export default defineConfig({
     site: 'https://jpwesselink.github.io/imferno',
-    base: '/imferno',
+    base,
     integrations: [
         starlight({
             title: 'imferno',

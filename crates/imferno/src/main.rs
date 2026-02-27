@@ -97,8 +97,8 @@ enum Commands {
         rules_config: Option<PathBuf>,
     },
 
-    /// Generate a full report (source asset + validation + optional delivery comparison)
-    Report {
+    /// Export a full report (source asset + validation + optional delivery comparison)
+    Export {
         /// Path to the IMF package directory
         #[arg(value_name = "PATH")]
         path: PathBuf,
@@ -159,7 +159,7 @@ fn main() -> Result<()> {
         } => {
             validate_package(&path, verify_hashes, xml_only, format, core_spec, app2e_spec, exit_zero, rules_config.as_deref())?;
         }
-        Commands::Report { path, ancestor, delivery_spec } => {
+        Commands::Export { path, ancestor, delivery_spec } => {
             generate_report(&path, ancestor.as_deref(), delivery_spec.as_deref())?;
         }
     }

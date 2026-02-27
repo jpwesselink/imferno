@@ -26,8 +26,8 @@ imferno inspect ./path/to/imf/package
 # Show detailed CPL information
 imferno cpl <uuid> ./path/to/imf/package
 
-# Generate a full report
-imferno report ./path/to/imf/package
+# Export a full report
+imferno export ./path/to/imf/package
 
 # Show version
 imferno --version

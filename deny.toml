@@ -1,0 +1,15 @@
+[graph]
+all-features = false
+# Internal crates that aren't published don't need version pinning
+exclude = ["corpus-tests", "imf-benchmarks", "xtask"]
+
+[advisories]
+version = 2
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"

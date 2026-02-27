@@ -1,40 +1,36 @@
 /**
  * Auto-initializing IMF Parser
  *
- * This module automatically handles WASM initialization so developers
+ * Automatically handles WASM initialization so developers
  * don't have to deal with init() functions or WASM buffers.
  */
-import init, * as wasm from './pkg/imferno_wasm.js';
+import wasmInit, * as wasm from './imferno_wasm.js';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import path from 'path';
 
-// Auto-initialize WASM on first import
 let initPromise = null;
 
 function ensureInit() {
     if (!initPromise) {
-        // Check if we're in Node.js environment
         if (typeof process !== 'undefined' && process.versions && process.versions.node) {
-            // Node.js environment - load WASM file directly
             try {
                 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-                const wasmPath = path.join(__dirname, 'pkg', 'imferno_wasm_bg.wasm');
+                const wasmPath = path.join(__dirname, 'imferno_wasm_bg.wasm');
                 const wasmBuffer = readFileSync(wasmPath);
-                initPromise = init(wasmBuffer);
+                initPromise = wasmInit(wasmBuffer);
             } catch (error) {
                 console.error('Failed to load WASM in Node.js:', error);
                 throw error;
             }
         } else {
-            // Browser environment - use default init
-            initPromise = init();
+            initPromise = wasmInit();
         }
     }
     return initPromise;
 }
 
-// Wrap all parsing functions with auto-init
+// Parsing
 export async function parseAssetmapTyped(xmlContent) {
     await ensureInit();
     return wasm.parseAssetmapTyped(xmlContent);
@@ -45,17 +41,50 @@ export async function parseCplTyped(xmlContent) {
     return wasm.parseCplTyped(xmlContent);
 }
 
+export async function parsePklTyped(xmlContent) {
+    await ensureInit();
+    return wasm.parsePklTyped(xmlContent);
+}
+
 export async function parseVolindexTyped(xmlContent) {
     await ensureInit();
     return wasm.parseVolindexTyped(xmlContent);
 }
 
+// Validation
+export async function validateCplWithSpecSelection(cplXml, coreSpec, app2eSpec) {
+    await ensureInit();
+    return wasm.validateCplWithSpecSelection(cplXml, coreSpec, app2eSpec);
+}
 
+export async function validatePackage(files, rules) {
+    await ensureInit();
+    return wasm.validatePackage(files, rules);
+}
+
+// Inspection
+export async function inspectPackage(files) {
+    await ensureInit();
+    return wasm.inspectPackage(files);
+}
+
+// Source asset / delivery
+export async function extractSourceAsset(cplXml) {
+    await ensureInit();
+    return wasm.extractSourceAsset(cplXml);
+}
+
+export async function compareDelivery(sourceAssetJson, deliverySpecJson) {
+    await ensureInit();
+    return wasm.compareDelivery(sourceAssetJson, deliverySpecJson);
+}
+
+// Utility
 export async function getVersion() {
     await ensureInit();
     return wasm.getVersion();
 }
 
 // For users who want manual control
-export { init } from './pkg/imferno_wasm.js';
-export * as wasm from './pkg/imferno_wasm.js';
+export { wasmInit as init };
+export { wasm };

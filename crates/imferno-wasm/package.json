@@ -6,7 +6,10 @@
   "types": "index.d.ts",
   "type": "module",
   "files": [
-    "pkg/",
+    "imferno_wasm.js",
+    "imferno_wasm.d.ts",
+    "imferno_wasm_bg.wasm",
+    "imferno_wasm_bg.wasm.d.ts",
     "index.js",
     "index.d.ts",
     "README.md",

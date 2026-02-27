@@ -104,7 +104,7 @@ const base = '/imferno';
     <script is:inline define:vars={{ base }}>
       (async function () {
         try {
-          var mod = await import(base + '/wasm/imf_wasm.js');
+          var mod = await import(base + '/wasm/imferno_wasm.js');
           await mod.default();
           window.__imfWasm = mod;
         } catch (e) {

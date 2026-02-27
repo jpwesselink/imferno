@@ -25,60 +25,21 @@ export function parsePklTyped(xmlContent: string): any;
  */
 export function parseCplTyped(xmlContent: string): CompositionPlaylist;
 /**
- * Extract a SourceAsset from CPL XML
- */
-export function extractSourceAsset(cplXml: string): any;
-/**
- * Compare a SourceAsset against a delivery spec
- */
-export function compareDelivery(sourceAssetJson: any, deliverySpecJson: any): any;
-/**
- * Validate a CPL with configurable built-in spec selection (ST 2067-2/App2E).
- *
- * `coreSpec`: "auto" | "v2013" | "v2016" | "v2020"
- * `app2eSpec`: "auto" | "none" | "v2020" | "v2021" | "v2023"
- */
-export function validateCplWithSpecSelection(cplXml: string, coreSpec?: string | null, app2eSpec?: string | null): any;
-/**
- * Validate a full IMF package from an in-memory map of filename → XML string.
+ * Validate a full IMF package and return both the validation report and parsed data.
  *
  * Pass all XML files from the package as a plain JS object where each key is
  * the filename and each value is the file's text content. ASSETMAP.xml is
  * required; VOLINDEX.xml, PKL files, and CPL files are resolved automatically
  * from the AssetMap.
  *
- * Returns a `ValidationReport` serialized to JS.
+ * Options (all optional):
+ * - `coreSpec`: `"auto"` | `"v2013"` | `"v2016"` | `"v2020"` — core constraints version
+ * - `app2eSpec`: `"auto"` | `"none"` | `"v2020"` | `"v2021"` | `"v2023"` — app profile version
+ * - `rules`: ESLint-style rules configuration object
+ *
+ * Returns `{ report, cpls, assetMap, packingLists, volumeIndex, unreferencedAssets, declaredSidecars }`
  */
-export function validatePackage(files: any, rules: any): any;
-export interface Chunk {
-    path: string;
-    volume_index: number;
-}
-
-export interface ChunkList {
-    chunks: Chunk[];
-}
-
-export interface Asset {
-    id: ImfUuid;
-    packing_list: boolean | null;
-    chunk_list: ChunkList;
-}
-
-export interface AssetList {
-    assets: Asset[];
-}
-
-export interface AssetMap {
-    id: ImfUuid;
-    annotation_text: string | null;
-    creator: string | null;
-    volume_count: number;
-    issue_date: string;
-    issuer: string | null;
-    asset_list: AssetList;
-}
-
+export function validate(files: any, options: any): any;
 export interface TrackInfo {
     track_id: string;
     track_type: string;
@@ -225,6 +186,15 @@ export interface ISXDDataEssenceDescriptor {
     SampleRate?: EditRate | null;
     DataEssenceCoding?: string | null;
     NamespaceURI?: string | null;
+    SubDescriptors?: IsxdSubDescriptors | null;
+}
+
+export interface ContainerConstraintsSubDescriptor {
+    InstanceID?: string | null;
+}
+
+export interface IsxdSubDescriptors {
+    ContainerConstraintsSubDescriptor?: ContainerConstraintsSubDescriptor | null;
 }
 
 export interface IABSoundfieldLabelSubDescriptor {
@@ -507,6 +477,35 @@ export interface EditRate {
     denominator: number;
 }
 
+export interface Chunk {
+    path: string;
+    volume_index: number;
+}
+
+export interface ChunkList {
+    chunks: Chunk[];
+}
+
+export interface Asset {
+    id: ImfUuid;
+    packing_list: boolean | null;
+    chunk_list: ChunkList;
+}
+
+export interface AssetList {
+    assets: Asset[];
+}
+
+export interface AssetMap {
+    id: ImfUuid;
+    annotation_text: string | null;
+    creator: string | null;
+    volume_count: number;
+    issue_date: string;
+    issuer: string | null;
+    asset_list: AssetList;
+}
+
 export interface VolumeIndex {
     Index: number;
 }
@@ -522,10 +521,7 @@ export interface InitOutput {
   readonly parseAssetmapTyped: (a: number, b: number) => [number, number, number];
   readonly parsePklTyped: (a: number, b: number) => [number, number, number];
   readonly parseCplTyped: (a: number, b: number) => [number, number, number];
-  readonly extractSourceAsset: (a: number, b: number) => [number, number, number];
-  readonly compareDelivery: (a: any, b: any) => [number, number, number];
-  readonly validateCplWithSpecSelection: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number, number];
-  readonly validatePackage: (a: any, b: any) => [number, number, number];
+  readonly validate: (a: any, b: any) => [number, number, number];
   readonly __wbindgen_malloc: (a: number, b: number) => number;
   readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
   readonly __wbindgen_exn_store: (a: number) => void;

@@ -271,73 +271,25 @@ export function parseCplTyped(xmlContent) {
 }
 
 /**
- * Extract a SourceAsset from CPL XML
- * @param {string} cplXml
- * @returns {any}
- */
-export function extractSourceAsset(cplXml) {
-    const ptr0 = passStringToWasm0(cplXml, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.extractSourceAsset(ptr0, len0);
-    if (ret[2]) {
-        throw takeFromExternrefTable0(ret[1]);
-    }
-    return takeFromExternrefTable0(ret[0]);
-}
-
-/**
- * Compare a SourceAsset against a delivery spec
- * @param {any} sourceAssetJson
- * @param {any} deliverySpecJson
- * @returns {any}
- */
-export function compareDelivery(sourceAssetJson, deliverySpecJson) {
-    const ret = wasm.compareDelivery(sourceAssetJson, deliverySpecJson);
-    if (ret[2]) {
-        throw takeFromExternrefTable0(ret[1]);
-    }
-    return takeFromExternrefTable0(ret[0]);
-}
-
-/**
- * Validate a CPL with configurable built-in spec selection (ST 2067-2/App2E).
- *
- * `coreSpec`: "auto" | "v2013" | "v2016" | "v2020"
- * `app2eSpec`: "auto" | "none" | "v2020" | "v2021" | "v2023"
- * @param {string} cplXml
- * @param {string | null} [coreSpec]
- * @param {string | null} [app2eSpec]
- * @returns {any}
- */
-export function validateCplWithSpecSelection(cplXml, coreSpec, app2eSpec) {
-    const ptr0 = passStringToWasm0(cplXml, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    var ptr1 = isLikeNone(coreSpec) ? 0 : passStringToWasm0(coreSpec, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    var len1 = WASM_VECTOR_LEN;
-    var ptr2 = isLikeNone(app2eSpec) ? 0 : passStringToWasm0(app2eSpec, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    var len2 = WASM_VECTOR_LEN;
-    const ret = wasm.validateCplWithSpecSelection(ptr0, len0, ptr1, len1, ptr2, len2);
-    if (ret[2]) {
-        throw takeFromExternrefTable0(ret[1]);
-    }
-    return takeFromExternrefTable0(ret[0]);
-}
-
-/**
- * Validate a full IMF package from an in-memory map of filename → XML string.
+ * Validate a full IMF package and return both the validation report and parsed data.
  *
  * Pass all XML files from the package as a plain JS object where each key is
  * the filename and each value is the file's text content. ASSETMAP.xml is
  * required; VOLINDEX.xml, PKL files, and CPL files are resolved automatically
  * from the AssetMap.
  *
- * Returns a `ValidationReport` serialized to JS.
+ * Options (all optional):
+ * - `coreSpec`: `"auto"` | `"v2013"` | `"v2016"` | `"v2020"` — core constraints version
+ * - `app2eSpec`: `"auto"` | `"none"` | `"v2020"` | `"v2021"` | `"v2023"` — app profile version
+ * - `rules`: ESLint-style rules configuration object
+ *
+ * Returns `{ report, cpls, assetMap, packingLists, volumeIndex, unreferencedAssets, declaredSidecars }`
  * @param {any} files
- * @param {any} rules
+ * @param {any} options
  * @returns {any}
  */
-export function validatePackage(files, rules) {
-    const ret = wasm.validatePackage(files, rules);
+export function validate(files, options) {
+    const ret = wasm.validate(files, options);
     if (ret[2]) {
         throw takeFromExternrefTable0(ret[1]);
     }
@@ -386,10 +338,6 @@ function __wbg_get_imports() {
         const ret = Error(getStringFromWasm0(arg0, arg1));
         return ret;
     };
-    imports.wbg.__wbg_Number_998bea33bd87c3e0 = function(arg0) {
-        const ret = Number(arg0);
-        return ret;
-    };
     imports.wbg.__wbg_String_8f0eb39a4a4c2f66 = function(arg0, arg1) {
         const ret = String(arg1);
         const ptr1 = passStringToWasm0(ret, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
@@ -421,14 +369,20 @@ function __wbg_get_imports() {
         const ret = Reflect.get(arg0, arg1);
         return ret;
     }, arguments) };
-    imports.wbg.__wbg_getwithrefkey_1dc361bd10053bfe = function(arg0, arg1) {
-        const ret = arg0[arg1];
-        return ret;
-    };
     imports.wbg.__wbg_instanceof_ArrayBuffer_67f3012529f6a2dd = function(arg0) {
         let result;
         try {
             result = arg0 instanceof ArrayBuffer;
+        } catch (_) {
+            result = false;
+        }
+        const ret = result;
+        return ret;
+    };
+    imports.wbg.__wbg_instanceof_Map_ebb01a5b6b5ffd0b = function(arg0) {
+        let result;
+        try {
+            result = arg0 instanceof Map;
         } catch (_) {
             result = false;
         }
@@ -465,7 +419,7 @@ function __wbg_get_imports() {
         const ret = arg0.length;
         return ret;
     };
-    imports.wbg.__wbg_log_8e8b1387ea862a02 = function(arg0, arg1) {
+    imports.wbg.__wbg_log_bb9e5bc9ebe8ad30 = function(arg0, arg1) {
         console.log(getStringFromWasm0(arg0, arg1));
     };
     imports.wbg.__wbg_new0_b0a0a38c201e6df5 = function() {
@@ -607,6 +561,11 @@ function __wbg_get_imports() {
         const ret = BigInt.asUintN(64, arg0);
         return ret;
     };
+    imports.wbg.__wbindgen_cast_9ae0607507abb057 = function(arg0) {
+        // Cast intrinsic for `I64 -> Externref`.
+        const ret = arg0;
+        return ret;
+    };
     imports.wbg.__wbindgen_cast_d6cd19b81560fd6e = function(arg0) {
         // Cast intrinsic for `F64 -> Externref`.
         const ret = arg0;
@@ -679,7 +638,7 @@ async function __wbg_init(module_or_path) {
     }
 
     if (typeof module_or_path === 'undefined') {
-        module_or_path = new URL('imf_wasm_bg.wasm', import.meta.url);
+        module_or_path = new URL('imferno_wasm_bg.wasm', import.meta.url);
     }
     const imports = __wbg_get_imports();
 

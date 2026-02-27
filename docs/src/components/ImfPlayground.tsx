@@ -108,22 +108,22 @@ function VolindexResult({ r }: { r: any }) {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function AssetMapResult({ r }: { r: any }) {
-    const assets: unknown[] = r.AssetList?.Asset ?? [];
+    const assets: unknown[] = r.asset_list?.assets ?? [];
     return (
         <div>
-            <Row label="ID" value={asText(r.Id)} />
-            <Row label="Issue date" value={asText(r.IssueDate)} />
-            {r.VolumeCount !== undefined && <Row label="Volume count" value={String(r.VolumeCount)} />}
-            {r.Issuer && <Row label="Issuer" value={asText(r.Issuer)} />}
-            {r.Creator && <Row label="Creator" value={asText(r.Creator)} />}
-            {r.AnnotationText && <Row label="Annotation" value={asText(r.AnnotationText)} />}
+            <Row label="ID" value={asText(r.id)} />
+            <Row label="Issue date" value={asText(r.issue_date)} />
+            {r.volume_count !== undefined && <Row label="Volume count" value={String(r.volume_count)} />}
+            {r.issuer && <Row label="Issuer" value={asText(r.issuer)} />}
+            {r.creator && <Row label="Creator" value={asText(r.creator)} />}
+            {r.annotation_text && <Row label="Annotation" value={asText(r.annotation_text)} />}
             <Row label="Assets" value={String(assets.length)} />
             {assets.length > 0 && (
                 <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                     {assets.map((asset: any, i: number) => {
-                        const path = asset.ChunkList?.Chunk?.[0]?.Path ?? '—';
-                        const isPkl = asset.PackingList === true;
+                        const path = asset.chunk_list?.chunks?.[0]?.path ?? '—';
+                        const isPkl = asset.packing_list === true;
                         return (
                             <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', padding: '4px 0' }}>
                                 <span style={{
@@ -138,7 +138,7 @@ function AssetMapResult({ r }: { r: any }) {
                                     {isPkl ? 'PKL' : 'ASSET'}
                                 </span>
                                 <div style={{ minWidth: 0 }}>
-                                    <div style={{ fontSize: '11px', fontFamily: 'monospace', color: '#98989f', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{asset.Id}</div>
+                                    <div style={{ fontSize: '11px', fontFamily: 'monospace', color: '#98989f', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{asset.id}</div>
                                     <div style={{ fontSize: '11px', color: '#6a6a71', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{path}</div>
                                 </div>
                             </div>
@@ -328,15 +328,15 @@ function buildPackageData(files: UploadedFile[]): PackageViewData | null {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const am = (assetmapFile.state as any).result as any;
-    const assets: unknown[] = am?.AssetList?.Asset ?? [];
+    const assets: unknown[] = am?.asset_list?.assets ?? [];
     const pklFiles = files.filter(f => f.kind === 'pkl');
 
     const pkg: PackageViewData['package'] = {
-        assetMapId: asText(am?.Id) || 'urn:uuid:unknown',
-        volumeIndex: 1,
+        assetMapId: asText(am?.id) || 'urn:uuid:unknown',
+        volumeIndex: am?.volume_count ?? 1,
         assetCount: assets.length,
         cplCount: cplFiles.length,
-        pklCount: pklFiles.length || assets.filter((a: unknown) => (a as Record<string, unknown>)?.PackingList === true).length,
+        pklCount: pklFiles.length || assets.filter((a: unknown) => (a as Record<string, unknown>)?.packing_list === true).length,
     };
 
     const cpls: PackageViewData['cpls'] = cplFiles.map(f => {

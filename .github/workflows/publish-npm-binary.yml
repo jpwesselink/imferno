@@ -60,7 +60,7 @@ jobs:
 
       - name: Copy binary into npm package
         shell: bash
-        run: cp target/${{ matrix.target }}/release/${{ matrix.binary }} npm/${{ matrix.npm_pkg }}/
+        run: cp target/${{ matrix.target }}/release/${{ matrix.binary }} crates/imferno/npm/${{ matrix.npm_pkg }}/
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -69,14 +69,14 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
 
       - name: Set npm version from tag
-        working-directory: npm/${{ matrix.npm_pkg }}
+        working-directory: crates/imferno/npm/${{ matrix.npm_pkg }}
         shell: bash
         run: |
           VERSION=${GITHUB_REF#refs/tags/imferno-v}
           npm version --no-git-tag-version --allow-same-version "$VERSION"
 
       - name: Publish platform package
-        working-directory: npm/${{ matrix.npm_pkg }}
+        working-directory: crates/imferno/npm/${{ matrix.npm_pkg }}
         run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
@@ -95,7 +95,7 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
 
       - name: Set version from tag
-        working-directory: npm/imferno
+        working-directory: crates/imferno/npm/imferno
         shell: bash
         run: |
           VERSION=${GITHUB_REF#refs/tags/imferno-v}
@@ -109,10 +109,10 @@ jobs:
           "
 
       - name: Copy LICENSE
-        run: cp LICENSE npm/imferno/LICENSE
+        run: cp LICENSE crates/imferno/npm/imferno/LICENSE
 
       - name: Publish meta-package
-        working-directory: npm/imferno
+        working-directory: crates/imferno/npm/imferno
         run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

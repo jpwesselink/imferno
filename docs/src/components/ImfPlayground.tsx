@@ -346,49 +346,63 @@ function buildPackageData(files: UploadedFile[]): PackageViewData | null {
         const cpl = state.result as any;
         const segs: unknown[] = cpl?.segmentList?.segment ?? [];
 
-        // Extract edit rate from the CPL (from first resource of first sequence)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const firstSeg = segs[0] as any;
-        const sl = firstSeg?.sequenceList;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const cplEditRate = cpl?.editRate ? `${cpl.editRate.numerator}/${cpl.editRate.denominator}` : null;
 
-        // Extract sequences from the first segment (tracks are consistent across segments)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        type SeqEntry = { kind: string; seqs: any[] };
-        const seqGroups: SeqEntry[] = [
-            { kind: 'MainImage', seqs: sl?.mainImageSequence ?? [] },
-            { kind: 'MainAudio', seqs: sl?.mainAudioSequence ?? [] },
-            { kind: 'Subtitles', seqs: sl?.subtitlesSequence ?? [] },
-            { kind: 'HearingImpairedCaptions', seqs: sl?.hearingImpairedCaptionsSequence ?? [] },
-            { kind: 'ForcedNarrative', seqs: sl?.forcedNarrativeSequence ?? [] },
-            { kind: 'IAB', seqs: sl?.iabSequence ?? [] },
-            { kind: 'ISXD', seqs: sl?.isxdSequence ?? [] },
+        // Extract sequences across ALL segments, merging resources per trackId.
+        // In IMF, the same virtual tracks span across segments — each segment
+        // contributes its own resources to the same track.
+        const seqKinds = [
+            { kind: 'MainImage', key: 'mainImageSequence' },
+            { kind: 'MainAudio', key: 'mainAudioSequence' },
+            { kind: 'Subtitles', key: 'subtitlesSequence' },
+            { kind: 'HearingImpairedCaptions', key: 'hearingImpairedCaptionsSequence' },
+            { kind: 'ForcedNarrative', key: 'forcedNarrativeSequence' },
+            { kind: 'IAB', key: 'iabSequence' },
+            { kind: 'ISXD', key: 'isxdSequence' },
         ];
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const sequences: SequenceData[] = seqGroups.flatMap(({ kind, seqs }) => seqs.map((seq: any) => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const resources: any[] = seq?.resourceList?.resource ?? [];
-            const seqResources: SequenceResource[] = resources.map((r: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
-                const er = r?.editRate;
-                return {
-                    id: String(r?.id ?? ''),
-                    intrinsicDuration: r?.intrinsicDuration ?? 0,
-                    sourceDuration: r?.sourceDuration ?? r?.intrinsicDuration ?? 0,
-                    sourceEncoding: r?.sourceEncoding ?? null,
-                    trackFileId: r?.trackFileId ?? null,
-                    editRate: er ? `${er.numerator}/${er.denominator}` : null,
-                    entryPoint: r?.entryPoint ?? null,
-                };
-            });
+        const extractResources = (r: any): SequenceResource => {
+            const er = r?.editRate;
             return {
-                type: kind,
-                id: String(seq?.id ?? ''),
-                trackId: String(seq?.trackId ?? ''),
-                sequenceResources: seqResources,
+                id: String(r?.id ?? ''),
+                intrinsicDuration: r?.intrinsicDuration ?? 0,
+                sourceDuration: r?.sourceDuration ?? r?.intrinsicDuration ?? 0,
+                sourceEncoding: r?.sourceEncoding ?? null,
+                trackFileId: r?.trackFileId ?? null,
+                editRate: er ? `${er.numerator}/${er.denominator}` : null,
+                entryPoint: r?.entryPoint ?? null,
             };
-        }));
+        };
+
+        // Accumulate by trackId across all segments
+        const trackMap = new Map<string, SequenceData>();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        for (const seg of segs as any[]) {
+            const sl = seg?.sequenceList;
+            if (!sl) continue;
+            for (const { kind, key } of seqKinds) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                for (const seq of (sl[key] ?? []) as any[]) {
+                    const tid = String(seq?.trackId ?? '');
+                    const existing = trackMap.get(tid);
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const resources = ((seq?.resourceList?.resource ?? []) as any[]).map(extractResources);
+                    if (existing) {
+                        existing.sequenceResources.push(...resources);
+                    } else {
+                        trackMap.set(tid, {
+                            type: kind,
+                            id: String(seq?.id ?? ''),
+                            trackId: tid,
+                            sequenceResources: resources,
+                        });
+                    }
+                }
+            }
+        }
+        const sequences: SequenceData[] = Array.from(trackMap.values());
 
         return {
             id: String(cpl?.id ?? f.uid),

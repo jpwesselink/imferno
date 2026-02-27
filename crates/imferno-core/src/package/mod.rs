@@ -1494,6 +1494,7 @@ fn parse_ul_bytes(ul: &str) -> Option<[u8; 16]> {
 }
 
 /// Package inspection result for programmatic use
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct PackageInspection {
     pub path: PathBuf,
@@ -1508,6 +1509,7 @@ pub struct PackageInspection {
     pub asset_map_issue_date: String,
 }
 
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct CplSummary {
     pub id: String,
@@ -1520,6 +1522,7 @@ pub struct CplSummary {
     pub annotation: Option<String>,
 }
 
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct CplDetails {
     pub id: String,
@@ -1534,12 +1537,14 @@ pub struct CplDetails {
     pub segments: Vec<SegmentInfo>,
 }
 
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct SegmentInfo {
     pub id: String,
     pub sequence_count: usize,
 }
 
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct TrackAnalysis {
     pub cpl_id: String,

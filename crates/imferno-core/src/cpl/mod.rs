@@ -765,6 +765,36 @@ impl Serialize for ContentKindElement {
     }
 }
 
+#[cfg(feature = "jsonschema")]
+impl schemars::JsonSchema for ContentKindElement {
+    fn schema_name() -> String {
+        "ContentKindElement".to_owned()
+    }
+
+    fn json_schema(gen: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
+        use schemars::schema::*;
+
+        let string_schema = gen.subschema_for::<String>();
+        let mut obj = SchemaObject {
+            instance_type: Some(InstanceType::Object.into()),
+            ..Default::default()
+        };
+        let obj_validation = obj.object();
+        obj_validation.properties.insert("$text".to_owned(), gen.subschema_for::<String>());
+        obj_validation.properties.insert("@scope".to_owned(), gen.subschema_for::<Option<String>>());
+        obj_validation.required.insert("$text".to_owned());
+
+        SchemaObject {
+            subschemas: Some(Box::new(SubschemaValidation {
+                any_of: Some(vec![string_schema, obj.into()]),
+                ..Default::default()
+            })),
+            ..Default::default()
+        }
+        .into()
+    }
+}
+
 // =============================================================================
 // MarkerLabelElement — text + @scope attribute per CPL XSD LabelType
 // =============================================================================
@@ -898,6 +928,36 @@ impl Serialize for MarkerLabelElement {
         } else {
             serializer.serialize_str(&self.label.to_string())
         }
+    }
+}
+
+#[cfg(feature = "jsonschema")]
+impl schemars::JsonSchema for MarkerLabelElement {
+    fn schema_name() -> String {
+        "MarkerLabelElement".to_owned()
+    }
+
+    fn json_schema(gen: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
+        use schemars::schema::*;
+
+        let string_schema = gen.subschema_for::<String>();
+        let mut obj = SchemaObject {
+            instance_type: Some(InstanceType::Object.into()),
+            ..Default::default()
+        };
+        let obj_validation = obj.object();
+        obj_validation.properties.insert("$text".to_owned(), gen.subschema_for::<String>());
+        obj_validation.properties.insert("@scope".to_owned(), gen.subschema_for::<Option<String>>());
+        obj_validation.required.insert("$text".to_owned());
+
+        SchemaObject {
+            subschemas: Some(Box::new(SubschemaValidation {
+                any_of: Some(vec![string_schema, obj.into()]),
+                ..Default::default()
+            })),
+            ..Default::default()
+        }
+        .into()
     }
 }
 
@@ -1044,11 +1104,42 @@ impl Serialize for LanguageString {
     }
 }
 
+#[cfg(feature = "jsonschema")]
+impl schemars::JsonSchema for LanguageString {
+    fn schema_name() -> String {
+        "LanguageString".to_owned()
+    }
+
+    fn json_schema(gen: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
+        use schemars::schema::*;
+
+        let string_schema = gen.subschema_for::<String>();
+        let mut obj = SchemaObject {
+            instance_type: Some(InstanceType::Object.into()),
+            ..Default::default()
+        };
+        let obj_validation = obj.object();
+        obj_validation.properties.insert("$text".to_owned(), gen.subschema_for::<String>());
+        obj_validation.properties.insert("@language".to_owned(), gen.subschema_for::<Option<String>>());
+        obj_validation.required.insert("$text".to_owned());
+
+        SchemaObject {
+            subschemas: Some(Box::new(SubschemaValidation {
+                any_of: Some(vec![string_schema, obj.into()]),
+                ..Default::default()
+            })),
+            ..Default::default()
+        }
+        .into()
+    }
+}
+
 // =============================================================================
 // Locale types
 // =============================================================================
 
 /// LocaleList - Content locale information
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
@@ -1060,6 +1151,7 @@ pub struct LocaleList {
     pub locales: Vec<Locale>,
 }
 
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
@@ -1079,6 +1171,7 @@ pub struct Locale {
     pub content_maturity_rating_list: Option<ContentMaturityRatingList>,
 }
 
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
@@ -1091,6 +1184,7 @@ pub struct ContentMaturityRatingList {
 }
 
 /// A single content maturity rating entry per ST 2067-3 / ST 2067-21 §5.1.3.
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
@@ -1111,6 +1205,7 @@ pub struct ContentMaturityRating {
 }
 
 /// The `<Audience>` element carries an optional `scope` attribute.
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
@@ -1124,6 +1219,7 @@ pub struct AudienceElement {
     pub text: Option<String>,
 }
 
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
@@ -1135,6 +1231,7 @@ pub struct LanguageList {
     pub languages: Vec<LanguageTag>, // RFC 5646 language tags
 }
 
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
@@ -1150,6 +1247,7 @@ pub struct RegionList {
 // Extension Properties
 // =============================================================================
 
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
@@ -1173,6 +1271,7 @@ pub struct ExtensionProperties {
 // EssenceDescriptor types - proper deserialization of MXF metadata
 // =============================================================================
 
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
@@ -1184,6 +1283,7 @@ pub struct EssenceDescriptorList {
     pub essence_descriptors: Vec<EssenceDescriptor>,
 }
 
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
@@ -1220,6 +1320,7 @@ pub struct EssenceDescriptor {
 }
 
 /// RGBA video descriptor (JPEG 2000 RGB content)
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
@@ -1345,6 +1446,7 @@ pub struct RGBADescriptor {
 }
 
 /// CDCI video descriptor (YCbCr content)
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
@@ -1489,6 +1591,7 @@ pub struct CDCIDescriptor {
 }
 
 /// SubDescriptors for video (RGBA/CDCI) descriptors
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
@@ -1505,6 +1608,7 @@ pub struct VideoSubDescriptors {
 }
 
 /// JPEG 2000 Picture Sub Descriptor (ST 422 / ST 2067-21 Table 14)
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
@@ -1576,6 +1680,7 @@ pub struct JPEG2000SubDescriptor {
 }
 
 /// J2CLayout — pixel component layout for JPEG 2000 (§6.5.2)
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
@@ -1587,6 +1692,7 @@ pub struct J2CLayout {
 }
 
 /// RGBA component entry within J2CLayout or PixelLayout
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
@@ -1603,6 +1709,7 @@ pub struct RGBALayoutComponent {
 }
 
 /// J2K Extended Capabilities (ISO/IEC 15444-15)
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
@@ -1615,6 +1722,7 @@ pub struct J2KExtendedCapabilities {
 }
 
 /// Picture component sizing information
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
@@ -1626,6 +1734,7 @@ pub struct PictureComponentSizing {
 }
 
 /// Individual J2K component sizing
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
@@ -1646,6 +1755,7 @@ pub struct J2KComponentSizing {
 }
 
 /// PHDR (Dolby Vision) metadata track sub-descriptor
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
@@ -1666,6 +1776,7 @@ pub struct PHDRMetadataTrackSubDescriptor {
 }
 
 /// WAVE PCM audio descriptor
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
@@ -1695,6 +1806,7 @@ pub struct WAVEPCMDescriptor {
 }
 
 /// SubDescriptors for audio (WAVEPCMDescriptor)
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
@@ -1707,6 +1819,7 @@ pub struct AudioSubDescriptors {
 }
 
 /// Soundfield group label sub-descriptor — contains language and audio content kind
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
@@ -1728,6 +1841,7 @@ pub struct SoundfieldGroupLabelSubDescriptor {
 }
 
 /// DC Timed Text descriptor (subtitles/captions)
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
@@ -1752,6 +1866,7 @@ pub struct DCTimedTextDescriptor {
 }
 
 /// IAB (Immersive Audio Bitstream) essence descriptor — Dolby Atmos
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
@@ -1797,6 +1912,7 @@ pub struct IABEssenceDescriptor {
 }
 
 /// SubDescriptors for IAB essence
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
@@ -1808,6 +1924,7 @@ pub struct IABSubDescriptors {
 }
 
 /// IAB soundfield label sub-descriptor — contains language for Atmos tracks
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
@@ -1832,6 +1949,7 @@ pub struct IABSoundfieldLabelSubDescriptor {
 }
 
 /// SubDescriptors for ISXD essence descriptor
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone, Default)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
@@ -1844,6 +1962,7 @@ pub struct IsxdSubDescriptors {
 }
 
 /// ContainerConstraintsSubDescriptor — presence required by ST 2067-202 §5
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
@@ -1855,6 +1974,7 @@ pub struct ContainerConstraintsSubDescriptor {
 }
 
 /// ISXD (Immersive Sound XML Data) essence descriptor — Dolby Atmos sidecar format
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
@@ -1885,6 +2005,7 @@ pub struct ISXDDataEssenceDescriptor {
 // =============================================================================
 
 /// Root CPL structure - defines a complete IMF composition
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
@@ -1991,6 +2112,7 @@ pub struct CompositionPlaylist {
 // CompositionTimecode
 // =============================================================================
 
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[cfg_attr(not(feature = "wasm"), serde(rename_all = "PascalCase"))]
 #[cfg_attr(feature = "wasm", serde(rename_all = "camelCase"))]
@@ -2016,6 +2138,7 @@ pub struct CompositionTimecode {
 // Content Version types
 // =============================================================================
 
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
@@ -2027,6 +2150,7 @@ pub struct ContentVersionList {
     pub content_versions: Vec<ContentVersion>,
 }
 
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
@@ -2046,6 +2170,7 @@ pub struct ContentVersion {
 // Segment and Sequence types
 // =============================================================================
 
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
@@ -2057,6 +2182,7 @@ pub struct SegmentList {
     pub segments: Vec<Segment>,
 }
 
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
@@ -2072,6 +2198,7 @@ pub struct Segment {
     pub sequence_list: SequenceList,
 }
 
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
@@ -2121,6 +2248,7 @@ pub trait SequenceAccess {
 
 macro_rules! define_sequence_type {
     ($name:ident) => {
+        #[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
         #[derive(Debug, Serialize, Deserialize, PartialEq)]
         #[cfg_attr(feature = "typescript", derive(TS))]
         #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
@@ -2161,6 +2289,7 @@ define_sequence_type!(ISXDSequence);
 // Resource types
 // =============================================================================
 
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
@@ -2172,6 +2301,7 @@ pub struct ResourceList {
     pub resources: Vec<Resource>,
 }
 
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
@@ -2227,6 +2357,7 @@ pub struct Resource {
     pub markers: Vec<MarkerInfo>,
 }
 
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
@@ -2251,6 +2382,7 @@ pub struct MarkerInfo {
 // =============================================================================
 
 /// Track information with codec details (legacy — use EssenceDescriptor parsing instead)
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]

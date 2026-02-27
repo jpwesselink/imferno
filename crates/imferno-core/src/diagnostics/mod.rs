@@ -8,6 +8,7 @@ use std::fmt;
 use std::path::PathBuf;
 
 /// Severity level of validation issues
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum Severity {
     /// Informational - Best practice suggestions
@@ -32,6 +33,7 @@ impl fmt::Display for Severity {
 }
 
 /// Category of validation issue
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Category {
     /// XML structure and syntax issues
@@ -80,6 +82,7 @@ impl fmt::Display for Category {
 }
 
 /// Location where the issue was found
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct Location {
     /// File path if applicable
@@ -173,6 +176,7 @@ impl fmt::Display for Location {
 }
 
 /// A single validation issue
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ValidationIssue {
     /// Severity level
@@ -248,6 +252,7 @@ impl fmt::Display for ValidationIssue {
 }
 
 /// Comprehensive validation report
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ValidationReport {
     /// Critical issues that prevent usage
@@ -376,6 +381,7 @@ impl fmt::Display for ValidationReport {
 }
 
 /// Validation profile determining strictness
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub enum ValidationProfile {
     /// Minimal validation - just check if playable

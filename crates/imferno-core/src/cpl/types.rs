@@ -25,6 +25,7 @@ fn parse_and_normalize_ul(ul: &str) -> Option<[u8; 16]> {
 /// In XML the value is a space-separated pair: `"60000 1001"`.
 /// Common values: `24000/1001` (≈23.976), `24/1`, `25/1`, `30/1`,
 /// `30000/1001` (≈29.97), `48000/1`, `96000/1`.
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "wasm", derive(Tsify), tsify(into_wasm_abi, from_wasm_abi))]
@@ -84,6 +85,7 @@ impl std::fmt::Display for EditRate {
 ///
 /// Validation is minimal (non-empty, trimmed). Full BCP 47 validation is out
 /// of scope for the parser layer.
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "wasm", derive(Tsify), tsify(into_wasm_abi, from_wasm_abi))]
@@ -112,6 +114,7 @@ impl std::fmt::Display for LanguageTag {
 // ─── Resolution ───────────────────────────────────────────────────────────────
 
 /// Pixel dimensions.
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "wasm", derive(Tsify), tsify(into_wasm_abi, from_wasm_abi))]
@@ -138,6 +141,7 @@ impl std::fmt::Display for Resolution {
 ///
 /// The `Other` variant preserves unrecognised values so parsers remain
 /// forward-compatible with new SMPTE registrations.
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "wasm", derive(Tsify), tsify(into_wasm_abi, from_wasm_abi))]
@@ -216,6 +220,7 @@ const fn ul_bytes(
 /// Discriminating bytes are in positions 13-16 of the UL (last 4 bytes of the
 /// 16-byte label), with the common prefix `060e2b34.0401XXXX.04010101.03......`.
 /// Byte 8 (the registry version) is masked per ST 298M (Architecture Decision 1).
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "wasm", derive(Tsify), tsify(into_wasm_abi, from_wasm_abi))]
@@ -296,6 +301,7 @@ impl std::fmt::Display for ColorPrimaries {
 ///
 /// Used in `<TransferCharacteristic>` elements in CPL EssenceDescriptors.
 /// Byte 8 (registry version) is masked per ST 298M (Architecture Decision 1).
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "wasm", derive(Tsify), tsify(into_wasm_abi, from_wasm_abi))]
@@ -384,6 +390,7 @@ impl std::fmt::Display for TransferCharacteristic {
 ///
 /// Note: VideoCodec ULs have varying item-specific bytes, so we match on byte
 /// patterns rather than exact 16-byte comparisons. Byte 8 is still masked.
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "wasm", derive(Tsify), tsify(into_wasm_abi, from_wasm_abi))]
@@ -599,6 +606,7 @@ impl std::fmt::Display for VideoCodec {
 /// Defines the Y'C'BC'R matrix coefficients. Required for CDCI descriptors;
 /// R'G'B' descriptors (COLOR.6) do not use CodingEquations.
 /// Byte 8 (registry version) is masked per ST 298M (Architecture Decision 1).
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "wasm", derive(Tsify), tsify(into_wasm_abi, from_wasm_abi))]
@@ -655,6 +663,7 @@ impl std::fmt::Display for CodingEquations {
 ///
 /// Used in `<MCATagSymbol>` in `SoundfieldGroupLabelSubDescriptor` and
 /// `AudioChannelLabelSubDescriptor`.
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "wasm", derive(Tsify), tsify(into_wasm_abi, from_wasm_abi))]
@@ -738,6 +747,7 @@ impl std::fmt::Display for McaTagSymbol {
 // ─── MarkerLabel ──────────────────────────────────────────────────────────────
 
 /// CPL composition marker labels per SMPTE ST 2067-3 §7.4.
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "wasm", derive(Tsify), tsify(into_wasm_abi, from_wasm_abi))]
@@ -800,6 +810,7 @@ impl std::fmt::Display for MarkerLabel {
 ///
 /// Different spec versions have different schema constraints. The namespace URI
 /// in the root element is the authoritative signal for which spec edition applies.
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "wasm", derive(Tsify), tsify(into_wasm_abi, from_wasm_abi))]

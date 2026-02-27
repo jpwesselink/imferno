@@ -37,6 +37,7 @@ pub enum VolindexError {
 ///
 /// In practice this is always `<Index>1</Index>` for single-volume IMF packages.
 /// The spec allows multi-volume packages but they are rarely used.
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, serde::Serialize, Deserialize, PartialEq)]
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]

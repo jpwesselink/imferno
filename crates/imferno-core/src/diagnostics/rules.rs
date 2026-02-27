@@ -14,6 +14,7 @@ use crate::{Severity, ValidationReport};
 ///
 /// Mirrors ESLint's `"off"` / `"warn"` / `"error"` vocabulary, extended with
 /// the two IMF severity levels.
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum RuleSeverity {
@@ -40,6 +41,7 @@ pub enum RuleSeverity {
 /// suppress the rule entirely.
 ///
 /// An empty map (the default) is a no-op.
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct RulesConfig(pub HashMap<String, RuleSeverity>);
 

@@ -185,11 +185,28 @@ impl<'de> Deserialize<'de> for ImfUuid {
     }
 }
 
+#[cfg(feature = "jsonschema")]
+impl schemars::JsonSchema for ImfUuid {
+    fn schema_name() -> String {
+        "ImfUuid".to_owned()
+    }
+
+    fn json_schema(gen: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
+        let mut schema = gen.subschema_for::<String>().into_object();
+        schema.metadata().description = Some(
+            "A SMPTE IMF UUID, serialised as a bare UUID string (e.g. \"0eb3d1b9-b77b-4d3f-bbe5-7c69b15dca85\")".to_owned()
+        );
+        schema.format = Some("uuid".to_owned());
+        schema.into()
+    }
+}
+
 // ─── AssetHash ────────────────────────────────────────────────────────────────
 
 /// A decoded asset hash from a Packing List, per SMPTE ST 2067-2 §9.
 ///
 /// PKL files carry base64-encoded SHA-1 digests for each tracked asset.
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AssetHash {
     pub algorithm: HashAlgorithm,
@@ -201,6 +218,7 @@ pub struct AssetHash {
 /// Per SMPTE ST 2067-2:2020 §9, SHA-1 is the default algorithm.
 /// SHA-256 is supported via the `<HashAlgorithm>` element using
 /// XML Digital Signature algorithm URIs.
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum HashAlgorithm {
     /// SHA-1 (default per ST 2067-2 §9).
@@ -292,6 +310,7 @@ impl AssetHash {
 // ─── MimeType ─────────────────────────────────────────────────────────────────
 
 /// MIME type as used in `<Type>` elements in PKL assets (SMPTE ST 2067-2 §9).
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MimeType {
     /// `text/xml` — CPL and other XML documents
@@ -337,6 +356,7 @@ impl std::fmt::Display for MimeType {
 // ─── AssetMapNamespace ────────────────────────────────────────────────────────
 
 /// The detected SMPTE spec version of an AssetMap document, derived from its root xmlns.
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum AssetMapNamespace {
     /// DCI era — `http://www.smpte-ra.org/schemas/429-9/2007/AM`
@@ -393,6 +413,7 @@ impl std::fmt::Display for AssetMapNamespace {
 /// The detected SMPTE spec version of a PKL document, derived from its root xmlns.
 ///
 /// PKL schema evolved across three eras: DCI 429-8, IMF 2067-2 (2013-2016), and 2020.
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum PklNamespace {
     /// DCI era — `http://www.smpte-ra.org/schemas/429-8/2007/PKL`
@@ -460,6 +481,7 @@ impl std::fmt::Display for PklNamespace {
 /// CPL documents reference core constraints namespaces for elements defined in ST 2067-2.
 /// This is distinct from the CPL namespace (ST 2067-3) and determines which core constraint
 /// rules apply.
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum CoreConstraintsNamespace {
     /// SMPTE ST 2067-2:2013 — `http://www.smpte-ra.org/schemas/2067-2/2013`
@@ -677,6 +699,7 @@ mod raw {
 // VolumeIndex lives in st429-9 and is re-exported at the top of this file.
 
 /// ASSETMAP.xml — maps UUIDs to physical file paths (ST 429-9 §6).
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
@@ -714,6 +737,7 @@ impl AssetMap {
 }
 
 /// The `<AssetList>` element in ASSETMAP.xml.
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
@@ -735,6 +759,7 @@ impl AssetList {
 }
 
 /// A single asset entry in ASSETMAP.xml.
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
@@ -760,6 +785,7 @@ impl Asset {
 }
 
 /// A list of file chunks for a single asset.
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
@@ -782,6 +808,7 @@ impl ChunkList {
 }
 
 /// A single file path entry in a ChunkList.
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
@@ -799,6 +826,7 @@ pub struct Chunk {
 /// cropping, pixel encoding, and audio routing/mixing macros. The macro list
 /// is not deserialized (it uses `xsi:type` polymorphism with vendor-specific
 /// extension types).
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct OutputProfileList {
     pub id: ImfUuid,
@@ -830,6 +858,7 @@ impl OutputProfileList {
 ///
 /// Assets carry SHA-1 (default) or SHA-256 checksums. The algorithm is
 /// determined by the optional `<HashAlgorithm>` element on each asset.
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct PackingList {
     /// The SMPTE spec version detected from the root xmlns.
@@ -869,6 +898,7 @@ impl PackingList {
 }
 
 /// The `<AssetList>` element in a PKL.
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct PklAssetList {
     pub assets: Vec<PklAsset>,
@@ -886,6 +916,7 @@ impl PklAssetList {
 }
 
 /// A single asset entry in a PKL.
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct PklAsset {
     pub id: ImfUuid,

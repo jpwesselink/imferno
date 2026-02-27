@@ -11,6 +11,7 @@ use super::source_asset::{AudioType, VideoQuality, VideoDynamicRange};
 // DeliveryRequest
 // =============================================================================
 
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "typescript", derive(TS))]
@@ -31,6 +32,7 @@ pub struct DeliveryRequest {
 // Comparison result
 // =============================================================================
 
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "typescript", derive(TS))]
@@ -48,6 +50,7 @@ pub struct DeliveryComparison {
     pub video_dynamic_range_match: ComparisonResult,
 }
 
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(tag = "status", rename_all = "camelCase")]
 #[cfg_attr(feature = "typescript", derive(TS))]

@@ -36,6 +36,14 @@ export interface PackageViewData {
     };
 }
 
+interface TrackData {
+    trackId: string;
+    kind: string;           // "MainImage" | "MainAudio" | "Subtitles" | "HearingImpairedCaptions" | "ForcedNarrative" | "IAB" | "ISXD" | "Marker"
+    editRate: string | null;
+    intrinsicDuration: number;
+    resourceCount: number;
+}
+
 interface CplEntry {
     id: string;
     title: string;
@@ -48,6 +56,7 @@ interface CplEntry {
     isSupplemental: boolean;
     unresolvedAncestorAssetIds: string[];
     markers: MarkerData[];
+    tracks: TrackData[];
 }
 
 interface MarkerData {
@@ -66,6 +75,7 @@ const IAlert = (p: IconProps) => <svg {...{ width: 14, height: 14, viewBox: '0 0
 const IChevron = (p: IconProps) => <svg {...{ width: 14, height: 14, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, ...p }}><path d="m6 9 6 6 6-6" /></svg>;
 const ILayers = (p: IconProps) => <svg {...{ width: 14, height: 14, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, ...p }}><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z" /><path d="m22.54 12.43-10 4.55a2 2 0 0 1-1.66 0l-9.4-4.28" /><path d="m22.54 16.43-10 4.55a2 2 0 0 1-1.66 0l-9.4-4.28" /></svg>;
 const IMarker = (p: IconProps) => <svg {...{ width: 14, height: 14, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, ...p }}><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" /><circle cx="12" cy="10" r="3" /></svg>;
+const IFilm = (p: IconProps) => <svg {...{ width: 14, height: 14, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, ...p }}><rect width="18" height="18" x="3" y="3" rx="2" /><path d="M7 3v18" /><path d="M3 7.5h4" /><path d="M3 12h18" /><path d="M3 16.5h4" /><path d="M17 3v18" /><path d="M17 7.5h4" /><path d="M17 16.5h4" /></svg>;
 
 // ─── badge ────────────────────────────────────────────────────────────────────
 
@@ -94,10 +104,32 @@ function Th({ children }: { children: React.ReactNode }) {
 
 // ─── CPL card ─────────────────────────────────────────────────────────────────
 
+const trackKindLabel: Record<string, string> = {
+    MainImage: 'Video',
+    MainAudio: 'Audio',
+    Subtitles: 'Subtitles',
+    HearingImpairedCaptions: 'HI Captions',
+    ForcedNarrative: 'Forced Narrative',
+    IAB: 'IAB Audio',
+    ISXD: 'ISXD',
+    Marker: 'Marker',
+};
+const trackKindColor: Record<string, string> = {
+    MainImage: 'bg-blue-500/10 text-blue-600 border-blue-500/20',
+    MainAudio: 'bg-green-500/10 text-green-600 border-green-500/20',
+    Subtitles: 'bg-purple-500/10 text-purple-600 border-purple-500/20',
+    HearingImpairedCaptions: 'bg-pink-500/10 text-pink-600 border-pink-500/20',
+    ForcedNarrative: 'bg-pink-500/10 text-pink-600 border-pink-500/20',
+    IAB: 'bg-amber-500/10 text-amber-600 border-amber-500/20',
+    ISXD: 'bg-amber-500/10 text-amber-600 border-amber-500/20',
+    Marker: 'bg-zinc-100 text-zinc-500 border-zinc-200',
+};
+
 function CplCard({ cpl, isOpen, onToggle }: { cpl: CplEntry; isOpen: boolean; onToggle: () => void }) {
-    const [activeTab, setActiveTab] = useState('metadata');
+    const [activeTab, setActiveTab] = useState('tracks');
 
     const tabs = [
+        { id: 'tracks', label: `Tracks${cpl.tracks?.length ? ` (${cpl.tracks.length})` : ''}`, icon: <IFilm /> },
         { id: 'markers', label: `Markers${cpl.markers?.length ? ` (${cpl.markers.length})` : ''}`, icon: <IMarker /> },
         { id: 'metadata', label: 'Metadata', icon: <IPackage /> },
     ];
@@ -127,6 +159,30 @@ function CplCard({ cpl, isOpen, onToggle }: { cpl: CplEntry; isOpen: boolean; on
                         ))}
                     </div>
                     <div className="p-4">
+                        {activeTab === 'tracks' && (
+                            cpl.tracks?.length > 0 ? (
+                                <div className="border border-zinc-200 rounded-lg overflow-hidden text-xs">
+                                    <table className="w-full border-collapse">
+                                        <thead><tr className="bg-zinc-50">{['Type', 'Track ID', 'Edit Rate', 'Duration', 'Resources'].map(h => <Th key={h}>{h}</Th>)}</tr></thead>
+                                        <tbody>
+                                            {cpl.tracks.map((t, i) => (
+                                                <tr key={i} className="border-b border-zinc-100 last:border-0 hover:bg-zinc-50">
+                                                    <td className="px-3 py-1.5">
+                                                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold border ${trackKindColor[t.kind] ?? 'bg-zinc-50 text-zinc-500 border-zinc-200'}`}>
+                                                            {trackKindLabel[t.kind] ?? t.kind}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-3 py-1.5 font-mono text-zinc-500 truncate max-w-[200px]">{t.trackId.replace('urn:uuid:', '')}</td>
+                                                    <td className="px-3 py-1.5 font-mono text-zinc-500">{t.editRate ?? '—'}</td>
+                                                    <td className="px-3 py-1.5 font-mono text-zinc-500">{t.intrinsicDuration}</td>
+                                                    <td className="px-3 py-1.5 text-zinc-500">{t.resourceCount}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            ) : <p className="text-xs text-zinc-400 text-center py-8">No tracks found in this CPL.</p>
+                        )}
                         {activeTab === 'markers' && (
                             cpl.markers?.length > 0 ? (
                                 <div className="border border-zinc-200 rounded-lg overflow-hidden text-xs">

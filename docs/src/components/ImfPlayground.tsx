@@ -345,6 +345,43 @@ function buildPackageData(files: UploadedFile[]): PackageViewData | null {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const cpl = state.result as any;
         const segs: unknown[] = cpl?.segmentList?.segment ?? [];
+
+        // Extract tracks from the first segment's sequence list (tracks are consistent across segments)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const firstSeg = segs[0] as any;
+        const sl = firstSeg?.sequenceList;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        type SeqEntry = { kind: string; seqs: any[] };
+        const seqGroups: SeqEntry[] = [
+            { kind: 'MainImage', seqs: sl?.mainImageSequence ?? [] },
+            { kind: 'MainAudio', seqs: sl?.mainAudioSequence ?? [] },
+            { kind: 'Subtitles', seqs: sl?.subtitlesSequence ?? [] },
+            { kind: 'HearingImpairedCaptions', seqs: sl?.hearingImpairedCaptionsSequence ?? [] },
+            { kind: 'ForcedNarrative', seqs: sl?.forcedNarrativeSequence ?? [] },
+            { kind: 'IAB', seqs: sl?.iabSequence ?? [] },
+            { kind: 'ISXD', seqs: sl?.isxdSequence ?? [] },
+        ];
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const tracks = seqGroups.flatMap(({ kind, seqs }) => seqs.map((seq: any) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const resources: any[] = seq?.resourceList?.resource ?? [];
+            const firstRes = resources[0];
+            const er = firstRes?.editRate;
+            const editRate = er ? `${er.numerator}/${er.denominator}` : null;
+            const totalDuration = resources.reduce(
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (sum: number, r: any) => sum + (r?.sourceDuration ?? r?.intrinsicDuration ?? 0), 0
+            );
+            return {
+                trackId: String(seq?.trackId ?? ''),
+                kind,
+                editRate,
+                intrinsicDuration: totalDuration,
+                resourceCount: resources.length,
+            };
+        }));
+
         return {
             id: String(cpl?.id ?? f.uid),
             title: asText(cpl?.contentTitle?.text) || asText(cpl?.contentTitle) || f.name,
@@ -357,6 +394,7 @@ function buildPackageData(files: UploadedFile[]): PackageViewData | null {
             isSupplemental: false,
             unresolvedAncestorAssetIds: [],
             markers: [],
+            tracks,
         };
     });
 

@@ -92,7 +92,7 @@ jobs:
 
           # Collect all version directories (sorted newest first)
           cd gh-pages
-          VERSIONS=$(ls -d v* 2>/dev/null | sort -rV || true)
+          VERSIONS=$(ls -d v*/ 2>/dev/null | sed 's|/$||' | sort -rV || true)
 
           # The latest tagged version (skip "latest" directory)
           LATEST=$(echo "$VERSIONS" | head -n1)

@@ -1,6 +1,6 @@
 [package]
 name = "imferno-core"
-version = "0.1.3"
+version = "0.1.4"
 edition = "2021"
 description = "SMPTE ST 2067 IMF parser and validator"
 license = "MIT"

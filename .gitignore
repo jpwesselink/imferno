@@ -19,6 +19,10 @@ crates/imferno-wasm/imferno_wasm_bg.wasm
 crates/imferno-wasm/imferno_wasm_bg.wasm.d.ts
 bindings/
 
+# Native binaries in npm platform packages (placed by CI)
+npm/imferno-*/imferno
+npm/imferno-*/imferno.exe
+
 # Node / JS
 node_modules/
 package-lock.json

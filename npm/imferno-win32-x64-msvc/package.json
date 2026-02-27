@@ -1,0 +1,19 @@
+{
+  "name": "imferno-win32-x64-msvc",
+  "version": "0.1.1",
+  "description": "imferno native binary for Windows x64",
+  "os": ["win32"],
+  "cpu": ["x64"],
+  "bin": {
+    "imferno": "imferno.exe"
+  },
+  "files": ["imferno.exe"],
+  "publishConfig": {
+    "access": "public"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jpwesselink/imferno.git"
+  }
+}

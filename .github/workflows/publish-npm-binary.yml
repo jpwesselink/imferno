@@ -1,0 +1,118 @@
+name: Publish Native Binaries to NPM
+
+on:
+  push:
+    tags: ['imferno-v*']
+
+jobs:
+  build:
+    name: Build ${{ matrix.npm_pkg }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            runner: ubuntu-latest
+            npm_pkg: imferno-linux-x64-gnu
+            binary: imferno
+          - target: aarch64-unknown-linux-gnu
+            runner: ubuntu-latest
+            npm_pkg: imferno-linux-arm64-gnu
+            binary: imferno
+            cross: true
+          - target: x86_64-apple-darwin
+            runner: macos-13
+            npm_pkg: imferno-darwin-x64
+            binary: imferno
+          - target: aarch64-apple-darwin
+            runner: macos-14
+            npm_pkg: imferno-darwin-arm64
+            binary: imferno
+          - target: x86_64-pc-windows-msvc
+            runner: windows-latest
+            npm_pkg: imferno-win32-x64-msvc
+            binary: imferno.exe
+          - target: aarch64-pc-windows-msvc
+            runner: windows-latest
+            npm_pkg: imferno-win32-arm64-msvc
+            binary: imferno.exe
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install cross
+        if: matrix.cross
+        run: cargo install cross --locked
+
+      - name: Build binary
+        shell: bash
+        run: |
+          if [ "${{ matrix.cross }}" = "true" ]; then
+            cross build --release --target ${{ matrix.target }} -p imferno
+          else
+            cargo build --release --target ${{ matrix.target }} -p imferno
+          fi
+
+      - name: Copy binary into npm package
+        shell: bash
+        run: cp target/${{ matrix.target }}/release/${{ matrix.binary }} npm/${{ matrix.npm_pkg }}/
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Set npm version from tag
+        working-directory: npm/${{ matrix.npm_pkg }}
+        shell: bash
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/imferno-v}
+          npm version --no-git-tag-version --allow-same-version "$VERSION"
+
+      - name: Publish platform package
+        working-directory: npm/${{ matrix.npm_pkg }}
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  publish-meta:
+    name: Publish meta-package
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Set version from tag
+        working-directory: npm/imferno
+        shell: bash
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/imferno-v}
+          node -e "
+            const pkg = require('./package.json');
+            pkg.version = '$VERSION';
+            for (const dep of Object.keys(pkg.optionalDependencies || {})) {
+              pkg.optionalDependencies[dep] = '$VERSION';
+            }
+            require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+          "
+
+      - name: Copy LICENSE
+        run: cp LICENSE npm/imferno/LICENSE
+
+      - name: Publish meta-package
+        working-directory: npm/imferno
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

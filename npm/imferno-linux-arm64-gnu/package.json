@@ -1,0 +1,19 @@
+{
+  "name": "imferno-linux-arm64-gnu",
+  "version": "0.1.1",
+  "description": "imferno native binary for Linux ARM64 (glibc)",
+  "os": ["linux"],
+  "cpu": ["arm64"],
+  "bin": {
+    "imferno": "imferno"
+  },
+  "files": ["imferno"],
+  "publishConfig": {
+    "access": "public"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jpwesselink/imferno.git"
+  }
+}

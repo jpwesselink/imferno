@@ -1,0 +1,36 @@
+{
+  "name": "imferno",
+  "version": "0.1.1",
+  "description": "SMPTE ST 2067 IMF validator and inspector",
+  "bin": {
+    "imferno": "bin/imferno.js"
+  },
+  "files": [
+    "bin/imferno.js",
+    "README.md",
+    "LICENSE"
+  ],
+  "optionalDependencies": {
+    "imferno-linux-x64-gnu": "0.1.1",
+    "imferno-linux-arm64-gnu": "0.1.1",
+    "imferno-darwin-x64": "0.1.1",
+    "imferno-darwin-arm64": "0.1.1",
+    "imferno-win32-x64-msvc": "0.1.1",
+    "imferno-win32-arm64-msvc": "0.1.1"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jpwesselink/imferno.git"
+  },
+  "homepage": "https://github.com/jpwesselink/imferno",
+  "bugs": {
+    "url": "https://github.com/jpwesselink/imferno/issues"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}

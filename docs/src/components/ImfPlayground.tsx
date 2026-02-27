@@ -400,7 +400,7 @@ export default function ImfPlayground() {
         const mod = getWasmModule();
         if (!mod || !Object.keys(xmlMapRef.current).some(k => k.toUpperCase() === 'ASSETMAP.XML')) return;
         try {
-            const result = mod.validate(xmlMapRef.current, rulesConfig);
+            const result = mod.validate(xmlMapRef.current, { rules: rulesConfig });
             setPackageValidation(result.report);
         } catch (e) {
             console.error('[imf] re-validate error:', e);
@@ -467,7 +467,7 @@ export default function ImfPlayground() {
         const mod = getWasmModule();
         if (mod && Object.keys(xmlMap).some(k => k.toUpperCase() === 'ASSETMAP.XML')) {
             try {
-                const result = mod.validate(xmlMap, rulesConfigRef.current);
+                const result = mod.validate(xmlMap, { rules: rulesConfigRef.current });
                 setPackageValidation(result.report);
             } catch (e) {
                 console.error('[imf] validate error:', e);

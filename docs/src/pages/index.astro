@@ -101,10 +101,10 @@ const base = '/imferno';
     </section>
 
     <!-- Load WASM module via native browser ES module import (outside Vite's module graph). -->
-    <script is:inline define:vars={{ base }}>
+    <script is:inline define:vars={{ base, cacheBust: Date.now().toString(36) }}>
       (async function () {
         try {
-          var mod = await import(base + '/wasm/imferno_wasm.js');
+          var mod = await import(base + '/wasm/imferno_wasm.js?v=' + cacheBust);
           await mod.default();
           window.__imfWasm = mod;
         } catch (e) {

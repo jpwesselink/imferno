@@ -1,0 +1,40 @@
+{
+  "name": "@imferno/schema",
+  "version": "0.1.2",
+  "description": "JSON Schema definitions for SMPTE ST 2067 IMF types — validates imferno export output",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "type": "module",
+  "files": [
+    "schemas/",
+    "index.js",
+    "index.d.ts"
+  ],
+  "keywords": [
+    "imf",
+    "imferno",
+    "smpte",
+    "st2067",
+    "json-schema",
+    "validation",
+    "typescript",
+    "schema"
+  ],
+  "author": {
+    "name": "JP Wesselink",
+    "email": "jp@wesselink.dev"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jpwesselink/imferno.git",
+    "directory": "crates/imferno-core/npm/schema"
+  },
+  "bugs": {
+    "url": "https://github.com/jpwesselink/imferno/issues"
+  },
+  "homepage": "https://github.com/jpwesselink/imferno",
+  "publishConfig": {
+    "access": "public"
+  }
+}

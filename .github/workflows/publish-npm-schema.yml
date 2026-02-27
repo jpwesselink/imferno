@@ -1,0 +1,48 @@
+name: Publish @imferno/schema to NPM
+
+on:
+  push:
+    tags:
+      - 'imferno-core-v*'
+
+jobs:
+  publish:
+    name: Generate and publish JSON schemas
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Generate JSON schemas
+        run: cargo xtask generate-schema
+
+      - name: Verify schemas exist
+        working-directory: crates/imferno-core/npm/schema
+        run: |
+          echo "Generated schemas:"
+          ls -la schemas/
+          test -f schemas/imf-report.json
+
+      - name: Update package version from git tag
+        working-directory: crates/imferno-core/npm/schema
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/imferno-core-v}
+          echo "Setting npm version to: $VERSION"
+          npm version --no-git-tag-version --allow-same-version "$VERSION"
+
+      - name: Publish to NPM
+        working-directory: crates/imferno-core/npm/schema
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

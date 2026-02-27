@@ -23,6 +23,9 @@ bindings/
 crates/imferno/npm/imferno-*/imferno
 crates/imferno/npm/imferno-*/imferno.exe
 
+# Generated JSON schemas (built by cargo xtask generate-schema)
+crates/imferno-core/npm/schema/schemas/
+
 # Node / JS
 node_modules/
 package-lock.json

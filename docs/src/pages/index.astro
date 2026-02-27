@@ -2,7 +2,6 @@
 import '../styles/homepage.css';
 import ImfPlayground from '../components/ImfPlayground';
 
-const base = '/imferno';
 ---
 
 <!doctype html>
@@ -101,10 +100,10 @@ const base = '/imferno';
     </section>
 
     <!-- Load WASM module via native browser ES module import (outside Vite's module graph). -->
-    <script is:inline define:vars={{ base, cacheBust: Date.now().toString(36) }}>
+    <script is:inline define:vars={{ cacheBust: Date.now().toString(36) }}>
       (async function () {
         try {
-          var mod = await import(base + '/wasm/imferno_wasm.js?v=' + cacheBust);
+          var mod = await import('./wasm/imferno_wasm.js?v=' + cacheBust);
           await mod.default();
           window.__imfWasm = mod;
         } catch (e) {

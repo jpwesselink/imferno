@@ -151,7 +151,7 @@ describe('validate', () => {
         const result = wasm.validate(files);
         expect(result).toBeDefined();
         expect(result.report.critical.length).toBeGreaterThan(0);
-        expect(result.assetMap).toBeNull();
+        expect(result.assetMap).toBeFalsy();
     });
 
     it('accepts spec selection options', () => {

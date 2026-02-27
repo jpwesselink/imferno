@@ -1,6 +1,6 @@
 {
   "name": "@imferno/schema",
-  "version": "0.1.2",
+  "version": "1.0.0",
   "description": "JSON Schema definitions for SMPTE ST 2067 IMF types — validates imferno export output",
   "main": "index.js",
   "types": "index.d.ts",

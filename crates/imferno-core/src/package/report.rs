@@ -1,10 +1,7 @@
 //! Unified IMF report — the single JSON document for UI consumption
 //!
-//! Combines package metadata, source asset extraction, validation, and delivery comparison
-//! into one structure.
+//! Combines package metadata, validation, and structural analysis into one structure.
 
-use super::delivery::DeliveryComparison;
-use super::source_asset::SourceAsset;
 use serde::{Deserialize, Serialize};
 #[cfg(feature = "typescript")]
 use ts_rs::TS;
@@ -39,9 +36,7 @@ pub struct CplReport {
     /// Track file UUIDs referenced in this CPL that are not in the current package's AssetMap.
     /// These must be resolved from an ancestor package.
     pub unresolved_ancestor_asset_ids: Vec<String>,
-    pub source_asset: SourceAsset,
     pub markers: Vec<CplMarker>,
-    pub delivery_comparison: Option<DeliveryComparison>,
 }
 
 #[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
@@ -180,7 +175,6 @@ fn collect_track_file_ids(cpl: &crate::cpl::CompositionPlaylist) -> Vec<String> 
 pub fn build_report(
     package: &super::Imferno,
     ancestor: Option<&super::Imferno>,
-    delivery_spec: Option<&super::delivery::DeliveryRequest>,
 ) -> Result<ImfReport, String> {
     // Package summary
     let inspection = package.inspect();
@@ -199,7 +193,6 @@ pub fn build_report(
         return Err("No CPLs found in package".to_string());
     }
 
-    // Extract source asset for every CPL
     let mut cpls = Vec::new();
     for cpl in package.composition_playlists.values() {
         // Detect supplemental: find track file IDs not in this package's AssetMap
@@ -215,10 +208,6 @@ pub fn build_report(
         let is_supplemental = cpl_track_ids
             .iter()
             .any(|id| package.get_asset_path_str(id).is_none());
-
-        let source_asset = super::source_asset::extract_source_asset(cpl)?;
-        let delivery_comparison =
-            delivery_spec.map(|spec| super::delivery::compare(&source_asset, spec));
 
         // Collect all markers from all segments
         let markers: Vec<CplMarker> = cpl
@@ -256,9 +245,7 @@ pub fn build_report(
             timecode_start,
             is_supplemental,
             unresolved_ancestor_asset_ids,
-            source_asset,
             markers,
-            delivery_comparison,
         });
     }
 

@@ -16,44 +16,44 @@ export function parsePklTyped(xmlContent: string): Promise<any>;
 /** Parse VOLINDEX.xml content */
 export function parseVolindexTyped(xmlContent: string): Promise<any>;
 
-/**
- * Validate a CPL with configurable spec selection.
- * @param cplXml CPL XML content
- * @param coreSpec "auto" | "v2013" | "v2016" | "v2020"
- * @param app2eSpec "auto" | "none" | "v2020" | "v2021" | "v2023"
- * @returns ValidationReport
- */
-export function validateCplWithSpecSelection(
-    cplXml: string,
-    coreSpec?: string,
-    app2eSpec?: string,
-): Promise<any>;
+/** Options for the validate function */
+export interface ValidateOptions {
+    /** Core constraints spec version: "auto" | "v2013" | "v2016" | "v2020" */
+    coreSpec?: "auto" | "v2013" | "v2016" | "v2020";
+    /** Application profile version: "auto" | "none" | "v2020" | "v2021" | "v2023" */
+    app2eSpec?: "auto" | "none" | "v2020" | "v2021" | "v2023";
+    /** ESLint-style rules configuration */
+    rules?: Record<string, string>;
+}
+
+/** Result returned by the validate function */
+export interface ValidateResult {
+    /** Validation report with issues, compliance status, and profile */
+    report: any;
+    /** Parsed Composition Playlists */
+    cpls: any[];
+    /** Parsed AssetMap (null if parsing failed) */
+    assetMap: any | null;
+    /** Parsed Packing Lists */
+    packingLists: any[];
+    /** Parsed Volume Index (null if parsing failed) */
+    volumeIndex: any | null;
+    /** Assets in the AssetMap with no CPL or SCM reference */
+    unreferencedAssets: { id: string; path: string }[];
+    /** Sidecar assets declared in SCMs */
+    declaredSidecars: { id: string; cplIds: string[] }[];
+}
 
 /**
- * Validate a full IMF package from an in-memory map of filename to XML content.
+ * Validate a full IMF package and return both validation report and parsed data.
  * @param files Object mapping filenames to XML string content
- * @param rules Optional ESLint-style rules configuration
- * @returns ValidationReport
+ * @param options Optional validation options (spec selection, rules)
+ * @returns Validation report + parsed package data
  */
-export function validatePackage(
+export function validate(
     files: Record<string, string>,
-    rules?: any,
-): Promise<any>;
-
-/**
- * Inspect an IMF package and return structural metadata.
- * @param files Object mapping filenames to XML string content
- * @returns { cplCount, scmCount, declaredSidecars, unreferencedAssets }
- */
-export function inspectPackage(
-    files: Record<string, string>,
-): Promise<any>;
-
-/** Extract a SourceAsset from CPL XML */
-export function extractSourceAsset(cplXml: string): Promise<any>;
-
-/** Compare a SourceAsset against a delivery spec */
-export function compareDelivery(sourceAssetJson: any, deliverySpecJson: any): Promise<any>;
+    options?: ValidateOptions,
+): Promise<ValidateResult>;
 
 /** Get the library version */
 export function getVersion(): Promise<string>;

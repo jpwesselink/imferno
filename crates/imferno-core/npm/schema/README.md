@@ -29,15 +29,12 @@ if (validate(data)) {
 
 | Export | Description |
 |--------|-------------|
-| `imfReport` | Full IMF package report (source assets + validation + delivery comparison) |
+| `imfReport` | Full IMF package report (metadata + validation + CPL analysis) |
 | `validationReport` | Validation issues and diagnostics |
 | `compositionPlaylist` | SMPTE ST 2067-3 Composition Playlist |
 | `assetMap` | SMPTE ST 2067-2 Asset Map |
 | `packingList` | SMPTE ST 2067-2 Packing List |
 | `volumeIndex` | SMPTE ST 429-9 Volume Index |
-| `sourceAsset` | Extracted source asset metadata (tracks, formats, durations) |
-| `deliveryRequest` | Delivery specification request |
-| `deliveryComparison` | Delivery comparison result |
 | `rulesConfig` | ESLint-style rules configuration for validation |
 
 All schemas are also available via the `schemas` named export:

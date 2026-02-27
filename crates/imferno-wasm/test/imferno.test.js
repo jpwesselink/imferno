@@ -112,77 +112,65 @@ describe('parseCplTyped', () => {
     });
 });
 
-// ─── validateCplWithSpecSelection ────────────────────────────────────────────
-describe('validateCplWithSpecSelection', () => {
-    it('validates a CPL with auto spec detection', () => {
-        const report = wasm.validateCplWithSpecSelection(cplXml);
-        expect(report).toBeDefined();
-        expect(report).toHaveProperty('errors');
-        expect(report).toHaveProperty('warnings');
-        expect(Array.isArray(report.errors)).toBe(true);
-        expect(Array.isArray(report.warnings)).toBe(true);
+// ─── validate ────────────────────────────────────────────────────────────────
+describe('validate', () => {
+    it('validates a package and returns report + parsed data', () => {
+        const result = wasm.validate(packageFiles);
+        expect(result).toBeDefined();
+        expect(result).toHaveProperty('report');
+        expect(result).toHaveProperty('cpls');
+        expect(result).toHaveProperty('assetMap');
+        expect(result).toHaveProperty('packingLists');
+        expect(result).toHaveProperty('volumeIndex');
+        expect(result).toHaveProperty('unreferencedAssets');
+        expect(result).toHaveProperty('declaredSidecars');
     });
 
-    it('validates with explicit spec versions', () => {
-        const report = wasm.validateCplWithSpecSelection(cplXml, 'v2020', 'v2023');
-        expect(report).toBeDefined();
-        expect(report).toHaveProperty('errors');
+    it('report has expected shape', () => {
+        const result = wasm.validate(packageFiles);
+        expect(result.report).toHaveProperty('errors');
+        expect(result.report).toHaveProperty('warnings');
+        expect(result.report).toHaveProperty('info');
+        expect(Array.isArray(result.report.errors)).toBe(true);
     });
 
-    it('returns error report for invalid XML', () => {
-        const report = wasm.validateCplWithSpecSelection('<bad/>');
-        expect(report).toBeDefined();
-        expect(report.critical.length).toBeGreaterThan(0);
+    it('returns parsed CPLs', () => {
+        const result = wasm.validate(packageFiles);
+        expect(Array.isArray(result.cpls)).toBe(true);
+        expect(result.cpls.length).toBeGreaterThan(0);
     });
 
-    it('returns error report for invalid coreSpec value', () => {
-        const report = wasm.validateCplWithSpecSelection(cplXml, 'v9999');
-        expect(report).toBeDefined();
-        expect(report.critical.length).toBeGreaterThan(0);
-    });
-});
-
-// ─── validatePackage ─────────────────────────────────────────────────────────
-describe('validatePackage', () => {
-    it('validates a package from a file map', () => {
-        const report = wasm.validatePackage(packageFiles);
-        expect(report).toBeDefined();
-        expect(report).toHaveProperty('errors');
-        expect(report).toHaveProperty('warnings');
-        expect(report).toHaveProperty('info');
+    it('returns parsed asset map', () => {
+        const result = wasm.validate(packageFiles);
+        expect(result.assetMap).toBeDefined();
+        expect(result.assetMap.id).toBe('aa8669d7-6ebc-4839-9855-b5d7f9aa7f21');
     });
 
     it('returns errors for missing ASSETMAP', () => {
         const files = { 'random.xml': '<foo/>' };
-        const report = wasm.validatePackage(files);
-        expect(report).toBeDefined();
-        expect(report.critical.length).toBeGreaterThan(0);
-    });
-
-    it('accepts optional rules config', () => {
-        const report = wasm.validatePackage(packageFiles, {});
-        expect(report).toBeDefined();
-        expect(report).toHaveProperty('errors');
-    });
-});
-
-// ─── inspectPackage ──────────────────────────────────────────────────────────
-describe('inspectPackage', () => {
-    it('returns an object without throwing', () => {
-        const info = wasm.inspectPackage(packageFiles);
-        expect(info).toBeDefined();
-    });
-});
-
-// ─── extractSourceAsset ──────────────────────────────────────────────────────
-describe('extractSourceAsset', () => {
-    it('extracts a source asset from a CPL', () => {
-        const result = wasm.extractSourceAsset(cplXml);
+        const result = wasm.validate(files);
         expect(result).toBeDefined();
+        expect(result.report.critical.length).toBeGreaterThan(0);
+        expect(result.assetMap).toBeNull();
     });
 
-    it('throws on invalid XML', () => {
-        expect(() => wasm.extractSourceAsset('<bad/>')).toThrow();
+    it('accepts spec selection options', () => {
+        const result = wasm.validate(packageFiles, {
+            coreSpec: 'v2020',
+            app2eSpec: 'v2023',
+        });
+        expect(result).toBeDefined();
+        expect(result.report).toHaveProperty('errors');
+    });
+
+    it('accepts rules option', () => {
+        const result = wasm.validate(packageFiles, { rules: {} });
+        expect(result).toBeDefined();
+        expect(result.report).toHaveProperty('errors');
+    });
+
+    it('rejects invalid coreSpec', () => {
+        expect(() => wasm.validate(packageFiles, { coreSpec: 'v9999' })).toThrow();
     });
 });
 
@@ -219,18 +207,15 @@ describe('auto-init wrapper (index.js)', () => {
         expect(version).toMatch(/^\d+\.\d+\.\d+/);
     });
 
-    it('validatePackage works through wrapper', async () => {
-        const report = await wrapper.validatePackage(packageFiles);
-        expect(report).toHaveProperty('errors');
+    it('validate works through wrapper', async () => {
+        const result = await wrapper.validate(packageFiles);
+        expect(result).toHaveProperty('report');
+        expect(result).toHaveProperty('cpls');
+        expect(result.report).toHaveProperty('errors');
     });
 
-    it('validateCplWithSpecSelection works through wrapper', async () => {
-        const report = await wrapper.validateCplWithSpecSelection(cplXml);
-        expect(report).toHaveProperty('errors');
-    });
-
-    it('extractSourceAsset works through wrapper', async () => {
-        const result = await wrapper.extractSourceAsset(cplXml);
-        expect(result).toBeDefined();
+    it('validate with options works through wrapper', async () => {
+        const result = await wrapper.validate(packageFiles, { coreSpec: 'auto' });
+        expect(result).toHaveProperty('report');
     });
 });

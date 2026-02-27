@@ -64,9 +64,9 @@ imferno inspect ./my-imp
 ### JavaScript / TypeScript
 
 ```javascript
-import { validatePackage, extractSourceAsset } from '@imferno/wasm';
+import { validate } from '@imferno/wasm';
 
-const report = await validatePackage({
+const { report, cpls, assetMap } = await validate({
   'ASSETMAP.xml': assetmapXml,
   'PKL_abc.xml': pklXml,
   'CPL_def.xml': cplXml,

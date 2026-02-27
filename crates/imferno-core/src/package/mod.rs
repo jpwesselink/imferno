@@ -10,13 +10,9 @@ use std::path::{Path, PathBuf};
 use thiserror::Error;
 
 pub mod codes;
-pub mod delivery;
 pub mod report;
-pub mod source_asset;
 
-pub use self::delivery::{compare as compare_delivery, DeliveryComparison, DeliveryRequest};
 pub use self::report::{build_report, ImfReport};
-pub use self::source_asset::{extract_source_asset, SourceAsset};
 pub use crate::assetmap::{Asset, AssetMap, PackingList, PklAsset, VolumeIndex};
 pub use crate::cpl::{CompositionPlaylist, Resource as CplResource};
 pub use crate::diagnostics::{
@@ -364,7 +360,12 @@ impl Imferno {
             validate_cpl_with_registry, ConfigurableValidatorRegistry, ValidatorSelection,
         };
 
-        let registry = ConfigurableValidatorRegistry::new(ValidatorSelection::default());
+        let selection = ValidatorSelection {
+            core_spec: options.core_spec,
+            app_specs: options.app_specs.clone(),
+            ..Default::default()
+        };
+        let registry = ConfigurableValidatorRegistry::new(selection);
         #[cfg(not(target_arch = "wasm32"))]
         let skip_disk = options.skip_disk_checks;
         #[cfg(target_arch = "wasm32")]
@@ -385,7 +386,12 @@ impl Imferno {
             validate_cpl_with_registry, ConfigurableValidatorRegistry, ValidatorSelection,
         };
 
-        let registry = ConfigurableValidatorRegistry::new(ValidatorSelection::default());
+        let selection = ValidatorSelection {
+            core_spec: options.core_spec,
+            app_specs: options.app_specs.clone(),
+            ..Default::default()
+        };
+        let registry = ConfigurableValidatorRegistry::new(selection);
         let report = self.validate_package_with_hashes_with_cpl_validator(|cpl| {
             validate_cpl_with_registry(cpl, &registry)
         });
@@ -2044,6 +2050,10 @@ pub struct ValidationOptions {
     /// ESLint-style per-rule severity overrides applied to the output.
     /// An empty map (the default) is a no-op.
     pub rules: RulesConfig,
+    /// Core constraints spec version. `None` = auto-detect from CPL namespace.
+    pub core_spec: Option<crate::validation::CoreSpecTarget>,
+    /// Application profile spec versions. `None` = auto-detect from CPL.
+    pub app_specs: Option<Vec<crate::validation::AppSpecTarget>>,
     /// Path used for hash verification (only meaningful on native targets).
     /// When `Some`, hash verification is enabled; when `None` (the default), skipped.
     #[cfg(not(target_arch = "wasm32"))]

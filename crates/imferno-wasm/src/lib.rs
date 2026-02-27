@@ -6,10 +6,7 @@
 use imferno_core::assetmap::VolumeIndex;
 use imferno_core::cpl::CompositionPlaylist;
 use imferno_core::package::{Imferno, RulesConfig, ValidationOptions};
-use imferno_core::validation::{
-    validate_cpl_with_registry, AppSpecTarget, ConfigurableValidatorRegistry, CoreSpecTarget,
-    ValidatorSelection,
-};
+use imferno_core::validation::{AppSpecTarget, CoreSpecTarget};
 use imferno_core::{Category, Severity, ValidationIssue, ValidationProfile, ValidationReport};
 use wasm_bindgen::prelude::*;
 
@@ -84,170 +81,75 @@ pub fn parse_cpl_typed(
 }
 
 // =============================================================================
-// SOURCE ASSET EXTRACTION
+// VALIDATE — the unified function
 // =============================================================================
 
-/// Extract a SourceAsset from CPL XML
-#[wasm_bindgen(js_name = "extractSourceAsset")]
-pub fn extract_source_asset(
-    #[wasm_bindgen(js_name = "cplXml")] cpl_xml: &str,
-) -> Result<JsValue, JsValue> {
-    let cpl = imferno_core::cpl::parse_cpl(cpl_xml)
-        .map_err(|e| JsValue::from_str(&format!("CPL parse error: {}", e)))?;
-
-    let source_asset = imferno_core::package::extract_source_asset(&cpl)
-        .map_err(|e| JsValue::from_str(&format!("Extraction error: {}", e)))?;
-
-    serde_wasm_bindgen::to_value(&source_asset)
-        .map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))
-}
-
-/// Compare a SourceAsset against a delivery spec
-#[wasm_bindgen(js_name = "compareDelivery")]
-pub fn compare_delivery(
-    #[wasm_bindgen(js_name = "sourceAssetJson")] source_asset_json: JsValue,
-    #[wasm_bindgen(js_name = "deliverySpecJson")] delivery_spec_json: JsValue,
-) -> Result<JsValue, JsValue> {
-    let source: imferno_core::package::SourceAsset =
-        serde_wasm_bindgen::from_value(source_asset_json)
-            .map_err(|e| JsValue::from_str(&format!("Invalid source asset: {}", e)))?;
-
-    let spec: imferno_core::package::DeliveryRequest =
-        serde_wasm_bindgen::from_value(delivery_spec_json)
-            .map_err(|e| JsValue::from_str(&format!("Invalid delivery spec: {}", e)))?;
-
-    let comparison = imferno_core::package::compare_delivery(&source, &spec);
-
-    serde_wasm_bindgen::to_value(&comparison)
-        .map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))
-}
-
-// =============================================================================
-// VALIDATION — returns ValidationReport (rich Rust struct, serialized to JS)
-// =============================================================================
-
-/// Validate a CPL with configurable built-in spec selection (ST 2067-2/App2E).
-///
-/// `coreSpec`: "auto" | "v2013" | "v2016" | "v2020"
-/// `app2eSpec`: "auto" | "none" | "v2020" | "v2021" | "v2023"
-#[wasm_bindgen(js_name = "validateCplWithSpecSelection")]
-pub fn validate_cpl_with_spec_selection(
-    #[wasm_bindgen(js_name = "cplXml")] cpl_xml: &str,
-    #[wasm_bindgen(js_name = "coreSpec")] core_spec: Option<String>,
-    #[wasm_bindgen(js_name = "app2eSpec")] app2e_spec: Option<String>,
-) -> Result<JsValue, JsValue> {
-    let cpl = match imferno_core::cpl::parse_cpl(cpl_xml) {
-        Ok(cpl) => cpl,
-        Err(e) => {
-            let report =
-                make_error_report("PARSE-CPL-FAILED", &format!("Failed to parse CPL: {}", e));
-            return serde_wasm_bindgen::to_value(&report)
-                .map_err(|se| JsValue::from_str(&format!("Serialization error: {}", se)));
-        }
-    };
-
-    let core_spec_target = match core_spec.as_deref().unwrap_or("auto") {
-        "auto" => None,
-        "v2013" => Some(CoreSpecTarget::St2067_2_2013),
-        "v2016" => Some(CoreSpecTarget::St2067_2_2016),
-        "v2020" => Some(CoreSpecTarget::St2067_2_2020),
-        other => {
-            let report = make_error_report(
-                "INVALID-CORE-SPEC",
-                &format!(
-                    "Unsupported coreSpec '{}'. Use auto|v2013|v2016|v2020",
-                    other
-                ),
-            );
-            return serde_wasm_bindgen::to_value(&report)
-                .map_err(|se| JsValue::from_str(&format!("Serialization error: {}", se)));
-        }
-    };
-
-    let app_spec_targets = match app2e_spec.as_deref().unwrap_or("auto") {
-        "auto" => None,
-        "none" => Some(vec![]),
-        "v2020" => Some(vec![AppSpecTarget::St2067_21_2020]),
-        "v2021" => Some(vec![AppSpecTarget::St2067_21_2021]),
-        "v2023" => Some(vec![AppSpecTarget::St2067_21_2023]),
-        other => {
-            let report = make_error_report(
-                "INVALID-APP2E-SPEC",
-                &format!(
-                    "Unsupported app2eSpec '{}'. Use auto|none|v2020|v2021|v2023",
-                    other
-                ),
-            );
-            return serde_wasm_bindgen::to_value(&report)
-                .map_err(|se| JsValue::from_str(&format!("Serialization error: {}", se)));
-        }
-    };
-
-    let registry = ConfigurableValidatorRegistry::new(ValidatorSelection {
-        core_spec: core_spec_target,
-        app_specs: app_spec_targets,
-        ..Default::default()
-    });
-
-    let issues = validate_cpl_with_registry(&cpl, &registry);
-    let mut report = ValidationReport::new(ValidationProfile::SMPTE);
-    for issue in issues {
-        report.add(issue);
-    }
-
-    serde_wasm_bindgen::to_value(&report)
-        .map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))
-}
-
-/// Validate a full IMF package from an in-memory map of filename → XML string.
+/// Validate a full IMF package and return both the validation report and parsed data.
 ///
 /// Pass all XML files from the package as a plain JS object where each key is
 /// the filename and each value is the file's text content. ASSETMAP.xml is
 /// required; VOLINDEX.xml, PKL files, and CPL files are resolved automatically
 /// from the AssetMap.
 ///
-/// Returns a `ValidationReport` serialized to JS.
-#[wasm_bindgen(js_name = "validatePackage")]
-pub fn validate_package(
+/// Options (all optional):
+/// - `coreSpec`: `"auto"` | `"v2013"` | `"v2016"` | `"v2020"` — core constraints version
+/// - `app2eSpec`: `"auto"` | `"none"` | `"v2020"` | `"v2021"` | `"v2023"` — app profile version
+/// - `rules`: ESLint-style rules configuration object
+///
+/// Returns `{ report, cpls, assetMap, packingLists, volumeIndex, unreferencedAssets, declaredSidecars }`
+#[wasm_bindgen(js_name = "validate")]
+pub fn validate(
     #[wasm_bindgen(js_name = "files")] files_js: JsValue,
-    #[wasm_bindgen(js_name = "rules")] rules_js: JsValue,
+    #[wasm_bindgen(js_name = "options")] options_js: JsValue,
 ) -> Result<JsValue, JsValue> {
     let files: std::collections::HashMap<String, String> = serde_wasm_bindgen::from_value(files_js)
         .map_err(|e| JsValue::from_str(&format!("Invalid files argument: {}", e)))?;
 
-    let rules: RulesConfig = if rules_js.is_null() || rules_js.is_undefined() {
-        Default::default()
-    } else {
-        serde_wasm_bindgen::from_value(rules_js)
-            .map_err(|e| JsValue::from_str(&format!("Invalid rules argument: {}", e)))?
-    };
+    // Parse options
+    let (rules, core_spec, app_specs) = parse_validate_options(&options_js)?;
 
     let options = ValidationOptions {
         rules,
+        core_spec,
+        app_specs,
         ..Default::default()
     };
-    let report = Imferno::parse_and_validate(files, &options);
 
-    serde_wasm_bindgen::to_value(&report)
-        .map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))
-}
-
-/// Inspect an IMF package and return structural metadata including unreferenced assets.
-///
-/// Returns `{ cplCount, scmCount, declaredSidecars, unreferencedAssets }` where
-/// `unreferencedAssets` are assets in the AssetMap with no CPL Virtual Track reference
-/// and no SCM declaration — likely sidecar essences delivered without an SCM.
-#[wasm_bindgen(js_name = "inspectPackage")]
-pub fn inspect_package(
-    #[wasm_bindgen(js_name = "files")] files_js: JsValue,
-) -> Result<JsValue, JsValue> {
-    let files: std::collections::HashMap<String, String> = serde_wasm_bindgen::from_value(files_js)
-        .map_err(|e| JsValue::from_str(&format!("Invalid files argument: {}", e)))?;
-
+    // Try to parse the package
     let package = match Imferno::parse(files) {
         Ok(p) => p,
-        Err(e) => return Err(JsValue::from_str(&format!("Parse error: {}", e))),
+        Err(e) => {
+            // Parse failed — return error report with empty package data
+            let mut report = ValidationReport::new(ValidationProfile::SMPTE);
+            report.add(ValidationIssue::new(
+                Severity::Critical,
+                Category::Structure,
+                "IMF/ParseError",
+                format!("Failed to parse IMF package: {}", e),
+            ));
+            let result = serde_json::json!({
+                "report": report,
+                "cpls": [],
+                "assetMap": null,
+                "packingLists": [],
+                "volumeIndex": null,
+                "unreferencedAssets": [],
+                "declaredSidecars": [],
+            });
+            return serde_wasm_bindgen::to_value(&result)
+                .map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)));
+        }
     };
+
+    // Validate
+    let report = package.validate(&options);
+
+    // Collect parsed data
+    let cpls: Vec<&imferno_core::cpl::CompositionPlaylist> =
+        package.composition_playlists.values().collect();
+
+    let packing_lists: Vec<&imferno_core::assetmap::PackingList> =
+        package.packing_lists.values().collect();
 
     let declared_sidecars: Vec<serde_json::Value> = package
         .sidecar_composition_maps
@@ -280,10 +182,13 @@ pub fn inspect_package(
         .collect();
 
     let result = serde_json::json!({
-        "cplCount": package.composition_playlists.len(),
-        "scmCount": package.sidecar_composition_maps.len(),
-        "declaredSidecars": declared_sidecars,
+        "report": report,
+        "cpls": cpls,
+        "assetMap": package.asset_map,
+        "packingLists": packing_lists,
+        "volumeIndex": package.volume_index,
         "unreferencedAssets": unreferenced,
+        "declaredSidecars": declared_sidecars,
     });
 
     serde_wasm_bindgen::to_value(&result)
@@ -294,14 +199,58 @@ pub fn inspect_package(
 // Internal helpers
 // =============================================================================
 
-/// Build a ValidationReport with a single critical error.
-fn make_error_report(code: &str, message: &str) -> ValidationReport {
-    let mut report = ValidationReport::new(ValidationProfile::SMPTE);
-    report.add(ValidationIssue::new(
-        Severity::Critical,
-        Category::Structure,
-        code,
-        message,
-    ));
-    report
+type ParsedOptions = (
+    RulesConfig,
+    Option<CoreSpecTarget>,
+    Option<Vec<AppSpecTarget>>,
+);
+
+/// Parse the optional validate options JS object into Rust types.
+fn parse_validate_options(options_js: &JsValue) -> Result<ParsedOptions, JsValue> {
+    if options_js.is_null() || options_js.is_undefined() {
+        return Ok((Default::default(), None, None));
+    }
+
+    // Deserialize as a generic JSON value to extract fields
+    let opts: serde_json::Value = serde_wasm_bindgen::from_value(options_js.clone())
+        .map_err(|e| JsValue::from_str(&format!("Invalid options argument: {}", e)))?;
+
+    // Rules
+    let rules: RulesConfig = if let Some(rules_val) = opts.get("rules") {
+        serde_json::from_value(rules_val.clone())
+            .map_err(|e| JsValue::from_str(&format!("Invalid rules: {}", e)))?
+    } else {
+        Default::default()
+    };
+
+    // Core spec
+    let core_spec = match opts.get("coreSpec").and_then(|v| v.as_str()) {
+        None | Some("auto") => None,
+        Some("v2013") => Some(CoreSpecTarget::St2067_2_2013),
+        Some("v2016") => Some(CoreSpecTarget::St2067_2_2016),
+        Some("v2020") => Some(CoreSpecTarget::St2067_2_2020),
+        Some(other) => {
+            return Err(JsValue::from_str(&format!(
+                "Unsupported coreSpec '{}'. Use auto|v2013|v2016|v2020",
+                other
+            )));
+        }
+    };
+
+    // App2e spec
+    let app_specs = match opts.get("app2eSpec").and_then(|v| v.as_str()) {
+        None | Some("auto") => None,
+        Some("none") => Some(vec![]),
+        Some("v2020") => Some(vec![AppSpecTarget::St2067_21_2020]),
+        Some("v2021") => Some(vec![AppSpecTarget::St2067_21_2021]),
+        Some("v2023") => Some(vec![AppSpecTarget::St2067_21_2023]),
+        Some(other) => {
+            return Err(JsValue::from_str(&format!(
+                "Unsupported app2eSpec '{}'. Use auto|none|v2020|v2021|v2023",
+                other
+            )));
+        }
+    };
+
+    Ok((rules, core_spec, app_specs))
 }

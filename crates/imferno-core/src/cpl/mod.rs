@@ -1993,7 +1993,6 @@ pub struct WAVEPCMDescriptor {
 pub struct AudioSubDescriptors {
     #[serde(rename = "SoundfieldGroupLabelSubDescriptor", default)]
     pub soundfield_group_label_sub_descriptor: Option<SoundfieldGroupLabelSubDescriptor>,
-    // AudioChannelLabelSubDescriptor is not needed for SourceAsset extraction
 }
 
 /// Soundfield group label sub-descriptor — contains language and audio content kind

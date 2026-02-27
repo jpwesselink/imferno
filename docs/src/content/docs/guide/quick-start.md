@@ -27,7 +27,7 @@ npm install @imferno/wasm
 ```
 
 ```javascript
-import { validatePackage, extractSourceAsset } from '@imferno/wasm';
+import { validate } from '@imferno/wasm';
 
 const files = {
     'ASSETMAP.xml': assetmapXmlString,
@@ -35,11 +35,8 @@ const files = {
     'CPL_xxx.xml':  cplXmlString,
 };
 
-const report = await validatePackage(files);
+const { report, cpls, assetMap } = await validate(files);
 console.log(report.isCompliant, report.errors);
-
-// Extract source asset metadata from a CPL
-const sourceAsset = await extractSourceAsset(cplXmlString);
 ```
 
 ## JSON Schema validation

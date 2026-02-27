@@ -3,10 +3,7 @@
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use imferno_core::package::{Imferno, ValidationOptions};
-use imferno_core::validation::{
-    validate_cpl_with_registry, AppSpecTarget, ConfigurableValidatorRegistry, CoreSpecTarget,
-    ValidatorSelection,
-};
+use imferno_core::validation::{AppSpecTarget, CoreSpecTarget};
 use imferno_core::{Category, Severity, ValidationIssue, ValidationProfile, ValidationReport};
 use std::io::IsTerminal;
 use std::path::PathBuf;
@@ -133,7 +130,7 @@ enum Commands {
         rules_config: Option<PathBuf>,
     },
 
-    /// Export a full report (source asset + validation + optional delivery comparison)
+    /// Export a full report (package metadata + validation + CPL analysis)
     Export {
         /// Path to the IMF package directory
         #[arg(value_name = "PATH")]
@@ -142,10 +139,6 @@ enum Commands {
         /// Path to ancestor IMP directory (for supplemental packages)
         #[arg(long)]
         ancestor: Option<PathBuf>,
-
-        /// Path to delivery spec JSON file
-        #[arg(long)]
-        delivery_spec: Option<PathBuf>,
     },
 }
 
@@ -204,12 +197,8 @@ fn main() -> Result<()> {
                 rules_config.as_deref(),
             )?;
         }
-        Commands::Export {
-            path,
-            ancestor,
-            delivery_spec,
-        } => {
-            generate_report(&path, ancestor.as_deref(), delivery_spec.as_deref())?;
+        Commands::Export { path, ancestor } => {
+            generate_report(&path, ancestor.as_deref())?;
         }
     }
 
@@ -465,12 +454,7 @@ fn validate_package(
         }
     }
 
-    let options = ValidationOptions {
-        rules,
-        ..Default::default()
-    };
-
-    // Structural validation with configurable built-in spec/profile selection.
+    // Map CLI args to spec targets
     let core_spec_target = match core_spec {
         CoreSpecVersion::Auto => None,
         CoreSpecVersion::V2013 => Some(CoreSpecTarget::St2067_2_2013),
@@ -486,17 +470,15 @@ fn validate_package(
         App2eSpecVersion::V2023 => Some(vec![AppSpecTarget::St2067_21_2023]),
     };
 
-    let registry = ConfigurableValidatorRegistry::new(ValidatorSelection {
+    let options = ValidationOptions {
+        rules,
         core_spec: core_spec_target,
         app_specs: app_spec_targets,
+        skip_disk_checks: xml_only,
         ..Default::default()
-    });
+    };
 
-    let mut report = package.validate_package_structure_with_cpl_validator(
-        |cpl| validate_cpl_with_registry(cpl, &registry),
-        xml_only,
-    );
-    report = report.apply_rules(&options.rules);
+    let mut report = package.validate(&options);
 
     if !matches!(format, OutputFormat::Json) {
         let all_issues: Vec<_> = report
@@ -605,11 +587,7 @@ fn validate_package(
     Ok(())
 }
 
-fn generate_report(
-    path: &PathBuf,
-    ancestor_path: Option<&std::path::Path>,
-    delivery_spec_path: Option<&std::path::Path>,
-) -> Result<()> {
+fn generate_report(path: &PathBuf, ancestor_path: Option<&std::path::Path>) -> Result<()> {
     let package = Imferno::parse(imferno_core::package::read_dir(path)?)?;
 
     let ancestor = if let Some(anc_path) = ancestor_path {
@@ -618,17 +596,8 @@ fn generate_report(
         None
     };
 
-    let delivery_spec = if let Some(spec_path) = delivery_spec_path {
-        let json_str = std::fs::read_to_string(spec_path)?;
-        let spec: imferno_core::package::DeliveryRequest = serde_json::from_str(&json_str)?;
-        Some(spec)
-    } else {
-        None
-    };
-
-    let report =
-        imferno_core::package::build_report(&package, ancestor.as_ref(), delivery_spec.as_ref())
-            .map_err(|e| anyhow::anyhow!(e))?;
+    let report = imferno_core::package::build_report(&package, ancestor.as_ref())
+        .map_err(|e| anyhow::anyhow!(e))?;
 
     println!("{}", serde_json::to_string_pretty(&report)?);
 

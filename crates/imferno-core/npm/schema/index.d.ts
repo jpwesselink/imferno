@@ -7,9 +7,6 @@ export declare const compositionPlaylist: JsonSchema;
 export declare const assetMap: JsonSchema;
 export declare const packingList: JsonSchema;
 export declare const volumeIndex: JsonSchema;
-export declare const sourceAsset: JsonSchema;
-export declare const deliveryRequest: JsonSchema;
-export declare const deliveryComparison: JsonSchema;
 export declare const rulesConfig: JsonSchema;
 
 export declare const schemas: {
@@ -19,8 +16,5 @@ export declare const schemas: {
   assetMap: JsonSchema;
   packingList: JsonSchema;
   volumeIndex: JsonSchema;
-  sourceAsset: JsonSchema;
-  deliveryRequest: JsonSchema;
-  deliveryComparison: JsonSchema;
   rulesConfig: JsonSchema;
 };

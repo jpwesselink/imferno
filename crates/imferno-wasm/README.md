@@ -20,11 +20,7 @@ import {
     parseCplTyped,
     parsePklTyped,
     parseVolindexTyped,
-    validatePackage,
-    validateCplWithSpecSelection,
-    inspectPackage,
-    extractSourceAsset,
-    compareDelivery,
+    validate,
     getVersion,
 } from '@imferno/wasm';
 
@@ -35,49 +31,39 @@ const pkl = await parsePklTyped(pklXml);
 const volindex = await parseVolindexTyped(volindexXml);
 
 // Validate a full IMF package (pass all XML files as a map)
-const report = await validatePackage({
+const result = await validate({
     'ASSETMAP.xml': assetmapXml,
     'PKL_abc.xml': pklXml,
     'CPL_def.xml': cplXml,
 });
-console.log(report.errors);
-console.log(report.warnings);
+console.log(result.report.errors);
+console.log(result.report.warnings);
+console.log(result.cpls);
+console.log(result.unreferencedAssets);
 
-// Validate a single CPL with spec selection
-const cplReport = await validateCplWithSpecSelection(cplXml, 'v2020', 'v2023');
-
-// Inspect package structure
-const info = await inspectPackage({
-    'ASSETMAP.xml': assetmapXml,
-    'PKL_abc.xml': pklXml,
-    'CPL_def.xml': cplXml,
-});
-console.log(info.cplCount);
-console.log(info.unreferencedAssets);
-
-// Extract source asset from a CPL
-const sourceAsset = await extractSourceAsset(cplXml);
-
-// Compare against a delivery spec
-const comparison = await compareDelivery(sourceAsset, deliverySpec);
+// Validate with spec selection and custom rules
+const result2 = await validate(
+    {
+        'ASSETMAP.xml': assetmapXml,
+        'PKL_abc.xml': pklXml,
+        'CPL_def.xml': cplXml,
+    },
+    { coreSpec: 'v2020', app2eSpec: 'v2023' },
+);
 ```
 
 WASM initialization is handled automatically on first call.
 
 ## API
 
-| Function | Input | Output |
-|---|---|---|
-| `parseAssetmapTyped(xml)` | ASSETMAP XML | `AssetMap` |
-| `parseCplTyped(xml)` | CPL XML | `CompositionPlaylist` |
-| `parsePklTyped(xml)` | PKL XML | `PackingList` |
-| `parseVolindexTyped(xml)` | VOLINDEX XML | `VolumeIndex` |
-| `validatePackage(files, rules?)` | `{ filename: xml }` map | `ValidationReport` |
-| `validateCplWithSpecSelection(xml, core?, app?)` | CPL XML + spec pins | `ValidationReport` |
-| `inspectPackage(files)` | `{ filename: xml }` map | package metadata |
-| `extractSourceAsset(xml)` | CPL XML | `SourceAsset` |
-| `compareDelivery(asset, spec)` | `SourceAsset` + `DeliveryRequest` | `DeliveryComparison` |
-| `getVersion()` | — | version string |
+| Function | Description |
+|----------|-------------|
+| `validate(files, options?)` | Validate a full IMF package, returns report + parsed data |
+| `parseCplTyped(xml)` | Parse CPL XML |
+| `parseAssetmapTyped(xml)` | Parse ASSETMAP.xml |
+| `parsePklTyped(xml)` | Parse PKL XML |
+| `parseVolindexTyped(xml)` | Parse VOLINDEX.xml |
+| `getVersion()` | Get library version |
 
 ### Spec selection values
 

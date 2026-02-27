@@ -148,11 +148,10 @@ fn update_validation_code_snapshot() {
 fn no_unexpected_duplicate_validation_codes() {
     // Known duplicates: codes that intentionally appear in multiple enums
     // (e.g., same code in both package-level and core-constraints validators)
-    let known_duplicates: std::collections::HashSet<&str> = [
-        "ST2067-2:2020:6.4.2/EssenceDescriptorList",
-    ]
-    .into_iter()
-    .collect();
+    let known_duplicates: std::collections::HashSet<&str> =
+        ["ST2067-2:2020:6.4.2/EssenceDescriptorList"]
+            .into_iter()
+            .collect();
 
     let codes = collect_all_codes();
     let mut seen = std::collections::HashSet::new();
@@ -173,9 +172,9 @@ fn no_unexpected_duplicate_validation_codes() {
 #[test]
 fn validation_codes_follow_format() {
     let codes = collect_all_codes();
-    let pattern = regex::Regex::new(
-        r"^(ST\d+-\d+(:\d{4})?(:[A-Za-z0-9._/-]+)|IMF(ERNO)?:[A-Za-z/_-]+)$"
-    ).unwrap();
+    let pattern =
+        regex::Regex::new(r"^(ST\d+-\d+(:\d{4})?(:[A-Za-z0-9._/-]+)|IMF(ERNO)?:[A-Za-z/_-]+)$")
+            .unwrap();
 
     let mut bad = Vec::new();
     for code in &codes {

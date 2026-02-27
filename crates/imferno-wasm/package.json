@@ -1,6 +1,6 @@
 {
   "name": "@imferno/wasm",
-  "version": "0.1.2",
+  "version": "1.0.0",
   "description": "Fast, type-safe SMPTE ST 2067 IMF parser for JavaScript and TypeScript",
   "main": "index.js",
   "types": "index.d.ts",

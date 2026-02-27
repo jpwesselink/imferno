@@ -51,32 +51,10 @@ export async function parseVolindexTyped(xmlContent) {
     return wasm.parseVolindexTyped(xmlContent);
 }
 
-// Validation
-export async function validateCplWithSpecSelection(cplXml, coreSpec, app2eSpec) {
+// Validation — the unified function
+export async function validate(files, options) {
     await ensureInit();
-    return wasm.validateCplWithSpecSelection(cplXml, coreSpec, app2eSpec);
-}
-
-export async function validatePackage(files, rules) {
-    await ensureInit();
-    return wasm.validatePackage(files, rules);
-}
-
-// Inspection
-export async function inspectPackage(files) {
-    await ensureInit();
-    return wasm.inspectPackage(files);
-}
-
-// Source asset / delivery
-export async function extractSourceAsset(cplXml) {
-    await ensureInit();
-    return wasm.extractSourceAsset(cplXml);
-}
-
-export async function compareDelivery(sourceAssetJson, deliverySpecJson) {
-    await ensureInit();
-    return wasm.compareDelivery(sourceAssetJson, deliverySpecJson);
+    return wasm.validate(files, options);
 }
 
 // Utility

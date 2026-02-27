@@ -33,18 +33,6 @@ pub fn run() {
             schema_for!(imferno_core::assetmap::VolumeIndex),
         ),
         (
-            "source-asset",
-            schema_for!(imferno_core::package::source_asset::SourceAsset),
-        ),
-        (
-            "delivery-request",
-            schema_for!(imferno_core::package::delivery::DeliveryRequest),
-        ),
-        (
-            "delivery-comparison",
-            schema_for!(imferno_core::package::delivery::DeliveryComparison),
-        ),
-        (
             "rules-config",
             schema_for!(imferno_core::diagnostics::rules::RulesConfig),
         ),

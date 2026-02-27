@@ -8,7 +8,7 @@ const CONFIGURABLE_RULES: Array<{ code: string; label: string; hint: string }> =
     { code: 'ST2067-2:2020:8.3/FileNotFound',        label: 'FileNotFound',      hint: 'Asset file not found on disk' },
     { code: 'ST2067-3:2020:7.2.2/SegmentDuration',   label: 'SegmentDuration',   hint: 'Unequal segment durations across tracks' },
 ];
-import IMFPackageViewer, { type PackageViewData, type ValidationIssue } from './IMFPackageViewer';
+import IMFPackageViewer, { type PackageViewData } from './IMFPackageViewer';
 
 // ─── global WASM handle ───────────────────────────────────────────────────────
 // The WASM module is loaded by an `is:inline` <script> in index.astro using a
@@ -34,7 +34,7 @@ type FileKind = 'volindex' | 'assetmap' | 'cpl' | 'pkl' | 'opl';
 
 type ParseState =
     | { tag: 'parsing' }
-    | { tag: 'done'; result: unknown; sourceAsset?: unknown; validation?: unknown }
+    | { tag: 'done'; result: unknown }
     | { tag: 'error'; message: string };
 
 interface UploadedFile {
@@ -321,31 +321,8 @@ function FileCard({ file, onRemove }: { file: UploadedFile; onRemove: () => void
 
 // ─── package data assembly ────────────────────────────────────────────────────
 
-// Minimal source asset for CPLs where extractSourceAsset fails.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function makeFallbackSourceAsset(cpl: any): Record<string, unknown> {
-    return {
-        contentKind: asText(cpl?.contentKind) || 'UNKNOWN',
-        contentTitle: asText(cpl?.contentTitle?.text) || asText(cpl?.contentTitle) || null,
-        territory: null,
-        editRate: null,
-        frameRate: null,
-        duration: null,
-        audioLanguages: [],
-        subtitleLanguages: [],
-        captionLanguages: [],
-        forcedNarrativeLanguages: [],
-        audioType: null,
-        videoQuality: null,
-        videoDynamicRange: null,
-        tracks: { AUDIO: [], VIDEO: [], SUBTITLES: [], CAPTIONS: [], FORCED_NARRATIVE: [] },
-        sequences: [],
-    };
-}
-
 function buildPackageData(files: UploadedFile[]): PackageViewData | null {
     const assetmapFile = files.find(f => f.kind === 'assetmap' && f.state.tag === 'done');
-    // Include all successfully parsed CPLs regardless of whether sourceAsset extraction succeeded.
     const cplFiles = files.filter(f => f.kind === 'cpl' && f.state.tag === 'done');
     if (!assetmapFile || cplFiles.length === 0) return null;
 
@@ -368,9 +345,6 @@ function buildPackageData(files: UploadedFile[]): PackageViewData | null {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const cpl = state.result as any;
         const segs: unknown[] = cpl?.segmentList?.segment ?? [];
-        // Use extracted source asset when available, fall back to minimal stub otherwise.
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const sourceAsset = (state.sourceAsset as any) ?? makeFallbackSourceAsset(cpl);
         return {
             id: String(cpl?.id ?? f.uid),
             title: asText(cpl?.contentTitle?.text) || asText(cpl?.contentTitle) || f.name,
@@ -382,45 +356,11 @@ function buildPackageData(files: UploadedFile[]): PackageViewData | null {
             timecodeStart: null,
             isSupplemental: false,
             unresolvedAncestorAssetIds: [],
-            sourceAsset,
             markers: [],
-            deliveryComparison: null,
         };
     });
 
-    // Aggregate validation issues from all CPLs.
-    // validateCplWithSpecSelection returns a ValidationReport with severity buckets.
-    const allIssues: ValidationIssue[] = cplFiles.flatMap(f => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const val = (f.state as any).validation as any;
-        if (!val) return [];
-        // Flatten ValidationReport buckets into a single list.
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const flat: any[] = [
-            ...(val.critical ?? []),
-            ...(val.errors ?? []),
-            ...(val.warnings ?? []),
-            ...(val.info ?? []),
-        ];
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        return flat.map((issue: any) => ({
-            severity: String(issue.severity ?? ''),
-            category: String(issue.category ?? ''),
-            code: String(issue.code ?? ''),
-            message: String(issue.message ?? ''),
-            suggestion: issue.suggestion ?? null,
-            source: undefined,
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            cplId: ((f.state as any).result as any)?.id,
-        }));
-    });
-    const hasErrors = allIssues.some(i => i.severity === 'Error' || i.severity === 'Critical');
-    const hasWarnings = allIssues.some(i => i.severity === 'Warning');
-    // Only show a status if at least one CPL was actually validated.
-    const anyValidated = cplFiles.some(f => (f.state as any).validation != null);
-    const status = !anyValidated ? null : hasErrors ? 'Invalid' : hasWarnings ? 'ValidWithWarnings' : 'Valid';
-
-    return { package: pkg, cpls, validation: { status: status as PackageViewData['validation']['status'], issues: allIssues } };
+    return { package: pkg, cpls, validation: { status: null, issues: [] } };
 }
 
 // ─── main component ───────────────────────────────────────────────────────────
@@ -460,8 +400,8 @@ export default function ImfPlayground() {
         const mod = getWasmModule();
         if (!mod || !Object.keys(xmlMapRef.current).some(k => k.toUpperCase() === 'ASSETMAP.XML')) return;
         try {
-            const result = mod.validatePackage(xmlMapRef.current, rulesConfig);
-            setPackageValidation(result);
+            const result = mod.validate(xmlMapRef.current, rulesConfig);
+            setPackageValidation(result.report);
         } catch (e) {
             console.error('[imf] re-validate error:', e);
         }
@@ -511,11 +451,7 @@ export default function ImfPlayground() {
                     state = { tag: 'done', result: null };
                 } else if (entry.kind === 'cpl') {
                     const result = mod.parseCplTyped(xml);
-                    let sourceAsset: unknown = null;
-                    let validation: unknown = null;
-                    try { sourceAsset = mod.extractSourceAsset(xml); } catch { /* non-critical */ }
-                    try { validation = mod.validateCplWithSpecSelection(xml, 'auto', 'auto'); } catch { /* non-critical */ }
-                    state = { tag: 'done', result, sourceAsset, validation };
+                    state = { tag: 'done', result };
                 } else {
                     state = { tag: 'done', result: null };
                 }
@@ -531,10 +467,10 @@ export default function ImfPlayground() {
         const mod = getWasmModule();
         if (mod && Object.keys(xmlMap).some(k => k.toUpperCase() === 'ASSETMAP.XML')) {
             try {
-                const result = mod.validatePackage(xmlMap, rulesConfigRef.current);
-                setPackageValidation(result);
+                const result = mod.validate(xmlMap, rulesConfigRef.current);
+                setPackageValidation(result.report);
             } catch (e) {
-                console.error('[imf] validatePackage error:', e);
+                console.error('[imf] validate error:', e);
             }
         }
     }, []);
@@ -563,14 +499,14 @@ export default function ImfPlayground() {
         xmlMapRef.current = {};
     }, []);
 
-    // Assemble package data once assetmap + >=1 CPL with source asset are ready.
+    // Assemble package data once assetmap + >=1 CPL are ready.
     // Merge package-level validation from ValidationReport (severity buckets) when available.
     const packageData = useMemo(() => {
         const base = buildPackageData(files);
         if (!base) return null;
         if (!packageValidation) return base;
 
-        // validatePackage returns a ValidationReport with severity buckets.
+        // validate() returns { report, cpls, assetMap, ... } — we use the report.
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const pv = packageValidation as any;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any

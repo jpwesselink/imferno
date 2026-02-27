@@ -15,9 +15,6 @@ export const compositionPlaylist = loadSchema("composition-playlist");
 export const assetMap = loadSchema("asset-map");
 export const packingList = loadSchema("packing-list");
 export const volumeIndex = loadSchema("volume-index");
-export const sourceAsset = loadSchema("source-asset");
-export const deliveryRequest = loadSchema("delivery-request");
-export const deliveryComparison = loadSchema("delivery-comparison");
 export const rulesConfig = loadSchema("rules-config");
 
 export const schemas = {
@@ -27,8 +24,5 @@ export const schemas = {
   assetMap,
   packingList,
   volumeIndex,
-  sourceAsset,
-  deliveryRequest,
-  deliveryComparison,
   rulesConfig,
 };

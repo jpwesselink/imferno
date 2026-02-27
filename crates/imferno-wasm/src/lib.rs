@@ -8,6 +8,7 @@ use imferno_core::cpl::CompositionPlaylist;
 use imferno_core::package::{Imferno, RulesConfig, ValidationOptions};
 use imferno_core::validation::{AppSpecTarget, CoreSpecTarget};
 use imferno_core::{Category, Severity, ValidationIssue, ValidationProfile, ValidationReport};
+use serde::Serialize;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
@@ -136,8 +137,7 @@ pub fn validate(
                 "unreferencedAssets": [],
                 "declaredSidecars": [],
             });
-            return serde_wasm_bindgen::to_value(&result)
-                .map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)));
+            return to_js_value(&result);
         }
     };
 
@@ -191,13 +191,20 @@ pub fn validate(
         "declaredSidecars": declared_sidecars,
     });
 
-    serde_wasm_bindgen::to_value(&result)
-        .map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))
+    to_js_value(&result)
 }
 
 // =============================================================================
 // Internal helpers
 // =============================================================================
+
+/// Serialize a value to a plain JS object (not a Map).
+fn to_js_value<T: Serialize>(value: &T) -> Result<JsValue, JsValue> {
+    let serializer = serde_wasm_bindgen::Serializer::new().serialize_maps_as_objects(true);
+    value
+        .serialize(&serializer)
+        .map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))
+}
 
 type ParsedOptions = (
     RulesConfig,

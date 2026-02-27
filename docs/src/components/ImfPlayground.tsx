@@ -459,7 +459,7 @@ export default function ImfPlayground() {
     // Re-validate whenever rules change (if files have already been parsed).
     useEffect(() => {
         const mod = getWasmModule();
-        if (!mod || !Object.keys(xmlMapRef.current).some(k => k.toUpperCase() === 'ASSETMAP.XML')) return;
+        if (!mod || Object.keys(xmlMapRef.current).length === 0) return;
         try {
             const result = mod.validate(xmlMapRef.current, { rules: rulesConfig });
             setPackageValidation(result.report);
@@ -526,7 +526,7 @@ export default function ImfPlayground() {
 
         // Package-level validation — runs after all files are parsed
         const mod = getWasmModule();
-        if (mod && Object.keys(xmlMap).some(k => k.toUpperCase() === 'ASSETMAP.XML')) {
+        if (mod && Object.keys(xmlMap).length > 0) {
             try {
                 const result = mod.validate(xmlMap, { rules: rulesConfigRef.current });
                 setPackageValidation(result.report);

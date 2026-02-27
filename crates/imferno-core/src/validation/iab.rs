@@ -10,9 +10,9 @@
 
 use std::collections::HashSet;
 
+use crate::cpl::{CompositionPlaylist, McaTagSymbol};
 use crate::diagnostics::{Category, Location, Severity, ValidationIssue};
 use crate::validation::{App2E2021, ConstraintsValidator};
-use crate::cpl::{CompositionPlaylist, McaTagSymbol};
 
 use crate::validation::iab_codes::{self as iab_codes, IabCode};
 
@@ -52,7 +52,12 @@ impl ConstraintsValidator for AppIabPlugin2021 {
     fn validate_cpl(&self, cpl: &CompositionPlaylist) -> Vec<ValidationIssue> {
         let mut issues = Vec::new();
         App2E2021.validate_all(cpl, true, &mut issues);
-        validate_iab_descriptors(cpl, iab_codes::St2067_201_2021::for_code, false, &mut issues);
+        validate_iab_descriptors(
+            cpl,
+            iab_codes::St2067_201_2021::for_code,
+            false,
+            &mut issues,
+        );
         validate_iab_sequences(cpl, iab_codes::St2067_201_2021::for_code, &mut issues);
         issues
     }
@@ -106,12 +111,9 @@ fn validate_iab_descriptors(
     check_channel_count: bool,
     issues: &mut Vec<ValidationIssue>,
 ) {
-    const IAB_CONTAINER_FORMAT: &str =
-        "urn:smpte:ul:060e2b34.0401010d.0d010301.021d0101";
-    const IAB_SOUND_COMPRESSION: &str =
-        "urn:smpte:ul:060e2b34.04010105.0e090604.00000000";
-    const IAB_MCA_LABEL_DICT_ID: &str =
-        "urn:smpte:ul:060e2b34.0401010d.03020221.00000000";
+    const IAB_CONTAINER_FORMAT: &str = "urn:smpte:ul:060e2b34.0401010d.0d010301.021d0101";
+    const IAB_SOUND_COMPRESSION: &str = "urn:smpte:ul:060e2b34.04010105.0e090604.00000000";
+    const IAB_MCA_LABEL_DICT_ID: &str = "urn:smpte:ul:060e2b34.0401010d.03020221.00000000";
 
     let edl = match &cpl.essence_descriptor_list {
         Some(edl) => edl,

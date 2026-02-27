@@ -3,8 +3,8 @@
 //! These types were previously defined in `imf-types` and are migrated here as
 //! their canonical home, since they are defined by SMPTE ST 2067-3.
 
-use serde::{Deserialize, Serialize};
 use crate::assetmap::{ImfTypeError, SmpteUl};
+use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "typescript")]
 use ts_rs::TS;
@@ -36,7 +36,10 @@ pub struct EditRate {
 
 impl EditRate {
     pub const fn new(numerator: u32, denominator: u32) -> Self {
-        Self { numerator, denominator }
+        Self {
+            numerator,
+            denominator,
+        }
     }
 
     /// Parse from the XML text form `"<numerator> <denominator>"`.
@@ -54,7 +57,10 @@ impl EditRate {
         if denominator == 0 {
             return Err(ImfTypeError::InvalidEditRate(s.to_string()));
         }
-        Ok(Self { numerator, denominator })
+        Ok(Self {
+            numerator,
+            denominator,
+        })
     }
 
     /// Returns the rate as a floating-point value.
@@ -204,13 +210,28 @@ impl std::fmt::Display for ContentKind {
 // ─── Compile-time UL helper ───────────────────────────────────────────────────
 
 /// Compile-time helper to create UL byte arrays.
+#[allow(clippy::too_many_arguments)]
 const fn ul_bytes(
-    b0: u8, b1: u8, b2: u8, b3: u8,
-    b4: u8, b5: u8, b6: u8, b7: u8,
-    b8: u8, b9: u8, b10: u8, b11: u8,
-    b12: u8, b13: u8, b14: u8, b15: u8,
+    b0: u8,
+    b1: u8,
+    b2: u8,
+    b3: u8,
+    b4: u8,
+    b5: u8,
+    b6: u8,
+    b7: u8,
+    b8: u8,
+    b9: u8,
+    b10: u8,
+    b11: u8,
+    b12: u8,
+    b13: u8,
+    b14: u8,
+    b15: u8,
 ) -> [u8; 16] {
-    [b0, b1, b2, b3, b4, b5, b6, b7, b8, b9, b10, b11, b12, b13, b14, b15]
+    [
+        b0, b1, b2, b3, b4, b5, b6, b7, b8, b9, b10, b11, b12, b13, b14, b15,
+    ]
 }
 
 // ─── ColorPrimaries ───────────────────────────────────────────────────────────
@@ -249,12 +270,24 @@ pub enum ColorPrimaries {
 
 /// Canonical UL bytes (byte 8 zeroed) for ColorPrimaries matching.
 /// Format: last 4 bytes of normalized 16-byte UL.
-const CP_BT601_525: [u8; 16] = ul_bytes(0x06, 0x0e, 0x2b, 0x34, 0x04, 0x01, 0x01, 0x00, 0x04, 0x01, 0x01, 0x01, 0x03, 0x01, 0x00, 0x00);
-const CP_BT601_625: [u8; 16] = ul_bytes(0x06, 0x0e, 0x2b, 0x34, 0x04, 0x01, 0x01, 0x00, 0x04, 0x01, 0x01, 0x01, 0x03, 0x02, 0x00, 0x00);
-const CP_BT709:     [u8; 16] = ul_bytes(0x06, 0x0e, 0x2b, 0x34, 0x04, 0x01, 0x01, 0x00, 0x04, 0x01, 0x01, 0x01, 0x03, 0x03, 0x00, 0x00);
-const CP_BT2020:    [u8; 16] = ul_bytes(0x06, 0x0e, 0x2b, 0x34, 0x04, 0x01, 0x01, 0x00, 0x04, 0x01, 0x01, 0x01, 0x03, 0x04, 0x00, 0x00);
-const CP_DCI_P3:    [u8; 16] = ul_bytes(0x06, 0x0e, 0x2b, 0x34, 0x04, 0x01, 0x01, 0x00, 0x04, 0x01, 0x01, 0x01, 0x03, 0x05, 0x00, 0x00);
-const CP_P3D65:     [u8; 16] = ul_bytes(0x06, 0x0e, 0x2b, 0x34, 0x04, 0x01, 0x01, 0x00, 0x04, 0x01, 0x01, 0x01, 0x03, 0x06, 0x00, 0x00);
+const CP_BT601_525: [u8; 16] = ul_bytes(
+    0x06, 0x0e, 0x2b, 0x34, 0x04, 0x01, 0x01, 0x00, 0x04, 0x01, 0x01, 0x01, 0x03, 0x01, 0x00, 0x00,
+);
+const CP_BT601_625: [u8; 16] = ul_bytes(
+    0x06, 0x0e, 0x2b, 0x34, 0x04, 0x01, 0x01, 0x00, 0x04, 0x01, 0x01, 0x01, 0x03, 0x02, 0x00, 0x00,
+);
+const CP_BT709: [u8; 16] = ul_bytes(
+    0x06, 0x0e, 0x2b, 0x34, 0x04, 0x01, 0x01, 0x00, 0x04, 0x01, 0x01, 0x01, 0x03, 0x03, 0x00, 0x00,
+);
+const CP_BT2020: [u8; 16] = ul_bytes(
+    0x06, 0x0e, 0x2b, 0x34, 0x04, 0x01, 0x01, 0x00, 0x04, 0x01, 0x01, 0x01, 0x03, 0x04, 0x00, 0x00,
+);
+const CP_DCI_P3: [u8; 16] = ul_bytes(
+    0x06, 0x0e, 0x2b, 0x34, 0x04, 0x01, 0x01, 0x00, 0x04, 0x01, 0x01, 0x01, 0x03, 0x05, 0x00, 0x00,
+);
+const CP_P3D65: [u8; 16] = ul_bytes(
+    0x06, 0x0e, 0x2b, 0x34, 0x04, 0x01, 0x01, 0x00, 0x04, 0x01, 0x01, 0x01, 0x03, 0x06, 0x00, 0x00,
+);
 
 impl ColorPrimaries {
     /// Map a SMPTE Color Primaries UL to a `ColorPrimaries` variant.
@@ -266,10 +299,10 @@ impl ColorPrimaries {
             Some(norm) => match norm {
                 b if b == CP_BT601_525 => Self::Bt601_525,
                 b if b == CP_BT601_625 => Self::Bt601_625,
-                b if b == CP_BT709     => Self::Bt709,
-                b if b == CP_BT2020    => Self::Bt2020,
-                b if b == CP_DCI_P3    => Self::DciP3,
-                b if b == CP_P3D65     => Self::P3D65,
+                b if b == CP_BT709 => Self::Bt709,
+                b if b == CP_BT2020 => Self::Bt2020,
+                b if b == CP_DCI_P3 => Self::DciP3,
+                b if b == CP_P3D65 => Self::P3D65,
                 _ => Self::Unknown(ul.to_string()),
             },
             None => Self::Unknown(ul.to_string()),
@@ -332,13 +365,27 @@ pub enum TransferCharacteristic {
 }
 
 /// Canonical UL bytes (byte 8 zeroed) for TransferCharacteristic matching.
-const TC_LINEAR:   [u8; 16] = ul_bytes(0x06, 0x0e, 0x2b, 0x34, 0x04, 0x01, 0x01, 0x00, 0x04, 0x01, 0x01, 0x01, 0x01, 0x01, 0x00, 0x00);
-const TC_BT709:    [u8; 16] = ul_bytes(0x06, 0x0e, 0x2b, 0x34, 0x04, 0x01, 0x01, 0x00, 0x04, 0x01, 0x01, 0x01, 0x01, 0x02, 0x00, 0x00);
-const TC_240M:     [u8; 16] = ul_bytes(0x06, 0x0e, 0x2b, 0x34, 0x04, 0x01, 0x01, 0x00, 0x04, 0x01, 0x01, 0x01, 0x01, 0x03, 0x00, 0x00);
-const TC_XVYCC709: [u8; 16] = ul_bytes(0x06, 0x0e, 0x2b, 0x34, 0x04, 0x01, 0x01, 0x00, 0x04, 0x01, 0x01, 0x01, 0x01, 0x08, 0x00, 0x00);
-const TC_BT2020:   [u8; 16] = ul_bytes(0x06, 0x0e, 0x2b, 0x34, 0x04, 0x01, 0x01, 0x00, 0x04, 0x01, 0x01, 0x01, 0x01, 0x09, 0x00, 0x00);
-const TC_PQ:       [u8; 16] = ul_bytes(0x06, 0x0e, 0x2b, 0x34, 0x04, 0x01, 0x01, 0x00, 0x04, 0x01, 0x01, 0x01, 0x01, 0x0a, 0x00, 0x00);
-const TC_HLG:      [u8; 16] = ul_bytes(0x06, 0x0e, 0x2b, 0x34, 0x04, 0x01, 0x01, 0x00, 0x04, 0x01, 0x01, 0x01, 0x01, 0x0b, 0x00, 0x00);
+const TC_LINEAR: [u8; 16] = ul_bytes(
+    0x06, 0x0e, 0x2b, 0x34, 0x04, 0x01, 0x01, 0x00, 0x04, 0x01, 0x01, 0x01, 0x01, 0x01, 0x00, 0x00,
+);
+const TC_BT709: [u8; 16] = ul_bytes(
+    0x06, 0x0e, 0x2b, 0x34, 0x04, 0x01, 0x01, 0x00, 0x04, 0x01, 0x01, 0x01, 0x01, 0x02, 0x00, 0x00,
+);
+const TC_240M: [u8; 16] = ul_bytes(
+    0x06, 0x0e, 0x2b, 0x34, 0x04, 0x01, 0x01, 0x00, 0x04, 0x01, 0x01, 0x01, 0x01, 0x03, 0x00, 0x00,
+);
+const TC_XVYCC709: [u8; 16] = ul_bytes(
+    0x06, 0x0e, 0x2b, 0x34, 0x04, 0x01, 0x01, 0x00, 0x04, 0x01, 0x01, 0x01, 0x01, 0x08, 0x00, 0x00,
+);
+const TC_BT2020: [u8; 16] = ul_bytes(
+    0x06, 0x0e, 0x2b, 0x34, 0x04, 0x01, 0x01, 0x00, 0x04, 0x01, 0x01, 0x01, 0x01, 0x09, 0x00, 0x00,
+);
+const TC_PQ: [u8; 16] = ul_bytes(
+    0x06, 0x0e, 0x2b, 0x34, 0x04, 0x01, 0x01, 0x00, 0x04, 0x01, 0x01, 0x01, 0x01, 0x0a, 0x00, 0x00,
+);
+const TC_HLG: [u8; 16] = ul_bytes(
+    0x06, 0x0e, 0x2b, 0x34, 0x04, 0x01, 0x01, 0x00, 0x04, 0x01, 0x01, 0x01, 0x01, 0x0b, 0x00, 0x00,
+);
 
 impl TransferCharacteristic {
     /// Map a SMPTE Transfer Characteristic UL to a variant.
@@ -347,13 +394,13 @@ impl TransferCharacteristic {
     pub fn from_ul(ul: &str) -> Self {
         match parse_and_normalize_ul(ul) {
             Some(norm) => match norm {
-                b if b == TC_LINEAR   => Self::Linear,
-                b if b == TC_BT709    => Self::Bt709,
-                b if b == TC_240M     => Self::Smpte240M,
+                b if b == TC_LINEAR => Self::Linear,
+                b if b == TC_BT709 => Self::Bt709,
+                b if b == TC_240M => Self::Smpte240M,
                 b if b == TC_XVYCC709 => Self::XvYcc709,
-                b if b == TC_BT2020   => Self::Bt2020,
-                b if b == TC_PQ       => Self::PqSt2084,
-                b if b == TC_HLG      => Self::Hlg,
+                b if b == TC_BT2020 => Self::Bt2020,
+                b if b == TC_PQ => Self::PqSt2084,
+                b if b == TC_HLG => Self::Hlg,
                 _ => Self::Unknown(ul.to_string()),
             },
             None => Self::Unknown(ul.to_string()),
@@ -625,9 +672,15 @@ pub enum CodingEquations {
 }
 
 /// Canonical UL bytes (byte 8 zeroed) for CodingEquations matching.
-const CE_BT601:     [u8; 16] = ul_bytes(0x06, 0x0e, 0x2b, 0x34, 0x04, 0x01, 0x01, 0x00, 0x04, 0x01, 0x01, 0x01, 0x02, 0x01, 0x00, 0x00);
-const CE_BT709:     [u8; 16] = ul_bytes(0x06, 0x0e, 0x2b, 0x34, 0x04, 0x01, 0x01, 0x00, 0x04, 0x01, 0x01, 0x01, 0x02, 0x02, 0x00, 0x00);
-const CE_BT2020NCL: [u8; 16] = ul_bytes(0x06, 0x0e, 0x2b, 0x34, 0x04, 0x01, 0x01, 0x00, 0x04, 0x01, 0x01, 0x01, 0x02, 0x06, 0x00, 0x00);
+const CE_BT601: [u8; 16] = ul_bytes(
+    0x06, 0x0e, 0x2b, 0x34, 0x04, 0x01, 0x01, 0x00, 0x04, 0x01, 0x01, 0x01, 0x02, 0x01, 0x00, 0x00,
+);
+const CE_BT709: [u8; 16] = ul_bytes(
+    0x06, 0x0e, 0x2b, 0x34, 0x04, 0x01, 0x01, 0x00, 0x04, 0x01, 0x01, 0x01, 0x02, 0x02, 0x00, 0x00,
+);
+const CE_BT2020NCL: [u8; 16] = ul_bytes(
+    0x06, 0x0e, 0x2b, 0x34, 0x04, 0x01, 0x01, 0x00, 0x04, 0x01, 0x01, 0x01, 0x02, 0x06, 0x00, 0x00,
+);
 
 impl CodingEquations {
     /// Map a SMPTE Coding Equations UL to a variant.
@@ -636,8 +689,8 @@ impl CodingEquations {
     pub fn from_ul(ul: &str) -> Self {
         match parse_and_normalize_ul(ul) {
             Some(norm) => match norm {
-                b if b == CE_BT601     => Self::Bt601,
-                b if b == CE_BT709     => Self::Bt709,
+                b if b == CE_BT601 => Self::Bt601,
+                b if b == CE_BT709 => Self::Bt709,
                 b if b == CE_BT2020NCL => Self::Bt2020Ncl,
                 _ => Self::Unknown(ul.to_string()),
             },
@@ -953,7 +1006,10 @@ mod tests {
 
     #[test]
     fn content_kind_parse_unknown() {
-        assert_eq!(ContentKind::parse("custom-kind"), ContentKind::Other("custom-kind".to_string()));
+        assert_eq!(
+            ContentKind::parse("custom-kind"),
+            ContentKind::Other("custom-kind".to_string())
+        );
     }
 
     // ── ColorPrimaries ────────────────────────────────────────────────────────
@@ -1009,21 +1065,24 @@ mod tests {
     /// SMPTE ST 2067-21:2023 §7.2.2: TransferCharacteristic ULs.
     #[test]
     fn transfer_characteristic_pq() {
-        let tc = TransferCharacteristic::from_ul("urn:smpte:ul:060e2b34.04010101.04010101.010a0000");
+        let tc =
+            TransferCharacteristic::from_ul("urn:smpte:ul:060e2b34.04010101.04010101.010a0000");
         assert_eq!(tc, TransferCharacteristic::PqSt2084);
         assert!(tc.is_hdr());
     }
 
     #[test]
     fn transfer_characteristic_hlg() {
-        let tc = TransferCharacteristic::from_ul("urn:smpte:ul:060e2b34.04010101.04010101.010b0000");
+        let tc =
+            TransferCharacteristic::from_ul("urn:smpte:ul:060e2b34.04010101.04010101.010b0000");
         assert_eq!(tc, TransferCharacteristic::Hlg);
         assert!(tc.is_hdr());
     }
 
     #[test]
     fn transfer_characteristic_bt709() {
-        let tc = TransferCharacteristic::from_ul("urn:smpte:ul:060e2b34.04010101.04010101.01020000");
+        let tc =
+            TransferCharacteristic::from_ul("urn:smpte:ul:060e2b34.04010101.04010101.01020000");
         assert_eq!(tc, TransferCharacteristic::Bt709);
         assert!(!tc.is_hdr());
     }
@@ -1088,7 +1147,11 @@ mod tests {
     #[test]
     fn video_codec_jpeg2000_unrecognized_maps_to_unknown() {
         let vc = VideoCodec::from_ul("urn:smpte:ul:060e2b34.04010107.04010202.03010101");
-        assert!(matches!(vc, VideoCodec::Unknown(_)), "expected Unknown, got {:?}", vc);
+        assert!(
+            matches!(vc, VideoCodec::Unknown(_)),
+            "expected Unknown, got {:?}",
+            vc
+        );
         assert!(!vc.is_jpeg2000_family());
     }
 
@@ -1138,7 +1201,10 @@ mod tests {
         assert_eq!(McaTagSymbol::parse("R"), McaTagSymbol::Right);
         assert_eq!(McaTagSymbol::parse("IAB"), McaTagSymbol::Iab);
         assert_eq!(McaTagSymbol::parse("sg51"), McaTagSymbol::Sg51);
-        assert_eq!(McaTagSymbol::parse("custom"), McaTagSymbol::Other("custom".to_string()));
+        assert_eq!(
+            McaTagSymbol::parse("custom"),
+            McaTagSymbol::Other("custom".to_string())
+        );
     }
 
     // ── MarkerLabel ───────────────────────────────────────────────────────────
@@ -1147,6 +1213,9 @@ mod tests {
     fn marker_label_parse() {
         assert_eq!(MarkerLabel::parse("FFOC"), MarkerLabel::Ffoc);
         assert_eq!(MarkerLabel::parse("LFOC"), MarkerLabel::Lfoc);
-        assert_eq!(MarkerLabel::parse("CUSTOM"), MarkerLabel::Other("CUSTOM".to_string()));
+        assert_eq!(
+            MarkerLabel::parse("CUSTOM"),
+            MarkerLabel::Other("CUSTOM".to_string())
+        );
     }
 }

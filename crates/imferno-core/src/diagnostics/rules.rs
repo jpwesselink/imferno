@@ -5,8 +5,8 @@
 //! (`"ST2067-3:2020:7.2.2/SegmentDuration"`) or by their short
 //! suffix (`"SegmentDuration"`).
 
-use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 use crate::{Severity, ValidationReport};
 

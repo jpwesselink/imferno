@@ -65,7 +65,9 @@ fn iab2021_invalid_codec_present() {
     let cpl = read_cpl("IAB/CPL/IAB_CPL_invalid_codec_present.xml");
     let issues = AppIabPlugin2021.validate_cpl(&cpl);
     assert!(
-        errors(&issues).iter().any(|i| i.code.contains("5.9/CodecForbidden")),
+        errors(&issues)
+            .iter()
+            .any(|i| i.code.contains("5.9/CodecForbidden")),
         "expected CodecForbidden; got: {:#?}",
         errors(&issues)
     );

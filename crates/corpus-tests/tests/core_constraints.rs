@@ -19,8 +19,7 @@ use imferno_core::validation::validate_cpl;
 /// ST 2067-2:2020 requires at least one EssenceDescriptor (§9.7.1).
 #[test]
 fn missing_essence_descriptor_list() {
-    let cpl =
-        read_cpl("Application2E2020/CPL_46154ef9-7b54-45eb-a85c-00efcb0d47a7_missing_ed.xml");
+    let cpl = read_cpl("Application2E2020/CPL_46154ef9-7b54-45eb-a85c-00efcb0d47a7_missing_ed.xml");
     let issues = validate_cpl(&cpl);
     assert!(
         !errors(&issues).is_empty(),

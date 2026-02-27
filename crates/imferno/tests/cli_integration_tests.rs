@@ -3,8 +3,8 @@
 //! Tests all CLI commands with real test data to ensure they work correctly
 //! after the library API refactoring.
 
-use std::process::Command;
 use std::path::PathBuf;
+use std::process::Command;
 
 const TEST_PACKAGE: &str = concat!(
     env!("CARGO_MANIFEST_DIR"),
@@ -59,7 +59,8 @@ fn test_cli_help() {
 
 #[test]
 fn test_cli_inspect_summary() {
-    let (success, stdout, stderr) = run_cli_command(&["inspect", TEST_PACKAGE, "--format", "summary"]);
+    let (success, stdout, stderr) =
+        run_cli_command(&["inspect", TEST_PACKAGE, "--format", "summary"]);
 
     assert!(success, "CLI inspect failed: {}", stderr);
     assert!(stdout.contains("IMF Package:"));
@@ -91,7 +92,8 @@ fn test_cli_inspect_json() {
 
 #[test]
 fn test_cli_inspect_detailed() {
-    let (success, stdout, stderr) = run_cli_command(&["inspect", TEST_PACKAGE, "--format", "detailed"]);
+    let (success, stdout, stderr) =
+        run_cli_command(&["inspect", TEST_PACKAGE, "--format", "detailed"]);
 
     assert!(success, "CLI inspect detailed failed: {}", stderr);
     assert!(stdout.contains("IMF Package Details"));
@@ -127,7 +129,8 @@ fn test_cli_cpl_with_uuid() {
 
 #[test]
 fn test_cli_cpl_invalid_uuid() {
-    let (success, _stdout, stderr) = run_cli_command(&["cpl", TEST_PACKAGE, "--uuid", "invalid-uuid"]);
+    let (success, _stdout, stderr) =
+        run_cli_command(&["cpl", TEST_PACKAGE, "--uuid", "invalid-uuid"]);
 
     assert!(!success);
     assert!(stderr.contains("not found") || stderr.contains("invalid"));
@@ -143,7 +146,11 @@ fn test_cli_validate_success() {
     assert!(stdout.contains("ASSETMAP.xml found"));
     assert!(stdout.contains("assets mapped"));
     assert!(stdout.contains("CPL(s) parsed"));
-    assert!(stdout.contains("valid"), "Expected 'valid' in output: {}", stdout);
+    assert!(
+        stdout.contains("valid"),
+        "Expected 'valid' in output: {}",
+        stdout
+    );
 }
 
 #[test]
@@ -153,7 +160,11 @@ fn test_cli_validate_failure() {
     // This particular test package actually validates successfully but has 0 CPLs
     // which is a valid structure but unusual
     if success {
-        assert!(stdout.contains("0 CPL(s) parsed") || stdout.contains("Validation failed") || stdout.contains("✗"));
+        assert!(
+            stdout.contains("0 CPL(s) parsed")
+                || stdout.contains("Validation failed")
+                || stdout.contains("✗")
+        );
     } else {
         // If it fails to parse, that's also expected
         assert!(!stderr.is_empty());
@@ -176,7 +187,8 @@ fn test_cli_error_handling_invalid_path() {
 #[test]
 fn test_cli_error_handling_invalid_args() {
     // Test invalid format
-    let (success, _stdout, stderr) = run_cli_command(&["inspect", TEST_PACKAGE, "--format", "invalid"]);
+    let (success, _stdout, stderr) =
+        run_cli_command(&["inspect", TEST_PACKAGE, "--format", "invalid"]);
     assert!(!success);
     assert!(stderr.contains("invalid") || stderr.contains("error"));
 
@@ -196,7 +208,11 @@ fn test_cli_performance() {
     let duration = start.elapsed();
 
     assert!(success);
-    assert!(duration.as_secs() < 10, "Inspect command took too long: {:?}", duration);
+    assert!(
+        duration.as_secs() < 10,
+        "Inspect command took too long: {:?}",
+        duration
+    );
 
     // Test other commands for performance
     for cmd in &["validate", "cpl"] {
@@ -205,6 +221,11 @@ fn test_cli_performance() {
         let duration = start.elapsed();
 
         assert!(success, "Command {} failed", cmd);
-        assert!(duration.as_secs() < 10, "Command {} took too long: {:?}", cmd, duration);
+        assert!(
+            duration.as_secs() < 10,
+            "Command {} took too long: {:?}",
+            cmd,
+            duration
+        );
     }
 }

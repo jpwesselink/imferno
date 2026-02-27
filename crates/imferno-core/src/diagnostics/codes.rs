@@ -30,4 +30,3 @@ pub trait ValidationCode {
     /// The category bucket this code belongs to.
     fn category(&self) -> Category;
 }
-

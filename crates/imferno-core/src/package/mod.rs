@@ -3,23 +3,25 @@
 //! This library provides a high-level interface for parsing complete IMF packages
 //! by coordinating the individual SMPTE standard parsers.
 
-use std::path::{Path, PathBuf};
-use std::collections::HashMap;
-use thiserror::Error;
 use crate::assetmap::ImfUuid;
 use crate::cpl::EditRate;
+use std::collections::HashMap;
+use std::path::{Path, PathBuf};
+use thiserror::Error;
 
 pub mod codes;
-pub mod source_asset;
 pub mod delivery;
 pub mod report;
+pub mod source_asset;
 
+pub use self::delivery::{compare as compare_delivery, DeliveryComparison, DeliveryRequest};
+pub use self::report::{build_report, ImfReport};
+pub use self::source_asset::{extract_source_asset, SourceAsset};
+pub use crate::assetmap::{Asset, AssetMap, PackingList, PklAsset, VolumeIndex};
 pub use crate::cpl::{CompositionPlaylist, Resource as CplResource};
-pub use crate::assetmap::{AssetMap, Asset, VolumeIndex, PackingList, PklAsset};
-pub use crate::diagnostics::{ValidationReport, ValidationIssue, ValidationProfile, Severity, Category, Location};
-pub use self::source_asset::{SourceAsset, extract_source_asset};
-pub use self::delivery::{DeliveryRequest, DeliveryComparison, compare as compare_delivery};
-pub use self::report::{ImfReport, build_report};
+pub use crate::diagnostics::{
+    Category, Location, Severity, ValidationIssue, ValidationProfile, ValidationReport,
+};
 
 #[derive(Error, Debug)]
 pub enum ImfError {
@@ -56,10 +58,7 @@ pub enum FileValidationError {
         original_file_name: Option<String>,
     },
     /// File expected on disk but not found.
-    Missing {
-        uuid: String,
-        path: PathBuf,
-    },
+    Missing { uuid: String, path: PathBuf },
     /// File exists but its byte size differs from the PKL declaration.
     SizeMismatch {
         uuid: String,
@@ -81,10 +80,7 @@ pub enum FileValidationError {
         message: String,
     },
     /// Same asset UUID appears more than once in a single PKL (ST 2067-2 §9).
-    DuplicatePklAssetId {
-        uuid: String,
-        pkl_id: String,
-    },
+    DuplicatePklAssetId { uuid: String, pkl_id: String },
 }
 
 impl FileValidationError {
@@ -103,24 +99,62 @@ impl FileValidationError {
 impl std::fmt::Display for FileValidationError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::NotInAssetMap { uuid, original_file_name } => {
-                write!(f, "PKL asset {} ({}) not found in AssetMap",
+            Self::NotInAssetMap {
+                uuid,
+                original_file_name,
+            } => {
+                write!(
+                    f,
+                    "PKL asset {} ({}) not found in AssetMap",
                     uuid,
-                    original_file_name.as_deref().unwrap_or("no filename"))
+                    original_file_name.as_deref().unwrap_or("no filename")
+                )
             }
             Self::Missing { uuid, path } => {
                 write!(f, "Missing file for {}: {}", uuid, path.display())
             }
-            Self::SizeMismatch { uuid, path, expected, actual } => {
-                write!(f, "Size mismatch for {} ({}): expected {} bytes, found {}",
-                    uuid, path.display(), expected, actual)
+            Self::SizeMismatch {
+                uuid,
+                path,
+                expected,
+                actual,
+            } => {
+                write!(
+                    f,
+                    "Size mismatch for {} ({}): expected {} bytes, found {}",
+                    uuid,
+                    path.display(),
+                    expected,
+                    actual
+                )
             }
-            Self::HashMismatch { uuid, path, expected, actual } => {
-                write!(f, "Hash mismatch for {} ({}): expected {}, got {}",
-                    uuid, path.display(), expected, actual)
+            Self::HashMismatch {
+                uuid,
+                path,
+                expected,
+                actual,
+            } => {
+                write!(
+                    f,
+                    "Hash mismatch for {} ({}): expected {}, got {}",
+                    uuid,
+                    path.display(),
+                    expected,
+                    actual
+                )
             }
-            Self::Io { uuid, path, message } => {
-                write!(f, "IO error reading {} ({}): {}", uuid, path.display(), message)
+            Self::Io {
+                uuid,
+                path,
+                message,
+            } => {
+                write!(
+                    f,
+                    "IO error reading {} ({}): {}",
+                    uuid,
+                    path.display(),
+                    message
+                )
             }
             Self::DuplicatePklAssetId { uuid, pkl_id } => {
                 write!(f, "Duplicate asset UUID {} in PKL {}", uuid, pkl_id)
@@ -132,78 +166,94 @@ impl std::fmt::Display for FileValidationError {
 impl From<&FileValidationError> for ValidationIssue {
     fn from(err: &FileValidationError) -> Self {
         match err {
-            FileValidationError::NotInAssetMap { uuid, original_file_name } => {
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Reference,
-                    codes::St2067_2_2020::UnresolvedUuid,
-                    format!(
-                        "PKL asset {} ({}) not found in AssetMap",
-                        uuid,
-                        original_file_name.as_deref().unwrap_or("no filename")
-                    ),
-                )
-                .with_context("asset_uuid", uuid.clone())
-            }
-            FileValidationError::Missing { uuid, path } => {
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Asset,
-                    codes::St2067_2_2020::FileNotFound,
-                    format!("Missing file for asset {}: {}", uuid, path.display()),
-                )
-                .with_location(Location::new().with_file(path.clone()))
-                .with_context("asset_uuid", uuid.clone())
-            }
-            FileValidationError::SizeMismatch { uuid, path, expected, actual } => {
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Asset,
-                    codes::St2067_2_2020::SizeMismatch,
-                    format!(
-                        "Size mismatch for asset {} ({}): PKL declares {} bytes, file is {} bytes",
-                        uuid, path.display(), expected, actual
-                    ),
-                )
-                .with_location(Location::new().with_file(path.clone()))
-                .with_context("asset_uuid", uuid.clone())
-                .with_context("expected_size", expected.to_string())
-                .with_context("actual_size", actual.to_string())
-            }
-            FileValidationError::HashMismatch { uuid, path, expected, actual } => {
-                ValidationIssue::new(
-                    Severity::Critical,
-                    Category::Asset,
-                    codes::St2067_2_2020::ChecksumMismatch,
-                    format!(
-                        "Hash mismatch for asset {} ({}): expected {}, computed {}",
-                        uuid, path.display(), expected, actual
-                    ),
-                )
-                .with_location(Location::new().with_file(path.clone()))
-                .with_context("asset_uuid", uuid.clone())
-                .with_suggestion("Re-deliver the asset or re-generate the PKL hash")
-            }
-            FileValidationError::Io { uuid, path, message } => {
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Asset,
-                    codes::St2067_2_2020::IoError,
-                    format!("IO error reading asset {} ({}): {}", uuid, path.display(), message),
-                )
-                .with_location(Location::new().with_file(path.clone()))
-                .with_context("asset_uuid", uuid.clone())
-            }
-            FileValidationError::DuplicatePklAssetId { uuid, pkl_id } => {
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Reference,
-                    codes::St2067_2_2020::DuplicateUuid,
-                    format!("Duplicate asset UUID {} in PKL {}", uuid, pkl_id),
-                )
-                .with_context("asset_uuid", uuid.clone())
-                .with_context("pkl_id", pkl_id.clone())
-            }
+            FileValidationError::NotInAssetMap {
+                uuid,
+                original_file_name,
+            } => ValidationIssue::new(
+                Severity::Error,
+                Category::Reference,
+                codes::St2067_2_2020::UnresolvedUuid,
+                format!(
+                    "PKL asset {} ({}) not found in AssetMap",
+                    uuid,
+                    original_file_name.as_deref().unwrap_or("no filename")
+                ),
+            )
+            .with_context("asset_uuid", uuid.clone()),
+            FileValidationError::Missing { uuid, path } => ValidationIssue::new(
+                Severity::Error,
+                Category::Asset,
+                codes::St2067_2_2020::FileNotFound,
+                format!("Missing file for asset {}: {}", uuid, path.display()),
+            )
+            .with_location(Location::new().with_file(path.clone()))
+            .with_context("asset_uuid", uuid.clone()),
+            FileValidationError::SizeMismatch {
+                uuid,
+                path,
+                expected,
+                actual,
+            } => ValidationIssue::new(
+                Severity::Error,
+                Category::Asset,
+                codes::St2067_2_2020::SizeMismatch,
+                format!(
+                    "Size mismatch for asset {} ({}): PKL declares {} bytes, file is {} bytes",
+                    uuid,
+                    path.display(),
+                    expected,
+                    actual
+                ),
+            )
+            .with_location(Location::new().with_file(path.clone()))
+            .with_context("asset_uuid", uuid.clone())
+            .with_context("expected_size", expected.to_string())
+            .with_context("actual_size", actual.to_string()),
+            FileValidationError::HashMismatch {
+                uuid,
+                path,
+                expected,
+                actual,
+            } => ValidationIssue::new(
+                Severity::Critical,
+                Category::Asset,
+                codes::St2067_2_2020::ChecksumMismatch,
+                format!(
+                    "Hash mismatch for asset {} ({}): expected {}, computed {}",
+                    uuid,
+                    path.display(),
+                    expected,
+                    actual
+                ),
+            )
+            .with_location(Location::new().with_file(path.clone()))
+            .with_context("asset_uuid", uuid.clone())
+            .with_suggestion("Re-deliver the asset or re-generate the PKL hash"),
+            FileValidationError::Io {
+                uuid,
+                path,
+                message,
+            } => ValidationIssue::new(
+                Severity::Error,
+                Category::Asset,
+                codes::St2067_2_2020::IoError,
+                format!(
+                    "IO error reading asset {} ({}): {}",
+                    uuid,
+                    path.display(),
+                    message
+                ),
+            )
+            .with_location(Location::new().with_file(path.clone()))
+            .with_context("asset_uuid", uuid.clone()),
+            FileValidationError::DuplicatePklAssetId { uuid, pkl_id } => ValidationIssue::new(
+                Severity::Error,
+                Category::Reference,
+                codes::St2067_2_2020::DuplicateUuid,
+                format!("Duplicate asset UUID {} in PKL {}", uuid, pkl_id),
+            )
+            .with_context("asset_uuid", uuid.clone())
+            .with_context("pkl_id", pkl_id.clone()),
         }
     }
 }
@@ -251,14 +301,21 @@ pub struct Imferno {
 /// derives the package `root_path` from these keys so that file-manifest
 /// and MXF-header validation work correctly on native targets.
 pub fn read_dir(path: impl AsRef<Path>) -> Result<HashMap<String, String>> {
-    let path = path.as_ref().canonicalize().unwrap_or_else(|_| path.as_ref().to_path_buf());
+    let path = path
+        .as_ref()
+        .canonicalize()
+        .unwrap_or_else(|_| path.as_ref().to_path_buf());
     let mut files = HashMap::new();
     for entry in std::fs::read_dir(&path)? {
         let entry = entry?;
         let p = entry.path();
         // Only read XML files — MXF and other binary assets are parsed separately
         // and must not be opened here (avoids pulling large files over remote mounts).
-        let ext = p.extension().and_then(|e| e.to_str()).unwrap_or("").to_ascii_lowercase();
+        let ext = p
+            .extension()
+            .and_then(|e| e.to_str())
+            .unwrap_or("")
+            .to_ascii_lowercase();
         if ext != "xml" {
             continue;
         }
@@ -280,19 +337,20 @@ impl Imferno {
     }
 
     /// Parse + validate in one call. Returns a `ValidationReport`.
-    pub fn parse_and_validate(files: HashMap<String, String>, options: &ValidationOptions) -> ValidationReport {
+    pub fn parse_and_validate(
+        files: HashMap<String, String>,
+        options: &ValidationOptions,
+    ) -> ValidationReport {
         let package = match Self::parse(files) {
             Ok(pkg) => pkg,
             Err(e) => {
                 let mut report = ValidationReport::new(ValidationProfile::SMPTE);
-                report.add(
-                    ValidationIssue::new(
-                        Severity::Critical,
-                        Category::Structure,
-                        "IMF/ParseError",
-                        format!("Failed to parse IMF package: {e}"),
-                    )
-                );
+                report.add(ValidationIssue::new(
+                    Severity::Critical,
+                    Category::Structure,
+                    "IMF/ParseError",
+                    format!("Failed to parse IMF package: {e}"),
+                ));
                 return report.apply_rules(&options.rules);
             }
         };
@@ -302,16 +360,19 @@ impl Imferno {
 
     /// Validate an already-parsed package. Applies rules from options.
     pub fn validate(&self, options: &ValidationOptions) -> ValidationReport {
-        use crate::validation::{ConfigurableValidatorRegistry, ValidatorSelection, validate_cpl_with_registry};
+        use crate::validation::{
+            validate_cpl_with_registry, ConfigurableValidatorRegistry, ValidatorSelection,
+        };
 
         let registry = ConfigurableValidatorRegistry::new(ValidatorSelection::default());
         #[cfg(not(target_arch = "wasm32"))]
         let skip_disk = options.skip_disk_checks;
         #[cfg(target_arch = "wasm32")]
         let skip_disk = false;
-        let report = self.validate_package_structure_with_cpl_validator(|cpl| {
-            validate_cpl_with_registry(cpl, &registry)
-        }, skip_disk);
+        let report = self.validate_package_structure_with_cpl_validator(
+            |cpl| validate_cpl_with_registry(cpl, &registry),
+            skip_disk,
+        );
         report.apply_rules(&options.rules)
     }
 
@@ -320,7 +381,9 @@ impl Imferno {
     /// Hash verification is only available on native targets (not WASM).
     #[cfg(not(target_arch = "wasm32"))]
     pub fn validate_hashes(&self, options: &ValidationOptions) -> ValidationReport {
-        use crate::validation::{ConfigurableValidatorRegistry, ValidatorSelection, validate_cpl_with_registry};
+        use crate::validation::{
+            validate_cpl_with_registry, ConfigurableValidatorRegistry, ValidatorSelection,
+        };
 
         let registry = ConfigurableValidatorRegistry::new(ValidatorSelection::default());
         let report = self.validate_package_with_hashes_with_cpl_validator(|cpl| {
@@ -341,10 +404,15 @@ impl Imferno {
     fn from_file_map(files: &HashMap<String, String>) -> Result<Self> {
         // Derive root_path from the keys if they are absolute paths.
         // `read_dir` produces absolute paths as keys; WASM callers use plain basenames.
-        let root_path: PathBuf = files.keys()
+        let root_path: PathBuf = files
+            .keys()
             .filter_map(|k| {
                 let p = std::path::Path::new(k.as_str());
-                if p.is_absolute() { p.parent().map(|par| par.to_path_buf()) } else { None }
+                if p.is_absolute() {
+                    p.parent().map(|par| par.to_path_buf())
+                } else {
+                    None
+                }
             })
             .next()
             .unwrap_or_default();
@@ -352,13 +420,16 @@ impl Imferno {
         // Case-insensitive basename lookup helper.
         let find = |name: &str| -> Option<&str> {
             let lower = name.to_lowercase();
-            files.iter().find(|(k, _)| {
-                let key_basename = std::path::Path::new(k.as_str())
-                    .file_name()
-                    .and_then(|f| f.to_str())
-                    .unwrap_or(k.as_str());
-                key_basename.to_lowercase() == lower
-            }).map(|(_, v)| v.as_str())
+            files
+                .iter()
+                .find(|(k, _)| {
+                    let key_basename = std::path::Path::new(k.as_str())
+                        .file_name()
+                        .and_then(|f| f.to_str())
+                        .unwrap_or(k.as_str());
+                    key_basename.to_lowercase() == lower
+                })
+                .map(|(_, v)| v.as_str())
         };
 
         // VOLINDEX.xml — optional per ST 429-9; issues collected here, emitted in validation.
@@ -418,8 +489,12 @@ impl Imferno {
                         .unwrap_or(&chunk.path);
                     if let Some(pkl_xml) = find(basename) {
                         match crate::assetmap::parse_pkl(pkl_xml) {
-                            Ok(pkl) => { packing_lists.insert(asset.id, pkl); }
-                            Err(e) => eprintln!("from_file_map: PKL {} parse error: {:?}", basename, e),
+                            Ok(pkl) => {
+                                packing_lists.insert(asset.id, pkl);
+                            }
+                            Err(e) => {
+                                eprintln!("from_file_map: PKL {} parse error: {:?}", basename, e)
+                            }
                         }
                     }
                 }
@@ -427,7 +502,8 @@ impl Imferno {
         }
 
         // Collect XML asset IDs from PKL MIME types
-        let mut xml_asset_ids: std::collections::HashSet<ImfUuid> = std::collections::HashSet::new();
+        let mut xml_asset_ids: std::collections::HashSet<ImfUuid> =
+            std::collections::HashSet::new();
         for pkl in packing_lists.values() {
             for pkl_asset in &pkl.asset_list.assets {
                 if pkl_asset.mime_type.is_xml() {
@@ -442,15 +518,21 @@ impl Imferno {
         let mut output_profile_lists = HashMap::new();
         let mut sidecar_composition_maps = HashMap::new();
         for asset in &asset_map.asset_list.assets {
-            if asset.packing_list == Some(true) { continue; }
+            if asset.packing_list == Some(true) {
+                continue;
+            }
             for chunk in &asset.chunk_list.chunks {
-                if !chunk.path.ends_with(".xml") { continue; }
+                if !chunk.path.ends_with(".xml") {
+                    continue;
+                }
                 let is_candidate = if !xml_asset_ids.is_empty() {
                     xml_asset_ids.contains(&asset.id)
                 } else {
                     true
                 };
-                if !is_candidate { continue; }
+                if !is_candidate {
+                    continue;
+                }
 
                 let basename = std::path::Path::new(&chunk.path)
                     .file_name()
@@ -495,7 +577,9 @@ impl Imferno {
 
     /// Get CPL by UUID string (convenience for callers with string UUIDs)
     pub fn get_cpl_str(&self, uuid: &str) -> Option<&CompositionPlaylist> {
-        ImfUuid::parse(uuid).ok().and_then(|u| self.composition_playlists.get(&u))
+        ImfUuid::parse(uuid)
+            .ok()
+            .and_then(|u| self.composition_playlists.get(&u))
     }
 
     /// Get asset file path by UUID
@@ -505,7 +589,9 @@ impl Imferno {
 
     /// Get asset file path by UUID string (convenience)
     pub fn get_asset_path_str(&self, uuid: &str) -> Option<&PathBuf> {
-        ImfUuid::parse(uuid).ok().and_then(|u| self.asset_paths.get(&u))
+        ImfUuid::parse(uuid)
+            .ok()
+            .and_then(|u| self.asset_paths.get(&u))
     }
 
     /// List all CPL UUIDs
@@ -528,11 +614,13 @@ impl Imferno {
     /// These are typically sidecar essences (e.g. Dolby Atmos MXF) delivered
     /// without an accompanying SCM document.
     pub fn unreferenced_assets(&self) -> Vec<&crate::assetmap::Asset> {
-        use std::collections::HashSet;
         use crate::cpl::SequenceAccess;
+        use std::collections::HashSet;
 
         // UUIDs of all document assets we have parsed
-        let doc_ids: HashSet<ImfUuid> = self.composition_playlists.keys()
+        let doc_ids: HashSet<ImfUuid> = self
+            .composition_playlists
+            .keys()
             .chain(self.packing_lists.keys())
             .chain(self.sidecar_composition_maps.keys())
             .chain(self.output_profile_lists.keys())
@@ -540,31 +628,56 @@ impl Imferno {
             .collect();
 
         // TrackFileIds referenced by any CPL Virtual Track
-        let track_file_ids: HashSet<ImfUuid> = self.composition_playlists.values()
+        let track_file_ids: HashSet<ImfUuid> = self
+            .composition_playlists
+            .values()
             .flat_map(|cpl| cpl.segment_list.segments.iter())
             .flat_map(|seg| {
                 let sl = &seg.sequence_list;
                 let mut v: Vec<&dyn SequenceAccess> = Vec::new();
-                for s in &sl.main_image_sequences { v.push(s); }
-                for s in &sl.main_audio_sequences { v.push(s); }
-                for s in &sl.subtitles_sequences { v.push(s); }
-                for s in &sl.hearing_impaired_captions_sequences { v.push(s); }
-                for s in &sl.forced_narrative_sequences { v.push(s); }
-                for s in &sl.iab_sequences { v.push(s); }
-                for s in &sl.isxd_sequences { v.push(s); }
+                for s in &sl.main_image_sequences {
+                    v.push(s);
+                }
+                for s in &sl.main_audio_sequences {
+                    v.push(s);
+                }
+                for s in &sl.subtitles_sequences {
+                    v.push(s);
+                }
+                for s in &sl.hearing_impaired_captions_sequences {
+                    v.push(s);
+                }
+                for s in &sl.forced_narrative_sequences {
+                    v.push(s);
+                }
+                for s in &sl.iab_sequences {
+                    v.push(s);
+                }
+                for s in &sl.isxd_sequences {
+                    v.push(s);
+                }
                 v.into_iter()
-                    .flat_map(|seq| seq.resource_list().resources.iter()
-                        .filter_map(|r| r.track_file_id))
+                    .flat_map(|seq| {
+                        seq.resource_list()
+                            .resources
+                            .iter()
+                            .filter_map(|r| r.track_file_id)
+                    })
                     .collect::<Vec<_>>()
             })
             .collect();
 
         // Asset IDs already declared as SCM sidecars
-        let scm_declared: HashSet<ImfUuid> = self.sidecar_composition_maps.values()
+        let scm_declared: HashSet<ImfUuid> = self
+            .sidecar_composition_maps
+            .values()
             .flat_map(|scm| scm.sidecar_assets.iter().map(|sa| sa.id))
             .collect();
 
-        self.asset_map.asset_list.assets.iter()
+        self.asset_map
+            .asset_list
+            .assets
+            .iter()
             .filter(|a| {
                 a.packing_list != Some(true)
                     && !doc_ids.contains(&a.id)
@@ -579,7 +692,10 @@ impl Imferno {
     fn emit_unreferenced_asset_info(&self, report: &mut ValidationReport) {
         use crate::diagnostics::codes::ValidationCode as _;
         for asset in self.unreferenced_assets() {
-            let path = asset.chunk_list.chunks.first()
+            let path = asset
+                .chunk_list
+                .chunks
+                .first()
                 .map(|c| c.path.as_str())
                 .unwrap_or("(unknown)");
             report.add(ValidationIssue::new(
@@ -608,7 +724,11 @@ impl Imferno {
         }
 
         // All filenames listed as chunks in the AssetMap.
-        let mapped: std::collections::HashSet<String> = self.asset_map.asset_list.assets.iter()
+        let mapped: std::collections::HashSet<String> = self
+            .asset_map
+            .asset_list
+            .assets
+            .iter()
             .flat_map(|a| a.chunk_list.chunks.iter())
             .filter_map(|c| {
                 std::path::Path::new(&c.path)
@@ -652,7 +772,8 @@ impl Imferno {
         // Run the comprehensive package structure validation and convert to Result
         let report = self.validate_package_structure();
         if report.has_critical() || report.has_errors() {
-            let error_messages: Vec<String> = report.errors
+            let error_messages: Vec<String> = report
+                .errors
                 .iter()
                 .chain(report.critical.iter())
                 .map(|i| i.message.clone())
@@ -724,10 +845,8 @@ impl Imferno {
 
         let mut errors = self.validate_file_manifest();
         // Collect UUIDs that already have errors to skip re-reading those files
-        let errored_uuids: std::collections::HashSet<String> = errors
-            .iter()
-            .map(|e| e.uuid().to_string())
-            .collect();
+        let errored_uuids: std::collections::HashSet<String> =
+            errors.iter().map(|e| e.uuid().to_string()).collect();
 
         let path_map = self.build_asset_path_map();
 
@@ -737,7 +856,9 @@ impl Imferno {
                 if errored_uuids.contains(&uuid_str) {
                     continue;
                 }
-                let Some(rel_path) = path_map.get(&asset.id) else { continue };
+                let Some(rel_path) = path_map.get(&asset.id) else {
+                    continue;
+                };
                 let abs_path = self.root_path.join(rel_path);
 
                 match std::fs::read(&abs_path) {
@@ -860,7 +981,11 @@ impl Imferno {
     ///
     /// Set `skip_disk_checks` to `true` to skip file manifest (existence/size) and MXF header
     /// inspection. Useful for packages on slow or remote filesystems (e.g. S3 via MacFUSE).
-    pub fn validate_package_structure_with_cpl_validator<F>(&self, cpl_validator: F, skip_disk_checks: bool) -> ValidationReport
+    pub fn validate_package_structure_with_cpl_validator<F>(
+        &self,
+        cpl_validator: F,
+        skip_disk_checks: bool,
+    ) -> ValidationReport
     where
         F: Fn(&CompositionPlaylist) -> Vec<ValidationIssue>,
     {
@@ -872,7 +997,11 @@ impl Imferno {
         }
 
         // PKL structural constraints (ST 2067-2 §7/9)
-        for issue in self.validate_pkl_constraints().iter().map(ValidationIssue::from) {
+        for issue in self
+            .validate_pkl_constraints()
+            .iter()
+            .map(ValidationIssue::from)
+        {
             report.add(issue);
         }
 
@@ -881,7 +1010,11 @@ impl Imferno {
         //  and skipped when skip_disk_checks is true)
         #[cfg(not(target_arch = "wasm32"))]
         if !skip_disk_checks && !self.root_path.as_os_str().is_empty() {
-            for issue in self.validate_file_manifest().iter().map(ValidationIssue::from) {
+            for issue in self
+                .validate_file_manifest()
+                .iter()
+                .map(ValidationIssue::from)
+            {
                 report.add(issue);
             }
         }
@@ -925,7 +1058,10 @@ impl Imferno {
     }
 
     /// Hash-validating package-level validation with optional CPL-level validator injection.
-    pub fn validate_package_with_hashes_with_cpl_validator<F>(&self, cpl_validator: F) -> ValidationReport
+    pub fn validate_package_with_hashes_with_cpl_validator<F>(
+        &self,
+        cpl_validator: F,
+    ) -> ValidationReport
     where
         F: Fn(&CompositionPlaylist) -> Vec<ValidationIssue>,
     {
@@ -937,12 +1073,20 @@ impl Imferno {
         }
 
         // PKL structural constraints
-        for issue in self.validate_pkl_constraints().iter().map(ValidationIssue::from) {
+        for issue in self
+            .validate_pkl_constraints()
+            .iter()
+            .map(ValidationIssue::from)
+        {
             report.add(issue);
         }
 
         // File manifest + hash verification (subsumes validate_file_manifest)
-        for issue in self.validate_file_hashes().iter().map(ValidationIssue::from) {
+        for issue in self
+            .validate_file_hashes()
+            .iter()
+            .map(ValidationIssue::from)
+        {
             report.add(issue);
         }
 
@@ -969,32 +1113,56 @@ impl Imferno {
     ///
     /// Enforces normative requirements from §5, §7.2.3, §7.2.4, §7.2.5, §7.3.1, §7.3.1.1.
     fn validate_scm_references(&self, report: &mut ValidationReport) {
-        use std::collections::HashSet;
         use crate::cpl::SequenceAccess;
+        use std::collections::HashSet;
 
-        let asset_ids: HashSet<_> = self.asset_map.asset_list.assets.iter()
+        let asset_ids: HashSet<_> = self
+            .asset_map
+            .asset_list
+            .assets
+            .iter()
             .map(|a| a.id)
             .collect();
 
         // §5: Collect all TrackFileIds referenced by any Virtual Track in any CPL.
-        let virtual_track_file_ids: HashSet<ImfUuid> = self.composition_playlists.values()
+        let virtual_track_file_ids: HashSet<ImfUuid> = self
+            .composition_playlists
+            .values()
             .flat_map(|cpl| cpl.segment_list.segments.iter())
             .flat_map(|seg| {
                 let sl = &seg.sequence_list;
                 let seqs: Vec<&dyn SequenceAccess> = {
                     let mut v: Vec<&dyn SequenceAccess> = Vec::new();
-                    for s in &sl.main_image_sequences { v.push(s); }
-                    for s in &sl.main_audio_sequences { v.push(s); }
-                    for s in &sl.subtitles_sequences { v.push(s); }
-                    for s in &sl.hearing_impaired_captions_sequences { v.push(s); }
-                    for s in &sl.forced_narrative_sequences { v.push(s); }
-                    for s in &sl.iab_sequences { v.push(s); }
-                    for s in &sl.isxd_sequences { v.push(s); }
+                    for s in &sl.main_image_sequences {
+                        v.push(s);
+                    }
+                    for s in &sl.main_audio_sequences {
+                        v.push(s);
+                    }
+                    for s in &sl.subtitles_sequences {
+                        v.push(s);
+                    }
+                    for s in &sl.hearing_impaired_captions_sequences {
+                        v.push(s);
+                    }
+                    for s in &sl.forced_narrative_sequences {
+                        v.push(s);
+                    }
+                    for s in &sl.iab_sequences {
+                        v.push(s);
+                    }
+                    for s in &sl.isxd_sequences {
+                        v.push(s);
+                    }
                     v
                 };
                 seqs.into_iter()
-                    .flat_map(|seq| seq.resource_list().resources.iter()
-                        .filter_map(|r| r.track_file_id))
+                    .flat_map(|seq| {
+                        seq.resource_list()
+                            .resources
+                            .iter()
+                            .filter_map(|r| r.track_file_id)
+                    })
                     .collect::<Vec<_>>()
             })
             .collect();
@@ -1002,66 +1170,87 @@ impl Imferno {
         for scm in self.sidecar_composition_maps.values() {
             // §7.2.4: Signer present → Signature must be present.
             if scm.has_signer && !scm.has_signature {
-                report.add(ValidationIssue::new(
-                    Severity::Error,
-                    Category::Reference,
-                    codes::St2067_9_2018::SignerWithoutSignature,
-                    format!("SCM {}: Signer element present but Signature element is absent", scm.id),
-                ).with_context("scm_id", scm.id.to_string()));
+                report.add(
+                    ValidationIssue::new(
+                        Severity::Error,
+                        Category::Reference,
+                        codes::St2067_9_2018::SignerWithoutSignature,
+                        format!(
+                            "SCM {}: Signer element present but Signature element is absent",
+                            scm.id
+                        ),
+                    )
+                    .with_context("scm_id", scm.id.to_string()),
+                );
             }
 
             // §7.2.5: Signature present → Signer must be present.
             if scm.has_signature && !scm.has_signer {
-                report.add(ValidationIssue::new(
-                    Severity::Error,
-                    Category::Reference,
-                    codes::St2067_9_2018::SignatureWithoutSigner,
-                    format!("SCM {}: Signature element present but Signer element is absent", scm.id),
-                ).with_context("scm_id", scm.id.to_string()));
+                report.add(
+                    ValidationIssue::new(
+                        Severity::Error,
+                        Category::Reference,
+                        codes::St2067_9_2018::SignatureWithoutSigner,
+                        format!(
+                            "SCM {}: Signature element present but Signer element is absent",
+                            scm.id
+                        ),
+                    )
+                    .with_context("scm_id", scm.id.to_string()),
+                );
             }
 
             let mut seen_asset_ids = HashSet::new();
             for sidecar_asset in &scm.sidecar_assets {
                 // §7.2.3: Duplicate SidecarAsset Id within SidecarAssetList.
                 if !seen_asset_ids.insert(sidecar_asset.id) {
-                    report.add(ValidationIssue::new(
-                        Severity::Error,
-                        Category::Reference,
-                        codes::St2067_9_2018::DuplicateAssetId,
-                        format!(
-                            "Duplicate SidecarAsset Id {} in SCM {}",
-                            sidecar_asset.id, scm.id
-                        ),
-                    ).with_context("scm_id", scm.id.to_string())
-                     .with_context("asset_id", sidecar_asset.id.to_string()));
+                    report.add(
+                        ValidationIssue::new(
+                            Severity::Error,
+                            Category::Reference,
+                            codes::St2067_9_2018::DuplicateAssetId,
+                            format!(
+                                "Duplicate SidecarAsset Id {} in SCM {}",
+                                sidecar_asset.id, scm.id
+                            ),
+                        )
+                        .with_context("scm_id", scm.id.to_string())
+                        .with_context("asset_id", sidecar_asset.id.to_string()),
+                    );
                 }
 
                 // §7.3.1: SidecarAsset Id must exist in the AssetMap.
                 if !asset_ids.contains(&sidecar_asset.id) {
-                    report.add(ValidationIssue::new(
-                        Severity::Error,
-                        Category::Reference,
-                        codes::St2067_9_2018::SidecarAssetNotFound,
-                        format!(
-                            "SCM {} references sidecar asset {} not found in AssetMap",
-                            scm.id, sidecar_asset.id
-                        ),
-                    ).with_context("scm_id", scm.id.to_string())
-                     .with_context("asset_id", sidecar_asset.id.to_string()));
+                    report.add(
+                        ValidationIssue::new(
+                            Severity::Error,
+                            Category::Reference,
+                            codes::St2067_9_2018::SidecarAssetNotFound,
+                            format!(
+                                "SCM {} references sidecar asset {} not found in AssetMap",
+                                scm.id, sidecar_asset.id
+                            ),
+                        )
+                        .with_context("scm_id", scm.id.to_string())
+                        .with_context("asset_id", sidecar_asset.id.to_string()),
+                    );
                 }
 
                 // §5: Sidecar asset shall not be referenced by any Virtual Track.
                 if virtual_track_file_ids.contains(&sidecar_asset.id) {
-                    report.add(ValidationIssue::new(
-                        Severity::Error,
-                        Category::Reference,
-                        codes::St2067_9_2018::SidecarAssetReferencedByVirtualTrack,
-                        format!(
+                    report.add(
+                        ValidationIssue::new(
+                            Severity::Error,
+                            Category::Reference,
+                            codes::St2067_9_2018::SidecarAssetReferencedByVirtualTrack,
+                            format!(
                             "Sidecar asset {} (SCM {}) is referenced by a Virtual Track in a CPL",
                             sidecar_asset.id, scm.id
                         ),
-                    ).with_context("scm_id", scm.id.to_string())
-                     .with_context("asset_id", sidecar_asset.id.to_string()));
+                        )
+                        .with_context("scm_id", scm.id.to_string())
+                        .with_context("asset_id", sidecar_asset.id.to_string()),
+                    );
                 }
 
                 // §7.3.1.1: CPL Ids within AssociatedCPLList.
@@ -1115,10 +1304,11 @@ impl Imferno {
         let mut asset_records: HashMap<ImfUuid, Vec<(ImfUuid, String, u64)>> = HashMap::new();
         for (pkl_id, pkl) in &self.packing_lists {
             for asset in &pkl.asset_list.assets {
-                asset_records
-                    .entry(asset.id)
-                    .or_default()
-                    .push((*pkl_id, asset.hash.to_base64(), asset.size));
+                asset_records.entry(asset.id).or_default().push((
+                    *pkl_id,
+                    asset.hash.to_base64(),
+                    asset.size,
+                ));
             }
         }
 
@@ -1202,7 +1392,8 @@ impl Imferno {
                         let op_bytes = parse_ul_bytes(&info.operational_pattern);
                         if let Some(bytes) = op_bytes {
                             // IMF requires OP1a: bytes 13-14 (0-indexed: 12-13) = 01 01
-                            if bytes[12] != OP1A_BYTES_13_14[0] || bytes[13] != OP1A_BYTES_13_14[1] {
+                            if bytes[12] != OP1A_BYTES_13_14[0] || bytes[13] != OP1A_BYTES_13_14[1]
+                            {
                                 report.add(
                                     ValidationIssue::new(
                                         Severity::Error,
@@ -1211,13 +1402,13 @@ impl Imferno {
                                         format!(
                                             "MXF track file '{}' has Operational Pattern '{}' \
                                              but IMF requires OP1a (ST 2067-2 §5.1)",
-                                            path.file_name().map(|n| n.to_string_lossy()).unwrap_or_default(),
+                                            path.file_name()
+                                                .map(|n| n.to_string_lossy())
+                                                .unwrap_or_default(),
                                             info.operational_pattern,
                                         ),
                                     )
-                                    .with_location(
-                                        Location::new().with_file(path.clone()),
-                                    )
+                                    .with_location(Location::new().with_file(path.clone()))
                                     .with_context("asset_uuid", asset.id.to_string()),
                                 );
                             }
@@ -1248,7 +1439,9 @@ impl Imferno {
                                 codes::St377_1_2011::NotMxf,
                                 format!(
                                     "File '{}' has MXF MIME type but is not a valid MXF file",
-                                    path.file_name().map(|n| n.to_string_lossy()).unwrap_or_default(),
+                                    path.file_name()
+                                        .map(|n| n.to_string_lossy())
+                                        .unwrap_or_default(),
                                 ),
                             )
                             .with_location(Location::new().with_file(path.clone()))
@@ -1263,7 +1456,9 @@ impl Imferno {
                                 codes::St377_1_2011::ParseError,
                                 format!(
                                     "Could not parse MXF header of '{}': {}",
-                                    path.file_name().map(|n| n.to_string_lossy()).unwrap_or_default(),
+                                    path.file_name()
+                                        .map(|n| n.to_string_lossy())
+                                        .unwrap_or_default(),
                                     e,
                                 ),
                             )
@@ -1303,10 +1498,14 @@ impl Imferno {
 
                     for r in resources {
                         let ep = r.entry_point.unwrap_or(0);
-                        let dur = r.source_duration.unwrap_or(r.intrinsic_duration.saturating_sub(ep));
+                        let dur = r
+                            .source_duration
+                            .unwrap_or(r.intrinsic_duration.saturating_sub(ep));
 
                         // Resolve edit rate: resource > CPL > default (1/1)
-                        let er = r.edit_rate.as_ref()
+                        let er = r
+                            .edit_rate
+                            .as_ref()
                             .or(cpl_edit_rate)
                             .cloned()
                             .unwrap_or(EditRate::new(1, 1));
@@ -1348,7 +1547,11 @@ impl Imferno {
                 add_durations(&seq_list.main_image_sequences, cpl_er, &mut durations);
                 add_durations(&seq_list.main_audio_sequences, cpl_er, &mut durations);
                 add_durations(&seq_list.subtitles_sequences, cpl_er, &mut durations);
-                add_durations(&seq_list.hearing_impaired_captions_sequences, cpl_er, &mut durations);
+                add_durations(
+                    &seq_list.hearing_impaired_captions_sequences,
+                    cpl_er,
+                    &mut durations,
+                );
                 add_durations(&seq_list.forced_narrative_sequences, cpl_er, &mut durations);
 
                 if durations.is_empty() {
@@ -1368,11 +1571,7 @@ impl Imferno {
                                 format!(
                                     "Segment {} has mismatched virtual track durations: \
                                      track {} = {:.6}s but track {} = {:.6}s",
-                                    seg_idx,
-                                    durations[0].0,
-                                    first_dur,
-                                    track_id,
-                                    dur,
+                                    seg_idx, durations[0].0, first_dur, track_id, dur,
                                 ),
                             )
                             .with_location(
@@ -1463,20 +1662,68 @@ impl Imferno {
         for (seg_idx, segment) in cpl.segment_list.segments.iter().enumerate() {
             let seq_list = &segment.sequence_list;
 
-            check_sequences(&seq_list.main_image_sequences, "MainImageSequence", &cpl_id, seg_idx, &assetmap_ids, &mut issues);
-            check_sequences(&seq_list.main_audio_sequences, "MainAudioSequence", &cpl_id, seg_idx, &assetmap_ids, &mut issues);
-            check_sequences(&seq_list.subtitles_sequences, "SubtitlesSequence", &cpl_id, seg_idx, &assetmap_ids, &mut issues);
-            check_sequences(&seq_list.hearing_impaired_captions_sequences, "HearingImpairedCaptionsSequence", &cpl_id, seg_idx, &assetmap_ids, &mut issues);
-            check_sequences(&seq_list.forced_narrative_sequences, "ForcedNarrativeSequence", &cpl_id, seg_idx, &assetmap_ids, &mut issues);
-            check_sequences(&seq_list.iab_sequences, "IABSequence", &cpl_id, seg_idx, &assetmap_ids, &mut issues);
-            check_sequences(&seq_list.isxd_sequences, "ISXDSequence", &cpl_id, seg_idx, &assetmap_ids, &mut issues);
+            check_sequences(
+                &seq_list.main_image_sequences,
+                "MainImageSequence",
+                &cpl_id,
+                seg_idx,
+                &assetmap_ids,
+                &mut issues,
+            );
+            check_sequences(
+                &seq_list.main_audio_sequences,
+                "MainAudioSequence",
+                &cpl_id,
+                seg_idx,
+                &assetmap_ids,
+                &mut issues,
+            );
+            check_sequences(
+                &seq_list.subtitles_sequences,
+                "SubtitlesSequence",
+                &cpl_id,
+                seg_idx,
+                &assetmap_ids,
+                &mut issues,
+            );
+            check_sequences(
+                &seq_list.hearing_impaired_captions_sequences,
+                "HearingImpairedCaptionsSequence",
+                &cpl_id,
+                seg_idx,
+                &assetmap_ids,
+                &mut issues,
+            );
+            check_sequences(
+                &seq_list.forced_narrative_sequences,
+                "ForcedNarrativeSequence",
+                &cpl_id,
+                seg_idx,
+                &assetmap_ids,
+                &mut issues,
+            );
+            check_sequences(
+                &seq_list.iab_sequences,
+                "IABSequence",
+                &cpl_id,
+                seg_idx,
+                &assetmap_ids,
+                &mut issues,
+            );
+            check_sequences(
+                &seq_list.isxd_sequences,
+                "ISXDSequence",
+                &cpl_id,
+                seg_idx,
+                &assetmap_ids,
+                &mut issues,
+            );
         }
 
         for issue in issues {
             report.add(issue);
         }
     }
-
 }
 
 /// Parse a `urn:smpte:ul:XXXXXXXX.XXXXXXXX.XXXXXXXX.XXXXXXXX` string into 16 raw bytes.
@@ -1577,7 +1824,11 @@ impl Imferno {
             asset_map_id: self.asset_map.id.to_string(),
             asset_count: self.asset_map.asset_list.assets.len(),
             cpl_count: self.composition_playlists.len(),
-            cpl_uuids: self.composition_playlists.keys().map(|u| u.to_string()).collect(),
+            cpl_uuids: self
+                .composition_playlists
+                .keys()
+                .map(|u| u.to_string())
+                .collect(),
             main_cpl,
             asset_map_issuer: self.asset_map.issuer.clone(),
             asset_map_creator: self.asset_map.creator.clone(),
@@ -1590,21 +1841,30 @@ impl Imferno {
         let cpl = self.get_cpl_str(uuid)?;
 
         let content_versions = if let Some(ref version_list) = cpl.content_version_list {
-            version_list.content_versions.iter().map(|v| v.id.clone()).collect()
+            version_list
+                .content_versions
+                .iter()
+                .map(|v| v.id.clone())
+                .collect()
         } else {
             Vec::new()
         };
 
-        let segments = cpl.segment_list.segments.iter().map(|seg| {
-            let seq_list = &seg.sequence_list;
-            let sequence_count = seq_list.main_image_sequences.len() +
-                               seq_list.main_audio_sequences.len() +
-                               seq_list.subtitles_sequences.len();
-            SegmentInfo {
-                id: seg.id.to_string(),
-                sequence_count,
-            }
-        }).collect();
+        let segments = cpl
+            .segment_list
+            .segments
+            .iter()
+            .map(|seg| {
+                let seq_list = &seg.sequence_list;
+                let sequence_count = seq_list.main_image_sequences.len()
+                    + seq_list.main_audio_sequences.len()
+                    + seq_list.subtitles_sequences.len();
+                SegmentInfo {
+                    id: seg.id.to_string(),
+                    sequence_count,
+                }
+            })
+            .collect();
 
         Some(CplDetails {
             id: cpl.id.to_string(),
@@ -1669,7 +1929,10 @@ impl Imferno {
     }
 
     /// Get enhanced track analysis using provided feature data
-    pub fn analyze_tracks_enhanced(&self, feature_data: Option<serde_json::Value>) -> Vec<TrackAnalysis> {
+    pub fn analyze_tracks_enhanced(
+        &self,
+        feature_data: Option<serde_json::Value>,
+    ) -> Vec<TrackAnalysis> {
         let mut analyses = Vec::new();
 
         for (uuid, cpl) in &self.composition_playlists {
@@ -1700,7 +1963,8 @@ impl Imferno {
 
             let languages = if let Some(ref data) = feature_data {
                 if let Some(audio_langs) = data["audio_languages"].as_array() {
-                    audio_langs.iter()
+                    audio_langs
+                        .iter()
                         .filter_map(|v| v.as_str().map(String::from))
                         .collect()
                 } else {
@@ -1727,9 +1991,15 @@ impl Imferno {
                 }
             }
 
-            if video_tracks > 0 { codecs.insert("Video".to_string()); }
-            if audio_tracks > 0 { codecs.insert("Audio".to_string()); }
-            if subtitle_tracks > 0 { codecs.insert("Subtitle".to_string()); }
+            if video_tracks > 0 {
+                codecs.insert("Video".to_string());
+            }
+            if audio_tracks > 0 {
+                codecs.insert("Audio".to_string());
+            }
+            if subtitle_tracks > 0 {
+                codecs.insert("Subtitle".to_string());
+            }
 
             analyses.push(TrackAnalysis {
                 cpl_id: uuid.to_string(),
@@ -1749,8 +2019,8 @@ impl Imferno {
     /// List all CPLs with summary information
     pub fn list_cpls(&self) -> Vec<CplSummary> {
         self.composition_playlists
-            .iter()
-            .map(|(_, cpl)| CplSummary {
+            .values()
+            .map(|cpl| CplSummary {
                 id: cpl.id.to_string(),
                 title: cpl.content_title.text.clone(),
                 kind: cpl.content_kind.to_string(),
@@ -1766,7 +2036,7 @@ impl Imferno {
 
 // ── Pipeline options ──────────────────────────────────────────────────────────
 
-pub use crate::diagnostics::{RulesConfig, RuleSeverity};
+pub use crate::diagnostics::{RuleSeverity, RulesConfig};
 
 /// Options controlling validation behaviour.
 #[derive(Debug, Default, Clone)]
@@ -1791,7 +2061,9 @@ mod tests {
     use codes::{St2067_2_2020, St377_1_2011, ValidationCode};
 
     fn test_data(name: &str) -> PathBuf {
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../test-data").join(name)
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../test-data")
+            .join(name)
     }
 
     #[test]
@@ -1817,15 +2089,22 @@ mod tests {
     #[test]
     fn test_package_inspection_api() {
         let test_path = test_data("MERIDIAN_Netflix_Photon_161006");
-        let package = Imferno::parse(read_dir(test_path).unwrap()).expect("Failed to parse package");
+        let package =
+            Imferno::parse(read_dir(test_path).unwrap()).expect("Failed to parse package");
 
         let inspection = package.inspect();
 
         assert_eq!(inspection.volume_index, 1);
         assert_eq!(inspection.asset_count, 6);
         assert_eq!(inspection.cpl_count, 1);
-        assert_eq!(inspection.asset_map_id, "75864667-c65e-4aae-a5b2-fa5ea5fe31b7");
-        assert!(inspection.path.to_string_lossy().contains("MERIDIAN_Netflix_Photon_161006"));
+        assert_eq!(
+            inspection.asset_map_id,
+            "75864667-c65e-4aae-a5b2-fa5ea5fe31b7"
+        );
+        assert!(inspection
+            .path
+            .to_string_lossy()
+            .contains("MERIDIAN_Netflix_Photon_161006"));
 
         assert!(inspection.main_cpl.is_some());
         let main_cpl = inspection.main_cpl.unwrap();
@@ -1837,7 +2116,8 @@ mod tests {
     #[test]
     fn test_list_cpls_api() {
         let test_path = test_data("MERIDIAN_Netflix_Photon_161006");
-        let package = Imferno::parse(read_dir(test_path).unwrap()).expect("Failed to parse package");
+        let package =
+            Imferno::parse(read_dir(test_path).unwrap()).expect("Failed to parse package");
 
         let cpls = package.list_cpls();
 
@@ -1854,10 +2134,13 @@ mod tests {
     #[test]
     fn test_get_cpl_details_api() {
         let test_path = test_data("MERIDIAN_Netflix_Photon_161006");
-        let package = Imferno::parse(read_dir(test_path).unwrap()).expect("Failed to parse package");
+        let package =
+            Imferno::parse(read_dir(test_path).unwrap()).expect("Failed to parse package");
 
         let cpl_uuid = "0eb3d1b9-b77b-4d3f-bbe5-7c69b15dca85";
-        let details = package.get_cpl_details(cpl_uuid).expect("Failed to get CPL details");
+        let details = package
+            .get_cpl_details(cpl_uuid)
+            .expect("Failed to get CPL details");
 
         assert_eq!(details.id, cpl_uuid);
         assert_eq!(details.title, "MERIDIAN");
@@ -1875,7 +2158,8 @@ mod tests {
     #[test]
     fn test_analyze_tracks_api() {
         let test_path = test_data("MERIDIAN_Netflix_Photon_161006");
-        let package = Imferno::parse(read_dir(test_path).unwrap()).expect("Failed to parse package");
+        let package =
+            Imferno::parse(read_dir(test_path).unwrap()).expect("Failed to parse package");
 
         let track_analyses = package.analyze_tracks();
 
@@ -1888,7 +2172,8 @@ mod tests {
     #[test]
     fn test_list_cpl_uuids_api() {
         let test_path = test_data("MERIDIAN_Netflix_Photon_161006");
-        let package = Imferno::parse(read_dir(test_path).unwrap()).expect("Failed to parse package");
+        let package =
+            Imferno::parse(read_dir(test_path).unwrap()).expect("Failed to parse package");
 
         let uuids = package.list_cpl_uuids();
 
@@ -1899,56 +2184,90 @@ mod tests {
     #[test]
     fn test_validation_api() {
         let test_path = test_data("MERIDIAN_Netflix_Photon_161006");
-        let package = Imferno::parse(read_dir(test_path).unwrap()).expect("Failed to parse package");
+        let package =
+            Imferno::parse(read_dir(test_path).unwrap()).expect("Failed to parse package");
 
         let report = package.validate(&ValidationOptions::default());
-        assert!(!report.has_errors(), "Package structure validation should have no errors: {:?}", report.summary());
+        assert!(
+            !report.has_errors(),
+            "Package structure validation should have no errors: {:?}",
+            report.summary()
+        );
     }
 
     #[test]
     fn test_validate_package_structure_with_cpl_validator_injects_issues() {
         let test_path = test_data("MERIDIAN_Netflix_Photon_161006");
-        let package = Imferno::parse(read_dir(test_path).unwrap()).expect("Failed to parse package");
+        let package =
+            Imferno::parse(read_dir(test_path).unwrap()).expect("Failed to parse package");
 
         const INJECTED_CODE: &str = "ST2067-2:2020:6.12/InjectedRuleForTest";
 
-        let report = package.validate_package_structure_with_cpl_validator(|cpl| {
-            vec![ValidationIssue::new(
-                Severity::Warning,
-                Category::Metadata,
-                INJECTED_CODE,
-                format!("Injected validator issue for CPL {}", cpl.id),
-            )]
-        }, false);
+        let report = package.validate_package_structure_with_cpl_validator(
+            |cpl| {
+                vec![ValidationIssue::new(
+                    Severity::Warning,
+                    Category::Metadata,
+                    INJECTED_CODE,
+                    format!("Injected validator issue for CPL {}", cpl.id),
+                )]
+            },
+            false,
+        );
 
         let expected_code = INJECTED_CODE;
-        let injected_present = report.warnings.iter().any(|issue| issue.code == expected_code)
-            || report.errors.iter().any(|issue| issue.code == expected_code)
-            || report.critical.iter().any(|issue| issue.code == expected_code)
+        let injected_present = report
+            .warnings
+            .iter()
+            .any(|issue| issue.code == expected_code)
+            || report
+                .errors
+                .iter()
+                .any(|issue| issue.code == expected_code)
+            || report
+                .critical
+                .iter()
+                .any(|issue| issue.code == expected_code)
             || report.info.iter().any(|issue| issue.code == expected_code);
-        assert!(injected_present, "Expected injected CPL issue to be present in report");
+        assert!(
+            injected_present,
+            "Expected injected CPL issue to be present in report"
+        );
     }
 
     #[test]
     fn test_validate_package_structure_with_empty_cpl_validator_matches_default_counts() {
-        use crate::validation::{ConfigurableValidatorRegistry, ValidatorSelection, validate_cpl_with_registry};
+        use crate::validation::{
+            validate_cpl_with_registry, ConfigurableValidatorRegistry, ValidatorSelection,
+        };
 
         let test_path = test_data("MERIDIAN_Netflix_Photon_161006");
-        let package = Imferno::parse(read_dir(test_path).unwrap()).expect("Failed to parse package");
+        let package =
+            Imferno::parse(read_dir(test_path).unwrap()).expect("Failed to parse package");
 
         // default_report uses the same st2067_21 registry as validate() uses internally.
         let default_report = package.validate(&ValidationOptions::default());
 
         // Build the same registry that validate() uses so counts are comparable.
         let registry = ConfigurableValidatorRegistry::new(ValidatorSelection::default());
-        let injected_report = package.validate_package_structure_with_cpl_validator(|cpl| {
-            validate_cpl_with_registry(cpl, &registry)
-        }, false);
+        let injected_report = package.validate_package_structure_with_cpl_validator(
+            |cpl| validate_cpl_with_registry(cpl, &registry),
+            false,
+        );
 
-        assert_eq!(default_report.total_issues(), injected_report.total_issues());
+        assert_eq!(
+            default_report.total_issues(),
+            injected_report.total_issues()
+        );
         assert_eq!(default_report.errors.len(), injected_report.errors.len());
-        assert_eq!(default_report.warnings.len(), injected_report.warnings.len());
-        assert_eq!(default_report.critical.len(), injected_report.critical.len());
+        assert_eq!(
+            default_report.warnings.len(),
+            injected_report.warnings.len()
+        );
+        assert_eq!(
+            default_report.critical.len(),
+            injected_report.critical.len()
+        );
         assert_eq!(default_report.info.len(), injected_report.info.len());
     }
 
@@ -1972,12 +2291,9 @@ mod tests {
     fn test_package_with_id_mismatch() {
         let test_path = test_data("MERIDIAN_Netflix_Photon_161006_ID_MISMATCH");
 
-        match Imferno::parse(read_dir(test_path).unwrap()) {
-            Ok(package) => {
-                let inspection = package.inspect();
-                assert!(inspection.cpl_count > 0);
-            }
-            Err(_) => {}
+        if let Ok(package) = Imferno::parse(read_dir(test_path).unwrap()) {
+            let inspection = package.inspect();
+            assert!(inspection.cpl_count > 0);
         }
     }
 
@@ -2005,7 +2321,8 @@ mod tests {
     #[test]
     fn test_get_asset_path() {
         let test_path = test_data("MERIDIAN_Netflix_Photon_161006");
-        let package = Imferno::parse(read_dir(test_path).unwrap()).expect("Failed to parse package");
+        let package =
+            Imferno::parse(read_dir(test_path).unwrap()).expect("Failed to parse package");
 
         if let Some(first_asset) = package.asset_map.asset_list.assets.first() {
             let asset_path = package.get_asset_path(first_asset.id);
@@ -2019,16 +2336,22 @@ mod tests {
     #[test]
     fn test_validation_errors() {
         let test_path = test_data("MERIDIAN_Netflix_Photon_161006");
-        let package = Imferno::parse(read_dir(test_path).unwrap()).expect("Failed to parse package");
+        let package =
+            Imferno::parse(read_dir(test_path).unwrap()).expect("Failed to parse package");
 
         let report = package.validate(&ValidationOptions::default());
-        assert!(!report.has_errors(), "Validation should pass: {:?}", report.summary());
+        assert!(
+            !report.has_errors(),
+            "Validation should pass: {:?}",
+            report.summary()
+        );
     }
 
     #[test]
     fn test_get_cpl_with_invalid_uuid() {
         let test_path = test_data("MERIDIAN_Netflix_Photon_161006");
-        let package = Imferno::parse(read_dir(test_path).unwrap()).expect("Failed to parse package");
+        let package =
+            Imferno::parse(read_dir(test_path).unwrap()).expect("Failed to parse package");
 
         assert!(package.get_cpl_str("invalid-uuid").is_none());
 
@@ -2041,21 +2364,18 @@ mod tests {
     fn test_empty_package_edge_cases() {
         let test_path = test_data("MissingFilesAndAssetMapEntries");
 
-        match Imferno::parse(read_dir(test_path).unwrap()) {
-            Ok(package) => {
-                let cpls = package.list_cpls();
-                assert!(cpls.is_empty());
+        if let Ok(package) = Imferno::parse(read_dir(test_path).unwrap()) {
+            let cpls = package.list_cpls();
+            assert!(cpls.is_empty());
 
-                let cpl_uuids = package.list_cpl_uuids();
-                assert!(cpl_uuids.is_empty());
+            let cpl_uuids = package.list_cpl_uuids();
+            assert!(cpl_uuids.is_empty());
 
-                let main_cpl = package.get_main_cpl();
-                assert!(main_cpl.is_none());
+            let main_cpl = package.get_main_cpl();
+            assert!(main_cpl.is_none());
 
-                let track_analyses = package.analyze_tracks();
-                assert!(track_analyses.is_empty());
-            }
-            Err(_) => {}
+            let track_analyses = package.analyze_tracks();
+            assert!(track_analyses.is_empty());
         }
     }
 
@@ -2064,7 +2384,12 @@ mod tests {
         match Imferno::parse(read_dir(test_data("BadXML")).unwrap_or_default()) {
             Ok(_) => {}
             Err(err) => {
-                assert!(err.to_string().contains("parsing") || err.to_string().contains("XML") || err.to_string().contains("Invalid") || err.to_string().contains("Missing"));
+                assert!(
+                    err.to_string().contains("parsing")
+                        || err.to_string().contains("XML")
+                        || err.to_string().contains("Invalid")
+                        || err.to_string().contains("Missing")
+                );
             }
         }
     }
@@ -2073,19 +2398,17 @@ mod tests {
     fn test_wrong_mime_types_package() {
         let test_path = test_data("WrongXmlMimeTypes");
 
-        match Imferno::parse(read_dir(test_path).unwrap_or_default()) {
-            Ok(package) => {
-                let inspection = package.inspect();
-                assert!(inspection.asset_count > 0);
-            }
-            Err(_) => {}
+        if let Ok(package) = Imferno::parse(read_dir(test_path).unwrap_or_default()) {
+            let inspection = package.inspect();
+            assert!(inspection.asset_count > 0);
         }
     }
 
     #[test]
     fn test_cpl_edge_cases() {
         let test_path = test_data("MERIDIAN_Netflix_Photon_161006");
-        let package = Imferno::parse(read_dir(test_path).unwrap()).expect("Failed to parse package");
+        let package =
+            Imferno::parse(read_dir(test_path).unwrap()).expect("Failed to parse package");
 
         let cpls = package.list_cpls();
         assert!(!cpls.is_empty());
@@ -2123,7 +2446,8 @@ mod tests {
     #[test]
     fn test_inspect_all_fields() {
         let test_path = test_data("MERIDIAN_Netflix_Photon_161006");
-        let package = Imferno::parse(read_dir(test_path).unwrap()).expect("Failed to parse package");
+        let package =
+            Imferno::parse(read_dir(test_path).unwrap()).expect("Failed to parse package");
 
         let inspection = package.inspect();
 
@@ -2147,14 +2471,16 @@ mod tests {
     #[test]
     fn test_serialization() {
         let test_path = test_data("MERIDIAN_Netflix_Photon_161006");
-        let package = Imferno::parse(read_dir(test_path).unwrap()).expect("Failed to parse package");
+        let package =
+            Imferno::parse(read_dir(test_path).unwrap()).expect("Failed to parse package");
 
         let inspection = package.inspect();
         let json = serde_json::to_string(&inspection).expect("Failed to serialize inspection");
         assert!(json.contains("volume_index"));
         assert!(json.contains("asset_count"));
 
-        let _deserialized: crate::package::PackageInspection = serde_json::from_str(&json).expect("Failed to deserialize inspection");
+        let _deserialized: crate::package::PackageInspection =
+            serde_json::from_str(&json).expect("Failed to deserialize inspection");
 
         let cpls = package.list_cpls();
         let json = serde_json::to_string(&cpls).expect("Failed to serialize CPLs");
@@ -2171,7 +2497,9 @@ mod tests {
         use std::thread;
 
         let test_path = test_data("MERIDIAN_Netflix_Photon_161006");
-        let package = Arc::new(Imferno::parse(read_dir(test_path).unwrap()).expect("Failed to parse package"));
+        let package = Arc::new(
+            Imferno::parse(read_dir(test_path).unwrap()).expect("Failed to parse package"),
+        );
 
         let mut handles = vec![];
 
@@ -2196,8 +2524,8 @@ mod tests {
 
     #[test]
     fn test_malformed_xml_handling() {
-        use tempfile::TempDir;
         use std::fs;
+        use tempfile::TempDir;
 
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let temp_path = temp_dir.path();
@@ -2206,7 +2534,8 @@ mod tests {
 <VolumeIndex xmlns="http://www.smpte-ra.org/schemas/2067-2/2016/volindex">
   <Index>1</Index>
 </VolumeIndex>"#;
-        fs::write(temp_path.join("VOLINDEX.xml"), volindex_content).expect("Failed to write VOLINDEX");
+        fs::write(temp_path.join("VOLINDEX.xml"), volindex_content)
+            .expect("Failed to write VOLINDEX");
 
         let malformed_assetmap = r#"<?xml version="1.0" encoding="UTF-8"?>
 <AssetMap xmlns="http://www.smpte-ra.org/schemas/2067-2/2016/assetmap">
@@ -2216,7 +2545,8 @@ mod tests {
     <Asset>
       <Id>test-asset</Id>
 "#;
-        fs::write(temp_path.join("ASSETMAP.xml"), malformed_assetmap).expect("Failed to write malformed ASSETMAP");
+        fs::write(temp_path.join("ASSETMAP.xml"), malformed_assetmap)
+            .expect("Failed to write malformed ASSETMAP");
 
         let result = Imferno::parse(read_dir(temp_path).unwrap());
         assert!(result.is_err(), "Should fail with malformed XML");
@@ -2225,16 +2555,21 @@ mod tests {
     #[test]
     fn test_validation_with_complex_structure() {
         let test_path = test_data("MERIDIAN_Netflix_Photon_161006");
-        let package = Imferno::parse(read_dir(test_path).unwrap()).expect("Failed to parse package");
+        let package =
+            Imferno::parse(read_dir(test_path).unwrap()).expect("Failed to parse package");
 
         let report = package.validate(&ValidationOptions::default());
-        assert!(!report.has_errors(), "Package should be valid: {:?}", report.summary());
+        assert!(
+            !report.has_errors(),
+            "Package should be valid: {:?}",
+            report.summary()
+        );
     }
 
     #[test]
     fn test_package_with_no_cpls() {
-        use tempfile::TempDir;
         use std::fs;
+        use tempfile::TempDir;
 
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let temp_path = temp_dir.path();
@@ -2243,7 +2578,8 @@ mod tests {
 <VolumeIndex xmlns="http://www.smpte-ra.org/schemas/2067-2/2016/volindex">
   <Index>1</Index>
 </VolumeIndex>"#;
-        fs::write(temp_path.join("VOLINDEX.xml"), volindex_content).expect("Failed to write VOLINDEX");
+        fs::write(temp_path.join("VOLINDEX.xml"), volindex_content)
+            .expect("Failed to write VOLINDEX");
 
         let no_cpl_assetmap = r#"<?xml version="1.0" encoding="UTF-8"?>
 <AssetMap xmlns="http://www.smpte-ra.org/schemas/2067-2/2016/assetmap">
@@ -2261,10 +2597,14 @@ mod tests {
     </Asset>
   </AssetList>
 </AssetMap>"#;
-        fs::write(temp_path.join("ASSETMAP.xml"), no_cpl_assetmap).expect("Failed to write ASSETMAP");
+        fs::write(temp_path.join("ASSETMAP.xml"), no_cpl_assetmap)
+            .expect("Failed to write ASSETMAP");
 
         let result = Imferno::parse(read_dir(temp_path).unwrap());
-        assert!(result.is_ok(), "Package with no CPLs should parse successfully");
+        assert!(
+            result.is_ok(),
+            "Package with no CPLs should parse successfully"
+        );
 
         let package = result.unwrap();
         assert_eq!(package.composition_playlists.len(), 0);
@@ -2283,15 +2623,23 @@ mod tests {
     #[test]
     fn test_asset_path_resolution() {
         let test_path = test_data("MERIDIAN_Netflix_Photon_161006");
-        let package = Imferno::parse(read_dir(test_path).unwrap()).expect("Failed to parse package");
+        let package =
+            Imferno::parse(read_dir(test_path).unwrap()).expect("Failed to parse package");
 
         for asset in &package.asset_map.asset_list.assets {
             let resolved_path = package.get_asset_path(asset.id);
-            assert!(resolved_path.is_some(), "Should resolve path for asset {}", asset.id);
+            assert!(
+                resolved_path.is_some(),
+                "Should resolve path for asset {}",
+                asset.id
+            );
 
             let path = resolved_path.unwrap();
             assert!(path.is_absolute(), "Resolved path should be absolute");
-            assert!(path.starts_with(&package.root_path), "Path should be within package directory");
+            assert!(
+                path.starts_with(&package.root_path),
+                "Path should be within package directory"
+            );
         }
 
         assert!(package.get_asset_path_str("invalid-id").is_none());
@@ -2300,7 +2648,8 @@ mod tests {
     #[test]
     fn test_boundary_conditions() {
         let test_path = test_data("MERIDIAN_Netflix_Photon_161006");
-        let package = Imferno::parse(read_dir(test_path).unwrap()).expect("Failed to parse package");
+        let package =
+            Imferno::parse(read_dir(test_path).unwrap()).expect("Failed to parse package");
 
         assert!(package.get_cpl_details("").is_none());
         assert!(package.get_cpl_details("   ").is_none());
@@ -2314,7 +2663,8 @@ mod tests {
     #[test]
     fn test_large_package_handling() {
         let test_path = test_data("MERIDIAN_Netflix_Photon_161006");
-        let package = Imferno::parse(read_dir(test_path).unwrap()).expect("Failed to parse package");
+        let package =
+            Imferno::parse(read_dir(test_path).unwrap()).expect("Failed to parse package");
 
         for _ in 0..10 {
             let inspection = package.inspect();
@@ -2331,14 +2681,16 @@ mod tests {
     #[test]
     fn test_validate_file_manifest_detects_mxf_files() {
         let test_path = test_data("MERIDIAN_Netflix_Photon_161006");
-        let package = Imferno::parse(read_dir(test_path).unwrap()).expect("Failed to parse package");
+        let package =
+            Imferno::parse(read_dir(test_path).unwrap()).expect("Failed to parse package");
 
         let errors = package.validate_file_manifest();
 
         for err in &errors {
             assert!(
                 !matches!(err, FileValidationError::Missing { .. }),
-                "Unexpected missing file: {}", err
+                "Unexpected missing file: {}",
+                err
             );
         }
     }
@@ -2385,14 +2737,17 @@ mod tests {
   </Asset>
 </AssetList>
 </AssetMap>"#;
-        std::fs::write(root.join("ASSETMAP.xml"), &assetmap_xml).unwrap();
+        std::fs::write(root.join("ASSETMAP.xml"), assetmap_xml).unwrap();
 
         let package = Imferno::parse(read_dir(root).unwrap()).expect("Failed to parse package");
         let errors = package.validate_file_manifest();
 
         assert!(
-            errors.iter().any(|e| matches!(e, FileValidationError::Missing { .. })),
-            "Expected a Missing error, got: {:?}", errors.iter().map(|e| e.to_string()).collect::<Vec<_>>()
+            errors
+                .iter()
+                .any(|e| matches!(e, FileValidationError::Missing { .. })),
+            "Expected a Missing error, got: {:?}",
+            errors.iter().map(|e| e.to_string()).collect::<Vec<_>>()
         );
     }
 
@@ -2473,7 +2828,11 @@ mod tests {
 
         // MERIDIAN package should have valid cross-references
         let report = package.validate(&ValidationOptions::default());
-        assert!(!report.has_errors(), "MERIDIAN should be valid: {:?}", report.summary());
+        assert!(
+            !report.has_errors(),
+            "MERIDIAN should be valid: {:?}",
+            report.summary()
+        );
     }
 
     /// SMPTE ST 2067-2 §9: PKL constraints validation passes on well-formed MERIDIAN.
@@ -2607,7 +2966,9 @@ mod tests {
             report.summary()
         );
         // Should have at least the NotInAssetMap error
-        let all_issues: Vec<_> = report.errors.iter()
+        let all_issues: Vec<_> = report
+            .errors
+            .iter()
             .filter(|i| i.code == codes::St2067_2_2020::UnresolvedUuid.code())
             .collect();
         assert!(
@@ -2673,7 +3034,9 @@ mod tests {
             "Should report errors for missing file: {}",
             report.summary()
         );
-        let missing_issues: Vec<_> = report.errors.iter()
+        let missing_issues: Vec<_> = report
+            .errors
+            .iter()
             .filter(|i| i.code == codes::St2067_2_2020::FileNotFound.code())
             .collect();
         assert!(
@@ -2708,8 +3071,8 @@ mod tests {
         let mut stream = Vec::new();
         // Key: Header Partition Pack (Closed and Complete)
         stream.extend_from_slice(&[
-            0x06, 0x0E, 0x2B, 0x34, 0x02, 0x05, 0x01, 0x01,
-            0x0D, 0x01, 0x02, 0x01, 0x01, 0x02, 0x04, 0x00,
+            0x06, 0x0E, 0x2B, 0x34, 0x02, 0x05, 0x01, 0x01, 0x0D, 0x01, 0x02, 0x01, 0x01, 0x02,
+            0x04, 0x00,
         ]);
         // BER length = 88
         stream.push(88);
@@ -2734,8 +3097,8 @@ mod tests {
 
         // OP1a UL
         let op1a: [u8; 16] = [
-            0x06, 0x0E, 0x2B, 0x34, 0x04, 0x01, 0x01, 0x02,
-            0x0D, 0x01, 0x02, 0x01, 0x01, 0x01, 0x09, 0x00,
+            0x06, 0x0E, 0x2B, 0x34, 0x04, 0x01, 0x01, 0x02, 0x0D, 0x01, 0x02, 0x01, 0x01, 0x01,
+            0x09, 0x00,
         ];
         std::fs::write(root.join("video.mxf"), make_mxf_bytes(op1a)).unwrap();
 
@@ -2756,7 +3119,7 @@ mod tests {
 </PackingList>"#;
         std::fs::write(root.join("PKL.xml"), pkl_xml).unwrap();
 
-        let assetmap_xml = format!(r#"<?xml version="1.0" encoding="UTF-8"?>
+        let assetmap_xml = r#"<?xml version="1.0" encoding="UTF-8"?>
 <AssetMap xmlns="http://www.smpte-ra.org/schemas/429-9/2007/AM">
 <Id>urn:uuid:dddddddd-0000-0000-0000-000000000001</Id>
 <Creator>test</Creator>
@@ -2774,13 +3137,16 @@ mod tests {
     <ChunkList><Chunk><Path>video.mxf</Path></Chunk></ChunkList>
   </Asset>
 </AssetList>
-</AssetMap>"#);
+</AssetMap>"#
+            .to_string();
         std::fs::write(root.join("ASSETMAP.xml"), assetmap_xml).unwrap();
 
         let package = Imferno::parse(read_dir(root).unwrap()).expect("parse");
         let report = package.validate(&ValidationOptions::default());
 
-        let op_issues: Vec<_> = report.critical.iter()
+        let op_issues: Vec<_> = report
+            .critical
+            .iter()
             .chain(report.errors.iter())
             .chain(report.warnings.iter())
             .chain(report.info.iter())
@@ -2788,7 +3154,8 @@ mod tests {
             .collect();
         assert!(
             op_issues.is_empty(),
-            "OP1a should not produce OP issues: {:#?}", op_issues,
+            "OP1a should not produce OP issues: {:#?}",
+            op_issues,
         );
     }
 
@@ -2799,8 +3166,8 @@ mod tests {
 
         // OP-Atom UL: bytes 13-14 = 03 01 (not OP1a's 01 01)
         let op_atom: [u8; 16] = [
-            0x06, 0x0E, 0x2B, 0x34, 0x04, 0x01, 0x01, 0x02,
-            0x0D, 0x01, 0x02, 0x01, 0x03, 0x01, 0x00, 0x00,
+            0x06, 0x0E, 0x2B, 0x34, 0x04, 0x01, 0x01, 0x02, 0x0D, 0x01, 0x02, 0x01, 0x03, 0x01,
+            0x00, 0x00,
         ];
         std::fs::write(root.join("video.mxf"), make_mxf_bytes(op_atom)).unwrap();
 
@@ -2844,15 +3211,19 @@ mod tests {
         let package = Imferno::parse(read_dir(root).unwrap()).expect("parse");
         let report = package.validate(&ValidationOptions::default());
 
-        let op_issues: Vec<_> = report.critical.iter()
+        let op_issues: Vec<_> = report
+            .critical
+            .iter()
             .chain(report.errors.iter())
             .chain(report.warnings.iter())
             .chain(report.info.iter())
             .filter(|i| i.code == St377_1_2011::Op1a.code())
             .collect();
         assert_eq!(
-            op_issues.len(), 1,
-            "Non-OP1a should produce exactly one OP issue: {:#?}", op_issues,
+            op_issues.len(),
+            1,
+            "Non-OP1a should produce exactly one OP issue: {:#?}",
+            op_issues,
         );
     }
 
@@ -2904,7 +3275,9 @@ mod tests {
         let package = Imferno::parse(read_dir(root).unwrap()).expect("parse");
         let report = package.validate(&ValidationOptions::default());
 
-        let notmxf_issues: Vec<_> = report.critical.iter()
+        let notmxf_issues: Vec<_> = report
+            .critical
+            .iter()
             .chain(report.errors.iter())
             .chain(report.warnings.iter())
             .chain(report.info.iter())
@@ -2975,13 +3348,26 @@ mod tests {
     /// validate_package_structure on single-PKL fixture should not emit cross-PKL issues.
     #[test]
     fn test_multi_pkl_single_pkl_no_cross_pkl_issues() {
-        let fixture_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).parent().unwrap().parent().unwrap().join("fixture");
-        if !fixture_path.exists() { eprintln!("skipping: fixture/ not present"); return; }
+        let fixture_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("fixture");
+        if !fixture_path.exists() {
+            eprintln!("skipping: fixture/ not present");
+            return;
+        }
         let package = Imferno::parse(read_dir(fixture_path).unwrap()).expect("parse fixture");
         let report = package.validate(&ValidationOptions::default());
         assert!(
-            !report.errors.iter().any(|i| i.code.contains("ChecksumMismatch") || i.code == St2067_2_2020::SizeMismatch.code()),
-            "Single-PKL package should have no multi-PKL consistency issues: {:#?}", report.errors,
+            !report
+                .errors
+                .iter()
+                .any(|i| i.code.contains("ChecksumMismatch")
+                    || i.code == St2067_2_2020::SizeMismatch.code()),
+            "Single-PKL package should have no multi-PKL consistency issues: {:#?}",
+            report.errors,
         );
     }
 
@@ -2992,24 +3378,43 @@ mod tests {
     /// Segment duration validation on fixture should pass (tracks have matching durations).
     #[test]
     fn test_segment_durations_fixture_pass() {
-        let fixture_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).parent().unwrap().parent().unwrap().join("fixture");
-        if !fixture_path.exists() { eprintln!("skipping: fixture/ not present"); return; }
+        let fixture_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("fixture");
+        if !fixture_path.exists() {
+            eprintln!("skipping: fixture/ not present");
+            return;
+        }
         let package = Imferno::parse(read_dir(fixture_path).unwrap()).expect("parse fixture");
         let report = package.validate(&ValidationOptions::default());
-        let duration_issues: Vec<_> = report.errors.iter()
+        let duration_issues: Vec<_> = report
+            .errors
+            .iter()
             .filter(|i| i.code.contains("SegmentDuration"))
             .collect();
         assert!(
             duration_issues.is_empty(),
-            "Fixture should have matching segment durations: {:#?}", duration_issues,
+            "Fixture should have matching segment durations: {:#?}",
+            duration_issues,
         );
     }
 
     /// Regression guard: emitted package validation codes should not use :General fallback.
     #[test]
     fn test_emitted_codes_do_not_use_general_fallback() {
-        let fixture_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).parent().unwrap().parent().unwrap().join("fixture");
-        if !fixture_path.exists() { eprintln!("skipping: fixture/ not present"); return; }
+        let fixture_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("fixture");
+        if !fixture_path.exists() {
+            eprintln!("skipping: fixture/ not present");
+            return;
+        }
         let package = Imferno::parse(read_dir(fixture_path).unwrap()).expect("parse fixture");
         let report = package.validate(&ValidationOptions::default());
 
@@ -3073,14 +3478,21 @@ mod tests {
     fn volindex_malformed_emits_error() {
         let mut files = HashMap::new();
         files.insert("ASSETMAP.xml".to_string(), MINIMAL_ASSETMAP.to_string());
-        files.insert("VOLINDEX.xml".to_string(), "not xml <<< garbage".to_string());
+        files.insert(
+            "VOLINDEX.xml".to_string(),
+            "not xml <<< garbage".to_string(),
+        );
 
         let pkg = Imferno::parse(files).expect("parse");
         let report = pkg.validate(&ValidationOptions::default());
 
         assert!(
-            report.errors.iter().any(|i| i.code.contains("MalformedXml")),
-            "expected MalformedXml error, got: {:?}", report.errors,
+            report
+                .errors
+                .iter()
+                .any(|i| i.code.contains("MalformedXml")),
+            "expected MalformedXml error, got: {:?}",
+            report.errors,
         );
     }
 
@@ -3094,7 +3506,9 @@ mod tests {
         let pkg = Imferno::parse(files).expect("parse");
         let report = pkg.validate(&ValidationOptions::default());
 
-        let all: Vec<_> = report.critical.iter()
+        let all: Vec<_> = report
+            .critical
+            .iter()
             .chain(report.errors.iter())
             .chain(report.warnings.iter())
             .chain(report.info.iter())

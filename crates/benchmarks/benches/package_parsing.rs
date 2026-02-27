@@ -1,7 +1,7 @@
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use imferno_core::assetmap as st2067_2;
 use imferno_core::cpl as st2067_3;
-use imferno_core::package::{Imferno, read_dir};
+use imferno_core::package::{read_dir, Imferno};
 use std::fs;
 use std::path::Path;
 
@@ -141,7 +141,7 @@ fn bench_full_package_loading(c: &mut Criterion) {
                         let result = st2067_2::parse_assetmap(black_box(content));
                         black_box(result)
                     })
-                }
+                },
             );
         } else {
             let assetmap_path = format!("{}/ASSETMAP.xml", path);
@@ -149,16 +149,12 @@ fn bench_full_package_loading(c: &mut Criterion) {
                 let size = assetmap_content.len() as u64;
                 group.throughput(Throughput::Bytes(size));
 
-                group.bench_with_input(
-                    BenchmarkId::new("load", name),
-                    path,
-                    |b, pkg_path| {
-                        b.iter(|| {
-                            let result = read_dir(black_box(pkg_path)).and_then(|f| Imferno::parse(f));
-                            black_box(result)
-                        })
-                    }
-                );
+                group.bench_with_input(BenchmarkId::new("load", name), path, |b, pkg_path| {
+                    b.iter(|| {
+                        let result = read_dir(black_box(pkg_path)).and_then(Imferno::parse);
+                        black_box(result)
+                    })
+                });
             }
         }
     }
@@ -186,28 +182,24 @@ fn bench_package_validation(c: &mut Criterion) {
                         let pklist_result = st2067_2::parse_assetmap(black_box(pklist));
 
                         // Basic validation
-                        let valid = assetmap_result.is_ok() &&
-                                   cpl_result.is_ok() &&
-                                   pklist_result.is_ok();
+                        let valid =
+                            assetmap_result.is_ok() && cpl_result.is_ok() && pklist_result.is_ok();
                         black_box(valid)
                     })
-                }
+                },
             );
         } else {
-            group.bench_with_input(
-                BenchmarkId::new("validate", name),
-                path,
-                |b, pkg_path| {
-                    b.iter(|| {
-                        if let Ok(package) = read_dir(black_box(pkg_path)).and_then(|f| Imferno::parse(f)) {
-                            let validation_result = package.validate();
-                            black_box(validation_result.is_ok())
-                        } else {
-                            black_box(false)
-                        }
-                    })
-                }
-            );
+            group.bench_with_input(BenchmarkId::new("validate", name), path, |b, pkg_path| {
+                b.iter(|| {
+                    if let Ok(package) = read_dir(black_box(pkg_path)).and_then(Imferno::parse) {
+                        let validation_result =
+                            package.validate(&imferno_core::package::ValidationOptions::default());
+                        black_box(!validation_result.has_errors())
+                    } else {
+                        black_box(false)
+                    }
+                })
+            });
         }
     }
 
@@ -221,18 +213,14 @@ fn bench_cpl_access(c: &mut Criterion) {
 
     for (name, path) in &test_data {
         if name != "synthetic" {
-            if let Ok(package) = read_dir(path).and_then(|f| Imferno::parse(f)) {
-                group.bench_with_input(
-                    BenchmarkId::new("access", name),
-                    &package,
-                    |b, pkg| {
-                        b.iter(|| {
-                            let main_cpl = pkg.get_main_cpl();
-                            let cpl_count = pkg.composition_playlists.len();
-                            black_box((main_cpl.is_some(), cpl_count))
-                        })
-                    }
-                );
+            if let Ok(package) = read_dir(path).and_then(Imferno::parse) {
+                group.bench_with_input(BenchmarkId::new("access", name), &package, |b, pkg| {
+                    b.iter(|| {
+                        let main_cpl = pkg.get_main_cpl();
+                        let cpl_count = pkg.composition_playlists.len();
+                        black_box((main_cpl.is_some(), cpl_count))
+                    })
+                });
             }
         }
     }
@@ -247,7 +235,7 @@ fn bench_package_component_access(c: &mut Criterion) {
 
     for (name, path) in &test_data {
         if name != "synthetic" {
-            if let Ok(package) = read_dir(path).and_then(|f| Imferno::parse(f)) {
+            if let Ok(package) = read_dir(path).and_then(Imferno::parse) {
                 group.bench_with_input(
                     BenchmarkId::new("access_cpls", name),
                     &package,
@@ -256,7 +244,7 @@ fn bench_package_component_access(c: &mut Criterion) {
                             let count = pkg.composition_playlists.len();
                             black_box(count)
                         })
-                    }
+                    },
                 );
 
                 group.bench_with_input(
@@ -267,7 +255,7 @@ fn bench_package_component_access(c: &mut Criterion) {
                             let asset_count = pkg.asset_map.asset_list.assets.len();
                             black_box(asset_count)
                         })
-                    }
+                    },
                 );
             }
         }
@@ -283,25 +271,21 @@ fn bench_package_cross_reference(c: &mut Criterion) {
 
     for (name, path) in &test_data {
         if name != "synthetic" {
-            if let Ok(package) = read_dir(path).and_then(|f| Imferno::parse(f)) {
-                group.bench_with_input(
-                    BenchmarkId::new("cross_ref", name),
-                    &package,
-                    |b, pkg| {
-                        b.iter(|| {
-                            // Cross-reference CPLs with assets
-                            let mut ref_count = 0;
-                            for cpl in pkg.composition_playlists.values() {
-                                for segment in &cpl.segment_list.segments {
-                                    ref_count += segment.sequence_list.main_image_sequences.len();
-                                    ref_count += segment.sequence_list.main_audio_sequences.len();
-                                    ref_count += segment.sequence_list.subtitles_sequences.len();
-                                }
+            if let Ok(package) = read_dir(path).and_then(Imferno::parse) {
+                group.bench_with_input(BenchmarkId::new("cross_ref", name), &package, |b, pkg| {
+                    b.iter(|| {
+                        // Cross-reference CPLs with assets
+                        let mut ref_count = 0;
+                        for cpl in pkg.composition_playlists.values() {
+                            for segment in &cpl.segment_list.segments {
+                                ref_count += segment.sequence_list.main_image_sequences.len();
+                                ref_count += segment.sequence_list.main_audio_sequences.len();
+                                ref_count += segment.sequence_list.subtitles_sequences.len();
                             }
-                            black_box(ref_count)
-                        })
-                    }
-                );
+                        }
+                        black_box(ref_count)
+                    })
+                });
             }
         }
     }

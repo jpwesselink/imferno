@@ -21,11 +21,11 @@ use std::collections::HashSet;
 
 use crate::diagnostics::{Category, Location, Severity, ValidationIssue};
 
+use crate::cpl::codes::St2067_3Code;
 use crate::cpl::{
     CompositionPlaylist, ContentKind, CplNamespace, MarkerLabel, SequenceAccess,
     CONTENT_KIND_DEFAULT_SCOPE,
 };
-use crate::cpl::codes::St2067_3Code;
 
 // ─── Code dispatch helper ─────────────────────────────────────────────────────
 
@@ -117,12 +117,34 @@ fn validate_source_encoding_refs(
         let sl = &segment.sequence_list;
 
         let all_seqs: Vec<(&dyn SequenceAccess, &str)> = sl
-            .main_image_sequences.iter().map(|s| (s as &dyn SequenceAccess, "MainImageSequence"))
-            .chain(sl.main_audio_sequences.iter().map(|s| (s as &dyn SequenceAccess, "MainAudioSequence")))
-            .chain(sl.subtitles_sequences.iter().map(|s| (s as &dyn SequenceAccess, "SubtitlesSequence")))
-            .chain(sl.hearing_impaired_captions_sequences.iter().map(|s| (s as &dyn SequenceAccess, "HearingImpairedCaptionsSequence")))
-            .chain(sl.forced_narrative_sequences.iter().map(|s| (s as &dyn SequenceAccess, "ForcedNarrativeSequence")))
-            .chain(sl.iab_sequences.iter().map(|s| (s as &dyn SequenceAccess, "IABSequence")))
+            .main_image_sequences
+            .iter()
+            .map(|s| (s as &dyn SequenceAccess, "MainImageSequence"))
+            .chain(
+                sl.main_audio_sequences
+                    .iter()
+                    .map(|s| (s as &dyn SequenceAccess, "MainAudioSequence")),
+            )
+            .chain(
+                sl.subtitles_sequences
+                    .iter()
+                    .map(|s| (s as &dyn SequenceAccess, "SubtitlesSequence")),
+            )
+            .chain(
+                sl.hearing_impaired_captions_sequences
+                    .iter()
+                    .map(|s| (s as &dyn SequenceAccess, "HearingImpairedCaptionsSequence")),
+            )
+            .chain(
+                sl.forced_narrative_sequences
+                    .iter()
+                    .map(|s| (s as &dyn SequenceAccess, "ForcedNarrativeSequence")),
+            )
+            .chain(
+                sl.iab_sequences
+                    .iter()
+                    .map(|s| (s as &dyn SequenceAccess, "IABSequence")),
+            )
             .collect();
 
         for (seq, track_type) in all_seqs {
@@ -228,10 +250,7 @@ fn validate_content_versions(
                     Severity::Warning,
                     Category::Metadata,
                     code(St2067_3Code::ContentVersionLabelTextMissing),
-                    format!(
-                        "ContentVersion[{i}] (Id: '{}') is missing LabelText",
-                        cv.id,
-                    ),
+                    format!("ContentVersion[{i}] (Id: '{}') is missing LabelText", cv.id,),
                 )
                 .with_location(loc.clone()),
             );
@@ -292,13 +311,39 @@ fn validate_track_id_uniqueness(
         let mut seen: HashSet<String> = HashSet::new();
 
         let all_seqs: Vec<(&dyn SequenceAccess, &str)> = sl
-            .main_image_sequences.iter().map(|s| (s as &dyn SequenceAccess, "MainImageSequence"))
-            .chain(sl.main_audio_sequences.iter().map(|s| (s as &dyn SequenceAccess, "MainAudioSequence")))
-            .chain(sl.subtitles_sequences.iter().map(|s| (s as &dyn SequenceAccess, "SubtitlesSequence")))
-            .chain(sl.hearing_impaired_captions_sequences.iter().map(|s| (s as &dyn SequenceAccess, "HearingImpairedCaptionsSequence")))
-            .chain(sl.forced_narrative_sequences.iter().map(|s| (s as &dyn SequenceAccess, "ForcedNarrativeSequence")))
-            .chain(sl.iab_sequences.iter().map(|s| (s as &dyn SequenceAccess, "IABSequence")))
-            .chain(sl.marker_sequences.iter().map(|s| (s as &dyn SequenceAccess, "MarkerSequence")))
+            .main_image_sequences
+            .iter()
+            .map(|s| (s as &dyn SequenceAccess, "MainImageSequence"))
+            .chain(
+                sl.main_audio_sequences
+                    .iter()
+                    .map(|s| (s as &dyn SequenceAccess, "MainAudioSequence")),
+            )
+            .chain(
+                sl.subtitles_sequences
+                    .iter()
+                    .map(|s| (s as &dyn SequenceAccess, "SubtitlesSequence")),
+            )
+            .chain(
+                sl.hearing_impaired_captions_sequences
+                    .iter()
+                    .map(|s| (s as &dyn SequenceAccess, "HearingImpairedCaptionsSequence")),
+            )
+            .chain(
+                sl.forced_narrative_sequences
+                    .iter()
+                    .map(|s| (s as &dyn SequenceAccess, "ForcedNarrativeSequence")),
+            )
+            .chain(
+                sl.iab_sequences
+                    .iter()
+                    .map(|s| (s as &dyn SequenceAccess, "IABSequence")),
+            )
+            .chain(
+                sl.marker_sequences
+                    .iter()
+                    .map(|s| (s as &dyn SequenceAccess, "MarkerSequence")),
+            )
             .collect();
 
         for (seq, track_type) in all_seqs {
@@ -370,8 +415,7 @@ fn validate_marker_offsets(
 
 // ─── §7.4 Marker label vocabulary ────────────────────────────────────────────
 
-const SMPTE_MARKER_SCOPE: &str =
-    "http://www.smpte-ra.org/schemas/2067-3/2013#standard-markers";
+const SMPTE_MARKER_SCOPE: &str = "http://www.smpte-ra.org/schemas/2067-3/2013#standard-markers";
 
 const SMPTE_MARKER_SCOPE_2016: &str =
     "http://www.smpte-ra.org/schemas/2067-3/2016#standard-markers";
@@ -500,12 +544,34 @@ fn validate_sequence_duration_integer_edit_units(
         let sl = &segment.sequence_list;
 
         let all_seqs: Vec<(&dyn SequenceAccess, &str)> = sl
-            .main_image_sequences.iter().map(|s| (s as &dyn SequenceAccess, "MainImageSequence"))
-            .chain(sl.main_audio_sequences.iter().map(|s| (s as &dyn SequenceAccess, "MainAudioSequence")))
-            .chain(sl.subtitles_sequences.iter().map(|s| (s as &dyn SequenceAccess, "SubtitlesSequence")))
-            .chain(sl.hearing_impaired_captions_sequences.iter().map(|s| (s as &dyn SequenceAccess, "HearingImpairedCaptionsSequence")))
-            .chain(sl.forced_narrative_sequences.iter().map(|s| (s as &dyn SequenceAccess, "ForcedNarrativeSequence")))
-            .chain(sl.iab_sequences.iter().map(|s| (s as &dyn SequenceAccess, "IABSequence")))
+            .main_image_sequences
+            .iter()
+            .map(|s| (s as &dyn SequenceAccess, "MainImageSequence"))
+            .chain(
+                sl.main_audio_sequences
+                    .iter()
+                    .map(|s| (s as &dyn SequenceAccess, "MainAudioSequence")),
+            )
+            .chain(
+                sl.subtitles_sequences
+                    .iter()
+                    .map(|s| (s as &dyn SequenceAccess, "SubtitlesSequence")),
+            )
+            .chain(
+                sl.hearing_impaired_captions_sequences
+                    .iter()
+                    .map(|s| (s as &dyn SequenceAccess, "HearingImpairedCaptionsSequence")),
+            )
+            .chain(
+                sl.forced_narrative_sequences
+                    .iter()
+                    .map(|s| (s as &dyn SequenceAccess, "ForcedNarrativeSequence")),
+            )
+            .chain(
+                sl.iab_sequences
+                    .iter()
+                    .map(|s| (s as &dyn SequenceAccess, "IABSequence")),
+            )
             .collect();
 
         for (seq, track_type) in all_seqs {
@@ -515,21 +581,22 @@ fn validate_sequence_duration_integer_edit_units(
 
             for resource in &seq.resource_list().resources {
                 let res_er = resource.edit_rate.unwrap_or(cpl_er);
-                if res_er.numerator != cpl_er.numerator || res_er.denominator != cpl_er.denominator {
+                if res_er.numerator != cpl_er.numerator || res_er.denominator != cpl_er.denominator
+                {
                     has_cross_rate = true;
                 }
 
-                let src_dur = resource.source_duration
-                    .unwrap_or_else(|| {
-                        resource.intrinsic_duration
-                            .saturating_sub(resource.entry_point.unwrap_or(0))
-                    });
+                let src_dur = resource.source_duration.unwrap_or_else(|| {
+                    resource
+                        .intrinsic_duration
+                        .saturating_sub(resource.entry_point.unwrap_or(0))
+                });
 
                 let contrib_num = src_dur
                     .saturating_mul(cpl_er.numerator as u64)
                     .saturating_mul(res_er.denominator as u64);
-                let contrib_den = (res_er.numerator as u64)
-                    .saturating_mul(cpl_er.denominator as u64);
+                let contrib_den =
+                    (res_er.numerator as u64).saturating_mul(cpl_er.denominator as u64);
 
                 let l = lcm_u64(sum_den, contrib_den);
                 sum_num = sum_num
@@ -538,7 +605,10 @@ fn validate_sequence_duration_integer_edit_units(
                 sum_den = l;
 
                 let g = gcd_u64(sum_num, sum_den);
-                if g > 0 { sum_num /= g; sum_den /= g; }
+                if g > 0 {
+                    sum_num /= g;
+                    sum_den /= g;
+                }
             }
 
             if has_cross_rate && sum_den != 1 {
@@ -565,13 +635,21 @@ fn validate_sequence_duration_integer_edit_units(
 }
 
 fn gcd_u64(mut a: u64, mut b: u64) -> u64 {
-    while b != 0 { let t = b; b = a % b; a = t; }
+    while b != 0 {
+        let t = b;
+        b = a % b;
+        a = t;
+    }
     a
 }
 
 fn lcm_u64(a: u64, b: u64) -> u64 {
     let g = gcd_u64(a, b);
-    if g == 0 { 0 } else { a / g * b }
+    if g == 0 {
+        0
+    } else {
+        a / g * b
+    }
 }
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
@@ -579,12 +657,12 @@ fn lcm_u64(a: u64, b: u64) -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::assetmap::ImfUuid;
     use crate::cpl::{
         ContentKind, ContentKindElement, ContentVersion, ContentVersionList, EditRate,
         LanguageString, MainImageSequence, Resource, ResourceList, Segment, SegmentList,
         SequenceList,
     };
-    use crate::assetmap::ImfUuid;
 
     fn dummy_uuid() -> ImfUuid {
         ImfUuid::parse("urn:uuid:00000000-0000-0000-0000-000000000001").unwrap()
@@ -658,7 +736,10 @@ mod tests {
             track_id: dummy_uuid(),
             resource_list: ResourceList { resources },
         }];
-        Segment { id: dummy_uuid(), sequence_list: sl }
+        Segment {
+            id: dummy_uuid(),
+            sequence_list: sl,
+        }
     }
 
     // ── ContentVersionIdDuplicate ────────────────────────────────────────────
@@ -668,13 +749,21 @@ mod tests {
         let mut cpl = minimal_cpl();
         cpl.content_version_list = Some(ContentVersionList {
             content_versions: vec![
-                ContentVersion { id: "urn:uuid:aaa".to_string(), label_text: None },
-                ContentVersion { id: "urn:uuid:aaa".to_string(), label_text: None },
+                ContentVersion {
+                    id: "urn:uuid:aaa".to_string(),
+                    label_text: None,
+                },
+                ContentVersion {
+                    id: "urn:uuid:aaa".to_string(),
+                    label_text: None,
+                },
             ],
         });
         let issues = validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| i.code.contains("ContentVersionIdDuplicate")),
+            issues
+                .iter()
+                .any(|i| i.code.contains("ContentVersionIdDuplicate")),
             "expected ContentVersionIdDuplicate, got: {issues:?}",
         );
     }
@@ -684,13 +773,21 @@ mod tests {
         let mut cpl = minimal_cpl();
         cpl.content_version_list = Some(ContentVersionList {
             content_versions: vec![
-                ContentVersion { id: "urn:uuid:aaa".to_string(), label_text: None },
-                ContentVersion { id: "urn:uuid:bbb".to_string(), label_text: None },
+                ContentVersion {
+                    id: "urn:uuid:aaa".to_string(),
+                    label_text: None,
+                },
+                ContentVersion {
+                    id: "urn:uuid:bbb".to_string(),
+                    label_text: None,
+                },
             ],
         });
         let issues = validate_cpl(&cpl);
         assert!(
-            !issues.iter().any(|i| i.code.contains("ContentVersionIdDuplicate")),
+            !issues
+                .iter()
+                .any(|i| i.code.contains("ContentVersionIdDuplicate")),
             "unexpected ContentVersionIdDuplicate",
         );
     }
@@ -703,13 +800,17 @@ mod tests {
         // source_duration = 47999 → 47999 × 24 / 48000 = non-integer.
         let mut cpl = minimal_cpl();
         cpl.segment_list = SegmentList {
-            segments: vec![image_segment_with_resources(vec![
-                make_resource(48000, Some(47999), Some(EditRate::new(48000, 1))),
-            ])],
+            segments: vec![image_segment_with_resources(vec![make_resource(
+                48000,
+                Some(47999),
+                Some(EditRate::new(48000, 1)),
+            )])],
         };
         let issues = validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| i.code.contains("SegmentDurationIntegerEditUnits")),
+            issues
+                .iter()
+                .any(|i| i.code.contains("SegmentDurationIntegerEditUnits")),
             "expected SegmentDurationIntegerEditUnits, got: {issues:?}",
         );
     }
@@ -720,13 +821,17 @@ mod tests {
         // source_duration = 48000 → exactly 1 composition frame.
         let mut cpl = minimal_cpl();
         cpl.segment_list = SegmentList {
-            segments: vec![image_segment_with_resources(vec![
-                make_resource(48000, Some(48000), Some(EditRate::new(48000, 1))),
-            ])],
+            segments: vec![image_segment_with_resources(vec![make_resource(
+                48000,
+                Some(48000),
+                Some(EditRate::new(48000, 1)),
+            )])],
         };
         let issues = validate_cpl(&cpl);
         assert!(
-            !issues.iter().any(|i| i.code.contains("SegmentDurationIntegerEditUnits")),
+            !issues
+                .iter()
+                .any(|i| i.code.contains("SegmentDurationIntegerEditUnits")),
             "unexpected SegmentDurationIntegerEditUnits",
         );
     }
@@ -768,7 +873,9 @@ mod tests {
         let cpl = crate::cpl::parse_cpl(xml).expect("parse failed");
         let issues = validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| i.code.contains("MarkerLabelUnknown") && i.message.contains("FFDC, LFDC")),
+            issues
+                .iter()
+                .any(|i| i.code.contains("MarkerLabelUnknown") && i.message.contains("FFDC, LFDC")),
             "expected 2016 MarkerLabelUnknown, got: {issues:?}",
         );
     }

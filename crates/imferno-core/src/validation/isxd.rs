@@ -10,9 +10,9 @@
 
 use std::collections::{HashMap, HashSet};
 
+use crate::cpl::CompositionPlaylist;
 use crate::diagnostics::{Category, Severity, ValidationIssue};
 use crate::validation::{App2E2021, ConstraintsValidator};
-use crate::cpl::CompositionPlaylist;
 
 use crate::validation::isxd_codes::{self as isxd_codes, IsxdCode};
 

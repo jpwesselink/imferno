@@ -4,20 +4,21 @@
 //! that file-manifest and MXF-header checks are skipped (no `root_path`).
 //! Only structural and SCM reference validation runs.
 
-use std::collections::HashMap;
 use corpus_tests::validate_package;
+use std::collections::HashMap;
 
 // ── Shared UUIDs ─────────────────────────────────────────────────────────────
 
-const CPL_ID:     &str = "urn:uuid:cc000001-0000-0000-0000-000000000001";
-const SCM_ID:     &str = "urn:uuid:cc000002-0000-0000-0000-000000000002";
+const CPL_ID: &str = "urn:uuid:cc000001-0000-0000-0000-000000000001";
+const SCM_ID: &str = "urn:uuid:cc000002-0000-0000-0000-000000000002";
 const SIDECAR_ID: &str = "urn:uuid:cc000003-0000-0000-0000-000000000003";
 const UNKNOWN_ID: &str = "urn:uuid:dd000099-0000-0000-0000-000000000099";
 
 // ── Fixtures ─────────────────────────────────────────────────────────────────
 
 fn assetmap(extra_assets: &str) -> String {
-    format!(r#"<?xml version="1.0" encoding="UTF-8"?>
+    format!(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
 <AssetMap xmlns="http://www.smpte-ra.org/schemas/429-9/2007/AM">
   <Id>urn:uuid:aa000000-0000-0000-0000-000000000000</Id>
   <VolumeCount>1</VolumeCount>
@@ -61,7 +62,8 @@ fn cpl() -> &'static str {
 }
 
 fn scm_valid() -> String {
-    format!(r#"<?xml version="1.0" encoding="UTF-8"?>
+    format!(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
 <SidecarCompositionMap xmlns="http://www.smpte-ra.org/ns/2067-9/2018">
   <Id>{SCM_ID}</Id>
   <IssueDate>2024-01-01T00:00:00</IssueDate>
@@ -81,7 +83,8 @@ fn scm_valid() -> String {
 }
 
 fn scm_unknown_asset() -> String {
-    format!(r#"<?xml version="1.0" encoding="UTF-8"?>
+    format!(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
 <SidecarCompositionMap xmlns="http://www.smpte-ra.org/ns/2067-9/2018">
   <Id>{SCM_ID}</Id>
   <IssueDate>2024-01-01T00:00:00</IssueDate>
@@ -101,7 +104,8 @@ fn scm_unknown_asset() -> String {
 }
 
 fn scm_unknown_cpl() -> String {
-    format!(r#"<?xml version="1.0" encoding="UTF-8"?>
+    format!(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
 <SidecarCompositionMap xmlns="http://www.smpte-ra.org/ns/2067-9/2018">
   <Id>{SCM_ID}</Id>
   <IssueDate>2024-01-01T00:00:00</IssueDate>
@@ -121,7 +125,8 @@ fn scm_unknown_cpl() -> String {
 }
 
 fn scm_duplicate_asset() -> String {
-    format!(r#"<?xml version="1.0" encoding="UTF-8"?>
+    format!(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
 <SidecarCompositionMap xmlns="http://www.smpte-ra.org/ns/2067-9/2018">
   <Id>{SCM_ID}</Id>
   <IssueDate>2024-01-01T00:00:00</IssueDate>
@@ -147,7 +152,8 @@ fn scm_duplicate_asset() -> String {
 }
 
 fn scm_duplicate_cpl_id() -> String {
-    format!(r#"<?xml version="1.0" encoding="UTF-8"?>
+    format!(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
 <SidecarCompositionMap xmlns="http://www.smpte-ra.org/ns/2067-9/2018">
   <Id>{SCM_ID}</Id>
   <IssueDate>2024-01-01T00:00:00</IssueDate>
@@ -168,7 +174,8 @@ fn scm_duplicate_cpl_id() -> String {
 }
 
 fn scm_signer_without_signature() -> String {
-    format!(r#"<?xml version="1.0" encoding="UTF-8"?>
+    format!(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
 <SidecarCompositionMap xmlns="http://www.smpte-ra.org/ns/2067-9/2018">
   <Id>{SCM_ID}</Id>
   <IssueDate>2024-01-01T00:00:00</IssueDate>
@@ -199,7 +206,9 @@ fn base_package(scm_xml: String) -> HashMap<String, String> {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 fn scm_issues(report: &imferno_core::ValidationReport) -> Vec<&imferno_core::ValidationIssue> {
-    report.critical.iter()
+    report
+        .critical
+        .iter()
         .chain(report.errors.iter())
         .chain(report.warnings.iter())
         .chain(report.info.iter())
@@ -216,7 +225,8 @@ fn scm_valid_no_errors() {
     let issues = scm_issues(&report);
     assert!(
         issues.is_empty(),
-        "expected no ST2067-9 issues; got: {:#?}", issues
+        "expected no ST2067-9 issues; got: {:#?}",
+        issues
     );
 }
 
@@ -228,8 +238,11 @@ fn scm_invalid_sidecar_asset_not_found() {
     let report = validate_package(base_package(scm_unknown_asset()));
     let issues = scm_issues(&report);
     assert!(
-        issues.iter().any(|i| i.code.contains("SidecarAssetNotFound")),
-        "expected SidecarAssetNotFound; got: {:#?}", issues
+        issues
+            .iter()
+            .any(|i| i.code.contains("SidecarAssetNotFound")),
+        "expected SidecarAssetNotFound; got: {:#?}",
+        issues
     );
 }
 
@@ -242,7 +255,8 @@ fn scm_invalid_cpl_not_found() {
     let issues = scm_issues(&report);
     assert!(
         issues.iter().any(|i| i.code.contains("CplNotFound")),
-        "expected CplNotFound; got: {:#?}", issues
+        "expected CplNotFound; got: {:#?}",
+        issues
     );
 }
 
@@ -255,7 +269,8 @@ fn scm_invalid_duplicate_asset_id() {
     let issues = scm_issues(&report);
     assert!(
         issues.iter().any(|i| i.code.contains("DuplicateAssetId")),
-        "expected DuplicateAssetId; got: {:#?}", issues
+        "expected DuplicateAssetId; got: {:#?}",
+        issues
     );
 }
 
@@ -268,7 +283,8 @@ fn scm_invalid_duplicate_cpl_id() {
     let issues = scm_issues(&report);
     assert!(
         issues.iter().any(|i| i.code.contains("DuplicateCplId")),
-        "expected DuplicateCplId; got: {:#?}", issues
+        "expected DuplicateCplId; got: {:#?}",
+        issues
     );
 }
 
@@ -280,7 +296,10 @@ fn scm_invalid_signer_without_signature() {
     let report = validate_package(base_package(scm_signer_without_signature()));
     let issues = scm_issues(&report);
     assert!(
-        issues.iter().any(|i| i.code.contains("SignerWithoutSignature")),
-        "expected SignerWithoutSignature; got: {:#?}", issues
+        issues
+            .iter()
+            .any(|i| i.code.contains("SignerWithoutSignature")),
+        "expected SignerWithoutSignature; got: {:#?}",
+        issues
     );
 }

@@ -8,8 +8,8 @@
 
 pub mod codes;
 
-use thiserror::Error;
 use crate::assetmap::ImfUuid;
+use thiserror::Error;
 
 // ── Raw deserialization types ────────────────────────────────────────────────
 
@@ -233,7 +233,10 @@ mod tests {
         let scm = parse_scm(xml).unwrap();
         assert_eq!(scm.issuer.as_deref(), Some("Test Facility"));
         assert_eq!(scm.creator.as_deref(), Some("Test Tool 1.0"));
-        assert_eq!(scm.annotation.as_deref(), Some("IAB sidecar for main feature"));
+        assert_eq!(
+            scm.annotation.as_deref(),
+            Some("IAB sidecar for main feature")
+        );
         assert!(scm.sidecar_assets.is_empty());
         assert!(!scm.has_signer);
         assert!(!scm.has_signature);

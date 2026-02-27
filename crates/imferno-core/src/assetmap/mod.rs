@@ -12,7 +12,7 @@ pub mod volindex;
 pub mod volindex_codes;
 
 // Re-export VOLINDEX types
-pub use volindex::{VolumeIndex, VolindexError, parse_volindex};
+pub use volindex::{parse_volindex, VolindexError, VolumeIndex};
 
 use base64::Engine;
 use serde::{Deserialize, Serialize};
@@ -62,10 +62,7 @@ impl SmpteUl {
     /// - `060e2b34.04010106.04010101.03030000` (bare 4-group form)
     /// - `060e2b34.0401.0106.04010101.03030000` (5-group variant from some test data)
     pub fn parse(s: &str) -> Result<Self, ImfTypeError> {
-        let hex_part = s
-            .strip_prefix("urn:smpte:ul:")
-            .unwrap_or(s)
-            .trim();
+        let hex_part = s.strip_prefix("urn:smpte:ul:").unwrap_or(s).trim();
 
         // Remove dots to get a contiguous hex string
         let hex_str: String = hex_part.chars().filter(|c| *c != '.').collect();
@@ -157,7 +154,9 @@ impl ImfUuid {
     /// Parse from `urn:uuid:...` or a bare UUID string.
     pub fn parse(s: &str) -> Result<Self, ImfTypeError> {
         let bare = s.strip_prefix("urn:uuid:").unwrap_or(s);
-        Uuid::parse_str(bare).map(ImfUuid).map_err(|_| ImfTypeError::InvalidUuid(s.to_string()))
+        Uuid::parse_str(bare)
+            .map(ImfUuid)
+            .map_err(|_| ImfTypeError::InvalidUuid(s.to_string()))
     }
 
     /// Return the URN form used in XML: `urn:uuid:<uuid>`.
@@ -274,7 +273,10 @@ impl AssetHash {
                 bytes.len()
             )));
         }
-        Ok(Self { algorithm: HashAlgorithm::Sha1, bytes })
+        Ok(Self {
+            algorithm: HashAlgorithm::Sha1,
+            bytes,
+        })
     }
 
     /// Decode a base64-encoded SHA-256 digest.
@@ -290,7 +292,10 @@ impl AssetHash {
                 bytes.len()
             )));
         }
-        Ok(Self { algorithm: HashAlgorithm::Sha256, bytes })
+        Ok(Self {
+            algorithm: HashAlgorithm::Sha256,
+            bytes,
+        })
     }
 
     /// Decode a base64-encoded digest for the given algorithm.
@@ -467,7 +472,9 @@ impl std::fmt::Display for PklNamespace {
             Self::Dci429_8 => write!(f, "http://www.smpte-ra.org/schemas/429-8/2007/PKL"),
             Self::Smpte2067_2_2013 => write!(f, "http://www.smpte-ra.org/schemas/2067-2/2013"),
             Self::Smpte2067_2_2016 => write!(f, "http://www.smpte-ra.org/schemas/2067-2/2016"),
-            Self::Smpte2067_2_2016Pkl => write!(f, "http://www.smpte-ra.org/schemas/2067-2/2016/PKL"),
+            Self::Smpte2067_2_2016Pkl => {
+                write!(f, "http://www.smpte-ra.org/schemas/2067-2/2016/PKL")
+            }
             Self::Smpte2067_2_2020 => write!(f, "http://www.smpte-ra.org/ns/2067-2/2020"),
             Self::Unknown(s) => write!(f, "{}", s),
         }
@@ -721,11 +728,16 @@ pub struct AssetMap {
 }
 
 impl AssetMap {
-    fn from_raw(raw: raw::AssetMap, namespace: AssetMapNamespace) -> Result<Self, AssetMapParseError> {
+    fn from_raw(
+        raw: raw::AssetMap,
+        namespace: AssetMapNamespace,
+    ) -> Result<Self, AssetMapParseError> {
         Ok(Self {
             namespace,
-            id: ImfUuid::parse(&raw.id)
-                .map_err(|source| AssetMapParseError::Field { field: "Id", source })?,
+            id: ImfUuid::parse(&raw.id).map_err(|source| AssetMapParseError::Field {
+                field: "Id",
+                source,
+            })?,
             annotation_text: raw.annotation_text,
             creator: raw.creator,
             volume_count: raw.volume_count,
@@ -776,8 +788,10 @@ pub struct Asset {
 impl Asset {
     fn from_raw(raw: raw::Asset) -> Result<Self, AssetMapParseError> {
         Ok(Self {
-            id: ImfUuid::parse(&raw.id)
-                .map_err(|source| AssetMapParseError::Field { field: "Id", source })?,
+            id: ImfUuid::parse(&raw.id).map_err(|source| AssetMapParseError::Field {
+                field: "Id",
+                source,
+            })?,
             packing_list: raw.packing_list,
             chunk_list: ChunkList::from_raw(raw.chunk_list),
         })
@@ -801,7 +815,10 @@ impl ChunkList {
             chunks: raw
                 .chunks
                 .into_iter()
-                .map(|c| Chunk { path: c.path, volume_index: c.volume_index })
+                .map(|c| Chunk {
+                    path: c.path,
+                    volume_index: c.volume_index,
+                })
                 .collect(),
         }
     }
@@ -842,14 +859,20 @@ pub struct OutputProfileList {
 impl OutputProfileList {
     fn from_raw(raw: raw::OutputProfileList) -> Result<Self, AssetMapParseError> {
         Ok(Self {
-            id: ImfUuid::parse(&raw.id)
-                .map_err(|source| AssetMapParseError::Field { field: "Id", source })?,
+            id: ImfUuid::parse(&raw.id).map_err(|source| AssetMapParseError::Field {
+                field: "Id",
+                source,
+            })?,
             annotation: raw.annotation,
             issue_date: raw.issue_date,
             issuer: raw.issuer,
             creator: raw.creator,
-            composition_playlist_id: ImfUuid::parse(&raw.composition_playlist_id)
-                .map_err(|source| AssetMapParseError::Field { field: "CompositionPlaylistId", source })?,
+            composition_playlist_id: ImfUuid::parse(&raw.composition_playlist_id).map_err(
+                |source| AssetMapParseError::Field {
+                    field: "CompositionPlaylistId",
+                    source,
+                },
+            )?,
         })
     }
 }
@@ -876,17 +899,25 @@ pub struct PackingList {
 }
 
 impl PackingList {
-    fn from_raw(raw: raw::PackingList, namespace: PklNamespace) -> Result<Self, AssetMapParseError> {
+    fn from_raw(
+        raw: raw::PackingList,
+        namespace: PklNamespace,
+    ) -> Result<Self, AssetMapParseError> {
         let group_id = raw
             .group_id
             .map(|s| ImfUuid::parse(&s))
             .transpose()
-            .map_err(|source| AssetMapParseError::Field { field: "GroupId", source })?;
+            .map_err(|source| AssetMapParseError::Field {
+                field: "GroupId",
+                source,
+            })?;
 
         Ok(Self {
             namespace,
-            id: ImfUuid::parse(&raw.id)
-                .map_err(|source| AssetMapParseError::Field { field: "Id", source })?,
+            id: ImfUuid::parse(&raw.id).map_err(|source| AssetMapParseError::Field {
+                field: "Id",
+                source,
+            })?,
             annotation_text: raw.annotation_text,
             issue_date: raw.issue_date,
             issuer: raw.issuer,
@@ -935,24 +966,30 @@ impl PklAsset {
         // Determine hash algorithm from <HashAlgorithm Algorithm="..."/> element.
         // Per ST 2067-2 §9, SHA-1 is the default when the element is absent.
         let algorithm = match &raw.hash_algorithm {
-            Some(dm) => HashAlgorithm::from_uri(&dm.algorithm).ok_or_else(|| {
-                AssetMapParseError::Field {
+            Some(dm) => {
+                HashAlgorithm::from_uri(&dm.algorithm).ok_or_else(|| AssetMapParseError::Field {
                     field: "HashAlgorithm",
                     source: ImfTypeError::InvalidHash(format!(
                         "unsupported hash algorithm URI: {}",
                         dm.algorithm
                     )),
-                }
-            })?,
+                })?
+            }
             None => HashAlgorithm::Sha1,
         };
 
         Ok(Self {
-            id: ImfUuid::parse(&raw.id)
-                .map_err(|source| AssetMapParseError::Field { field: "Id", source })?,
+            id: ImfUuid::parse(&raw.id).map_err(|source| AssetMapParseError::Field {
+                field: "Id",
+                source,
+            })?,
             annotation_text: raw.annotation_text,
-            hash: AssetHash::from_base64(&raw.hash, algorithm)
-                .map_err(|source| AssetMapParseError::Field { field: "Hash", source })?,
+            hash: AssetHash::from_base64(&raw.hash, algorithm).map_err(|source| {
+                AssetMapParseError::Field {
+                    field: "Hash",
+                    source,
+                }
+            })?,
             size: raw.size,
             mime_type: MimeType::parse(&raw.mime_type),
             original_file_name: raw.original_file_name,
@@ -1007,7 +1044,9 @@ mod tests {
     use std::path::PathBuf;
 
     fn test_data(name: &str) -> PathBuf {
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../test-data").join(name)
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../test-data")
+            .join(name)
     }
 
     // ── ImfUuid ──────────────────────────────────────────────────────────────
@@ -1356,7 +1395,10 @@ mod tests {
     </Asset></AssetList>
 </PackingList>"#;
         let result = parse_pkl(xml).unwrap();
-        assert_eq!(result.asset_list.assets[0].hash.algorithm, HashAlgorithm::Sha1);
+        assert_eq!(
+            result.asset_list.assets[0].hash.algorithm,
+            HashAlgorithm::Sha1
+        );
     }
 
     /// SMPTE ST 2067-2 §9: PKL with SHA-256 <HashAlgorithm>.
@@ -1375,7 +1417,10 @@ mod tests {
     </Asset></AssetList>
 </PackingList>"#;
         let result = parse_pkl(xml).unwrap();
-        assert_eq!(result.asset_list.assets[0].hash.algorithm, HashAlgorithm::Sha256);
+        assert_eq!(
+            result.asset_list.assets[0].hash.algorithm,
+            HashAlgorithm::Sha256
+        );
         assert_eq!(result.asset_list.assets[0].hash.bytes.len(), 32);
     }
 
@@ -1394,7 +1439,10 @@ mod tests {
     </Asset></AssetList>
 </PackingList>"#;
         let result = parse_pkl(xml).unwrap();
-        assert_eq!(result.asset_list.assets[0].hash.algorithm, HashAlgorithm::Sha1);
+        assert_eq!(
+            result.asset_list.assets[0].hash.algorithm,
+            HashAlgorithm::Sha1
+        );
     }
 
     /// SMPTE ST 2067-2 §9: PKL with <GroupId> for partial deliveries.
@@ -1568,32 +1616,52 @@ mod tests {
     <MacroList/>
 </OutputProfileList>"#;
         let result = parse_opl(xml).unwrap();
-        assert_eq!(result.id.to_string(), "8cf83c32-4949-4f00-b081-01e12b18932f");
+        assert_eq!(
+            result.id.to_string(),
+            "8cf83c32-4949-4f00-b081-01e12b18932f"
+        );
         assert_eq!(result.annotation.as_deref(), Some("OPL Example"));
         assert_eq!(result.issuer.as_deref(), Some("Clipster"));
         assert_eq!(result.creator.as_deref(), Some("Clipster 5.9.3.7"));
-        assert_eq!(result.composition_playlist_id.to_string(), "0eb3d1b9-b77b-4d3f-bbe5-7c69b15dca85");
+        assert_eq!(
+            result.composition_playlist_id.to_string(),
+            "0eb3d1b9-b77b-4d3f-bbe5-7c69b15dca85"
+        );
     }
 
     /// SMPTE ST 2067-100: OPL with complex macros parses without error.
     #[test]
     fn opl_parses_real_test_file() {
-        let xml = std::fs::read_to_string(
-            test_data("OPL/OPL_8cf83c32-4949-4f00-b081-01e12b18932f.xml")
-        ).unwrap();
+        let xml = std::fs::read_to_string(test_data(
+            "OPL/OPL_8cf83c32-4949-4f00-b081-01e12b18932f.xml",
+        ))
+        .unwrap();
         let result = parse_opl(&xml).unwrap();
-        assert_eq!(result.id.to_string(), "8cf83c32-4949-4f00-b081-01e12b18932f");
-        assert_eq!(result.composition_playlist_id.to_string(), "0eb3d1b9-b77b-4d3f-bbe5-7c69b15dca85");
+        assert_eq!(
+            result.id.to_string(),
+            "8cf83c32-4949-4f00-b081-01e12b18932f"
+        );
+        assert_eq!(
+            result.composition_playlist_id.to_string(),
+            "0eb3d1b9-b77b-4d3f-bbe5-7c69b15dca85"
+        );
     }
 
     /// SMPTE ST 2067-100: OPL with simple preset macro from ISXD test data.
     #[test]
     fn opl_parses_isxd_test_file() {
-        let xml = std::fs::read_to_string(
-            test_data("ISXD/CompleteIMP/OPL_af6b288d-27e8-441f-9a36-2c4ab9025d19.xml")
-        ).unwrap();
+        let xml = std::fs::read_to_string(test_data(
+            "ISXD/CompleteIMP/OPL_af6b288d-27e8-441f-9a36-2c4ab9025d19.xml",
+        ))
+        .unwrap();
         let result = parse_opl(&xml).unwrap();
-        assert_eq!(result.id.to_string(), "af6b288d-27e8-441f-9a36-2c4ab9025d19");
-        assert_eq!(result.composition_playlist_id.to_string(), "b2d74f92-1990-41e0-869f-2179a50f7090");
+        assert_eq!(
+            result.id.to_string(),
+            "af6b288d-27e8-441f-9a36-2c4ab9025d19"
+        );
+        assert_eq!(
+            result.composition_playlist_id.to_string(),
+            "b2d74f92-1990-41e0-869f-2179a50f7090"
+        );
     }
 }

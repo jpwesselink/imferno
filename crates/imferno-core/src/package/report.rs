@@ -3,11 +3,11 @@
 //! Combines package metadata, source asset extraction, validation, and delivery comparison
 //! into one structure.
 
+use super::delivery::DeliveryComparison;
+use super::source_asset::SourceAsset;
+use serde::{Deserialize, Serialize};
 #[cfg(feature = "typescript")]
 use ts_rs::TS;
-use serde::{Deserialize, Serialize};
-use super::source_asset::SourceAsset;
-use super::delivery::DeliveryComparison;
 
 #[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -125,37 +125,51 @@ fn collect_track_file_ids(cpl: &crate::cpl::CompositionPlaylist) -> Vec<String> 
         let sl = &seg.sequence_list;
         for seq in &sl.main_image_sequences {
             for r in &seq.resource_list.resources {
-                if let Some(ref id) = r.track_file_id { ids.push(id.to_string()); }
+                if let Some(ref id) = r.track_file_id {
+                    ids.push(id.to_string());
+                }
             }
         }
         for seq in &sl.main_audio_sequences {
             for r in &seq.resource_list.resources {
-                if let Some(ref id) = r.track_file_id { ids.push(id.to_string()); }
+                if let Some(ref id) = r.track_file_id {
+                    ids.push(id.to_string());
+                }
             }
         }
         for seq in &sl.iab_sequences {
             for r in &seq.resource_list.resources {
-                if let Some(ref id) = r.track_file_id { ids.push(id.to_string()); }
+                if let Some(ref id) = r.track_file_id {
+                    ids.push(id.to_string());
+                }
             }
         }
         for seq in &sl.isxd_sequences {
             for r in &seq.resource_list.resources {
-                if let Some(ref id) = r.track_file_id { ids.push(id.to_string()); }
+                if let Some(ref id) = r.track_file_id {
+                    ids.push(id.to_string());
+                }
             }
         }
         for seq in &sl.subtitles_sequences {
             for r in &seq.resource_list.resources {
-                if let Some(ref id) = r.track_file_id { ids.push(id.to_string()); }
+                if let Some(ref id) = r.track_file_id {
+                    ids.push(id.to_string());
+                }
             }
         }
         for seq in &sl.hearing_impaired_captions_sequences {
             for r in &seq.resource_list.resources {
-                if let Some(ref id) = r.track_file_id { ids.push(id.to_string()); }
+                if let Some(ref id) = r.track_file_id {
+                    ids.push(id.to_string());
+                }
             }
         }
         for seq in &sl.forced_narrative_sequences {
             for r in &seq.resource_list.resources {
-                if let Some(ref id) = r.track_file_id { ids.push(id.to_string()); }
+                if let Some(ref id) = r.track_file_id {
+                    ids.push(id.to_string());
+                }
             }
         }
     }
@@ -190,24 +204,27 @@ pub fn build_report(
     for cpl in package.composition_playlists.values() {
         // Detect supplemental: find track file IDs not in this package's AssetMap
         let cpl_track_ids = collect_track_file_ids(cpl);
-        let unresolved_ancestor_asset_ids: Vec<String> = cpl_track_ids.iter()
+        let unresolved_ancestor_asset_ids: Vec<String> = cpl_track_ids
+            .iter()
             .filter(|id| {
                 package.get_asset_path_str(id).is_none()
-                    && ancestor.map_or(true, |a| a.get_asset_path_str(id).is_none())
+                    && ancestor.is_none_or(|a| a.get_asset_path_str(id).is_none())
             })
             .cloned()
             .collect();
-        let is_supplemental = cpl_track_ids.iter().any(|id| {
-            package.get_asset_path_str(id).is_none()
-        });
+        let is_supplemental = cpl_track_ids
+            .iter()
+            .any(|id| package.get_asset_path_str(id).is_none());
 
         let source_asset = super::source_asset::extract_source_asset(cpl)?;
-        let delivery_comparison = delivery_spec.map(|spec| {
-            super::delivery::compare(&source_asset, spec)
-        });
+        let delivery_comparison =
+            delivery_spec.map(|spec| super::delivery::compare(&source_asset, spec));
 
         // Collect all markers from all segments
-        let markers: Vec<CplMarker> = cpl.segment_list.segments.iter()
+        let markers: Vec<CplMarker> = cpl
+            .segment_list
+            .segments
+            .iter()
             .flat_map(|seg| seg.sequence_list.marker_sequences.iter())
             .flat_map(|ms| ms.resource_list.resources.iter())
             .flat_map(|res| res.markers.iter())
@@ -218,14 +235,16 @@ pub fn build_report(
             })
             .collect();
 
-        let application_profile = cpl.extension_properties
+        let application_profile = cpl
+            .extension_properties
             .as_ref()
             .and_then(|ep| ep.application_identification.as_ref())
             .map(|url| parse_application_profile(url));
 
         let segment_count = cpl.segment_list.segments.len();
 
-        let timecode_start = cpl.composition_timecode
+        let timecode_start = cpl
+            .composition_timecode
             .as_ref()
             .and_then(|tc| tc.timecode_start_address.clone());
 
@@ -246,14 +265,16 @@ pub fn build_report(
     // Validation
     let val_report = package.validate(&super::ValidationOptions::default());
     let validation = if val_report.has_errors() || val_report.has_critical() {
-        let issues = val_report.critical.iter()
+        let issues = val_report
+            .critical
+            .iter()
             .chain(val_report.errors.iter())
             .map(|i| ValidationIssueEntry {
                 severity: match i.severity {
                     crate::diagnostics::Severity::Critical => "critical".to_string(),
-                    crate::diagnostics::Severity::Error    => "error".to_string(),
-                    crate::diagnostics::Severity::Warning  => "warning".to_string(),
-                    crate::diagnostics::Severity::Info     => "info".to_string(),
+                    crate::diagnostics::Severity::Error => "error".to_string(),
+                    crate::diagnostics::Severity::Warning => "warning".to_string(),
+                    crate::diagnostics::Severity::Info => "info".to_string(),
                 },
                 message: i.message.clone(),
             })

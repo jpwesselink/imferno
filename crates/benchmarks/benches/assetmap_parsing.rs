@@ -3,7 +3,10 @@ use imferno_core::assetmap as st2067_2;
 use std::fs;
 
 const TEST_FILES: &[(&str, &str)] = &[
-    ("netflix", "../test-data/MERIDIAN_Netflix_Photon_161006/ASSETMAP.xml"),
+    (
+        "netflix",
+        "../test-data/MERIDIAN_Netflix_Photon_161006/ASSETMAP.xml",
+    ),
     ("isxd", "../test-data/ISXD/CompleteIMP/ASSETMAP.xml"),
     ("iab", "../test-data/IAB/CompleteIMP/ASSETMAP.xml"),
 ];
@@ -62,7 +65,8 @@ fn load_volindex_test_data() -> String {
     r#"<?xml version="1.0" encoding="UTF-8"?>
 <VolumeIndex xmlns="http://www.smpte-ra.org/schemas/2067-4/2013">
   <Index>1</Index>
-</VolumeIndex>"#.to_string()
+</VolumeIndex>"#
+        .to_string()
 }
 
 fn bench_assetmap_parsing_cold(c: &mut Criterion) {
@@ -74,16 +78,12 @@ fn bench_assetmap_parsing_cold(c: &mut Criterion) {
         let size = content.len() as u64;
         group.throughput(Throughput::Bytes(size));
 
-        group.bench_with_input(
-            BenchmarkId::new("parse", name),
-            content,
-            |b, content| {
-                b.iter(|| {
-                    let result = st2067_2::parse_assetmap(black_box(content));
-                    black_box(result)
-                })
-            }
-        );
+        group.bench_with_input(BenchmarkId::new("parse", name), content, |b, content| {
+            b.iter(|| {
+                let result = st2067_2::parse_assetmap(black_box(content));
+                black_box(result)
+            })
+        });
     }
 
     group.finish();
@@ -101,16 +101,12 @@ fn bench_assetmap_parsing_warm(c: &mut Criterion) {
         // Warm up the parser
         let _ = st2067_2::parse_assetmap(content);
 
-        group.bench_with_input(
-            BenchmarkId::new("parse", name),
-            content,
-            |b, content| {
-                b.iter(|| {
-                    let result = st2067_2::parse_assetmap(black_box(content));
-                    black_box(result)
-                })
-            }
-        );
+        group.bench_with_input(BenchmarkId::new("parse", name), content, |b, content| {
+            b.iter(|| {
+                let result = st2067_2::parse_assetmap(black_box(content));
+                black_box(result)
+            })
+        });
     }
 
     group.finish();
@@ -131,7 +127,6 @@ fn bench_volindex_parsing(c: &mut Criterion) {
 
     group.finish();
 }
-
 
 fn bench_asset_lookup(c: &mut Criterion) {
     let test_data = load_assetmap_test_data();
@@ -154,7 +149,7 @@ fn bench_asset_lookup(c: &mut Criterion) {
                         }
                         black_box(found)
                     })
-                }
+                },
             );
 
             group.bench_with_input(
@@ -168,7 +163,7 @@ fn bench_asset_lookup(c: &mut Criterion) {
                         }
                         black_box(total_chunks)
                     })
-                }
+                },
             );
         }
     }

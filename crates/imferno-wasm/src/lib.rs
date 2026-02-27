@@ -3,17 +3,15 @@
 //! This module provides a clean, type-safe JavaScript API for parsing IMF (Interoperable Master Format) files.
 //! All functions return properly typed objects instead of JSON strings, providing full IntelliSense support.
 
-use wasm_bindgen::prelude::*;
-use imferno_core::cpl::CompositionPlaylist;
 use imferno_core::assetmap::VolumeIndex;
+use imferno_core::cpl::CompositionPlaylist;
+use imferno_core::package::{Imferno, RulesConfig, ValidationOptions};
 use imferno_core::validation::{
     validate_cpl_with_registry, AppSpecTarget, ConfigurableValidatorRegistry, CoreSpecTarget,
     ValidatorSelection,
 };
-use imferno_core::{
-    Category, Severity, ValidationIssue, ValidationProfile, ValidationReport,
-};
-use imferno_core::package::{Imferno, RulesConfig, ValidationOptions};
+use imferno_core::{Category, Severity, ValidationIssue, ValidationProfile, ValidationReport};
+use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
 extern "C" {
@@ -43,7 +41,9 @@ pub fn get_version() -> String {
 
 /// Parse VOLINDEX.xml and return a typed VolumeIndex object
 #[wasm_bindgen(js_name = "parseVolindexTyped")]
-pub fn parse_volindex_typed(#[wasm_bindgen(js_name = "xmlContent")] xml_content: &str) -> Result<VolumeIndex, JsValue> {
+pub fn parse_volindex_typed(
+    #[wasm_bindgen(js_name = "xmlContent")] xml_content: &str,
+) -> Result<VolumeIndex, JsValue> {
     match imferno_core::assetmap::parse_volindex(xml_content) {
         Ok(volindex) => Ok(volindex),
         Err(e) => Err(JsValue::from_str(&format!("Parse error: {}", e))),
@@ -52,7 +52,9 @@ pub fn parse_volindex_typed(#[wasm_bindgen(js_name = "xmlContent")] xml_content:
 
 /// Parse ASSETMAP.xml and return a typed AssetMap object
 #[wasm_bindgen(js_name = "parseAssetmapTyped")]
-pub fn parse_assetmap_typed(#[wasm_bindgen(js_name = "xmlContent")] xml_content: &str) -> Result<JsValue, JsValue> {
+pub fn parse_assetmap_typed(
+    #[wasm_bindgen(js_name = "xmlContent")] xml_content: &str,
+) -> Result<JsValue, JsValue> {
     let assetmap = imferno_core::assetmap::parse_assetmap(xml_content)
         .map_err(|e| JsValue::from_str(&format!("Parse error: {}", e)))?;
     serde_wasm_bindgen::to_value(&assetmap)
@@ -61,7 +63,9 @@ pub fn parse_assetmap_typed(#[wasm_bindgen(js_name = "xmlContent")] xml_content:
 
 /// Parse PKL XML and return a typed PackingList object
 #[wasm_bindgen(js_name = "parsePklTyped")]
-pub fn parse_pkl_typed(#[wasm_bindgen(js_name = "xmlContent")] xml_content: &str) -> Result<JsValue, JsValue> {
+pub fn parse_pkl_typed(
+    #[wasm_bindgen(js_name = "xmlContent")] xml_content: &str,
+) -> Result<JsValue, JsValue> {
     let pkl = imferno_core::assetmap::parse_pkl(xml_content)
         .map_err(|e| JsValue::from_str(&format!("Parse error: {}", e)))?;
     serde_wasm_bindgen::to_value(&pkl)
@@ -70,7 +74,9 @@ pub fn parse_pkl_typed(#[wasm_bindgen(js_name = "xmlContent")] xml_content: &str
 
 /// Parse CPL XML and return a typed CompositionPlaylist object
 #[wasm_bindgen(js_name = "parseCplTyped")]
-pub fn parse_cpl_typed(#[wasm_bindgen(js_name = "xmlContent")] xml_content: &str) -> Result<CompositionPlaylist, JsValue> {
+pub fn parse_cpl_typed(
+    #[wasm_bindgen(js_name = "xmlContent")] xml_content: &str,
+) -> Result<CompositionPlaylist, JsValue> {
     match imferno_core::cpl::parse_cpl(xml_content) {
         Ok(cpl) => Ok(cpl),
         Err(e) => Err(JsValue::from_str(&format!("Parse error: {}", e))),
@@ -83,7 +89,9 @@ pub fn parse_cpl_typed(#[wasm_bindgen(js_name = "xmlContent")] xml_content: &str
 
 /// Extract a SourceAsset from CPL XML
 #[wasm_bindgen(js_name = "extractSourceAsset")]
-pub fn extract_source_asset(#[wasm_bindgen(js_name = "cplXml")] cpl_xml: &str) -> Result<JsValue, JsValue> {
+pub fn extract_source_asset(
+    #[wasm_bindgen(js_name = "cplXml")] cpl_xml: &str,
+) -> Result<JsValue, JsValue> {
     let cpl = imferno_core::cpl::parse_cpl(cpl_xml)
         .map_err(|e| JsValue::from_str(&format!("CPL parse error: {}", e)))?;
 
@@ -100,11 +108,13 @@ pub fn compare_delivery(
     #[wasm_bindgen(js_name = "sourceAssetJson")] source_asset_json: JsValue,
     #[wasm_bindgen(js_name = "deliverySpecJson")] delivery_spec_json: JsValue,
 ) -> Result<JsValue, JsValue> {
-    let source: imferno_core::package::SourceAsset = serde_wasm_bindgen::from_value(source_asset_json)
-        .map_err(|e| JsValue::from_str(&format!("Invalid source asset: {}", e)))?;
+    let source: imferno_core::package::SourceAsset =
+        serde_wasm_bindgen::from_value(source_asset_json)
+            .map_err(|e| JsValue::from_str(&format!("Invalid source asset: {}", e)))?;
 
-    let spec: imferno_core::package::DeliveryRequest = serde_wasm_bindgen::from_value(delivery_spec_json)
-        .map_err(|e| JsValue::from_str(&format!("Invalid delivery spec: {}", e)))?;
+    let spec: imferno_core::package::DeliveryRequest =
+        serde_wasm_bindgen::from_value(delivery_spec_json)
+            .map_err(|e| JsValue::from_str(&format!("Invalid delivery spec: {}", e)))?;
 
     let comparison = imferno_core::package::compare_delivery(&source, &spec);
 
@@ -129,7 +139,8 @@ pub fn validate_cpl_with_spec_selection(
     let cpl = match imferno_core::cpl::parse_cpl(cpl_xml) {
         Ok(cpl) => cpl,
         Err(e) => {
-            let report = make_error_report("PARSE-CPL-FAILED", &format!("Failed to parse CPL: {}", e));
+            let report =
+                make_error_report("PARSE-CPL-FAILED", &format!("Failed to parse CPL: {}", e));
             return serde_wasm_bindgen::to_value(&report)
                 .map_err(|se| JsValue::from_str(&format!("Serialization error: {}", se)));
         }
@@ -143,7 +154,10 @@ pub fn validate_cpl_with_spec_selection(
         other => {
             let report = make_error_report(
                 "INVALID-CORE-SPEC",
-                &format!("Unsupported coreSpec '{}'. Use auto|v2013|v2016|v2020", other),
+                &format!(
+                    "Unsupported coreSpec '{}'. Use auto|v2013|v2016|v2020",
+                    other
+                ),
             );
             return serde_wasm_bindgen::to_value(&report)
                 .map_err(|se| JsValue::from_str(&format!("Serialization error: {}", se)));
@@ -159,7 +173,10 @@ pub fn validate_cpl_with_spec_selection(
         other => {
             let report = make_error_report(
                 "INVALID-APP2E-SPEC",
-                &format!("Unsupported app2eSpec '{}'. Use auto|none|v2020|v2021|v2023", other),
+                &format!(
+                    "Unsupported app2eSpec '{}'. Use auto|none|v2020|v2021|v2023",
+                    other
+                ),
             );
             return serde_wasm_bindgen::to_value(&report)
                 .map_err(|se| JsValue::from_str(&format!("Serialization error: {}", se)));
@@ -195,9 +212,8 @@ pub fn validate_package(
     #[wasm_bindgen(js_name = "files")] files_js: JsValue,
     #[wasm_bindgen(js_name = "rules")] rules_js: JsValue,
 ) -> Result<JsValue, JsValue> {
-    let files: std::collections::HashMap<String, String> =
-        serde_wasm_bindgen::from_value(files_js)
-            .map_err(|e| JsValue::from_str(&format!("Invalid files argument: {}", e)))?;
+    let files: std::collections::HashMap<String, String> = serde_wasm_bindgen::from_value(files_js)
+        .map_err(|e| JsValue::from_str(&format!("Invalid files argument: {}", e)))?;
 
     let rules: RulesConfig = if rules_js.is_null() || rules_js.is_undefined() {
         Default::default()
@@ -206,7 +222,10 @@ pub fn validate_package(
             .map_err(|e| JsValue::from_str(&format!("Invalid rules argument: {}", e)))?
     };
 
-    let options = ValidationOptions { rules, ..Default::default() };
+    let options = ValidationOptions {
+        rules,
+        ..Default::default()
+    };
     let report = Imferno::parse_and_validate(files, &options);
 
     serde_wasm_bindgen::to_value(&report)
@@ -222,27 +241,37 @@ pub fn validate_package(
 pub fn inspect_package(
     #[wasm_bindgen(js_name = "files")] files_js: JsValue,
 ) -> Result<JsValue, JsValue> {
-    let files: std::collections::HashMap<String, String> =
-        serde_wasm_bindgen::from_value(files_js)
-            .map_err(|e| JsValue::from_str(&format!("Invalid files argument: {}", e)))?;
+    let files: std::collections::HashMap<String, String> = serde_wasm_bindgen::from_value(files_js)
+        .map_err(|e| JsValue::from_str(&format!("Invalid files argument: {}", e)))?;
 
     let package = match Imferno::parse(files) {
         Ok(p) => p,
         Err(e) => return Err(JsValue::from_str(&format!("Parse error: {}", e))),
     };
 
-    let declared_sidecars: Vec<serde_json::Value> = package.sidecar_composition_maps.values()
-        .flat_map(|scm| scm.sidecar_assets.iter().map(|sa| {
-            serde_json::json!({
-                "id": sa.id.to_string(),
-                "cplIds": sa.cpl_ids.iter().map(|c| c.to_string()).collect::<Vec<_>>(),
+    let declared_sidecars: Vec<serde_json::Value> = package
+        .sidecar_composition_maps
+        .values()
+        .flat_map(|scm| {
+            scm.sidecar_assets.iter().map(|sa| {
+                serde_json::json!({
+                    "id": sa.id.to_string(),
+                    "cplIds": sa.cpl_ids.iter().map(|c| c.to_string()).collect::<Vec<_>>(),
+                })
             })
-        }))
+        })
         .collect();
 
-    let unreferenced: Vec<serde_json::Value> = package.unreferenced_assets().iter()
+    let unreferenced: Vec<serde_json::Value> = package
+        .unreferenced_assets()
+        .iter()
         .map(|a| {
-            let path = a.chunk_list.chunks.first().map(|c| c.path.as_str()).unwrap_or("");
+            let path = a
+                .chunk_list
+                .chunks
+                .first()
+                .map(|c| c.path.as_str())
+                .unwrap_or("");
             serde_json::json!({
                 "id": a.id.to_string(),
                 "path": path,

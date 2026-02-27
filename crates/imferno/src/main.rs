@@ -1,15 +1,15 @@
 //! IMF CLI - Command-line tool for inspecting IMF packages
 
+use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use imferno_core::package::{Imferno, ValidationOptions};
-use std::path::PathBuf;
-use anyhow::{Context, Result};
 use imferno_core::validation::{
     validate_cpl_with_registry, AppSpecTarget, ConfigurableValidatorRegistry, CoreSpecTarget,
     ValidatorSelection,
 };
+use imferno_core::{Category, Severity, ValidationIssue, ValidationProfile, ValidationReport};
 use std::io::IsTerminal;
-use imferno_core::{Severity, ValidationIssue, Category, ValidationProfile, ValidationReport};
+use std::path::PathBuf;
 
 // ── ANSI colour helpers ───────────────────────────────────────────────────────
 
@@ -19,12 +19,48 @@ fn use_color() -> bool {
         && std::env::var("TERM").map_or(true, |t| t != "dumb")
 }
 
-fn c_red(s: &str, on: bool)    -> String { if on { format!("\x1b[31m{}\x1b[0m", s) } else { s.to_string() } }
-fn c_yellow(s: &str, on: bool) -> String { if on { format!("\x1b[33m{}\x1b[0m", s) } else { s.to_string() } }
-fn c_cyan(s: &str, on: bool)   -> String { if on { format!("\x1b[36m{}\x1b[0m", s) } else { s.to_string() } }
-fn c_green(s: &str, on: bool)  -> String { if on { format!("\x1b[32m{}\x1b[0m", s) } else { s.to_string() } }
-fn c_bold(s: &str, on: bool)   -> String { if on { format!("\x1b[1m{}\x1b[0m", s) } else { s.to_string() } }
-fn c_dim(s: &str, on: bool)    -> String { if on { format!("\x1b[2m{}\x1b[0m", s) } else { s.to_string() } }
+fn c_red(s: &str, on: bool) -> String {
+    if on {
+        format!("\x1b[31m{}\x1b[0m", s)
+    } else {
+        s.to_string()
+    }
+}
+fn c_yellow(s: &str, on: bool) -> String {
+    if on {
+        format!("\x1b[33m{}\x1b[0m", s)
+    } else {
+        s.to_string()
+    }
+}
+fn c_cyan(s: &str, on: bool) -> String {
+    if on {
+        format!("\x1b[36m{}\x1b[0m", s)
+    } else {
+        s.to_string()
+    }
+}
+fn c_green(s: &str, on: bool) -> String {
+    if on {
+        format!("\x1b[32m{}\x1b[0m", s)
+    } else {
+        s.to_string()
+    }
+}
+fn c_bold(s: &str, on: bool) -> String {
+    if on {
+        format!("\x1b[1m{}\x1b[0m", s)
+    } else {
+        s.to_string()
+    }
+}
+fn c_dim(s: &str, on: bool) -> String {
+    if on {
+        format!("\x1b[2m{}\x1b[0m", s)
+    } else {
+        s.to_string()
+    }
+}
 
 #[derive(Parser)]
 #[command(name = "imf")]
@@ -157,9 +193,22 @@ fn main() -> Result<()> {
             exit_zero,
             rules_config,
         } => {
-            validate_package(&path, verify_hashes, xml_only, format, core_spec, app2e_spec, exit_zero, rules_config.as_deref())?;
+            validate_package(
+                &path,
+                verify_hashes,
+                xml_only,
+                format,
+                core_spec,
+                app2e_spec,
+                exit_zero,
+                rules_config.as_deref(),
+            )?;
         }
-        Commands::Export { path, ancestor, delivery_spec } => {
+        Commands::Export {
+            path,
+            ancestor,
+            delivery_spec,
+        } => {
             generate_report(&path, ancestor.as_deref(), delivery_spec.as_deref())?;
         }
     }
@@ -245,7 +294,8 @@ fn show_cpl(path: &PathBuf, uuid: Option<String>) -> Result<()> {
         }
     };
 
-    let details = package.get_cpl_details(&cpl_uuid)
+    let details = package
+        .get_cpl_details(&cpl_uuid)
         .ok_or_else(|| anyhow::anyhow!("CPL with UUID {} not found", cpl_uuid))?;
 
     println!("CPL Details");
@@ -277,12 +327,18 @@ fn show_cpl(path: &PathBuf, uuid: Option<String>) -> Result<()> {
 
     println!("\nSegments: {}", details.segments.len());
     for (i, segment) in details.segments.iter().enumerate() {
-        println!("  Segment {}: {} ({} sequences)", i + 1, segment.id, segment.sequence_count);
+        println!(
+            "  Segment {}: {} ({} sequences)",
+            i + 1,
+            segment.id,
+            segment.sequence_count
+        );
     }
 
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 fn validate_package(
     path: &PathBuf,
     verify_hashes: bool,
@@ -306,12 +362,14 @@ fn validate_package(
     let color = use_color() && !matches!(format, OutputFormat::Json);
 
     if !matches!(format, OutputFormat::Json) {
-        println!("Validating IMF package: {}", c_bold(&path.display().to_string(), color));
+        println!(
+            "Validating IMF package: {}",
+            c_bold(&path.display().to_string(), color)
+        );
     }
 
     // Parse
-    let parse_result = imferno_core::package::read_dir(path)
-        .and_then(|files| Imferno::parse(files));
+    let parse_result = imferno_core::package::read_dir(path).and_then(Imferno::parse);
     let package = match parse_result {
         Ok(p) => {
             if !matches!(format, OutputFormat::Json) {
@@ -330,7 +388,9 @@ fn validate_package(
                         "PARSE-PACKAGE-FAILED",
                         format!("Failed to load IMF package: {}", e),
                     )
-                    .with_suggestion("Ensure the directory contains VOLINDEX.xml and ASSETMAP.xml.")
+                    .with_suggestion(
+                        "Ensure the directory contains VOLINDEX.xml and ASSETMAP.xml.",
+                    ),
                 );
                 println!("{}", serde_json::to_string_pretty(&report)?);
                 return Ok(());
@@ -342,35 +402,62 @@ fn validate_package(
     let inspection = package.inspect();
 
     if !matches!(format, OutputFormat::Json) {
-        println!("  {}  {} assets mapped", c_green("ok", color), inspection.asset_count);
-        println!("  {}  {} CPL(s) parsed", c_green("ok", color), inspection.cpl_count);
+        println!(
+            "  {}  {} assets mapped",
+            c_green("ok", color),
+            inspection.asset_count
+        );
+        println!(
+            "  {}  {} CPL(s) parsed",
+            c_green("ok", color),
+            inspection.cpl_count
+        );
         let scm_count = package.sidecar_composition_maps.len();
         if scm_count > 0 {
-            let total_sidecars: usize = package.sidecar_composition_maps.values()
+            let total_sidecars: usize = package
+                .sidecar_composition_maps
+                .values()
                 .map(|s| s.sidecar_assets.len())
                 .sum();
-            println!("  {}  {} SCM(s) parsed, {} sidecar asset(s) declared", c_green("ok", color), scm_count, total_sidecars);
+            println!(
+                "  {}  {} SCM(s) parsed, {} sidecar asset(s) declared",
+                c_green("ok", color),
+                scm_count,
+                total_sidecars
+            );
             for scm in package.sidecar_composition_maps.values() {
                 for sa in &scm.sidecar_assets {
-                    let cpl_labels: Vec<String> = sa.cpl_ids.iter()
+                    let cpl_labels: Vec<String> = sa
+                        .cpl_ids
+                        .iter()
                         .map(|id| format!("{:.8}", id.to_string()))
                         .collect();
-                    let filename = package.asset_paths.get(&sa.id)
+                    let filename = package
+                        .asset_paths
+                        .get(&sa.id)
                         .and_then(|p| p.file_name())
                         .map(|n| n.to_string_lossy().into_owned())
                         .unwrap_or_else(|| sa.id.to_string());
-                    println!("        {} → CPL(s): [{}]",
+                    println!(
+                        "        {} → CPL(s): [{}]",
                         c_dim(&filename, color),
-                        c_dim(&cpl_labels.join(", "), color));
+                        c_dim(&cpl_labels.join(", "), color)
+                    );
                 }
             }
         }
         let unref = package.unreferenced_assets();
         if !unref.is_empty() {
-            println!("  {}  {} unreferenced asset(s) — no CPL track reference, no SCM declaration",
-                c_yellow("info", color), unref.len());
+            println!(
+                "  {}  {} unreferenced asset(s) — no CPL track reference, no SCM declaration",
+                c_yellow("info", color),
+                unref.len()
+            );
             for asset in &unref {
-                let filename = asset.chunk_list.chunks.first()
+                let filename = asset
+                    .chunk_list
+                    .chunks
+                    .first()
                     .map(|c| c.path.as_str())
                     .unwrap_or("(no path)");
                 println!("        {}", c_dim(filename, color));
@@ -378,7 +465,10 @@ fn validate_package(
         }
     }
 
-    let options = ValidationOptions { rules, ..Default::default() };
+    let options = ValidationOptions {
+        rules,
+        ..Default::default()
+    };
 
     // Structural validation with configurable built-in spec/profile selection.
     let core_spec_target = match core_spec {
@@ -402,13 +492,16 @@ fn validate_package(
         ..Default::default()
     });
 
-    let mut report = package.validate_package_structure_with_cpl_validator(|cpl| {
-        validate_cpl_with_registry(cpl, &registry)
-    }, xml_only);
+    let mut report = package.validate_package_structure_with_cpl_validator(
+        |cpl| validate_cpl_with_registry(cpl, &registry),
+        xml_only,
+    );
     report = report.apply_rules(&options.rules);
 
     if !matches!(format, OutputFormat::Json) {
-        let all_issues: Vec<_> = report.critical.iter()
+        let all_issues: Vec<_> = report
+            .critical
+            .iter()
             .chain(report.errors.iter())
             .chain(report.warnings.iter())
             .chain(report.info.iter())
@@ -419,10 +512,10 @@ fn validate_package(
 
             for issue in &all_issues {
                 let (label, colorize): (&str, fn(&str, bool) -> String) = match issue.severity {
-                    Severity::Critical => ("error",   c_red),
-                    Severity::Error    => ("error",   c_red),
-                    Severity::Warning  => ("warning", c_yellow),
-                    Severity::Info     => ("info",    c_cyan),
+                    Severity::Critical => ("error", c_red),
+                    Severity::Error => ("error", c_red),
+                    Severity::Warning => ("warning", c_yellow),
+                    Severity::Info => ("info", c_cyan),
                 };
                 let location = if let Some(ref c) = issue.location.cpl_id {
                     c_dim(&format!(" [CPL:{}]", &c[..c.len().min(8)]), color)
@@ -452,9 +545,15 @@ fn validate_package(
         if !matches!(format, OutputFormat::Json) {
             println!("Verifying file hashes (this may take a moment)...");
         }
-        let hash_errs: Vec<_> = package.validate_file_hashes()
+        let hash_errs: Vec<_> = package
+            .validate_file_hashes()
             .into_iter()
-            .filter(|e| !matches!(e, imferno_core::package::FileValidationError::Missing { .. }))
+            .filter(|e| {
+                !matches!(
+                    e,
+                    imferno_core::package::FileValidationError::Missing { .. }
+                )
+            })
             .collect();
         if hash_errs.is_empty() && !matches!(format, OutputFormat::Json) {
             println!("  {}  All PKL file hashes verified", c_green("ok", color));
@@ -479,14 +578,25 @@ fn validate_package(
         let total_warnings = report.warnings.len();
         if total_errors > 0 {
             let mut reasons = Vec::new();
-            if total_errors > 0 { reasons.push(format!("{} error(s)", total_errors)); }
-            if total_warnings > 0 { reasons.push(format!("{} warning(s)", total_warnings)); }
-            println!("{} {}", c_red("failed", color), c_bold(&reasons.join(", "), color));
+            if total_errors > 0 {
+                reasons.push(format!("{} error(s)", total_errors));
+            }
+            if total_warnings > 0 {
+                reasons.push(format!("{} warning(s)", total_warnings));
+            }
+            println!(
+                "{} {}",
+                c_red("failed", color),
+                c_bold(&reasons.join(", "), color)
+            );
             if !exit_zero {
                 return Err(anyhow::anyhow!("Validation failed"));
             }
         } else if total_warnings > 0 {
-            println!("{}", c_yellow(&format!("valid  {} warning(s)", total_warnings), color));
+            println!(
+                "{}",
+                c_yellow(&format!("valid  {} warning(s)", total_warnings), color)
+            );
         } else {
             println!("{}", c_green("valid", color));
         }
@@ -495,7 +605,11 @@ fn validate_package(
     Ok(())
 }
 
-fn generate_report(path: &PathBuf, ancestor_path: Option<&std::path::Path>, delivery_spec_path: Option<&std::path::Path>) -> Result<()> {
+fn generate_report(
+    path: &PathBuf,
+    ancestor_path: Option<&std::path::Path>,
+    delivery_spec_path: Option<&std::path::Path>,
+) -> Result<()> {
     let package = Imferno::parse(imferno_core::package::read_dir(path)?)?;
 
     let ancestor = if let Some(anc_path) = ancestor_path {
@@ -512,8 +626,9 @@ fn generate_report(path: &PathBuf, ancestor_path: Option<&std::path::Path>, deli
         None
     };
 
-    let report = imferno_core::package::build_report(&package, ancestor.as_ref(), delivery_spec.as_ref())
-        .map_err(|e| anyhow::anyhow!(e))?;
+    let report =
+        imferno_core::package::build_report(&package, ancestor.as_ref(), delivery_spec.as_ref())
+            .map_err(|e| anyhow::anyhow!(e))?;
 
     println!("{}", serde_json::to_string_pretty(&report)?);
 

@@ -32,8 +32,9 @@ fn app2e2021_valid_cpl() {
 /// Interlaced frame layout is prohibited by App2E (progressive-scan only).
 #[test]
 fn app2e2021_bad_frame_structure() {
-    let cpl =
-        read_cpl("Application2E2021/CPL_b2e1ace2-9c7d-4c12-b2f7-24bde303869e-bad-frame-structure.xml");
+    let cpl = read_cpl(
+        "Application2E2021/CPL_b2e1ace2-9c7d-4c12-b2f7-24bde303869e-bad-frame-structure.xml",
+    );
     let issues = validate_cpl(&cpl);
     assert!(
         !errors(&issues).is_empty(),
@@ -48,8 +49,7 @@ fn app2e2021_bad_frame_structure() {
 /// (valid BCP sub-levels are 0x11–0x17). It maps to `Unknown` → not J2K family → error.
 #[test]
 fn app2e2021_bad_codec() {
-    let cpl =
-        read_cpl("Application2E2021/CPL_b2e1ace2-9c7d-4c12-b2f7-24bde303869e-bad-codec.xml");
+    let cpl = read_cpl("Application2E2021/CPL_b2e1ace2-9c7d-4c12-b2f7-24bde303869e-bad-codec.xml");
     let issues = validate_cpl(&cpl);
     assert!(
         !errors(&issues).is_empty(),
@@ -62,8 +62,7 @@ fn app2e2021_bad_codec() {
 /// Invalid colorimetry system (mismatched CP/TC/CE triplet per Table 3).
 #[test]
 fn app2e2021_bad_color() {
-    let cpl =
-        read_cpl("Application2E2021/CPL_b2e1ace2-9c7d-4c12-b2f7-24bde303869e-bad-color.xml");
+    let cpl = read_cpl("Application2E2021/CPL_b2e1ace2-9c7d-4c12-b2f7-24bde303869e-bad-color.xml");
     let issues = validate_cpl(&cpl);
     assert!(
         !errors(&issues).is_empty(),
@@ -82,9 +81,8 @@ fn app2e2021_bad_color() {
 /// error list is empty.
 #[test]
 fn app2e2021_cc_namespaces() {
-    let cpl = read_cpl(
-        "Application2E2021/CPL_3714715a-af0c-4a89-9cc9-c99f61e7eb6d_CC-Namespaces.xml",
-    );
+    let cpl =
+        read_cpl("Application2E2021/CPL_3714715a-af0c-4a89-9cc9-c99f61e7eb6d_CC-Namespaces.xml");
     let issues = validate_cpl(&cpl);
     assert!(
         errors(&issues).is_empty(),

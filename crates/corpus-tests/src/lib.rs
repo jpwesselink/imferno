@@ -32,8 +32,13 @@ pub fn read_cpl(rel: &str) -> imferno_core::cpl::CompositionPlaylist {
 /// Keys are plain basenames (no absolute paths), so `root_path` is empty
 /// and file-manifest / MXF-header checks are skipped. Only structural and
 /// reference validation runs — ideal for SCM and other XML-only tests.
-pub fn validate_package(files: std::collections::HashMap<String, String>) -> imferno_core::ValidationReport {
-    imferno_core::package::Imferno::parse_and_validate(files, &imferno_core::package::ValidationOptions::default())
+pub fn validate_package(
+    files: std::collections::HashMap<String, String>,
+) -> imferno_core::ValidationReport {
+    imferno_core::package::Imferno::parse_and_validate(
+        files,
+        &imferno_core::package::ValidationOptions::default(),
+    )
 }
 
 /// Filter issues down to errors and criticals.

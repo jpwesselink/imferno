@@ -16,19 +16,19 @@ impl ValidationCode for St429_9_2014 {
     fn code(&self) -> &'static str {
         match self {
             Self::VolindexMissing => "ST429-9:2014:7/VolindexMissing",
-            Self::MalformedXml    => "ST429-9:2014:7/MalformedXml",
+            Self::MalformedXml => "ST429-9:2014:7/MalformedXml",
         }
     }
     fn description(&self) -> &'static str {
         match self {
             Self::VolindexMissing => "No volume-index document found in the package root.",
-            Self::MalformedXml    => "The VOLINDEX.xml document is not well-formed XML.",
+            Self::MalformedXml => "The VOLINDEX.xml document is not well-formed XML.",
         }
     }
     fn default_severity(&self) -> Severity {
         match self {
             Self::VolindexMissing => Severity::Info,
-            Self::MalformedXml    => Severity::Error,
+            Self::MalformedXml => Severity::Error,
         }
     }
     fn category(&self) -> Category {

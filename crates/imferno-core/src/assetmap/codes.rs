@@ -58,32 +58,36 @@ pub enum St2067_2_2020 {
 impl ValidationCode for St2067_2_2020 {
     fn code(&self) -> &'static str {
         match self {
-            Self::AssetMap              => "ST2067-2:2020:7/AssetMap",
-            Self::AssetMapMalformedXml  => "ST2067-2:2020:7/MalformedXml",
-            Self::PklMalformedXml       => "ST2067-2:2020:9/MalformedXml",
-            Self::NoCpls                => "ST2067-2:2020:7/NoCpls",
-            Self::SizeMismatch          => "ST2067-2:2020:8.3/SizeMismatch",
-            Self::FileNotFound          => "ST2067-2:2020:8.3/FileNotFound",
-            Self::ChecksumMismatch      => "ST2067-2:2020:8.3/ChecksumMismatch",
-            Self::UnresolvedUuid        => "ST2067-2:2020:7/UnresolvedUuid",
-            Self::DuplicateUuid         => "ST2067-2:2020:7/DuplicateUuid",
-            Self::IoError               => "IMF:General/IoError",
+            Self::AssetMap => "ST2067-2:2020:7/AssetMap",
+            Self::AssetMapMalformedXml => "ST2067-2:2020:7/MalformedXml",
+            Self::PklMalformedXml => "ST2067-2:2020:9/MalformedXml",
+            Self::NoCpls => "ST2067-2:2020:7/NoCpls",
+            Self::SizeMismatch => "ST2067-2:2020:8.3/SizeMismatch",
+            Self::FileNotFound => "ST2067-2:2020:8.3/FileNotFound",
+            Self::ChecksumMismatch => "ST2067-2:2020:8.3/ChecksumMismatch",
+            Self::UnresolvedUuid => "ST2067-2:2020:7/UnresolvedUuid",
+            Self::DuplicateUuid => "ST2067-2:2020:7/DuplicateUuid",
+            Self::IoError => "IMF:General/IoError",
             Self::EssenceDescriptorList => "ST2067-2:2020:6.4.2/EssenceDescriptorList",
         }
     }
     fn description(&self) -> &'static str {
         match self {
-            Self::AssetMap              => "AssetMap document is invalid or cannot be parsed.",
-            Self::AssetMapMalformedXml  => "The ASSETMAP.xml document is not well-formed XML.",
-            Self::PklMalformedXml       => "A Packing List document is not well-formed XML.",
-            Self::NoCpls                => "No CPL assets found in the AssetMap.",
-            Self::SizeMismatch          => "Declared file size does not match the on-disk size.",
-            Self::FileNotFound          => "A referenced asset file is not present at the declared path.",
-            Self::ChecksumMismatch      => "File hash does not match the declared SHA-1/SHA-256 checksum.",
-            Self::UnresolvedUuid        => "UUID referenced in the CPL does not resolve to a known asset.",
-            Self::DuplicateUuid         => "Two or more assets within the package share the same UUID.",
-            Self::IoError               => "An I/O error prevented the asset from being read.",
-            Self::EssenceDescriptorList => "EssenceDescriptorList element is required per ST 2067-2:2020 §6.4.2.",
+            Self::AssetMap => "AssetMap document is invalid or cannot be parsed.",
+            Self::AssetMapMalformedXml => "The ASSETMAP.xml document is not well-formed XML.",
+            Self::PklMalformedXml => "A Packing List document is not well-formed XML.",
+            Self::NoCpls => "No CPL assets found in the AssetMap.",
+            Self::SizeMismatch => "Declared file size does not match the on-disk size.",
+            Self::FileNotFound => "A referenced asset file is not present at the declared path.",
+            Self::ChecksumMismatch => {
+                "File hash does not match the declared SHA-1/SHA-256 checksum."
+            }
+            Self::UnresolvedUuid => "UUID referenced in the CPL does not resolve to a known asset.",
+            Self::DuplicateUuid => "Two or more assets within the package share the same UUID.",
+            Self::IoError => "An I/O error prevented the asset from being read.",
+            Self::EssenceDescriptorList => {
+                "EssenceDescriptorList element is required per ST 2067-2:2020 §6.4.2."
+            }
         }
     }
     fn default_severity(&self) -> Severity {
@@ -94,8 +98,11 @@ impl ValidationCode for St2067_2_2020 {
     }
     fn category(&self) -> Category {
         match self {
-            Self::AssetMap | Self::AssetMapMalformedXml | Self::PklMalformedXml
-            | Self::NoCpls | Self::EssenceDescriptorList => Category::Structure,
+            Self::AssetMap
+            | Self::AssetMapMalformedXml
+            | Self::PklMalformedXml
+            | Self::NoCpls
+            | Self::EssenceDescriptorList => Category::Structure,
             Self::SizeMismatch | Self::FileNotFound | Self::IoError | Self::ChecksumMismatch => {
                 Category::Asset
             }

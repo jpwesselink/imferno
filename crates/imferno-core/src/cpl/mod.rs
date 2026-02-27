@@ -9,8 +9,8 @@
 
 pub mod types;
 pub use types::{
-    CodingEquations, ColorPrimaries, ContentKind, CplNamespace, EditRate, LanguageTag,
-    MarkerLabel, McaTagSymbol, Resolution, TransferCharacteristic, VideoCodec,
+    CodingEquations, ColorPrimaries, ContentKind, CplNamespace, EditRate, LanguageTag, MarkerLabel,
+    McaTagSymbol, Resolution, TransferCharacteristic, VideoCodec,
 };
 
 pub mod validate;
@@ -18,19 +18,19 @@ pub use validate::validate_cpl as validate_cpl_constraints;
 
 pub mod codes;
 
-use base64::Engine;
 use crate::assetmap::{HashAlgorithm, ImfUuid};
+use base64::Engine;
 use quick_xml::events::Event;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 use thiserror::Error;
 
+#[cfg(all(feature = "xmlsec", not(target_arch = "wasm32")))]
+use libxml::parser::Parser as XmlParser;
 #[cfg(all(feature = "xmlsec1", not(target_arch = "wasm32")))]
 use std::io::Write;
 #[cfg(all(feature = "xmlsec1", not(target_arch = "wasm32")))]
 use std::process::Command;
-#[cfg(all(feature = "xmlsec", not(target_arch = "wasm32")))]
-use libxml::parser::Parser as XmlParser;
 #[cfg(all(feature = "xmlsec", not(target_arch = "wasm32")))]
 use xmlsec::{XmlSecKey, XmlSecKeyFormat, XmlSecSignatureContext};
 
@@ -191,7 +191,8 @@ pub struct XmlSec1Verifier {
 #[cfg(all(feature = "xmlsec1", not(target_arch = "wasm32")))]
 impl Default for XmlSec1Verifier {
     fn default() -> Self {
-        let binary_path = std::env::var("IMF_XMLSEC1_BIN").unwrap_or_else(|_| "xmlsec1".to_string());
+        let binary_path =
+            std::env::var("IMF_XMLSEC1_BIN").unwrap_or_else(|_| "xmlsec1".to_string());
         Self {
             binary_path,
             extra_args: Vec::new(),
@@ -237,12 +238,9 @@ impl XmlSignatureVerifier for XmlSec1Verifier {
         }
         command.arg(tmp.path());
 
-        let output = command.output().map_err(|e| {
-            format!(
-                "failed to execute '{} --verify': {}",
-                self.binary_path, e
-            )
-        })?;
+        let output = command
+            .output()
+            .map_err(|e| format!("failed to execute '{} --verify': {}", self.binary_path, e))?;
 
         if output.status.success() {
             return Ok(());
@@ -443,10 +441,9 @@ fn extract_signature_method_algorithm(signature_xml: &str) -> Option<String> {
 }
 
 fn extract_reference_entries(signature_xml: &str) -> Result<Vec<SignatureReferenceEntry>, String> {
-    let reference_re = regex::Regex::new(
-        r#"(?s)<(?:(?:\w+):)?Reference\b([^>]*)>(.*?)</(?:(?:\w+):)?Reference>"#,
-    )
-    .map_err(|e| e.to_string())?;
+    let reference_re =
+        regex::Regex::new(r#"(?s)<(?:(?:\w+):)?Reference\b([^>]*)>(.*?)</(?:(?:\w+):)?Reference>"#)
+            .map_err(|e| e.to_string())?;
     let uri_re = regex::Regex::new(r#"\bURI\s*=\s*\"([^\"]*)\""#).map_err(|e| e.to_string())?;
     let digest_method_re = regex::Regex::new(
         r#"<(?:(?:\w+):)?DigestMethod\b[^>]*\bAlgorithm\s*=\s*\"([^\"]+)\"[^>]*/?>"#,
@@ -491,10 +488,9 @@ fn extract_reference_entries(signature_xml: &str) -> Result<Vec<SignatureReferen
 }
 
 fn strip_first_signature_element(xml: &str) -> Option<String> {
-    let re = regex::Regex::new(
-        r#"(?s)<(?:(?:\w+):)?Signature\b[^>]*>.*?</(?:(?:\w+):)?Signature\s*>"#,
-    )
-    .ok()?;
+    let re =
+        regex::Regex::new(r#"(?s)<(?:(?:\w+):)?Signature\b[^>]*>.*?</(?:(?:\w+):)?Signature\s*>"#)
+            .ok()?;
     let m = re.find(xml)?;
     let mut out = String::with_capacity(xml.len() - (m.end() - m.start()));
     out.push_str(&xml[..m.start()]);
@@ -503,14 +499,13 @@ fn strip_first_signature_element(xml: &str) -> Option<String> {
 }
 
 fn normalize_xml_for_digest(xml: &str) -> String {
-    let no_decl = xml
-        .strip_prefix("\u{FEFF}")
-        .unwrap_or(xml)
-        .trim();
+    let no_decl = xml.strip_prefix("\u{FEFF}").unwrap_or(xml).trim();
     let decl_re = regex::Regex::new(r#"(?s)^\s*<\?xml[^>]*\?>"#).unwrap();
     let without_decl = decl_re.replace(no_decl, "").to_string();
     let inter_tag_ws_re = regex::Regex::new(r#">\s+<"#).unwrap();
-    inter_tag_ws_re.replace_all(without_decl.trim(), "><").to_string()
+    inter_tag_ws_re
+        .replace_all(without_decl.trim(), "><")
+        .to_string()
 }
 
 fn extract_first_element(xml: &str, local_name: &str) -> Option<String> {
@@ -544,74 +539,124 @@ fn collapse_xml_text(text: &str) -> String {
 
 mod de_helpers {
     use crate::cpl::{
-        CodingEquations, ColorPrimaries, EditRate, LanguageTag,
-        McaTagSymbol, TransferCharacteristic, VideoCodec,
+        CodingEquations, ColorPrimaries, EditRate, LanguageTag, McaTagSymbol,
+        TransferCharacteristic, VideoCodec,
     };
     use serde::{Deserialize, Deserializer};
 
-    pub fn de_optional_edit_rate<'de, D: Deserializer<'de>>(d: D) -> Result<Option<EditRate>, D::Error> {
+    pub fn de_optional_edit_rate<'de, D: Deserializer<'de>>(
+        d: D,
+    ) -> Result<Option<EditRate>, D::Error> {
         let s = String::deserialize(d)?;
         let trimmed = s.trim();
-        if trimmed.is_empty() { Ok(None) }
-        else {
+        if trimmed.is_empty() {
+            Ok(None)
+        } else {
             // Support both space-separated ("60000 1001") and slash-separated ("60000/1001") formats
             let normalized = trimmed.replace('/', " ");
-            EditRate::parse(&normalized).map(Some).map_err(serde::de::Error::custom)
+            EditRate::parse(&normalized)
+                .map(Some)
+                .map_err(serde::de::Error::custom)
         }
     }
 
-    pub fn de_optional_color_primaries<'de, D: Deserializer<'de>>(d: D) -> Result<Option<ColorPrimaries>, D::Error> {
+    pub fn de_optional_color_primaries<'de, D: Deserializer<'de>>(
+        d: D,
+    ) -> Result<Option<ColorPrimaries>, D::Error> {
         let s = String::deserialize(d)?;
-        Ok(if s.trim().is_empty() { None } else { Some(ColorPrimaries::from_ul(s.trim())) })
+        Ok(if s.trim().is_empty() {
+            None
+        } else {
+            Some(ColorPrimaries::from_ul(s.trim()))
+        })
     }
 
-    pub fn de_optional_transfer_characteristic<'de, D: Deserializer<'de>>(d: D) -> Result<Option<TransferCharacteristic>, D::Error> {
+    pub fn de_optional_transfer_characteristic<'de, D: Deserializer<'de>>(
+        d: D,
+    ) -> Result<Option<TransferCharacteristic>, D::Error> {
         let s = String::deserialize(d)?;
-        Ok(if s.trim().is_empty() { None } else { Some(TransferCharacteristic::from_ul(s.trim())) })
+        Ok(if s.trim().is_empty() {
+            None
+        } else {
+            Some(TransferCharacteristic::from_ul(s.trim()))
+        })
     }
 
-    pub fn de_optional_video_codec<'de, D: Deserializer<'de>>(d: D) -> Result<Option<VideoCodec>, D::Error> {
+    pub fn de_optional_video_codec<'de, D: Deserializer<'de>>(
+        d: D,
+    ) -> Result<Option<VideoCodec>, D::Error> {
         let s = String::deserialize(d)?;
-        Ok(if s.trim().is_empty() { None } else { Some(VideoCodec::from_ul(s.trim())) })
+        Ok(if s.trim().is_empty() {
+            None
+        } else {
+            Some(VideoCodec::from_ul(s.trim()))
+        })
     }
 
-    pub fn de_optional_coding_equations<'de, D: Deserializer<'de>>(d: D) -> Result<Option<CodingEquations>, D::Error> {
+    pub fn de_optional_coding_equations<'de, D: Deserializer<'de>>(
+        d: D,
+    ) -> Result<Option<CodingEquations>, D::Error> {
         let s = String::deserialize(d)?;
-        Ok(if s.trim().is_empty() { None } else { Some(CodingEquations::from_ul(s.trim())) })
+        Ok(if s.trim().is_empty() {
+            None
+        } else {
+            Some(CodingEquations::from_ul(s.trim()))
+        })
     }
 
-    pub fn de_optional_mca_tag_symbol<'de, D: Deserializer<'de>>(d: D) -> Result<Option<McaTagSymbol>, D::Error> {
+    pub fn de_optional_mca_tag_symbol<'de, D: Deserializer<'de>>(
+        d: D,
+    ) -> Result<Option<McaTagSymbol>, D::Error> {
         let s = String::deserialize(d)?;
-        Ok(if s.trim().is_empty() { None } else { Some(McaTagSymbol::parse(s.trim())) })
+        Ok(if s.trim().is_empty() {
+            None
+        } else {
+            Some(McaTagSymbol::parse(s.trim()))
+        })
     }
 
-    pub fn de_optional_language_tag<'de, D: Deserializer<'de>>(d: D) -> Result<Option<LanguageTag>, D::Error> {
+    pub fn de_optional_language_tag<'de, D: Deserializer<'de>>(
+        d: D,
+    ) -> Result<Option<LanguageTag>, D::Error> {
         let s = String::deserialize(d)?;
         let trimmed = s.trim();
-        if trimmed.is_empty() { Ok(None) }
-        else { LanguageTag::parse(trimmed).map(Some).map_err(serde::de::Error::custom) }
+        if trimmed.is_empty() {
+            Ok(None)
+        } else {
+            LanguageTag::parse(trimmed)
+                .map(Some)
+                .map_err(serde::de::Error::custom)
+        }
     }
 
     /// ColorSiting may be numeric (0 = CoSiting) or a label string ("CoSiting").
     /// Maps known label strings to their MXF numeric values; unknown strings → None.
-    pub fn de_optional_color_siting<'de, D: Deserializer<'de>>(d: D) -> Result<Option<u32>, D::Error> {
+    pub fn de_optional_color_siting<'de, D: Deserializer<'de>>(
+        d: D,
+    ) -> Result<Option<u32>, D::Error> {
         let s = String::deserialize(d)?;
         let s = s.trim();
-        if s.is_empty() { return Ok(None); }
-        if let Ok(n) = s.parse::<u32>() { return Ok(Some(n)); }
+        if s.is_empty() {
+            return Ok(None);
+        }
+        if let Ok(n) = s.parse::<u32>() {
+            return Ok(Some(n));
+        }
         let v = match s.to_lowercase().as_str() {
-            "cositing"      => 0,
+            "cositing" => 0,
             "horizcositing" => 1,
-            "threetap"      => 2,
-            "quincunx"      => 3,
-            "rec709"        => 4,
-            "rec601"        => 6,
-            _               => return Ok(None),
+            "threetap" => 2,
+            "quincunx" => 3,
+            "rec709" => 4,
+            "rec601" => 6,
+            _ => return Ok(None),
         };
         Ok(Some(v))
     }
 
-    pub fn de_language_tag_list<'de, D: Deserializer<'de>>(d: D) -> Result<Vec<LanguageTag>, D::Error> {
+    pub fn de_language_tag_list<'de, D: Deserializer<'de>>(
+        d: D,
+    ) -> Result<Vec<LanguageTag>, D::Error> {
         let s = String::deserialize(d)?;
         s.split(',')
             .map(|part| part.trim())
@@ -694,7 +739,9 @@ impl<'de> Deserialize<'de> for ContentKindElement {
             type Value = ContentKindElement;
 
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                formatter.write_str("a string or an object with text content and optional @scope attribute")
+                formatter.write_str(
+                    "a string or an object with text content and optional @scope attribute",
+                )
             }
 
             fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
@@ -780,8 +827,12 @@ impl schemars::JsonSchema for ContentKindElement {
             ..Default::default()
         };
         let obj_validation = obj.object();
-        obj_validation.properties.insert("$text".to_owned(), gen.subschema_for::<String>());
-        obj_validation.properties.insert("@scope".to_owned(), gen.subschema_for::<Option<String>>());
+        obj_validation
+            .properties
+            .insert("$text".to_owned(), gen.subschema_for::<String>());
+        obj_validation
+            .properties
+            .insert("@scope".to_owned(), gen.subschema_for::<Option<String>>());
         obj_validation.required.insert("$text".to_owned());
 
         SchemaObject {
@@ -860,7 +911,9 @@ impl<'de> Deserialize<'de> for MarkerLabelElement {
             type Value = MarkerLabelElement;
 
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                formatter.write_str("a string or an object with text content and optional @scope attribute")
+                formatter.write_str(
+                    "a string or an object with text content and optional @scope attribute",
+                )
             }
 
             fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
@@ -946,8 +999,12 @@ impl schemars::JsonSchema for MarkerLabelElement {
             ..Default::default()
         };
         let obj_validation = obj.object();
-        obj_validation.properties.insert("$text".to_owned(), gen.subschema_for::<String>());
-        obj_validation.properties.insert("@scope".to_owned(), gen.subschema_for::<Option<String>>());
+        obj_validation
+            .properties
+            .insert("$text".to_owned(), gen.subschema_for::<String>());
+        obj_validation
+            .properties
+            .insert("@scope".to_owned(), gen.subschema_for::<Option<String>>());
         obj_validation.required.insert("$text".to_owned());
 
         SchemaObject {
@@ -985,24 +1042,14 @@ pub fn strip_xml_namespaces(xml: &str) -> String {
 // =============================================================================
 
 /// String with optional language attribute
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, Default, PartialEq, Clone)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
-
 #[cfg_attr(feature = "wasm", derive(Tsify))]
 #[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
 pub struct LanguageString {
     pub text: String,
     pub language: Option<LanguageTag>, // RFC 5646 language tag
-}
-
-impl Default for LanguageString {
-    fn default() -> Self {
-        Self {
-            text: String::new(),
-            language: None,
-        }
-    }
 }
 
 impl std::fmt::Display for LanguageString {
@@ -1119,8 +1166,13 @@ impl schemars::JsonSchema for LanguageString {
             ..Default::default()
         };
         let obj_validation = obj.object();
-        obj_validation.properties.insert("$text".to_owned(), gen.subschema_for::<String>());
-        obj_validation.properties.insert("@language".to_owned(), gen.subschema_for::<Option<String>>());
+        obj_validation
+            .properties
+            .insert("$text".to_owned(), gen.subschema_for::<String>());
+        obj_validation.properties.insert(
+            "@language".to_owned(),
+            gen.subschema_for::<Option<String>>(),
+        );
         obj_validation.required.insert("$text".to_owned());
 
         SchemaObject {
@@ -1159,15 +1211,31 @@ pub struct LocaleList {
 #[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
 pub struct Locale {
     #[cfg_attr(not(feature = "wasm"), serde(rename = "LanguageList", default))]
-    #[cfg_attr(feature = "wasm", serde(rename = "languageList", alias = "LanguageList", default))]
+    #[cfg_attr(
+        feature = "wasm",
+        serde(rename = "languageList", alias = "LanguageList", default)
+    )]
     pub language_list: Option<LanguageList>,
 
     #[cfg_attr(not(feature = "wasm"), serde(rename = "RegionList", default))]
-    #[cfg_attr(feature = "wasm", serde(rename = "regionList", alias = "RegionList", default))]
+    #[cfg_attr(
+        feature = "wasm",
+        serde(rename = "regionList", alias = "RegionList", default)
+    )]
     pub region_list: Option<RegionList>,
 
-    #[cfg_attr(not(feature = "wasm"), serde(rename = "ContentMaturityRatingList", default))]
-    #[cfg_attr(feature = "wasm", serde(rename = "contentMaturityRatingList", alias = "ContentMaturityRatingList", default))]
+    #[cfg_attr(
+        not(feature = "wasm"),
+        serde(rename = "ContentMaturityRatingList", default)
+    )]
+    #[cfg_attr(
+        feature = "wasm",
+        serde(
+            rename = "contentMaturityRatingList",
+            alias = "ContentMaturityRatingList",
+            default
+        )
+    )]
     pub content_maturity_rating_list: Option<ContentMaturityRatingList>,
 }
 
@@ -1179,7 +1247,10 @@ pub struct Locale {
 #[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
 pub struct ContentMaturityRatingList {
     #[cfg_attr(not(feature = "wasm"), serde(rename = "ContentMaturityRating"))]
-    #[cfg_attr(feature = "wasm", serde(rename = "contentMaturityRating", alias = "ContentMaturityRating"))]
+    #[cfg_attr(
+        feature = "wasm",
+        serde(rename = "contentMaturityRating", alias = "ContentMaturityRating")
+    )]
     pub ratings: Vec<ContentMaturityRating>,
 }
 
@@ -1200,7 +1271,10 @@ pub struct ContentMaturityRating {
     pub rating: Option<String>,
 
     #[cfg_attr(not(feature = "wasm"), serde(rename = "Audience", default))]
-    #[cfg_attr(feature = "wasm", serde(rename = "audience", alias = "Audience", default))]
+    #[cfg_attr(
+        feature = "wasm",
+        serde(rename = "audience", alias = "Audience", default)
+    )]
     pub audience: Option<AudienceElement>,
 }
 
@@ -1254,8 +1328,18 @@ pub struct RegionList {
 #[cfg_attr(feature = "wasm", derive(Tsify))]
 #[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
 pub struct ExtensionProperties {
-    #[cfg_attr(not(feature = "wasm"), serde(rename = "ApplicationIdentification", default))]
-    #[cfg_attr(feature = "wasm", serde(rename = "applicationIdentification", alias = "ApplicationIdentification", default))]
+    #[cfg_attr(
+        not(feature = "wasm"),
+        serde(rename = "ApplicationIdentification", default)
+    )]
+    #[cfg_attr(
+        feature = "wasm",
+        serde(
+            rename = "applicationIdentification",
+            alias = "ApplicationIdentification",
+            default
+        )
+    )]
     pub application_identification: Option<String>,
 
     #[cfg_attr(not(feature = "wasm"), serde(rename = "MaxCLL", default))]
@@ -1263,7 +1347,10 @@ pub struct ExtensionProperties {
     pub max_cll: Option<u32>,
 
     #[cfg_attr(not(feature = "wasm"), serde(rename = "MaxFALL", default))]
-    #[cfg_attr(feature = "wasm", serde(rename = "maxFALL", alias = "MaxFALL", default))]
+    #[cfg_attr(
+        feature = "wasm",
+        serde(rename = "maxFALL", alias = "MaxFALL", default)
+    )]
     pub max_fall: Option<u32>,
 }
 
@@ -1279,7 +1366,10 @@ pub struct ExtensionProperties {
 #[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
 pub struct EssenceDescriptorList {
     #[cfg_attr(not(feature = "wasm"), serde(rename = "EssenceDescriptor"))]
-    #[cfg_attr(feature = "wasm", serde(rename = "essenceDescriptor", alias = "EssenceDescriptor"))]
+    #[cfg_attr(
+        feature = "wasm",
+        serde(rename = "essenceDescriptor", alias = "EssenceDescriptor")
+    )]
     pub essence_descriptors: Vec<EssenceDescriptor>,
 }
 
@@ -1295,27 +1385,63 @@ pub struct EssenceDescriptor {
     pub id: ImfUuid,
 
     #[cfg_attr(not(feature = "wasm"), serde(rename = "RGBADescriptor", default))]
-    #[cfg_attr(feature = "wasm", serde(rename = "rgbaDescriptor", alias = "RGBADescriptor", default))]
+    #[cfg_attr(
+        feature = "wasm",
+        serde(rename = "rgbaDescriptor", alias = "RGBADescriptor", default)
+    )]
     pub rgba_descriptor: Option<RGBADescriptor>,
 
     #[cfg_attr(not(feature = "wasm"), serde(rename = "CDCIDescriptor", default))]
-    #[cfg_attr(feature = "wasm", serde(rename = "cdciDescriptor", alias = "CDCIDescriptor", default))]
+    #[cfg_attr(
+        feature = "wasm",
+        serde(rename = "cdciDescriptor", alias = "CDCIDescriptor", default)
+    )]
     pub cdci_descriptor: Option<CDCIDescriptor>,
 
     #[cfg_attr(not(feature = "wasm"), serde(rename = "WAVEPCMDescriptor", default))]
-    #[cfg_attr(feature = "wasm", serde(rename = "wavePCMDescriptor", alias = "WAVEPCMDescriptor", default))]
+    #[cfg_attr(
+        feature = "wasm",
+        serde(rename = "wavePCMDescriptor", alias = "WAVEPCMDescriptor", default)
+    )]
     pub wave_pcm_descriptor: Option<WAVEPCMDescriptor>,
 
-    #[cfg_attr(not(feature = "wasm"), serde(rename = "DCTimedTextDescriptor", default))]
-    #[cfg_attr(feature = "wasm", serde(rename = "dcTimedTextDescriptor", alias = "DCTimedTextDescriptor", default))]
+    #[cfg_attr(
+        not(feature = "wasm"),
+        serde(rename = "DCTimedTextDescriptor", default)
+    )]
+    #[cfg_attr(
+        feature = "wasm",
+        serde(
+            rename = "dcTimedTextDescriptor",
+            alias = "DCTimedTextDescriptor",
+            default
+        )
+    )]
     pub dc_timed_text_descriptor: Option<DCTimedTextDescriptor>,
 
     #[cfg_attr(not(feature = "wasm"), serde(rename = "IABEssenceDescriptor", default))]
-    #[cfg_attr(feature = "wasm", serde(rename = "iabEssenceDescriptor", alias = "IABEssenceDescriptor", default))]
+    #[cfg_attr(
+        feature = "wasm",
+        serde(
+            rename = "iabEssenceDescriptor",
+            alias = "IABEssenceDescriptor",
+            default
+        )
+    )]
     pub iab_essence_descriptor: Option<IABEssenceDescriptor>,
 
-    #[cfg_attr(not(feature = "wasm"), serde(rename = "ISXDDataEssenceDescriptor", default))]
-    #[cfg_attr(feature = "wasm", serde(rename = "isxdDataEssenceDescriptor", alias = "ISXDDataEssenceDescriptor", default))]
+    #[cfg_attr(
+        not(feature = "wasm"),
+        serde(rename = "ISXDDataEssenceDescriptor", default)
+    )]
+    #[cfg_attr(
+        feature = "wasm",
+        serde(
+            rename = "isxdDataEssenceDescriptor",
+            alias = "ISXDDataEssenceDescriptor",
+            default
+        )
+    )]
     pub isxd_data_essence_descriptor: Option<ISXDDataEssenceDescriptor>,
 }
 
@@ -1342,22 +1468,42 @@ pub struct RGBADescriptor {
     #[serde(rename = "StoredHeight", default)]
     pub stored_height: Option<u32>,
 
-    #[serde(rename = "SampleRate", default, deserialize_with = "de_helpers::de_optional_edit_rate")]
+    #[serde(
+        rename = "SampleRate",
+        default,
+        deserialize_with = "de_helpers::de_optional_edit_rate"
+    )]
     pub sample_rate: Option<EditRate>,
 
     #[serde(rename = "ImageAspectRatio", default)]
     pub image_aspect_ratio: Option<String>,
 
-    #[serde(rename = "ColorPrimaries", default, deserialize_with = "de_helpers::de_optional_color_primaries")]
+    #[serde(
+        rename = "ColorPrimaries",
+        default,
+        deserialize_with = "de_helpers::de_optional_color_primaries"
+    )]
     pub color_primaries: Option<ColorPrimaries>,
 
-    #[serde(rename = "TransferCharacteristic", default, deserialize_with = "de_helpers::de_optional_transfer_characteristic")]
+    #[serde(
+        rename = "TransferCharacteristic",
+        default,
+        deserialize_with = "de_helpers::de_optional_transfer_characteristic"
+    )]
     pub transfer_characteristic: Option<TransferCharacteristic>,
 
-    #[serde(rename = "CodingEquations", default, deserialize_with = "de_helpers::de_optional_coding_equations")]
+    #[serde(
+        rename = "CodingEquations",
+        default,
+        deserialize_with = "de_helpers::de_optional_coding_equations"
+    )]
     pub coding_equations: Option<CodingEquations>,
 
-    #[serde(rename = "PictureCompression", default, deserialize_with = "de_helpers::de_optional_video_codec")]
+    #[serde(
+        rename = "PictureCompression",
+        default,
+        deserialize_with = "de_helpers::de_optional_video_codec"
+    )]
     pub picture_compression: Option<VideoCodec>,
 
     /// Generic Picture Essence Descriptor: Frame Layout
@@ -1474,22 +1620,42 @@ pub struct CDCIDescriptor {
     #[serde(rename = "ActiveHeight", default)]
     pub active_height: Option<u32>,
 
-    #[serde(rename = "SampleRate", default, deserialize_with = "de_helpers::de_optional_edit_rate")]
+    #[serde(
+        rename = "SampleRate",
+        default,
+        deserialize_with = "de_helpers::de_optional_edit_rate"
+    )]
     pub sample_rate: Option<EditRate>,
 
     #[serde(rename = "ImageAspectRatio", default)]
     pub image_aspect_ratio: Option<String>,
 
-    #[serde(rename = "ColorPrimaries", default, deserialize_with = "de_helpers::de_optional_color_primaries")]
+    #[serde(
+        rename = "ColorPrimaries",
+        default,
+        deserialize_with = "de_helpers::de_optional_color_primaries"
+    )]
     pub color_primaries: Option<ColorPrimaries>,
 
-    #[serde(rename = "TransferCharacteristic", default, deserialize_with = "de_helpers::de_optional_transfer_characteristic")]
+    #[serde(
+        rename = "TransferCharacteristic",
+        default,
+        deserialize_with = "de_helpers::de_optional_transfer_characteristic"
+    )]
     pub transfer_characteristic: Option<TransferCharacteristic>,
 
-    #[serde(rename = "CodingEquations", default, deserialize_with = "de_helpers::de_optional_coding_equations")]
+    #[serde(
+        rename = "CodingEquations",
+        default,
+        deserialize_with = "de_helpers::de_optional_coding_equations"
+    )]
     pub coding_equations: Option<CodingEquations>,
 
-    #[serde(rename = "PictureCompression", default, deserialize_with = "de_helpers::de_optional_video_codec")]
+    #[serde(
+        rename = "PictureCompression",
+        default,
+        deserialize_with = "de_helpers::de_optional_video_codec"
+    )]
     pub picture_compression: Option<VideoCodec>,
 
     #[serde(rename = "ComponentDepth", default)]
@@ -1516,7 +1682,11 @@ pub struct CDCIDescriptor {
 
     /// CDCI Descriptor: Color Siting (Table 12)
     /// Shall be 0 (CoSiting) but some encoders write a label string (e.g. "CoSiting").
-    #[serde(rename = "ColorSiting", default, deserialize_with = "de_helpers::de_optional_color_siting")]
+    #[serde(
+        rename = "ColorSiting",
+        default,
+        deserialize_with = "de_helpers::de_optional_color_siting"
+    )]
     pub color_siting: Option<u32>,
 
     /// CDCI Descriptor: Black Ref Level (Table 13)
@@ -1786,10 +1956,18 @@ pub struct WAVEPCMDescriptor {
     #[serde(rename = "InstanceID", alias = "InstanceUID", default)]
     pub instance_id: Option<String>,
 
-    #[serde(rename = "SampleRate", default, deserialize_with = "de_helpers::de_optional_edit_rate")]
+    #[serde(
+        rename = "SampleRate",
+        default,
+        deserialize_with = "de_helpers::de_optional_edit_rate"
+    )]
     pub sample_rate: Option<EditRate>,
 
-    #[serde(rename = "AudioSampleRate", default, deserialize_with = "de_helpers::de_optional_edit_rate")]
+    #[serde(
+        rename = "AudioSampleRate",
+        default,
+        deserialize_with = "de_helpers::de_optional_edit_rate"
+    )]
     pub audio_sample_rate: Option<EditRate>,
 
     #[serde(rename = "ChannelCount", default)]
@@ -1826,7 +2004,11 @@ pub struct AudioSubDescriptors {
 #[cfg_attr(feature = "wasm", derive(Tsify))]
 #[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
 pub struct SoundfieldGroupLabelSubDescriptor {
-    #[serde(rename = "MCATagSymbol", default, deserialize_with = "de_helpers::de_optional_mca_tag_symbol")]
+    #[serde(
+        rename = "MCATagSymbol",
+        default,
+        deserialize_with = "de_helpers::de_optional_mca_tag_symbol"
+    )]
     pub mca_tag_symbol: Option<McaTagSymbol>,
 
     #[serde(rename = "MCATagName", default)]
@@ -1836,7 +2018,12 @@ pub struct SoundfieldGroupLabelSubDescriptor {
     pub mca_audio_content_kind: Option<String>,
 
     /// RFC 5646 language tag — field name varies between vendors
-    #[serde(rename = "RFC5646SpokenLanguage", alias = "RFC5646AudioLanguageCode", default, deserialize_with = "de_helpers::de_optional_language_tag")]
+    #[serde(
+        rename = "RFC5646SpokenLanguage",
+        alias = "RFC5646AudioLanguageCode",
+        default,
+        deserialize_with = "de_helpers::de_optional_language_tag"
+    )]
     pub rfc5646_spoken_language: Option<LanguageTag>,
 }
 
@@ -1854,11 +2041,19 @@ pub struct DCTimedTextDescriptor {
     #[serde(rename = "LinkedTrackID", default)]
     pub linked_track_id: Option<u32>,
 
-    #[serde(rename = "SampleRate", default, deserialize_with = "de_helpers::de_optional_edit_rate")]
+    #[serde(
+        rename = "SampleRate",
+        default,
+        deserialize_with = "de_helpers::de_optional_edit_rate"
+    )]
     pub sample_rate: Option<EditRate>,
 
     /// Comma-separated RFC 5646 language tags for this timed text track
-    #[serde(rename = "RFC5646LanguageTagList", default, deserialize_with = "de_helpers::de_language_tag_list")]
+    #[serde(
+        rename = "RFC5646LanguageTagList",
+        default,
+        deserialize_with = "de_helpers::de_language_tag_list"
+    )]
     pub rfc5646_language_tag_list: Vec<LanguageTag>,
 
     #[serde(rename = "NamespaceURI", default)]
@@ -1879,10 +2074,18 @@ pub struct IABEssenceDescriptor {
     #[serde(rename = "LinkedTrackID", default)]
     pub linked_track_id: Option<u32>,
 
-    #[serde(rename = "SampleRate", default, deserialize_with = "de_helpers::de_optional_edit_rate")]
+    #[serde(
+        rename = "SampleRate",
+        default,
+        deserialize_with = "de_helpers::de_optional_edit_rate"
+    )]
     pub sample_rate: Option<EditRate>,
 
-    #[serde(rename = "AudioSampleRate", default, deserialize_with = "de_helpers::de_optional_edit_rate")]
+    #[serde(
+        rename = "AudioSampleRate",
+        default,
+        deserialize_with = "de_helpers::de_optional_edit_rate"
+    )]
     pub audio_sample_rate: Option<EditRate>,
 
     #[serde(rename = "ChannelCount", default)]
@@ -1934,7 +2137,11 @@ pub struct IABSoundfieldLabelSubDescriptor {
     #[serde(rename = "InstanceID", alias = "InstanceUID", default)]
     pub instance_id: Option<String>,
 
-    #[serde(rename = "MCATagSymbol", default, deserialize_with = "de_helpers::de_optional_mca_tag_symbol")]
+    #[serde(
+        rename = "MCATagSymbol",
+        default,
+        deserialize_with = "de_helpers::de_optional_mca_tag_symbol"
+    )]
     pub mca_tag_symbol: Option<McaTagSymbol>,
 
     #[serde(rename = "MCATagName", default)]
@@ -1944,7 +2151,12 @@ pub struct IABSoundfieldLabelSubDescriptor {
     #[serde(rename = "MCALabelDictionaryID", default)]
     pub mca_label_dictionary_id: Option<String>,
 
-    #[serde(rename = "RFC5646SpokenLanguage", alias = "RFC5646AudioLanguageCode", default, deserialize_with = "de_helpers::de_optional_language_tag")]
+    #[serde(
+        rename = "RFC5646SpokenLanguage",
+        alias = "RFC5646AudioLanguageCode",
+        default,
+        deserialize_with = "de_helpers::de_optional_language_tag"
+    )]
     pub rfc5646_spoken_language: Option<LanguageTag>,
 }
 
@@ -1987,7 +2199,11 @@ pub struct ISXDDataEssenceDescriptor {
     #[serde(rename = "LinkedTrackID", default)]
     pub linked_track_id: Option<u32>,
 
-    #[serde(rename = "SampleRate", default, deserialize_with = "de_helpers::de_optional_edit_rate")]
+    #[serde(
+        rename = "SampleRate",
+        default,
+        deserialize_with = "de_helpers::de_optional_edit_rate"
+    )]
     pub sample_rate: Option<EditRate>,
 
     #[serde(rename = "DataEssenceCoding", default)]
@@ -2023,7 +2239,10 @@ pub struct CompositionPlaylist {
     pub id: ImfUuid,
 
     #[cfg_attr(not(feature = "wasm"), serde(rename = "Annotation", default))]
-    #[cfg_attr(feature = "wasm", serde(rename = "annotation", alias = "Annotation", default))]
+    #[cfg_attr(
+        feature = "wasm",
+        serde(rename = "annotation", alias = "Annotation", default)
+    )]
     #[cfg_attr(feature = "typescript", ts(rename = "annotation"))]
     pub annotation: Option<LanguageString>,
 
@@ -2038,57 +2257,116 @@ pub struct CompositionPlaylist {
     pub issuer: Option<LanguageString>,
 
     #[cfg_attr(not(feature = "wasm"), serde(rename = "Creator", default))]
-    #[cfg_attr(feature = "wasm", serde(rename = "creator", alias = "Creator", default))]
+    #[cfg_attr(
+        feature = "wasm",
+        serde(rename = "creator", alias = "Creator", default)
+    )]
     #[cfg_attr(feature = "typescript", ts(rename = "creator"))]
     pub creator: Option<LanguageString>,
 
     #[cfg_attr(not(feature = "wasm"), serde(rename = "ContentOriginator", default))]
-    #[cfg_attr(feature = "wasm", serde(rename = "contentOriginator", alias = "ContentOriginator", default))]
+    #[cfg_attr(
+        feature = "wasm",
+        serde(rename = "contentOriginator", alias = "ContentOriginator", default)
+    )]
     #[cfg_attr(feature = "typescript", ts(rename = "contentOriginator"))]
     pub content_originator: Option<LanguageString>,
 
     #[cfg_attr(not(feature = "wasm"), serde(rename = "ContentTitle"))]
-    #[cfg_attr(feature = "wasm", serde(rename = "contentTitle", alias = "ContentTitle"))]
+    #[cfg_attr(
+        feature = "wasm",
+        serde(rename = "contentTitle", alias = "ContentTitle")
+    )]
     #[cfg_attr(feature = "typescript", ts(rename = "contentTitle"))]
     pub content_title: LanguageString,
 
-    #[cfg_attr(not(feature = "wasm"), serde(rename = "ContentKind", default = "default_content_kind"))]
-    #[cfg_attr(feature = "wasm", serde(rename = "contentKind", alias = "ContentKind", default = "default_content_kind"))]
+    #[cfg_attr(
+        not(feature = "wasm"),
+        serde(rename = "ContentKind", default = "default_content_kind")
+    )]
+    #[cfg_attr(
+        feature = "wasm",
+        serde(
+            rename = "contentKind",
+            alias = "ContentKind",
+            default = "default_content_kind"
+        )
+    )]
     #[cfg_attr(feature = "typescript", ts(rename = "contentKind"))]
     pub content_kind: ContentKindElement,
 
     #[cfg_attr(not(feature = "wasm"), serde(rename = "ContentVersionList", default))]
-    #[cfg_attr(feature = "wasm", serde(rename = "contentVersionList", alias = "ContentVersionList", default))]
+    #[cfg_attr(
+        feature = "wasm",
+        serde(rename = "contentVersionList", alias = "ContentVersionList", default)
+    )]
     #[cfg_attr(feature = "typescript", ts(rename = "contentVersionList"))]
     pub content_version_list: Option<ContentVersionList>,
 
-    #[cfg_attr(not(feature = "wasm"), serde(rename = "EssenceDescriptorList", default))]
-    #[cfg_attr(feature = "wasm", serde(rename = "essenceDescriptorList", alias = "EssenceDescriptorList", default))]
+    #[cfg_attr(
+        not(feature = "wasm"),
+        serde(rename = "EssenceDescriptorList", default)
+    )]
+    #[cfg_attr(
+        feature = "wasm",
+        serde(
+            rename = "essenceDescriptorList",
+            alias = "EssenceDescriptorList",
+            default
+        )
+    )]
     #[cfg_attr(feature = "typescript", ts(rename = "essenceDescriptorList"))]
     pub essence_descriptor_list: Option<EssenceDescriptorList>,
 
-    #[cfg_attr(not(feature = "wasm"), serde(rename = "EditRate", default, deserialize_with = "de_helpers::de_optional_edit_rate"))]
-    #[cfg_attr(feature = "wasm", serde(rename = "editRate", alias = "EditRate", default, deserialize_with = "de_helpers::de_optional_edit_rate"))]
+    #[cfg_attr(
+        not(feature = "wasm"),
+        serde(
+            rename = "EditRate",
+            default,
+            deserialize_with = "de_helpers::de_optional_edit_rate"
+        )
+    )]
+    #[cfg_attr(
+        feature = "wasm",
+        serde(
+            rename = "editRate",
+            alias = "EditRate",
+            default,
+            deserialize_with = "de_helpers::de_optional_edit_rate"
+        )
+    )]
     #[cfg_attr(feature = "typescript", ts(rename = "editRate"))]
     pub edit_rate: Option<EditRate>,
 
     #[cfg_attr(not(feature = "wasm"), serde(rename = "TotalRunningTime", default))]
-    #[cfg_attr(feature = "wasm", serde(rename = "totalRunningTime", alias = "TotalRunningTime", default))]
+    #[cfg_attr(
+        feature = "wasm",
+        serde(rename = "totalRunningTime", alias = "TotalRunningTime", default)
+    )]
     #[cfg_attr(feature = "typescript", ts(rename = "totalRunningTime"))]
     pub total_running_time: Option<String>,
 
     #[cfg_attr(not(feature = "wasm"), serde(rename = "LocaleList", default))]
-    #[cfg_attr(feature = "wasm", serde(rename = "localeList", alias = "LocaleList", default))]
+    #[cfg_attr(
+        feature = "wasm",
+        serde(rename = "localeList", alias = "LocaleList", default)
+    )]
     #[cfg_attr(feature = "typescript", ts(rename = "localeList"))]
     pub locale_list: Option<LocaleList>,
 
     #[cfg_attr(not(feature = "wasm"), serde(rename = "ExtensionProperties", default))]
-    #[cfg_attr(feature = "wasm", serde(rename = "extensionProperties", alias = "ExtensionProperties", default))]
+    #[cfg_attr(
+        feature = "wasm",
+        serde(rename = "extensionProperties", alias = "ExtensionProperties", default)
+    )]
     #[cfg_attr(feature = "typescript", ts(rename = "extensionProperties"))]
     pub extension_properties: Option<ExtensionProperties>,
 
     #[cfg_attr(not(feature = "wasm"), serde(rename = "CompositionTimecode", default))]
-    #[cfg_attr(feature = "wasm", serde(rename = "compositionTimecode", alias = "CompositionTimecode", default))]
+    #[cfg_attr(
+        feature = "wasm",
+        serde(rename = "compositionTimecode", alias = "CompositionTimecode", default)
+    )]
     #[cfg_attr(feature = "typescript", ts(rename = "compositionTimecode"))]
     pub composition_timecode: Option<CompositionTimecode>,
 
@@ -2122,15 +2400,24 @@ pub struct CompositionPlaylist {
 #[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
 pub struct CompositionTimecode {
     #[cfg_attr(not(feature = "wasm"), serde(rename = "TimecodeDropFrame"))]
-    #[cfg_attr(feature = "wasm", serde(rename = "timecodeDropFrame", alias = "TimecodeDropFrame"))]
+    #[cfg_attr(
+        feature = "wasm",
+        serde(rename = "timecodeDropFrame", alias = "TimecodeDropFrame")
+    )]
     pub timecode_drop_frame: Option<bool>,
 
     #[cfg_attr(not(feature = "wasm"), serde(rename = "TimecodeRate"))]
-    #[cfg_attr(feature = "wasm", serde(rename = "timecodeRate", alias = "TimecodeRate"))]
+    #[cfg_attr(
+        feature = "wasm",
+        serde(rename = "timecodeRate", alias = "TimecodeRate")
+    )]
     pub timecode_rate: Option<u32>,
 
     #[cfg_attr(not(feature = "wasm"), serde(rename = "TimecodeStartAddress"))]
-    #[cfg_attr(feature = "wasm", serde(rename = "timecodeStartAddress", alias = "TimecodeStartAddress"))]
+    #[cfg_attr(
+        feature = "wasm",
+        serde(rename = "timecodeStartAddress", alias = "TimecodeStartAddress")
+    )]
     pub timecode_start_address: Option<String>,
 }
 
@@ -2146,7 +2433,10 @@ pub struct CompositionTimecode {
 #[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
 pub struct ContentVersionList {
     #[cfg_attr(not(feature = "wasm"), serde(rename = "ContentVersion"))]
-    #[cfg_attr(feature = "wasm", serde(rename = "contentVersion", alias = "ContentVersion"))]
+    #[cfg_attr(
+        feature = "wasm",
+        serde(rename = "contentVersion", alias = "ContentVersion")
+    )]
     pub content_versions: Vec<ContentVersion>,
 }
 
@@ -2162,7 +2452,10 @@ pub struct ContentVersion {
     pub id: String,
 
     #[cfg_attr(not(feature = "wasm"), serde(rename = "LabelText", default))]
-    #[cfg_attr(feature = "wasm", serde(rename = "labelText", alias = "LabelText", default))]
+    #[cfg_attr(
+        feature = "wasm",
+        serde(rename = "labelText", alias = "LabelText", default)
+    )]
     pub label_text: Option<LanguageString>,
 }
 
@@ -2194,7 +2487,10 @@ pub struct Segment {
     pub id: ImfUuid,
 
     #[cfg_attr(not(feature = "wasm"), serde(rename = "SequenceList"))]
-    #[cfg_attr(feature = "wasm", serde(rename = "sequenceList", alias = "SequenceList"))]
+    #[cfg_attr(
+        feature = "wasm",
+        serde(rename = "sequenceList", alias = "SequenceList")
+    )]
     pub sequence_list: SequenceList,
 }
 
@@ -2206,35 +2502,81 @@ pub struct Segment {
 #[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
 pub struct SequenceList {
     #[cfg_attr(not(feature = "wasm"), serde(rename = "MarkerSequence", default))]
-    #[cfg_attr(feature = "wasm", serde(rename = "markerSequence", alias = "MarkerSequence", default))]
+    #[cfg_attr(
+        feature = "wasm",
+        serde(rename = "markerSequence", alias = "MarkerSequence", default)
+    )]
     pub marker_sequences: Vec<MarkerSequence>,
 
     #[cfg_attr(not(feature = "wasm"), serde(rename = "MainImageSequence", default))]
-    #[cfg_attr(feature = "wasm", serde(rename = "mainImageSequence", alias = "MainImageSequence", default))]
+    #[cfg_attr(
+        feature = "wasm",
+        serde(rename = "mainImageSequence", alias = "MainImageSequence", default)
+    )]
     pub main_image_sequences: Vec<MainImageSequence>,
 
     #[cfg_attr(not(feature = "wasm"), serde(rename = "MainAudioSequence", default))]
-    #[cfg_attr(feature = "wasm", serde(rename = "mainAudioSequence", alias = "MainAudioSequence", default))]
+    #[cfg_attr(
+        feature = "wasm",
+        serde(rename = "mainAudioSequence", alias = "MainAudioSequence", default)
+    )]
     pub main_audio_sequences: Vec<MainAudioSequence>,
 
-    #[cfg_attr(not(feature = "wasm"), serde(rename = "SubtitlesSequence", alias = "MainSubtitleSequence", default))]
-    #[cfg_attr(feature = "wasm", serde(rename = "subtitlesSequence", alias = "SubtitlesSequence", alias = "MainSubtitleSequence", default))]
+    #[cfg_attr(
+        not(feature = "wasm"),
+        serde(rename = "SubtitlesSequence", alias = "MainSubtitleSequence", default)
+    )]
+    #[cfg_attr(
+        feature = "wasm",
+        serde(
+            rename = "subtitlesSequence",
+            alias = "SubtitlesSequence",
+            alias = "MainSubtitleSequence",
+            default
+        )
+    )]
     pub subtitles_sequences: Vec<SubtitlesSequence>,
 
-    #[cfg_attr(not(feature = "wasm"), serde(rename = "HearingImpairedCaptionsSequence", default))]
-    #[cfg_attr(feature = "wasm", serde(rename = "hearingImpairedCaptionsSequence", alias = "HearingImpairedCaptionsSequence", default))]
+    #[cfg_attr(
+        not(feature = "wasm"),
+        serde(rename = "HearingImpairedCaptionsSequence", default)
+    )]
+    #[cfg_attr(
+        feature = "wasm",
+        serde(
+            rename = "hearingImpairedCaptionsSequence",
+            alias = "HearingImpairedCaptionsSequence",
+            default
+        )
+    )]
     pub hearing_impaired_captions_sequences: Vec<HearingImpairedCaptionsSequence>,
 
-    #[cfg_attr(not(feature = "wasm"), serde(rename = "ForcedNarrativeSequence", default))]
-    #[cfg_attr(feature = "wasm", serde(rename = "forcedNarrativeSequence", alias = "ForcedNarrativeSequence", default))]
+    #[cfg_attr(
+        not(feature = "wasm"),
+        serde(rename = "ForcedNarrativeSequence", default)
+    )]
+    #[cfg_attr(
+        feature = "wasm",
+        serde(
+            rename = "forcedNarrativeSequence",
+            alias = "ForcedNarrativeSequence",
+            default
+        )
+    )]
     pub forced_narrative_sequences: Vec<ForcedNarrativeSequence>,
 
     #[cfg_attr(not(feature = "wasm"), serde(rename = "IABSequence", default))]
-    #[cfg_attr(feature = "wasm", serde(rename = "iabSequence", alias = "IABSequence", default))]
+    #[cfg_attr(
+        feature = "wasm",
+        serde(rename = "iabSequence", alias = "IABSequence", default)
+    )]
     pub iab_sequences: Vec<IABSequence>,
 
     #[cfg_attr(not(feature = "wasm"), serde(rename = "ISXDSequence", default))]
-    #[cfg_attr(feature = "wasm", serde(rename = "isxdSequence", alias = "ISXDSequence", default))]
+    #[cfg_attr(
+        feature = "wasm",
+        serde(rename = "isxdSequence", alias = "ISXDSequence", default)
+    )]
     pub isxd_sequences: Vec<ISXDSequence>,
 }
 
@@ -2264,14 +2606,23 @@ macro_rules! define_sequence_type {
             pub track_id: ImfUuid,
 
             #[cfg_attr(not(feature = "wasm"), serde(rename = "ResourceList"))]
-            #[cfg_attr(feature = "wasm", serde(rename = "resourceList", alias = "ResourceList"))]
+            #[cfg_attr(
+                feature = "wasm",
+                serde(rename = "resourceList", alias = "ResourceList")
+            )]
             pub resource_list: ResourceList,
         }
 
         impl SequenceAccess for $name {
-            fn id(&self) -> &ImfUuid { &self.id }
-            fn track_id(&self) -> &ImfUuid { &self.track_id }
-            fn resource_list(&self) -> &ResourceList { &self.resource_list }
+            fn id(&self) -> &ImfUuid {
+                &self.id
+            }
+            fn track_id(&self) -> &ImfUuid {
+                &self.track_id
+            }
+            fn resource_list(&self) -> &ResourceList {
+                &self.resource_list
+            }
         }
     };
 }
@@ -2297,7 +2648,10 @@ define_sequence_type!(ISXDSequence);
 #[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
 pub struct ResourceList {
     #[cfg_attr(not(feature = "wasm"), serde(rename = "Resource", default))]
-    #[cfg_attr(feature = "wasm", serde(rename = "resource", alias = "Resource", default))]
+    #[cfg_attr(
+        feature = "wasm",
+        serde(rename = "resource", alias = "Resource", default)
+    )]
     pub resources: Vec<Resource>,
 }
 
@@ -2313,35 +2667,71 @@ pub struct Resource {
     pub id: ImfUuid,
 
     #[cfg_attr(not(feature = "wasm"), serde(rename = "Annotation", default))]
-    #[cfg_attr(feature = "wasm", serde(rename = "annotation", alias = "Annotation", default))]
+    #[cfg_attr(
+        feature = "wasm",
+        serde(rename = "annotation", alias = "Annotation", default)
+    )]
     pub annotation: Option<LanguageString>,
 
-    #[cfg_attr(not(feature = "wasm"), serde(rename = "EditRate", default, deserialize_with = "de_helpers::de_optional_edit_rate"))]
-    #[cfg_attr(feature = "wasm", serde(rename = "editRate", alias = "EditRate", default, deserialize_with = "de_helpers::de_optional_edit_rate"))]
+    #[cfg_attr(
+        not(feature = "wasm"),
+        serde(
+            rename = "EditRate",
+            default,
+            deserialize_with = "de_helpers::de_optional_edit_rate"
+        )
+    )]
+    #[cfg_attr(
+        feature = "wasm",
+        serde(
+            rename = "editRate",
+            alias = "EditRate",
+            default,
+            deserialize_with = "de_helpers::de_optional_edit_rate"
+        )
+    )]
     pub edit_rate: Option<EditRate>,
 
     #[cfg_attr(not(feature = "wasm"), serde(rename = "IntrinsicDuration"))]
-    #[cfg_attr(feature = "wasm", serde(rename = "intrinsicDuration", alias = "IntrinsicDuration"))]
+    #[cfg_attr(
+        feature = "wasm",
+        serde(rename = "intrinsicDuration", alias = "IntrinsicDuration")
+    )]
     pub intrinsic_duration: u64,
 
     #[cfg_attr(not(feature = "wasm"), serde(rename = "EntryPoint", default))]
-    #[cfg_attr(feature = "wasm", serde(rename = "entryPoint", alias = "EntryPoint", default))]
+    #[cfg_attr(
+        feature = "wasm",
+        serde(rename = "entryPoint", alias = "EntryPoint", default)
+    )]
     pub entry_point: Option<u64>,
 
     #[cfg_attr(not(feature = "wasm"), serde(rename = "SourceDuration", default))]
-    #[cfg_attr(feature = "wasm", serde(rename = "sourceDuration", alias = "SourceDuration", default))]
+    #[cfg_attr(
+        feature = "wasm",
+        serde(rename = "sourceDuration", alias = "SourceDuration", default)
+    )]
     pub source_duration: Option<u64>,
 
     #[cfg_attr(not(feature = "wasm"), serde(rename = "SourceEncoding", default))]
-    #[cfg_attr(feature = "wasm", serde(rename = "sourceEncoding", alias = "SourceEncoding", default))]
+    #[cfg_attr(
+        feature = "wasm",
+        serde(rename = "sourceEncoding", alias = "SourceEncoding", default)
+    )]
     pub source_encoding: Option<ImfUuid>, // UUID reference to EssenceDescriptor
 
     #[cfg_attr(not(feature = "wasm"), serde(rename = "TrackFileId", default))]
-    #[cfg_attr(feature = "wasm", serde(rename = "trackFileId", alias = "TrackFileId", default))]
+    #[cfg_attr(
+        feature = "wasm",
+        serde(rename = "trackFileId", alias = "TrackFileId", default)
+    )]
     pub track_file_id: Option<ImfUuid>, // UUID reference to MXF file in AssetMap
 
     #[cfg_attr(not(feature = "wasm"), serde(rename = "RepeatCount", default))]
-    #[cfg_attr(feature = "wasm", serde(rename = "repeatCount", alias = "RepeatCount", default))]
+    #[cfg_attr(
+        feature = "wasm",
+        serde(rename = "repeatCount", alias = "RepeatCount", default)
+    )]
     pub repeat_count: Option<u64>,
 
     #[cfg_attr(not(feature = "wasm"), serde(rename = "KeyId", default))]
@@ -2365,7 +2755,10 @@ pub struct Resource {
 #[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
 pub struct MarkerInfo {
     #[cfg_attr(not(feature = "wasm"), serde(rename = "Annotation", default))]
-    #[cfg_attr(feature = "wasm", serde(rename = "annotation", alias = "Annotation", default))]
+    #[cfg_attr(
+        feature = "wasm",
+        serde(rename = "annotation", alias = "Annotation", default)
+    )]
     pub annotation: Option<String>,
 
     #[cfg_attr(not(feature = "wasm"), serde(rename = "Label"))]
@@ -2499,7 +2892,10 @@ fn validate_basic_schema_constraints(cpl: &CompositionPlaylist) -> Result<(), Cp
             + segment.sequence_list.main_image_sequences.len()
             + segment.sequence_list.main_audio_sequences.len()
             + segment.sequence_list.subtitles_sequences.len()
-            + segment.sequence_list.hearing_impaired_captions_sequences.len()
+            + segment
+                .sequence_list
+                .hearing_impaired_captions_sequences
+                .len()
             + segment.sequence_list.forced_narrative_sequences.len()
             + segment.sequence_list.iab_sequences.len()
             + segment.sequence_list.isxd_sequences.len();
@@ -2520,43 +2916,182 @@ fn collect_unknown_xml_tokens(xml: &str) -> Result<BTreeSet<String>, String> {
     reader.trim_text(true);
 
     let allowed_elements: BTreeSet<&'static str> = [
-        "CompositionPlaylist", "Id", "Annotation", "IssueDate", "Issuer", "Creator", "ContentOriginator",
-        "ContentTitle", "ContentKind", "ContentVersionList", "ContentVersion", "LabelText",
-        "EssenceDescriptorList", "EssenceDescriptor", "EditRate", "TotalRunningTime", "LocaleList", "Locale", "LanguageList",
-        "Language", "RegionList", "Region", "ContentMaturityRatingList", "ContentMaturityRating", "Agency",
-        "Rating", "Audience", "ExtensionProperties", "ApplicationIdentification", "MaxCLL", "MaxFALL",
-        "CompositionTimecode", "TimecodeDropFrame", "TimecodeRate", "TimecodeStartAddress", "SegmentList",
-        "Segment", "SequenceList", "MarkerSequence", "MainImageSequence", "MainAudioSequence", "SubtitlesSequence",
-        "MainSubtitleSequence", "HearingImpairedCaptionsSequence", "ForcedNarrativeSequence", "IABSequence",
-        "ISXDSequence", "TrackId", "ResourceList", "Resource", "IntrinsicDuration", "EntryPoint",
-        "SourceDuration", "SourceEncoding", "TrackFileId", "RepeatCount", "KeyId", "Hash", "Marker",
-        "Label", "Offset", "RGBADescriptor", "CDCIDescriptor", "WAVEPCMDescriptor", "DCTimedTextDescriptor",
-        "IABEssenceDescriptor", "ISXDDataEssenceDescriptor", "InstanceID", "InstanceUID", "DisplayWidth",
-        "DisplayHeight", "StoredWidth", "StoredHeight", "SampleRate", "ImageAspectRatio", "ColorPrimaries",
-        "TransferCharacteristic", "CodingEquations", "PictureCompression", "FrameLayout", "DisplayF2Offset",
-        "ComponentMaxRef", "ComponentMinRef", "ScanningDirection", "StoredF2Offset", "SampledWidth",
-        "SampledHeight", "SampledXOffset", "SampledYOffset", "AlphaTransparency", "ImageAlignmentOffset",
-        "ImageStartOffset", "ImageEndOffset", "FieldDominance", "AlphaMaxRef", "AlphaMinRef", "Palette",
-        "PaletteLayout", "LinkedTrackID", "SubDescriptors", "ActiveWidth", "ActiveHeight", "ComponentDepth",
-        "HorizontalSubsampling", "VerticalSubsampling", "ColorSiting", "BlackRefLevel", "WhiteRefLevel",
-        "ColorRange", "ReversedByteOrder", "PaddingBits", "AlphaSampleDepth", "PHDRMetadataTrackSubDescriptor",
-        "JPEG2000SubDescriptor", "Rsiz", "Xsiz", "Ysiz", "XOsiz", "YOsiz", "XTsiz", "YTsiz", "XTOsiz",
-        "YTOsiz", "Csiz", "CodingStyleDefault", "QuantizationDefault", "J2CLayout", "J2KExtendedCapabilities",
-        "PictureComponentSizing", "RGBAComponent", "Code", "ComponentSize", "Pcap", "J2KComponentSizing", "Ssiz",
-        "XRSiz", "YRSiz", "PHDRMetadataTrackSubDescriptor_DataDefinition",
-        "PHDRMetadataTrackSubDescriptor_SimplePayloadSID", "PHDRMetadataTrackSubDescriptor_SourceTrackID",
-        "AudioSampleRate", "ChannelCount", "QuantizationBits", "SoundfieldGroupLabelSubDescriptor",
-        "MCATagSymbol", "MCATagName", "MCAAudioContentKind", "RFC5646SpokenLanguage", "RFC5646AudioLanguageCode",
-        "RFC5646LanguageTagList", "NamespaceURI", "SoundCompression", "IABSoundfieldLabelSubDescriptor",
-        "ContainerFormat", "Codec", "ElectrospatialFormulation", "MCALabelDictionaryID",
-        "EssenceLength", "Locked", "MCALinkID", "MCAChannelID", "AudioChannelLabelSubDescriptor",
-        "MCATitle", "MCATitleVersion", "MCAAudioElementKind", "SoundfieldGroupLinkID",
-        "DataEssenceCoding", "ContainerConstraintsSubDescriptor", "Signer", "Signature",
+        "CompositionPlaylist",
+        "Id",
+        "Annotation",
+        "IssueDate",
+        "Issuer",
+        "Creator",
+        "ContentOriginator",
+        "ContentTitle",
+        "ContentKind",
+        "ContentVersionList",
+        "ContentVersion",
+        "LabelText",
+        "EssenceDescriptorList",
+        "EssenceDescriptor",
+        "EditRate",
+        "TotalRunningTime",
+        "LocaleList",
+        "Locale",
+        "LanguageList",
+        "Language",
+        "RegionList",
+        "Region",
+        "ContentMaturityRatingList",
+        "ContentMaturityRating",
+        "Agency",
+        "Rating",
+        "Audience",
+        "ExtensionProperties",
+        "ApplicationIdentification",
+        "MaxCLL",
+        "MaxFALL",
+        "CompositionTimecode",
+        "TimecodeDropFrame",
+        "TimecodeRate",
+        "TimecodeStartAddress",
+        "SegmentList",
+        "Segment",
+        "SequenceList",
+        "MarkerSequence",
+        "MainImageSequence",
+        "MainAudioSequence",
+        "SubtitlesSequence",
+        "MainSubtitleSequence",
+        "HearingImpairedCaptionsSequence",
+        "ForcedNarrativeSequence",
+        "IABSequence",
+        "ISXDSequence",
+        "TrackId",
+        "ResourceList",
+        "Resource",
+        "IntrinsicDuration",
+        "EntryPoint",
+        "SourceDuration",
+        "SourceEncoding",
+        "TrackFileId",
+        "RepeatCount",
+        "KeyId",
+        "Hash",
+        "Marker",
+        "Label",
+        "Offset",
+        "RGBADescriptor",
+        "CDCIDescriptor",
+        "WAVEPCMDescriptor",
+        "DCTimedTextDescriptor",
+        "IABEssenceDescriptor",
+        "ISXDDataEssenceDescriptor",
+        "InstanceID",
+        "InstanceUID",
+        "DisplayWidth",
+        "DisplayHeight",
+        "StoredWidth",
+        "StoredHeight",
+        "SampleRate",
+        "ImageAspectRatio",
+        "ColorPrimaries",
+        "TransferCharacteristic",
+        "CodingEquations",
+        "PictureCompression",
+        "FrameLayout",
+        "DisplayF2Offset",
+        "ComponentMaxRef",
+        "ComponentMinRef",
+        "ScanningDirection",
+        "StoredF2Offset",
+        "SampledWidth",
+        "SampledHeight",
+        "SampledXOffset",
+        "SampledYOffset",
+        "AlphaTransparency",
+        "ImageAlignmentOffset",
+        "ImageStartOffset",
+        "ImageEndOffset",
+        "FieldDominance",
+        "AlphaMaxRef",
+        "AlphaMinRef",
+        "Palette",
+        "PaletteLayout",
+        "LinkedTrackID",
+        "SubDescriptors",
+        "ActiveWidth",
+        "ActiveHeight",
+        "ComponentDepth",
+        "HorizontalSubsampling",
+        "VerticalSubsampling",
+        "ColorSiting",
+        "BlackRefLevel",
+        "WhiteRefLevel",
+        "ColorRange",
+        "ReversedByteOrder",
+        "PaddingBits",
+        "AlphaSampleDepth",
+        "PHDRMetadataTrackSubDescriptor",
+        "JPEG2000SubDescriptor",
+        "Rsiz",
+        "Xsiz",
+        "Ysiz",
+        "XOsiz",
+        "YOsiz",
+        "XTsiz",
+        "YTsiz",
+        "XTOsiz",
+        "YTOsiz",
+        "Csiz",
+        "CodingStyleDefault",
+        "QuantizationDefault",
+        "J2CLayout",
+        "J2KExtendedCapabilities",
+        "PictureComponentSizing",
+        "RGBAComponent",
+        "Code",
+        "ComponentSize",
+        "Pcap",
+        "J2KComponentSizing",
+        "Ssiz",
+        "XRSiz",
+        "YRSiz",
+        "PHDRMetadataTrackSubDescriptor_DataDefinition",
+        "PHDRMetadataTrackSubDescriptor_SimplePayloadSID",
+        "PHDRMetadataTrackSubDescriptor_SourceTrackID",
+        "AudioSampleRate",
+        "ChannelCount",
+        "QuantizationBits",
+        "SoundfieldGroupLabelSubDescriptor",
+        "MCATagSymbol",
+        "MCATagName",
+        "MCAAudioContentKind",
+        "RFC5646SpokenLanguage",
+        "RFC5646AudioLanguageCode",
+        "RFC5646LanguageTagList",
+        "NamespaceURI",
+        "SoundCompression",
+        "IABSoundfieldLabelSubDescriptor",
+        "ContainerFormat",
+        "Codec",
+        "ElectrospatialFormulation",
+        "MCALabelDictionaryID",
+        "EssenceLength",
+        "Locked",
+        "MCALinkID",
+        "MCAChannelID",
+        "AudioChannelLabelSubDescriptor",
+        "MCATitle",
+        "MCATitleVersion",
+        "MCAAudioElementKind",
+        "SoundfieldGroupLinkID",
+        "DataEssenceCoding",
+        "ContainerConstraintsSubDescriptor",
+        "Signer",
+        "Signature",
     ]
     .into_iter()
     .collect();
 
-    let allowed_attributes: BTreeSet<&'static str> = ["xmlns", "scope", "language"].into_iter().collect();
+    let allowed_attributes: BTreeSet<&'static str> =
+        ["xmlns", "scope", "language"].into_iter().collect();
 
     let mut unknown = BTreeSet::new();
 
@@ -2600,15 +3135,17 @@ pub fn extract_cpl_languages(cpl: &CompositionPlaylist) -> Vec<LanguageTag> {
         }
     };
 
-    let add_lang_string = |languages: &mut Vec<LanguageTag>, lang_string: &Option<LanguageString>| {
+    let add_lang_string = |languages: &mut Vec<LanguageTag>,
+                           lang_string: &Option<LanguageString>| {
         if let Some(ls) = lang_string {
             add_lang(languages, &ls.language);
         }
     };
 
-    let add_required_lang_string = |languages: &mut Vec<LanguageTag>, lang_string: &LanguageString| {
-        add_lang(languages, &lang_string.language);
-    };
+    let add_required_lang_string =
+        |languages: &mut Vec<LanguageTag>, lang_string: &LanguageString| {
+            add_lang(languages, &lang_string.language);
+        };
 
     // Extract from main CPL fields
     add_lang_string(&mut languages, &cpl.annotation);
@@ -2688,7 +3225,10 @@ fn extract_tracks_from_cpl(cpl: &CompositionPlaylist, _raw_xml: &str) -> Vec<Tra
     // Build essence descriptor lookup by ID
     let descriptors: std::collections::HashMap<ImfUuid, &EssenceDescriptor> =
         if let Some(edl) = &cpl.essence_descriptor_list {
-            edl.essence_descriptors.iter().map(|ed| (ed.id, ed)).collect()
+            edl.essence_descriptors
+                .iter()
+                .map(|ed| (ed.id, ed))
+                .collect()
         } else {
             std::collections::HashMap::new()
         };
@@ -2702,7 +3242,9 @@ fn extract_tracks_from_cpl(cpl: &CompositionPlaylist, _raw_xml: &str) -> Vec<Tra
                 if let Some(source_encoding) = &resource.source_encoding {
                     if let Some(ed) = descriptors.get(source_encoding) {
                         let (codec, resolution, bit_depth) = extract_video_info_from_descriptor(ed);
-                        let framerate = resource.edit_rate.as_ref()
+                        let framerate = resource
+                            .edit_rate
+                            .as_ref()
                             .or(cpl.edit_rate.as_ref())
                             .map(format_framerate);
                         tracks.push(TrackInfo {
@@ -2727,7 +3269,8 @@ fn extract_tracks_from_cpl(cpl: &CompositionPlaylist, _raw_xml: &str) -> Vec<Tra
             for resource in &seq.resource_list.resources {
                 if let Some(source_encoding) = &resource.source_encoding {
                     if let Some(ed) = descriptors.get(source_encoding) {
-                        let (codec, channels, format_details, language) = extract_audio_info_from_descriptor(ed);
+                        let (codec, channels, format_details, language) =
+                            extract_audio_info_from_descriptor(ed);
                         tracks.push(TrackInfo {
                             track_id: seq.track_id.to_string(),
                             track_type: "audio".to_string(),
@@ -2750,7 +3293,9 @@ fn extract_tracks_from_cpl(cpl: &CompositionPlaylist, _raw_xml: &str) -> Vec<Tra
             for resource in &seq.resource_list.resources {
                 if let Some(source_encoding) = &resource.source_encoding {
                     if let Some(ed) = descriptors.get(source_encoding) {
-                        let language = ed.iab_essence_descriptor.as_ref()
+                        let language = ed
+                            .iab_essence_descriptor
+                            .as_ref()
                             .and_then(|iab| iab.sub_descriptors.as_ref())
                             .and_then(|sd| sd.iab_soundfield_label_sub_descriptor.as_ref())
                             .and_then(|sf| sf.rfc5646_spoken_language.as_ref())
@@ -2779,17 +3324,23 @@ fn extract_tracks_from_cpl(cpl: &CompositionPlaylist, _raw_xml: &str) -> Vec<Tra
         let _ = subtitle_sequences; // suppress warning
 
         for seq in &seq_list.subtitles_sequences {
-            if let Some(track) = extract_timed_text_track(seq.track_id, "standard", &seq.resource_list, &descriptors) {
+            if let Some(track) =
+                extract_timed_text_track(seq.track_id, "standard", &seq.resource_list, &descriptors)
+            {
                 tracks.push(track);
             }
         }
         for seq in &seq_list.hearing_impaired_captions_sequences {
-            if let Some(track) = extract_timed_text_track(seq.track_id, "hi", &seq.resource_list, &descriptors) {
+            if let Some(track) =
+                extract_timed_text_track(seq.track_id, "hi", &seq.resource_list, &descriptors)
+            {
                 tracks.push(track);
             }
         }
         for seq in &seq_list.forced_narrative_sequences {
-            if let Some(track) = extract_timed_text_track(seq.track_id, "forced", &seq.resource_list, &descriptors) {
+            if let Some(track) =
+                extract_timed_text_track(seq.track_id, "forced", &seq.resource_list, &descriptors)
+            {
                 tracks.push(track);
             }
         }
@@ -2798,7 +3349,9 @@ fn extract_tracks_from_cpl(cpl: &CompositionPlaylist, _raw_xml: &str) -> Vec<Tra
     tracks
 }
 
-fn extract_video_info_from_descriptor(ed: &EssenceDescriptor) -> (String, Option<String>, Option<String>) {
+fn extract_video_info_from_descriptor(
+    ed: &EssenceDescriptor,
+) -> (String, Option<String>, Option<String>) {
     if let Some(rgba) = &ed.rgba_descriptor {
         let width = rgba.display_width.or(rgba.stored_width);
         let height = rgba.display_height.or(rgba.stored_height);
@@ -2806,19 +3359,29 @@ fn extract_video_info_from_descriptor(ed: &EssenceDescriptor) -> (String, Option
             (Some(w), Some(h)) => Some(format!("{}x{}", w, h)),
             _ => None,
         };
-        let codec = rgba.picture_compression.as_ref()
+        let codec = rgba
+            .picture_compression
+            .as_ref()
             .map(|c| c.to_string())
             .unwrap_or_else(|| "JPEG 2000".to_string());
         return (codec, resolution, None);
     }
     if let Some(cdci) = &ed.cdci_descriptor {
-        let width = cdci.active_width.or(cdci.display_width).or(cdci.stored_width);
-        let height = cdci.active_height.or(cdci.display_height).or(cdci.stored_height);
+        let width = cdci
+            .active_width
+            .or(cdci.display_width)
+            .or(cdci.stored_width);
+        let height = cdci
+            .active_height
+            .or(cdci.display_height)
+            .or(cdci.stored_height);
         let resolution = match (width, height) {
             (Some(w), Some(h)) => Some(format!("{}x{}", w, h)),
             _ => None,
         };
-        let codec = cdci.picture_compression.as_ref()
+        let codec = cdci
+            .picture_compression
+            .as_ref()
             .map(|c| c.to_string())
             .unwrap_or_else(|| "JPEG 2000".to_string());
         let bit_depth = cdci.component_depth.map(|d| format!("{}-bit", d));
@@ -2827,9 +3390,13 @@ fn extract_video_info_from_descriptor(ed: &EssenceDescriptor) -> (String, Option
     ("Unknown".to_string(), None, None)
 }
 
-fn extract_audio_info_from_descriptor(ed: &EssenceDescriptor) -> (String, Option<String>, Option<String>, Option<String>) {
+fn extract_audio_info_from_descriptor(
+    ed: &EssenceDescriptor,
+) -> (String, Option<String>, Option<String>, Option<String>) {
     if let Some(wave) = &ed.wave_pcm_descriptor {
-        let codec = wave.quantization_bits.map(|b| format!("PCM {}-bit", b))
+        let codec = wave
+            .quantization_bits
+            .map(|b| format!("PCM {}-bit", b))
             .unwrap_or_else(|| "PCM".to_string());
         let (channels, format_details) = match wave.channel_count {
             Some(1) => (Some("1.0".to_string()), Some("Mono".to_string())),
@@ -2839,7 +3406,9 @@ fn extract_audio_info_from_descriptor(ed: &EssenceDescriptor) -> (String, Option
             Some(n) => (Some(format!("{}.0", n)), Some(format!("{} Channel", n))),
             None => (None, None),
         };
-        let language = wave.sub_descriptors.as_ref()
+        let language = wave
+            .sub_descriptors
+            .as_ref()
             .and_then(|sd| sd.soundfield_group_label_sub_descriptor.as_ref())
             .and_then(|sf| sf.rfc5646_spoken_language.as_ref())
             .map(|lt| lt.0.clone());
@@ -2857,9 +3426,12 @@ fn extract_timed_text_track(
     for resource in &resource_list.resources {
         if let Some(source_encoding) = &resource.source_encoding {
             if let Some(ed) = descriptors.get(source_encoding) {
-                let language = ed.dc_timed_text_descriptor.as_ref()
+                let language = ed
+                    .dc_timed_text_descriptor
+                    .as_ref()
                     .map(|tt| {
-                        tt.rfc5646_language_tag_list.iter()
+                        tt.rfc5646_language_tag_list
+                            .iter()
                             .map(|lt| lt.as_str())
                             .filter(|s| !s.is_empty())
                             .collect::<Vec<_>>()
@@ -2979,7 +3551,10 @@ mod tests {
         let result = parse_cpl(xml);
         match result {
             Ok(cpl) => {
-                assert_eq!(cpl.id, ImfUuid::parse("urn:uuid:0eb3d1b9-b77b-4d3f-bbe5-7c69b15dca85").unwrap());
+                assert_eq!(
+                    cpl.id,
+                    ImfUuid::parse("urn:uuid:0eb3d1b9-b77b-4d3f-bbe5-7c69b15dca85").unwrap()
+                );
                 assert_eq!(cpl.content_title.text, "Test Content");
                 assert_eq!(cpl.content_kind, ContentKind::Test);
                 assert!(!cpl.segment_list.segments.is_empty());
@@ -3037,7 +3612,10 @@ mod tests {
 </CompositionPlaylist>"#;
 
         let cpl = parse_cpl(xml).expect("Failed to parse CPL with custom scope");
-        assert_eq!(cpl.content_kind.kind, ContentKind::Other("my-custom-kind".to_string()));
+        assert_eq!(
+            cpl.content_kind.kind,
+            ContentKind::Other("my-custom-kind".to_string())
+        );
         assert_eq!(
             cpl.content_kind.scope.as_deref(),
             Some("http://example.com/custom-kinds")
@@ -3071,9 +3649,6 @@ mod tests {
         );
     }
 
-
-
-
     #[test]
     fn test_malformed_xml_handling() {
         let malformed_xml = r#"<?xml version="1.0" encoding="UTF-8" ?>
@@ -3089,7 +3664,8 @@ mod tests {
 
     /// Helper: build a minimal CPL XML with the given xmlns.
     fn minimal_cpl_with_ns(ns: &str) -> String {
-        format!(r#"<?xml version="1.0" encoding="UTF-8" ?>
+        format!(
+            r#"<?xml version="1.0" encoding="UTF-8" ?>
 <CompositionPlaylist xmlns="{ns}">
 <Id>urn:uuid:0eb3d1b9-b77b-4d3f-bbe5-7c69b15dca85</Id>
 <IssueDate>2024-01-01T00:00:00Z</IssueDate>
@@ -3101,7 +3677,8 @@ mod tests {
 <SequenceList></SequenceList>
 </Segment>
 </SegmentList>
-</CompositionPlaylist>"#)
+</CompositionPlaylist>"#
+        )
     }
 
     /// SMPTE ST 2067-3:2013 namespace (original).
@@ -3220,7 +3797,10 @@ mod tests {
             ..Default::default()
         };
         let result = parse_cpl_with_options(xml, &options);
-        assert!(matches!(result, Err(CplParseError::SignatureVerifierRequired)));
+        assert!(matches!(
+            result,
+            Err(CplParseError::SignatureVerifierRequired)
+        ));
     }
 
     #[test]
@@ -3242,7 +3822,10 @@ mod tests {
             ..Default::default()
         };
         let result = parse_cpl_with_options(xml, &options);
-        assert!(result.is_ok(), "signature verifier should allow parse: {result:?}");
+        assert!(
+            result.is_ok(),
+            "signature verifier should allow parse: {result:?}"
+        );
     }
 
     #[test]
@@ -3264,7 +3847,10 @@ mod tests {
             ..Default::default()
         };
         let result = parse_cpl_with_options(xml, &options);
-        assert!(matches!(result, Err(CplParseError::SignatureVerificationFailed(_))));
+        assert!(matches!(
+            result,
+            Err(CplParseError::SignatureVerificationFailed(_))
+        ));
     }
 
     fn build_signed_cpl_with_reference_digest(tamper_digest: bool) -> String {
@@ -3335,7 +3921,10 @@ mod tests {
         let result = verifier.verify(&xml);
         assert!(result.is_err());
         let error = result.unwrap_err();
-        assert!(error.contains("DigestValue mismatch"), "unexpected error: {error}");
+        assert!(
+            error.contains("DigestValue mismatch"),
+            "unexpected error: {error}"
+        );
     }
 
     #[test]
@@ -3348,7 +3937,10 @@ mod tests {
             ..Default::default()
         };
         let result = parse_cpl_with_options(&xml, &options);
-        assert!(result.is_ok(), "expected valid signature digest path to parse: {result:?}");
+        assert!(
+            result.is_ok(),
+            "expected valid signature digest path to parse: {result:?}"
+        );
     }
 
     #[cfg(all(feature = "xmlsec1", not(target_arch = "wasm32")))]
@@ -3356,7 +3948,9 @@ mod tests {
     fn xmlsec_verifier_surfaces_missing_binary() {
         let xml = minimal_cpl_with_ns("http://www.smpte-ra.org/schemas/2067-3/2013");
         let verifier = XmlSec1Verifier::new().with_binary_path("xmlsec1-definitely-not-installed");
-        let error = verifier.verify(&xml).expect_err("expected missing binary error");
+        let error = verifier
+            .verify(&xml)
+            .expect_err("expected missing binary error");
         assert!(
             error.contains("failed to execute"),
             "unexpected error message: {error}"
@@ -3368,7 +3962,9 @@ mod tests {
     fn xmlsec_crate_verifier_rejects_invalid_key_material() {
         let xml = build_signed_cpl_with_reference_digest(false);
         let verifier = XmlSecCrateVerifier::from_pem("not-a-valid-key");
-        let error = verifier.verify(&xml).expect_err("expected xmlsec key load error");
+        let error = verifier
+            .verify(&xml)
+            .expect_err("expected xmlsec key load error");
         assert!(
             error.contains("xmlsec key load failed") || error.contains("xmlsec verify failed"),
             "unexpected error message: {error}"

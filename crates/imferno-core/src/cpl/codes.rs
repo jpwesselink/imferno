@@ -64,34 +64,42 @@ macro_rules! define_st2067_3_enum {
         impl $name {
             pub fn for_code(r: St2067_3Code) -> &'static str {
                 match r {
-                    St2067_3Code::ContentKindUnknown =>
-                        concat!($prefix, ":5.5.1.2/ContentKindUnknown"),
-                    St2067_3Code::SourceEncodingNoEssenceDescriptorList =>
-                        concat!($prefix, ":6.4.2/SourceEncodingNoEssenceDescriptorList"),
-                    St2067_3Code::SourceEncodingUnresolved =>
-                        concat!($prefix, ":6.4.2/SourceEncodingUnresolved"),
-                    St2067_3Code::EssenceDescriptorListEmpty =>
-                        concat!($prefix, ":6.4.2/EssenceDescriptorListEmpty"),
-                    St2067_3Code::ContentVersionListEmpty =>
-                        concat!($prefix, ":6.11/ContentVersionListEmpty"),
-                    St2067_3Code::ContentVersionIdInvalid =>
-                        concat!($prefix, ":6.11/ContentVersionIdInvalid"),
-                    St2067_3Code::ContentVersionLabelTextMissing =>
-                        concat!($prefix, ":6.11/ContentVersionLabelTextMissing"),
-                    St2067_3Code::LocaleLanguageTagInvalid =>
-                        concat!($prefix, ":6.12/LocaleLanguageTagInvalid"),
-                    St2067_3Code::TrackIdNotUnique =>
-                        concat!($prefix, ":7.3/TrackIdNotUnique"),
-                    St2067_3Code::MarkerOffsetOutOfRange =>
-                        concat!($prefix, ":7.4/MarkerOffsetOutOfRange"),
-                    St2067_3Code::MarkerLabelUnknown =>
-                        concat!($prefix, ":7.4/MarkerLabelUnknown"),
-                    St2067_3Code::SegmentDuration =>
-                        concat!($prefix, ":7.2.2/SegmentDuration"),
-                    St2067_3Code::ContentVersionIdDuplicate =>
-                        concat!($prefix, ":6.1.9/ContentVersionIdDuplicate"),
-                    St2067_3Code::SegmentDurationIntegerEditUnits =>
-                        concat!($prefix, ":7.3/SegmentDurationIntegerEditUnits"),
+                    St2067_3Code::ContentKindUnknown => {
+                        concat!($prefix, ":5.5.1.2/ContentKindUnknown")
+                    }
+                    St2067_3Code::SourceEncodingNoEssenceDescriptorList => {
+                        concat!($prefix, ":6.4.2/SourceEncodingNoEssenceDescriptorList")
+                    }
+                    St2067_3Code::SourceEncodingUnresolved => {
+                        concat!($prefix, ":6.4.2/SourceEncodingUnresolved")
+                    }
+                    St2067_3Code::EssenceDescriptorListEmpty => {
+                        concat!($prefix, ":6.4.2/EssenceDescriptorListEmpty")
+                    }
+                    St2067_3Code::ContentVersionListEmpty => {
+                        concat!($prefix, ":6.11/ContentVersionListEmpty")
+                    }
+                    St2067_3Code::ContentVersionIdInvalid => {
+                        concat!($prefix, ":6.11/ContentVersionIdInvalid")
+                    }
+                    St2067_3Code::ContentVersionLabelTextMissing => {
+                        concat!($prefix, ":6.11/ContentVersionLabelTextMissing")
+                    }
+                    St2067_3Code::LocaleLanguageTagInvalid => {
+                        concat!($prefix, ":6.12/LocaleLanguageTagInvalid")
+                    }
+                    St2067_3Code::TrackIdNotUnique => concat!($prefix, ":7.3/TrackIdNotUnique"),
+                    St2067_3Code::MarkerOffsetOutOfRange => {
+                        concat!($prefix, ":7.4/MarkerOffsetOutOfRange")
+                    }
+                    St2067_3Code::MarkerLabelUnknown => concat!($prefix, ":7.4/MarkerLabelUnknown"),
+                    St2067_3Code::SegmentDuration => concat!($prefix, ":7.2.2/SegmentDuration"),
+                    St2067_3Code::ContentVersionIdDuplicate => {
+                        concat!($prefix, ":6.1.9/ContentVersionIdDuplicate")
+                    }
+                    St2067_3Code::SegmentDurationIntegerEditUnits => {
+                        concat!($prefix, ":7.3/SegmentDurationIntegerEditUnits")
+                    }
                 }
             }
 
@@ -116,66 +124,76 @@ macro_rules! define_st2067_3_enum {
         impl ValidationCode for $name {
             fn code(&self) -> &'static str {
                 match self {
-                    Self::ContentKindUnknown =>
-                        concat!($prefix, ":5.5.1.2/ContentKindUnknown"),
-                    Self::SourceEncodingNoEssenceDescriptorList =>
-                        concat!($prefix, ":6.4.2/SourceEncodingNoEssenceDescriptorList"),
-                    Self::SourceEncodingUnresolved =>
-                        concat!($prefix, ":6.4.2/SourceEncodingUnresolved"),
-                    Self::EssenceDescriptorListEmpty =>
-                        concat!($prefix, ":6.4.2/EssenceDescriptorListEmpty"),
-                    Self::ContentVersionListEmpty =>
-                        concat!($prefix, ":6.11/ContentVersionListEmpty"),
-                    Self::ContentVersionIdInvalid =>
-                        concat!($prefix, ":6.11/ContentVersionIdInvalid"),
-                    Self::ContentVersionLabelTextMissing =>
-                        concat!($prefix, ":6.11/ContentVersionLabelTextMissing"),
-                    Self::LocaleLanguageTagInvalid =>
-                        concat!($prefix, ":6.12/LocaleLanguageTagInvalid"),
-                    Self::TrackIdNotUnique =>
-                        concat!($prefix, ":7.3/TrackIdNotUnique"),
-                    Self::MarkerOffsetOutOfRange =>
-                        concat!($prefix, ":7.4/MarkerOffsetOutOfRange"),
-                    Self::MarkerLabelUnknown =>
-                        concat!($prefix, ":7.4/MarkerLabelUnknown"),
-                    Self::SegmentDuration =>
-                        concat!($prefix, ":7.2.2/SegmentDuration"),
-                    Self::ContentVersionIdDuplicate =>
-                        concat!($prefix, ":6.1.9/ContentVersionIdDuplicate"),
-                    Self::SegmentDurationIntegerEditUnits =>
-                        concat!($prefix, ":7.3/SegmentDurationIntegerEditUnits"),
+                    Self::ContentKindUnknown => concat!($prefix, ":5.5.1.2/ContentKindUnknown"),
+                    Self::SourceEncodingNoEssenceDescriptorList => {
+                        concat!($prefix, ":6.4.2/SourceEncodingNoEssenceDescriptorList")
+                    }
+                    Self::SourceEncodingUnresolved => {
+                        concat!($prefix, ":6.4.2/SourceEncodingUnresolved")
+                    }
+                    Self::EssenceDescriptorListEmpty => {
+                        concat!($prefix, ":6.4.2/EssenceDescriptorListEmpty")
+                    }
+                    Self::ContentVersionListEmpty => {
+                        concat!($prefix, ":6.11/ContentVersionListEmpty")
+                    }
+                    Self::ContentVersionIdInvalid => {
+                        concat!($prefix, ":6.11/ContentVersionIdInvalid")
+                    }
+                    Self::ContentVersionLabelTextMissing => {
+                        concat!($prefix, ":6.11/ContentVersionLabelTextMissing")
+                    }
+                    Self::LocaleLanguageTagInvalid => {
+                        concat!($prefix, ":6.12/LocaleLanguageTagInvalid")
+                    }
+                    Self::TrackIdNotUnique => concat!($prefix, ":7.3/TrackIdNotUnique"),
+                    Self::MarkerOffsetOutOfRange => concat!($prefix, ":7.4/MarkerOffsetOutOfRange"),
+                    Self::MarkerLabelUnknown => concat!($prefix, ":7.4/MarkerLabelUnknown"),
+                    Self::SegmentDuration => concat!($prefix, ":7.2.2/SegmentDuration"),
+                    Self::ContentVersionIdDuplicate => {
+                        concat!($prefix, ":6.1.9/ContentVersionIdDuplicate")
+                    }
+                    Self::SegmentDurationIntegerEditUnits => {
+                        concat!($prefix, ":7.3/SegmentDurationIntegerEditUnits")
+                    }
                 }
             }
             fn description(&self) -> &'static str {
                 match self {
-                    Self::ContentKindUnknown =>
-                        "ContentKind uses an unrecognized value under the SMPTE scope.",
-                    Self::SourceEncodingNoEssenceDescriptorList =>
-                        "SourceEncoding present but EssenceDescriptorList absent.",
-                    Self::SourceEncodingUnresolved =>
-                        "SourceEncoding does not match any EssenceDescriptor Id.",
-                    Self::EssenceDescriptorListEmpty =>
-                        "EssenceDescriptorList present but contains no descriptors.",
-                    Self::ContentVersionListEmpty =>
-                        "ContentVersionList present but empty.",
-                    Self::ContentVersionIdInvalid =>
-                        "ContentVersion/Id is empty (shall be a URI).",
-                    Self::ContentVersionLabelTextMissing =>
-                        "ContentVersion/LabelText is absent.",
-                    Self::LocaleLanguageTagInvalid =>
-                        "Locale language tag does not conform to RFC 5646.",
-                    Self::TrackIdNotUnique =>
-                        "TrackId is not unique within a segment.",
-                    Self::MarkerOffsetOutOfRange =>
-                        "Marker offset exceeds resource effective duration.",
-                    Self::MarkerLabelUnknown =>
-                        "Marker label is not a recognized SMPTE standard value.",
-                    Self::SegmentDuration =>
-                        "All virtual tracks in a segment must span the same number of edit units.",
-                    Self::ContentVersionIdDuplicate =>
-                        "No two ContentVersion elements shall have identical Id values.",
-                    Self::SegmentDurationIntegerEditUnits =>
-                        "Sequence duration shall be an integer number of Composition Edit Units.",
+                    Self::ContentKindUnknown => {
+                        "ContentKind uses an unrecognized value under the SMPTE scope."
+                    }
+                    Self::SourceEncodingNoEssenceDescriptorList => {
+                        "SourceEncoding present but EssenceDescriptorList absent."
+                    }
+                    Self::SourceEncodingUnresolved => {
+                        "SourceEncoding does not match any EssenceDescriptor Id."
+                    }
+                    Self::EssenceDescriptorListEmpty => {
+                        "EssenceDescriptorList present but contains no descriptors."
+                    }
+                    Self::ContentVersionListEmpty => "ContentVersionList present but empty.",
+                    Self::ContentVersionIdInvalid => "ContentVersion/Id is empty (shall be a URI).",
+                    Self::ContentVersionLabelTextMissing => "ContentVersion/LabelText is absent.",
+                    Self::LocaleLanguageTagInvalid => {
+                        "Locale language tag does not conform to RFC 5646."
+                    }
+                    Self::TrackIdNotUnique => "TrackId is not unique within a segment.",
+                    Self::MarkerOffsetOutOfRange => {
+                        "Marker offset exceeds resource effective duration."
+                    }
+                    Self::MarkerLabelUnknown => {
+                        "Marker label is not a recognized SMPTE standard value."
+                    }
+                    Self::SegmentDuration => {
+                        "All virtual tracks in a segment must span the same number of edit units."
+                    }
+                    Self::ContentVersionIdDuplicate => {
+                        "No two ContentVersion elements shall have identical Id values."
+                    }
+                    Self::SegmentDurationIntegerEditUnits => {
+                        "Sequence duration shall be an integer number of Composition Edit Units."
+                    }
                 }
             }
             fn default_severity(&self) -> Severity {

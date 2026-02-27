@@ -3,8 +3,7 @@ use std::fs;
 use std::path::PathBuf;
 
 fn out_dir() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../crates/imferno-core/npm/schema/schemas")
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../crates/imferno-core/npm/schema/schemas")
 }
 
 pub fn run() {
@@ -12,16 +11,43 @@ pub fn run() {
     fs::create_dir_all(&dir).expect("create schemas dir");
 
     let schemas: Vec<(&str, schemars::schema::RootSchema)> = vec![
-        ("imf-report", schema_for!(imferno_core::package::report::ImfReport)),
-        ("validation-report", schema_for!(imferno_core::ValidationReport)),
-        ("composition-playlist", schema_for!(imferno_core::cpl::CompositionPlaylist)),
+        (
+            "imf-report",
+            schema_for!(imferno_core::package::report::ImfReport),
+        ),
+        (
+            "validation-report",
+            schema_for!(imferno_core::ValidationReport),
+        ),
+        (
+            "composition-playlist",
+            schema_for!(imferno_core::cpl::CompositionPlaylist),
+        ),
         ("asset-map", schema_for!(imferno_core::assetmap::AssetMap)),
-        ("packing-list", schema_for!(imferno_core::assetmap::PackingList)),
-        ("volume-index", schema_for!(imferno_core::assetmap::VolumeIndex)),
-        ("source-asset", schema_for!(imferno_core::package::source_asset::SourceAsset)),
-        ("delivery-request", schema_for!(imferno_core::package::delivery::DeliveryRequest)),
-        ("delivery-comparison", schema_for!(imferno_core::package::delivery::DeliveryComparison)),
-        ("rules-config", schema_for!(imferno_core::diagnostics::rules::RulesConfig)),
+        (
+            "packing-list",
+            schema_for!(imferno_core::assetmap::PackingList),
+        ),
+        (
+            "volume-index",
+            schema_for!(imferno_core::assetmap::VolumeIndex),
+        ),
+        (
+            "source-asset",
+            schema_for!(imferno_core::package::source_asset::SourceAsset),
+        ),
+        (
+            "delivery-request",
+            schema_for!(imferno_core::package::delivery::DeliveryRequest),
+        ),
+        (
+            "delivery-comparison",
+            schema_for!(imferno_core::package::delivery::DeliveryComparison),
+        ),
+        (
+            "rules-config",
+            schema_for!(imferno_core::diagnostics::rules::RulesConfig),
+        ),
     ];
 
     for (name, schema) in &schemas {

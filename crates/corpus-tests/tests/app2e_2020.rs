@@ -33,9 +33,8 @@ fn app2e2020_valid_cpl() {
 /// ST 2067-21 §6.2.5 / Photon `IMFApp2E2020ConstraintsValidator.validateJ2KProfile()`.
 #[test]
 fn app2e2020_bad_j2k_profile_2k() {
-    let cpl = read_cpl(
-        "Application2E2020/CPL_46154ef9-7b54-45eb-a85c-00efcb0d47a7_2k_j2k_profile.xml",
-    );
+    let cpl =
+        read_cpl("Application2E2020/CPL_46154ef9-7b54-45eb-a85c-00efcb0d47a7_2k_j2k_profile.xml");
     let issues = App2E2020.validate_cpl(&cpl);
     assert!(
         !errors(&issues).is_empty(),
@@ -49,9 +48,8 @@ fn app2e2020_bad_j2k_profile_2k() {
 /// Photon rejects it; our validator maps it to Unknown → not J2K family → error.
 #[test]
 fn app2e2020_bad_j2k_profile_8k() {
-    let cpl = read_cpl(
-        "Application2E2020/CPL_46154ef9-7b54-45eb-a85c-00efcb0d47a7_8k_j2k_profile.xml",
-    );
+    let cpl =
+        read_cpl("Application2E2020/CPL_46154ef9-7b54-45eb-a85c-00efcb0d47a7_8k_j2k_profile.xml");
     let issues = App2E2020.validate_cpl(&cpl);
     assert!(
         !errors(&issues).is_empty(),
@@ -65,9 +63,8 @@ fn app2e2020_bad_j2k_profile_8k() {
 /// Per Photon `IMFApp2E2020ConstraintsValidator`, HT was added only in 2021.
 #[test]
 fn app2e2020_bad_j2k_profile_ht() {
-    let cpl = read_cpl(
-        "Application2E2020/CPL_46154ef9-7b54-45eb-a85c-00efcb0d47a7_ht_j2k_profile.xml",
-    );
+    let cpl =
+        read_cpl("Application2E2020/CPL_46154ef9-7b54-45eb-a85c-00efcb0d47a7_ht_j2k_profile.xml");
     let issues = App2E2020.validate_cpl(&cpl);
     assert!(
         !errors(&issues).is_empty(),
@@ -81,9 +78,8 @@ fn app2e2020_bad_j2k_profile_ht() {
 /// Photon: `validateJ2KProfile()` — IMF 4K requires width in (2048, 4096].
 #[test]
 fn app2e2020_bad_j2k_profile_hd_resolution() {
-    let cpl = read_cpl(
-        "Application2E2020/CPL_46154ef9-7b54-45eb-a85c-00efcb0d47a7_HD_resolution.xml",
-    );
+    let cpl =
+        read_cpl("Application2E2020/CPL_46154ef9-7b54-45eb-a85c-00efcb0d47a7_HD_resolution.xml");
     let issues = App2E2020.validate_cpl(&cpl);
     assert!(
         !errors(&issues).is_empty(),
@@ -97,9 +93,7 @@ fn app2e2020_bad_j2k_profile_hd_resolution() {
 /// Photon: `validateJ2KProfile()` — BCP requires width in (0, 3840].
 #[test]
 fn app2e2020_bad_j2k_profile_dci4k_bcp() {
-    let cpl = read_cpl(
-        "Application2E2020/CPL_46154ef9-7b54-45eb-a85c-00efcb0d47a7_DCI4k_bcp.xml",
-    );
+    let cpl = read_cpl("Application2E2020/CPL_46154ef9-7b54-45eb-a85c-00efcb0d47a7_DCI4k_bcp.xml");
     let issues = App2E2020.validate_cpl(&cpl);
     assert!(
         !errors(&issues).is_empty(),

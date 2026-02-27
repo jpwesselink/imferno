@@ -3,14 +3,12 @@
 //! This module replaces the TypeScript compositionPlaylistMapper.ts logic,
 //! extracting structured track and asset information from CPL XML.
 
-#[cfg(feature = "typescript")]
-use ts_rs::TS;
-use serde::{Deserialize, Serialize};
 use crate::assetmap::ImfUuid;
 use crate::cpl::EditRate;
-use crate::cpl::{
-    CompositionPlaylist, EssenceDescriptor, RGBADescriptor, CDCIDescriptor,
-};
+use crate::cpl::{CDCIDescriptor, CompositionPlaylist, EssenceDescriptor, RGBADescriptor};
+use serde::{Deserialize, Serialize};
+#[cfg(feature = "typescript")]
+use ts_rs::TS;
 
 // =============================================================================
 // Domain enums with ordering for "best" selection
@@ -20,7 +18,10 @@ use crate::cpl::{
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[cfg_attr(feature = "typescript", derive(TS))]
-#[cfg_attr(feature = "typescript", ts(export, rename_all = "SCREAMING_SNAKE_CASE"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, rename_all = "SCREAMING_SNAKE_CASE")
+)]
 pub enum AudioType {
     Stereo,
     DolbyDigital,
@@ -32,7 +33,10 @@ pub enum AudioType {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[cfg_attr(feature = "typescript", derive(TS))]
-#[cfg_attr(feature = "typescript", ts(export, rename_all = "SCREAMING_SNAKE_CASE"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, rename_all = "SCREAMING_SNAKE_CASE")
+)]
 pub enum VideoQuality {
     Sd,
     Hd,
@@ -43,7 +47,10 @@ pub enum VideoQuality {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[cfg_attr(feature = "typescript", derive(TS))]
-#[cfg_attr(feature = "typescript", ts(export, rename_all = "SCREAMING_SNAKE_CASE"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, rename_all = "SCREAMING_SNAKE_CASE")
+)]
 pub enum VideoDynamicRange {
     Sdr,
     Hdr10,
@@ -54,7 +61,10 @@ pub enum VideoDynamicRange {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[cfg_attr(feature = "typescript", derive(TS))]
-#[cfg_attr(feature = "typescript", ts(export, rename_all = "SCREAMING_SNAKE_CASE"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, rename_all = "SCREAMING_SNAKE_CASE")
+)]
 pub enum AudioContentKind {
     /// Primary
     Prm,
@@ -66,7 +76,10 @@ pub enum AudioContentKind {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[cfg_attr(feature = "typescript", derive(TS))]
-#[cfg_attr(feature = "typescript", ts(export, rename_all = "SCREAMING_SNAKE_CASE"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, rename_all = "SCREAMING_SNAKE_CASE")
+)]
 pub enum ContentKind {
     Feature,
     Trailer,
@@ -205,7 +218,7 @@ pub struct SourceAsset {
     pub territory: String,
     pub edit_rate: String,
     pub frame_rate: String, // e.g. "23.976", "25", "29.97"
-    pub duration: String, // HH:MM:SS
+    pub duration: String,   // HH:MM:SS
     pub audio_languages: Vec<String>,
     pub subtitle_languages: Vec<String>,
     pub caption_languages: Vec<String>,
@@ -261,7 +274,13 @@ fn determine_dynamic_range(
         }
     }
 
-    (VideoDynamicRange::Sdr, Some(Hdr10Metadata { max_cll: 0, max_fall: 0 }))
+    (
+        VideoDynamicRange::Sdr,
+        Some(Hdr10Metadata {
+            max_cll: 0,
+            max_fall: 0,
+        }),
+    )
 }
 
 fn determine_dynamic_range_cdci(
@@ -280,7 +299,13 @@ fn determine_dynamic_range_cdci(
         }
     }
 
-    (VideoDynamicRange::Sdr, Some(Hdr10Metadata { max_cll: 0, max_fall: 0 }))
+    (
+        VideoDynamicRange::Sdr,
+        Some(Hdr10Metadata {
+            max_cll: 0,
+            max_fall: 0,
+        }),
+    )
 }
 
 /// Convert source duration in frames to seconds using edit rate
@@ -316,7 +341,7 @@ fn fragment_duration(track_type: &str, edit_rate: &EditRate) -> String {
                 (30000, 1001) => "240240/30000".to_string(),
                 _ => edit_rate.to_string(),
             }
-        },
+        }
         "timed_text" => "8/1".to_string(),
         _ => "".to_string(),
     }
@@ -327,7 +352,9 @@ fn fragment_duration(track_type: &str, edit_rate: &EditRate) -> String {
 // =============================================================================
 
 /// Build an EssenceDescriptor lookup by ID
-fn build_descriptor_map(cpl: &CompositionPlaylist) -> std::collections::HashMap<ImfUuid, &EssenceDescriptor> {
+fn build_descriptor_map(
+    cpl: &CompositionPlaylist,
+) -> std::collections::HashMap<ImfUuid, &EssenceDescriptor> {
     let mut map = std::collections::HashMap::new();
     if let Some(ref desc_list) = cpl.essence_descriptor_list {
         for desc in &desc_list.essence_descriptors {
@@ -343,7 +370,9 @@ pub fn extract_source_asset(cpl: &CompositionPlaylist) -> Result<SourceAsset, St
     let edit_rate = cpl.edit_rate.unwrap_or(EditRate::new(24, 1));
 
     // Extract territory from LocaleList
-    let territory = cpl.locale_list.as_ref()
+    let territory = cpl
+        .locale_list
+        .as_ref()
         .and_then(|ll| ll.locales.first())
         .and_then(|locale| locale.region_list.as_ref())
         .and_then(|rl| rl.regions.first())
@@ -375,13 +404,21 @@ pub fn extract_source_asset(cpl: &CompositionPlaylist) -> Result<SourceAsset, St
             let mut seq_resources = Vec::new();
 
             for resource in &seq.resource_list.resources {
-                let source_encoding = resource.source_encoding.map(|u| u.to_string()).unwrap_or_default();
-                let track_file_id = resource.track_file_id.map(|u| u.to_string()).unwrap_or_default();
+                let source_encoding = resource
+                    .source_encoding
+                    .map(|u| u.to_string())
+                    .unwrap_or_default();
+                let track_file_id = resource
+                    .track_file_id
+                    .map(|u| u.to_string())
+                    .unwrap_or_default();
 
                 seq_resources.push(SequenceResource {
                     id: resource.id.to_string(),
                     intrinsic_duration: resource.intrinsic_duration,
-                    source_duration: resource.source_duration.unwrap_or(resource.intrinsic_duration),
+                    source_duration: resource
+                        .source_duration
+                        .unwrap_or(resource.intrinsic_duration),
                     source_encoding: source_encoding.clone(),
                     track_file_id: track_file_id.clone(),
                     annotation: None,
@@ -394,7 +431,8 @@ pub fn extract_source_asset(cpl: &CompositionPlaylist) -> Result<SourceAsset, St
                         if let Some(ref rgba) = desc.rgba_descriptor {
                             let width = rgba.display_width.unwrap_or(0);
                             let height = rgba.display_height.unwrap_or(0);
-                            let (dynamic_range, hdr10_meta) = determine_dynamic_range(rgba, &cpl.extension_properties);
+                            let (dynamic_range, hdr10_meta) =
+                                determine_dynamic_range(rgba, &cpl.extension_properties);
                             video_track_num += 1;
 
                             tracks.video.push(VideoTrack {
@@ -406,14 +444,17 @@ pub fn extract_source_asset(cpl: &CompositionPlaylist) -> Result<SourceAsset, St
                                 track_identifier: track_file_id.clone(),
                                 track_number: video_track_num,
                                 fragment_duration: fragment_duration("video", &edit_rate),
-                                track_duration: resource.source_duration.unwrap_or(resource.intrinsic_duration),
+                                track_duration: resource
+                                    .source_duration
+                                    .unwrap_or(resource.intrinsic_duration),
                                 sequence_number: Some(sequence_counter),
                                 sequence_track_id: Some(seq.track_id.to_string()),
                             });
                         } else if let Some(ref cdci) = desc.cdci_descriptor {
                             let width = cdci.active_width.or(cdci.display_width).unwrap_or(0);
                             let height = cdci.active_height.or(cdci.display_height).unwrap_or(0);
-                            let (dynamic_range, hdr10_meta) = determine_dynamic_range_cdci(cdci, &cpl.extension_properties);
+                            let (dynamic_range, hdr10_meta) =
+                                determine_dynamic_range_cdci(cdci, &cpl.extension_properties);
                             video_track_num += 1;
 
                             tracks.video.push(VideoTrack {
@@ -425,7 +466,9 @@ pub fn extract_source_asset(cpl: &CompositionPlaylist) -> Result<SourceAsset, St
                                 track_identifier: track_file_id.clone(),
                                 track_number: video_track_num,
                                 fragment_duration: fragment_duration("video", &edit_rate),
-                                track_duration: resource.source_duration.unwrap_or(resource.intrinsic_duration),
+                                track_duration: resource
+                                    .source_duration
+                                    .unwrap_or(resource.intrinsic_duration),
                                 sequence_number: Some(sequence_counter),
                                 sequence_track_id: Some(seq.track_id.to_string()),
                             });
@@ -450,13 +493,21 @@ pub fn extract_source_asset(cpl: &CompositionPlaylist) -> Result<SourceAsset, St
             let mut seq_resources = Vec::new();
 
             for resource in &seq.resource_list.resources {
-                let source_encoding = resource.source_encoding.map(|u| u.to_string()).unwrap_or_default();
-                let track_file_id = resource.track_file_id.map(|u| u.to_string()).unwrap_or_default();
+                let source_encoding = resource
+                    .source_encoding
+                    .map(|u| u.to_string())
+                    .unwrap_or_default();
+                let track_file_id = resource
+                    .track_file_id
+                    .map(|u| u.to_string())
+                    .unwrap_or_default();
 
                 seq_resources.push(SequenceResource {
                     id: resource.id.to_string(),
                     intrinsic_duration: resource.intrinsic_duration,
-                    source_duration: resource.source_duration.unwrap_or(resource.intrinsic_duration),
+                    source_duration: resource
+                        .source_duration
+                        .unwrap_or(resource.intrinsic_duration),
                     source_encoding: source_encoding.clone(),
                     track_file_id: track_file_id.clone(),
                     annotation: None,
@@ -471,14 +522,18 @@ pub fn extract_source_asset(cpl: &CompositionPlaylist) -> Result<SourceAsset, St
                             let audio_type = determine_audio_type(channel_count);
 
                             // Extract language from sub-descriptors
-                            let language = wave.sub_descriptors.as_ref()
+                            let language = wave
+                                .sub_descriptors
+                                .as_ref()
                                 .and_then(|sd| sd.soundfield_group_label_sub_descriptor.as_ref())
                                 .and_then(|sg| sg.rfc5646_spoken_language.as_ref())
                                 .map(|lt| lt.to_string())
                                 .unwrap_or_default();
 
                             // Extract audio content kind
-                            let audio_content_kind = wave.sub_descriptors.as_ref()
+                            let audio_content_kind = wave
+                                .sub_descriptors
+                                .as_ref()
                                 .and_then(|sd| sd.soundfield_group_label_sub_descriptor.as_ref())
                                 .and_then(|sg| sg.mca_audio_content_kind.as_deref())
                                 .map(|kind| match kind.to_lowercase().as_str() {
@@ -487,12 +542,16 @@ pub fn extract_source_asset(cpl: &CompositionPlaylist) -> Result<SourceAsset, St
                                 })
                                 .unwrap_or(AudioContentKind::Prm);
 
-                            let mca_tag_symbol = wave.sub_descriptors.as_ref()
+                            let mca_tag_symbol = wave
+                                .sub_descriptors
+                                .as_ref()
                                 .and_then(|sd| sd.soundfield_group_label_sub_descriptor.as_ref())
                                 .and_then(|sg| sg.mca_tag_symbol.as_ref())
                                 .map(|s| s.to_string());
 
-                            let mca_tag_name = wave.sub_descriptors.as_ref()
+                            let mca_tag_name = wave
+                                .sub_descriptors
+                                .as_ref()
                                 .and_then(|sd| sd.soundfield_group_label_sub_descriptor.as_ref())
                                 .and_then(|sg| sg.mca_tag_name.clone());
 
@@ -509,7 +568,9 @@ pub fn extract_source_asset(cpl: &CompositionPlaylist) -> Result<SourceAsset, St
                                 track_identifier: track_file_id.clone(),
                                 track_number: audio_track_num,
                                 fragment_duration: fragment_duration("audio", &edit_rate),
-                                track_duration: resource.source_duration.unwrap_or(resource.intrinsic_duration),
+                                track_duration: resource
+                                    .source_duration
+                                    .unwrap_or(resource.intrinsic_duration),
                                 sequence_number: Some(sequence_counter),
                                 sequence_track_id: Some(seq.track_id.to_string()),
                             };
@@ -544,13 +605,21 @@ pub fn extract_source_asset(cpl: &CompositionPlaylist) -> Result<SourceAsset, St
             let mut seq_resources = Vec::new();
 
             for resource in &seq.resource_list.resources {
-                let source_encoding = resource.source_encoding.map(|u| u.to_string()).unwrap_or_default();
-                let track_file_id = resource.track_file_id.map(|u| u.to_string()).unwrap_or_default();
+                let source_encoding = resource
+                    .source_encoding
+                    .map(|u| u.to_string())
+                    .unwrap_or_default();
+                let track_file_id = resource
+                    .track_file_id
+                    .map(|u| u.to_string())
+                    .unwrap_or_default();
 
                 seq_resources.push(SequenceResource {
                     id: resource.id.to_string(),
                     intrinsic_duration: resource.intrinsic_duration,
-                    source_duration: resource.source_duration.unwrap_or(resource.intrinsic_duration),
+                    source_duration: resource
+                        .source_duration
+                        .unwrap_or(resource.intrinsic_duration),
                     source_encoding: source_encoding.clone(),
                     track_file_id: track_file_id.clone(),
                     annotation: None,
@@ -561,7 +630,9 @@ pub fn extract_source_asset(cpl: &CompositionPlaylist) -> Result<SourceAsset, St
                 if let Some(se_uuid) = resource.source_encoding {
                     if let Some(desc) = descriptor_map.get(&se_uuid) {
                         if let Some(ref iab) = desc.iab_essence_descriptor {
-                            let language = iab.sub_descriptors.as_ref()
+                            let language = iab
+                                .sub_descriptors
+                                .as_ref()
                                 .and_then(|sd| sd.iab_soundfield_label_sub_descriptor.as_ref())
                                 .and_then(|sg| sg.rfc5646_spoken_language.as_ref())
                                 .map(|lt| lt.to_string())
@@ -580,7 +651,9 @@ pub fn extract_source_asset(cpl: &CompositionPlaylist) -> Result<SourceAsset, St
                                 track_identifier: track_file_id.clone(),
                                 track_number: audio_track_num,
                                 fragment_duration: fragment_duration("iab", &edit_rate),
-                                track_duration: resource.source_duration.unwrap_or(resource.intrinsic_duration),
+                                track_duration: resource
+                                    .source_duration
+                                    .unwrap_or(resource.intrinsic_duration),
                                 sequence_number: None,
                                 sequence_track_id: None,
                             });
@@ -605,13 +678,21 @@ pub fn extract_source_asset(cpl: &CompositionPlaylist) -> Result<SourceAsset, St
             let mut seq_resources = Vec::new();
 
             for resource in &seq.resource_list.resources {
-                let source_encoding = resource.source_encoding.map(|u| u.to_string()).unwrap_or_default();
-                let track_file_id = resource.track_file_id.map(|u| u.to_string()).unwrap_or_default();
+                let source_encoding = resource
+                    .source_encoding
+                    .map(|u| u.to_string())
+                    .unwrap_or_default();
+                let track_file_id = resource
+                    .track_file_id
+                    .map(|u| u.to_string())
+                    .unwrap_or_default();
 
                 seq_resources.push(SequenceResource {
                     id: resource.id.to_string(),
                     intrinsic_duration: resource.intrinsic_duration,
-                    source_duration: resource.source_duration.unwrap_or(resource.intrinsic_duration),
+                    source_duration: resource
+                        .source_duration
+                        .unwrap_or(resource.intrinsic_duration),
                     source_encoding: source_encoding.clone(),
                     track_file_id: track_file_id.clone(),
                     annotation: None,
@@ -622,7 +703,7 @@ pub fn extract_source_asset(cpl: &CompositionPlaylist) -> Result<SourceAsset, St
                 // ISXD carries no language in its descriptor — language comes from the
                 // associated PCM audio track. Leave empty here.
                 if let Some(se_uuid) = resource.source_encoding {
-                    if descriptor_map.get(&se_uuid).is_some() {
+                    if descriptor_map.contains_key(&se_uuid) {
                         audio_track_num += 1;
                         tracks.audio.push(AudioTrack {
                             audio_type: AudioType::DolbyAtmos,
@@ -636,7 +717,9 @@ pub fn extract_source_asset(cpl: &CompositionPlaylist) -> Result<SourceAsset, St
                             track_identifier: track_file_id.clone(),
                             track_number: audio_track_num,
                             fragment_duration: fragment_duration("isxd", &edit_rate),
-                            track_duration: resource.source_duration.unwrap_or(resource.intrinsic_duration),
+                            track_duration: resource
+                                .source_duration
+                                .unwrap_or(resource.intrinsic_duration),
                             sequence_number: None,
                             sequence_track_id: None,
                         });
@@ -700,32 +783,42 @@ pub fn extract_source_asset(cpl: &CompositionPlaylist) -> Result<SourceAsset, St
     }
 
     // Calculate duration from video tracks
-    let total_seconds: u64 = tracks.video.iter()
+    let total_seconds: u64 = tracks
+        .video
+        .iter()
         .map(|t| convert_source_duration_to_seconds(t.track_duration, &edit_rate))
         .sum();
     let duration = seconds_to_hhmmss(total_seconds);
 
     // Determine "best" summary values (highest in ordering)
-    let best_audio_type = tracks.audio.iter()
+    let best_audio_type = tracks
+        .audio
+        .iter()
         .map(|t| t.audio_type)
         .max()
         .unwrap_or(AudioType::Stereo);
 
-    let best_video_quality = tracks.video.iter()
+    let best_video_quality = tracks
+        .video
+        .iter()
         .map(|t| t.quality)
         .max()
         .unwrap_or(VideoQuality::Sd);
 
-    let best_dynamic_range = tracks.video.iter()
+    let best_dynamic_range = tracks
+        .video
+        .iter()
         .map(|t| t.dynamic_range)
         .max()
         .unwrap_or(VideoDynamicRange::Sdr);
 
     // Collect and deduplicate languages
     let audio_languages = collect_languages(tracks.audio.iter().map(|t| t.language.as_str()));
-    let subtitle_languages = collect_languages(tracks.subtitles.iter().map(|t| t.language.as_str()));
+    let subtitle_languages =
+        collect_languages(tracks.subtitles.iter().map(|t| t.language.as_str()));
     let caption_languages = collect_languages(tracks.captions.iter().map(|t| t.language.as_str()));
-    let forced_narrative_languages = collect_languages(tracks.forced_narrative.iter().map(|t| t.language.as_str()));
+    let forced_narrative_languages =
+        collect_languages(tracks.forced_narrative.iter().map(|t| t.language.as_str()));
 
     // Content kind mapping
     let content_kind = match cpl.content_kind.kind {
@@ -756,6 +849,7 @@ pub fn extract_source_asset(cpl: &CompositionPlaylist) -> Result<SourceAsset, St
 }
 
 /// Process timed text sequence types (subtitles, captions, forced narrative)
+#[allow(clippy::too_many_arguments)]
 fn process_timed_text_sequences<S: crate::cpl::SequenceAccess>(
     seqs: &[S],
     seq_type_name: &str,
@@ -772,13 +866,21 @@ fn process_timed_text_sequences<S: crate::cpl::SequenceAccess>(
         let mut seq_resources = Vec::new();
 
         for resource in &seq.resource_list().resources {
-            let source_encoding = resource.source_encoding.map(|u| u.to_string()).unwrap_or_default();
-            let track_file_id = resource.track_file_id.map(|u| u.to_string()).unwrap_or_default();
+            let source_encoding = resource
+                .source_encoding
+                .map(|u| u.to_string())
+                .unwrap_or_default();
+            let track_file_id = resource
+                .track_file_id
+                .map(|u| u.to_string())
+                .unwrap_or_default();
 
             seq_resources.push(SequenceResource {
                 id: resource.id.to_string(),
                 intrinsic_duration: resource.intrinsic_duration,
-                source_duration: resource.source_duration.unwrap_or(resource.intrinsic_duration),
+                source_duration: resource
+                    .source_duration
+                    .unwrap_or(resource.intrinsic_duration),
                 source_encoding: source_encoding.clone(),
                 track_file_id: track_file_id.clone(),
                 annotation: None,
@@ -789,7 +891,9 @@ fn process_timed_text_sequences<S: crate::cpl::SequenceAccess>(
             if let Some(se_uuid) = resource.source_encoding {
                 if let Some(desc) = descriptor_map.get(&se_uuid) {
                     if let Some(ref timed_text) = desc.dc_timed_text_descriptor {
-                        let language = timed_text.rfc5646_language_tag_list.iter()
+                        let language = timed_text
+                            .rfc5646_language_tag_list
+                            .iter()
                             .map(|lt| lt.to_string())
                             .collect::<Vec<_>>()
                             .join(",");
@@ -800,7 +904,9 @@ fn process_timed_text_sequences<S: crate::cpl::SequenceAccess>(
                             track_identifier: track_file_id.clone(),
                             track_number: *track_num,
                             fragment_duration: fragment_duration("timed_text", edit_rate),
-                            track_duration: resource.source_duration.unwrap_or(resource.intrinsic_duration),
+                            track_duration: resource
+                                .source_duration
+                                .unwrap_or(resource.intrinsic_duration),
                             sequence_number: Some(*sequence_counter),
                             sequence_track_id: Some(seq.track_id().to_string()),
                         });
@@ -920,17 +1026,24 @@ mod tests {
         // Check audio
         assert!(!result.tracks.audio.is_empty(), "Should have audio tracks");
         let audio_langs = &result.audio_languages;
-        assert!(audio_langs.contains(&"en".to_string()), "Should have English audio");
+        assert!(
+            audio_langs.contains(&"en".to_string()),
+            "Should have English audio"
+        );
 
         // Check summary
         assert_eq!(result.video_quality, VideoQuality::Uhd);
-        assert_eq!(result.video_dynamic_range, VideoDynamicRange::HdrDolbyVision);
+        assert_eq!(
+            result.video_dynamic_range,
+            VideoDynamicRange::HdrDolbyVision
+        );
         assert_eq!(result.content_title, "MERIDIAN");
 
         // Check duration is in HH:MM:SS format
         assert!(
             result.duration.len() == 8 && result.duration.chars().nth(2) == Some(':'),
-            "Duration should be HH:MM:SS format, got: {}", result.duration
+            "Duration should be HH:MM:SS format, got: {}",
+            result.duration
         );
 
         // Check sequences
@@ -947,14 +1060,26 @@ mod tests {
         let cpl = crate::cpl::parse_cpl(&xml).expect("Failed to parse CPL");
         let result = extract_source_asset(&cpl).expect("Failed to extract source asset");
 
-        let has_isxd = result.tracks.audio.iter().any(|t| t.atmos_type.as_deref() == Some("ISXD"));
+        let has_isxd = result
+            .tracks
+            .audio
+            .iter()
+            .any(|t| t.atmos_type.as_deref() == Some("ISXD"));
         assert!(has_isxd, "Should have ISXD Dolby Atmos track");
 
-        let isxd_track = result.tracks.audio.iter().find(|t| t.atmos_type.as_deref() == Some("ISXD")).unwrap();
+        let isxd_track = result
+            .tracks
+            .audio
+            .iter()
+            .find(|t| t.atmos_type.as_deref() == Some("ISXD"))
+            .unwrap();
         assert_eq!(isxd_track.audio_type, AudioType::DolbyAtmos);
 
         // Sequences should include the ISXD sequence
-        let has_isxd_seq = result.sequences.iter().any(|s| s.sequence_type == "ISXDSequence");
+        let has_isxd_seq = result
+            .sequences
+            .iter()
+            .any(|s| s.sequence_type == "ISXDSequence");
         assert!(has_isxd_seq, "Should have ISXDSequence in sequences");
     }
 
@@ -969,10 +1094,19 @@ mod tests {
         let result = extract_source_asset(&cpl).expect("Failed to extract source asset");
 
         // Should have IAB Atmos audio track
-        let has_atmos = result.tracks.audio.iter().any(|t| t.audio_type == AudioType::DolbyAtmos);
+        let has_atmos = result
+            .tracks
+            .audio
+            .iter()
+            .any(|t| t.audio_type == AudioType::DolbyAtmos);
         assert!(has_atmos, "Should have Dolby Atmos track from IAB");
 
-        let atmos_track = result.tracks.audio.iter().find(|t| t.audio_type == AudioType::DolbyAtmos).unwrap();
+        let atmos_track = result
+            .tracks
+            .audio
+            .iter()
+            .find(|t| t.audio_type == AudioType::DolbyAtmos)
+            .unwrap();
         assert_eq!(atmos_track.atmos_type, Some("IAB".to_string()));
     }
 
@@ -997,10 +1131,23 @@ mod tests {
         assert!(result.tracks.subtitles.is_empty());
 
         // DD+ tracks should produce DD copies
-        let dd_plus_count = result.tracks.audio.iter().filter(|t| t.audio_type == AudioType::DolbyDigitalPlus).count();
-        let dd_count = result.tracks.audio.iter().filter(|t| t.audio_type == AudioType::DolbyDigital).count();
+        let dd_plus_count = result
+            .tracks
+            .audio
+            .iter()
+            .filter(|t| t.audio_type == AudioType::DolbyDigitalPlus)
+            .count();
+        let dd_count = result
+            .tracks
+            .audio
+            .iter()
+            .filter(|t| t.audio_type == AudioType::DolbyDigital)
+            .count();
         if dd_plus_count > 0 {
-            assert_eq!(dd_plus_count, dd_count, "Each DD+ track should have a DD copy");
+            assert_eq!(
+                dd_plus_count, dd_count,
+                "Each DD+ track should have a DD copy"
+            );
         }
     }
 }

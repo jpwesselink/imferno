@@ -4,9 +4,18 @@ use std::fs;
 use std::io::Cursor;
 
 const MXF_TEST_FILES: &[(&str, &str)] = &[
-    ("video", "../test-data/MERIDIAN_Netflix_Photon_161006/MERIDIAN_Netflix_Photon_161006_00.mxf"),
-    ("audio", "../test-data/MERIDIAN_Netflix_Photon_161006/MERIDIAN_Netflix_Photon_161006_ENG-51_00.mxf"),
-    ("subtitle", "../test-data/MERIDIAN_Netflix_Photon_161006/MERIDIAN_Netflix_Photon_161006_00_tt.mxf"),
+    (
+        "video",
+        "../test-data/MERIDIAN_Netflix_Photon_161006/MERIDIAN_Netflix_Photon_161006_00.mxf",
+    ),
+    (
+        "audio",
+        "../test-data/MERIDIAN_Netflix_Photon_161006/MERIDIAN_Netflix_Photon_161006_ENG-51_00.mxf",
+    ),
+    (
+        "subtitle",
+        "../test-data/MERIDIAN_Netflix_Photon_161006/MERIDIAN_Netflix_Photon_161006_00_tt.mxf",
+    ),
 ];
 
 /// Build a minimal valid MXF header partition pack byte stream (105 bytes).
@@ -15,8 +24,8 @@ fn make_synthetic_mxf() -> Vec<u8> {
     let mut data = Vec::new();
     // Key: Header Partition Pack (Closed and Complete)
     data.extend_from_slice(&[
-        0x06, 0x0E, 0x2B, 0x34, 0x02, 0x05, 0x01, 0x01,
-        0x0D, 0x01, 0x02, 0x01, 0x01, 0x02, 0x04, 0x00,
+        0x06, 0x0E, 0x2B, 0x34, 0x02, 0x05, 0x01, 0x01, 0x0D, 0x01, 0x02, 0x01, 0x01, 0x02, 0x04,
+        0x00,
     ]);
     // BER length = 88 (fits in 1 byte)
     data.push(88);
@@ -25,10 +34,10 @@ fn make_synthetic_mxf() -> Vec<u8> {
     data.extend_from_slice(&[0x00, 0x03]); // MinorVersion = 3
     data.extend_from_slice(&[0x00, 0x00, 0x02, 0x00]); // KAGSize = 512
     data.extend_from_slice(&[0u8; 8 * 5 + 4 + 8 + 4]); // ThisPartition..BodySID
-    // OP1a UL
+                                                       // OP1a UL
     data.extend_from_slice(&[
-        0x06, 0x0E, 0x2B, 0x34, 0x04, 0x01, 0x01, 0x02,
-        0x0D, 0x01, 0x02, 0x01, 0x01, 0x01, 0x09, 0x00,
+        0x06, 0x0E, 0x2B, 0x34, 0x04, 0x01, 0x01, 0x02, 0x0D, 0x01, 0x02, 0x01, 0x01, 0x01, 0x09,
+        0x00,
     ]);
     data.extend_from_slice(&[0x00, 0x00, 0x00, 0x00]); // EssenceContainers count = 0
     data.extend_from_slice(&[0x00, 0x00, 0x00, 0x10]); // element_size = 16
@@ -60,8 +69,8 @@ fn create_invalid_headers() -> Vec<(String, Vec<u8>)> {
         (
             "partial_signature".to_string(),
             vec![
-                0x06, 0x0E, 0x2B, 0x34, 0x02, 0x05, 0x01, 0x01,
-                0x0D, 0x01, 0x02, 0x01, 0x00, 0x00, 0x00, 0x00,
+                0x06, 0x0E, 0x2B, 0x34, 0x02, 0x05, 0x01, 0x01, 0x0D, 0x01, 0x02, 0x01, 0x00, 0x00,
+                0x00, 0x00,
             ],
         ),
     ]

@@ -6,16 +6,15 @@
 //! This module iterates those slices to produce consistent Markdown reference
 //! pages — no hand-editing required.
 
-use imferno_core::diagnostics::codes::ValidationCode;
 use imferno_core::assetmap::codes::{
-    St2067_2_2013_Core, St2067_2_2016_Core, St2067_2_2020,
-    St2067_2_2020_Core, St429_9_2014,
+    St2067_2_2013_Core, St2067_2_2016_Core, St2067_2_2020, St2067_2_2020_Core, St429_9_2014,
 };
 use imferno_core::cpl::codes::{St2067_3_2013, St2067_3_2016, St2067_3_2020};
+use imferno_core::diagnostics::codes::ValidationCode;
+use imferno_core::mxf::codes::St377_1_2011;
+use imferno_core::scm::codes::St2067_9_2018;
 use imferno_core::validation::codes::{St2067_21_2020, St2067_21_2023, St2067_21_2025};
 use imferno_core::validation::iab_codes::{St2067_201_2019, St2067_201_2021};
-use imferno_core::scm::codes::St2067_9_2018;
-use imferno_core::mxf::codes::St377_1_2011;
 
 use std::fs;
 use std::path::Path;
@@ -34,13 +33,13 @@ pub fn run() {
     let out = workspace_root.join("docs/src/content/docs/reference/codes");
     fs::create_dir_all(&out).expect("create output directory");
 
-    write(&out, "st429-9.md",     st429_9_page());
-    write(&out, "st377-1.md",     st377_1_page());
-    write(&out, "st2067-2.md",    st2067_2_page());
-    write(&out, "st2067-3.md",    st2067_3_page());
-    write(&out, "st2067-21.md",   st2067_21_page());
-    write(&out, "st2067-201.md",  st2067_201_page());
-    write(&out, "st2067-9.md",    st2067_9_page());
+    write(&out, "st429-9.md", st429_9_page());
+    write(&out, "st377-1.md", st377_1_page());
+    write(&out, "st2067-2.md", st2067_2_page());
+    write(&out, "st2067-3.md", st2067_3_page());
+    write(&out, "st2067-21.md", st2067_21_page());
+    write(&out, "st2067-201.md", st2067_201_page());
+    write(&out, "st2067-9.md", st2067_9_page());
 
     println!("docs written to {}", out.display());
 }
@@ -130,7 +129,10 @@ fn st2067_2_page() -> String {
          ---\n\n",
     );
 
-    s.push_str(&section("ST 2067-2:2020 — Package-level", St2067_2_2020::ALL));
+    s.push_str(&section(
+        "ST 2067-2:2020 — Package-level",
+        St2067_2_2020::ALL,
+    ));
     s.push_str("---\n\n");
 
     // Core constraints: shared body, three editions.
@@ -192,8 +194,11 @@ fn st2067_21_page() -> String {
         "§6.2 — Color system and required fields",
         &filter(St2067_21_2023::ALL, |c| {
             let code = c.code();
-            code.contains(":6.2/") || code.contains(":6.2.1/") || code.contains(":6.2.2/")
-                || code.contains(":6.2.3/") || code.contains(":6.2.4/")
+            code.contains(":6.2/")
+                || code.contains(":6.2.1/")
+                || code.contains(":6.2.2/")
+                || code.contains(":6.2.3/")
+                || code.contains(":6.2.4/")
                 || code.contains(":6.2.5/")
         }),
     ));
@@ -218,8 +223,10 @@ fn st2067_21_page() -> String {
     s.push_str(&subsection(
         "§7 — Application constraints",
         &filter(St2067_21_2023::ALL, |c| {
-            c.code().contains(":7.1/") || c.code().contains(":7.2/")
-                || c.code().contains(":7.4/") || c.code().contains(":7.5/")
+            c.code().contains(":7.1/")
+                || c.code().contains(":7.2/")
+                || c.code().contains(":7.4/")
+                || c.code().contains(":7.5/")
         }),
     ));
 

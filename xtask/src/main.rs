@@ -5,16 +5,22 @@ mod generate_schema;
 fn main() {
     let mut args = std::env::args().skip(1);
     match args.next().as_deref() {
-        Some("build-wasm")       => build_wasm::run(),
-        Some("generate-docs")    => generate_docs::run(),
-        Some("generate-schema")  => generate_schema::run(),
-        Some("build-docs")       => { build_wasm::run(); generate_docs::run(); }
+        Some("build-wasm") => build_wasm::run(),
+        Some("generate-docs") => generate_docs::run(),
+        Some("generate-schema") => generate_schema::run(),
+        Some("build-docs") => {
+            build_wasm::run();
+            generate_docs::run();
+        }
         Some(cmd) => {
             eprintln!("unknown command: {cmd}");
             usage();
             std::process::exit(1);
         }
-        None => { usage(); std::process::exit(1); }
+        None => {
+            usage();
+            std::process::exit(1);
+        }
     }
 }
 

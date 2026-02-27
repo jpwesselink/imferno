@@ -27,14 +27,16 @@ pub enum St2067_9_2018 {
 impl ValidationCode for St2067_9_2018 {
     fn code(&self) -> &'static str {
         match self {
-            Self::MalformedXml                         => "ST2067-9:2018:6.1/MalformedXml",
-            Self::SidecarAssetReferencedByVirtualTrack => "ST2067-9:2018:5/SidecarAssetReferencedByVirtualTrack",
-            Self::DuplicateAssetId                     => "ST2067-9:2018:7.2.3/DuplicateAssetId",
-            Self::SignerWithoutSignature                => "ST2067-9:2018:7.2.4/SignerWithoutSignature",
-            Self::SignatureWithoutSigner                => "ST2067-9:2018:7.2.5/SignatureWithoutSigner",
-            Self::SidecarAssetNotFound                 => "ST2067-9:2018:7.3.1/SidecarAssetNotFound",
-            Self::CplNotFound                          => "ST2067-9:2018:7.3.1.1/CplNotFound",
-            Self::DuplicateCplId                       => "ST2067-9:2018:7.3.1.1/DuplicateCplId",
+            Self::MalformedXml => "ST2067-9:2018:6.1/MalformedXml",
+            Self::SidecarAssetReferencedByVirtualTrack => {
+                "ST2067-9:2018:5/SidecarAssetReferencedByVirtualTrack"
+            }
+            Self::DuplicateAssetId => "ST2067-9:2018:7.2.3/DuplicateAssetId",
+            Self::SignerWithoutSignature => "ST2067-9:2018:7.2.4/SignerWithoutSignature",
+            Self::SignatureWithoutSigner => "ST2067-9:2018:7.2.5/SignatureWithoutSigner",
+            Self::SidecarAssetNotFound => "ST2067-9:2018:7.3.1/SidecarAssetNotFound",
+            Self::CplNotFound => "ST2067-9:2018:7.3.1.1/CplNotFound",
+            Self::DuplicateCplId => "ST2067-9:2018:7.3.1.1/DuplicateCplId",
         }
     }
 

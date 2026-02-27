@@ -22,11 +22,17 @@ fn detect_by_filename(filename: &str) -> &'static str {
 fn detect_xml_format(content: &str) -> &'static str {
     if content.contains("AssetMap") && content.contains("http://www.smpte-ra.org/schemas/2067-4") {
         "AssetMap"
-    } else if content.contains("CompositionPlaylist") && content.contains("http://www.smpte-ra.org/schemas/2067-3") {
+    } else if content.contains("CompositionPlaylist")
+        && content.contains("http://www.smpte-ra.org/schemas/2067-3")
+    {
         "CPL"
-    } else if content.contains("PackingList") && content.contains("http://www.smpte-ra.org/schemas/2067-4") {
+    } else if content.contains("PackingList")
+        && content.contains("http://www.smpte-ra.org/schemas/2067-4")
+    {
         "PackingList"
-    } else if content.contains("VolumeIndex") && content.contains("http://www.smpte-ra.org/schemas/2067-4") {
+    } else if content.contains("VolumeIndex")
+        && content.contains("http://www.smpte-ra.org/schemas/2067-4")
+    {
         "VolumeIndex"
     } else {
         "Unknown XML"
@@ -38,7 +44,9 @@ fn is_mxf_format(data: &[u8]) -> bool {
         return false;
     }
 
-    let mxf_signature = [0x06, 0x0E, 0x2B, 0x34, 0x02, 0x05, 0x01, 0x01, 0x0D, 0x01, 0x02, 0x01];
+    let mxf_signature = [
+        0x06, 0x0E, 0x2B, 0x34, 0x02, 0x05, 0x01, 0x01, 0x0D, 0x01, 0x02, 0x01,
+    ];
     data[..12] == mxf_signature
 }
 
@@ -57,12 +65,30 @@ fn detect_by_content(data: &[u8]) -> &'static str {
 }
 
 const TEST_FILES: &[(&str, &str)] = &[
-    ("assetmap", "../test-data/MERIDIAN_Netflix_Photon_161006/ASSETMAP.xml"),
-    ("cpl", "../test-data/MERIDIAN_Netflix_Photon_161006/CPL_0eb3d1b9-b77b-4d3f-bbe5-7c69b15dca85.xml"),
-    ("pklist", "../test-data/MERIDIAN_Netflix_Photon_161006/PKL_0eb3d1b9-b77b-4d3f-bbe5-7c69b15dca85.xml"),
-    ("mxf_video", "../test-data/MERIDIAN_Netflix_Photon_161006/MERIDIAN_Netflix_Photon_161006_00.mxf"),
-    ("mxf_audio", "../test-data/MERIDIAN_Netflix_Photon_161006/MERIDIAN_Netflix_Photon_161006_ENG-51_00.mxf"),
-    ("mxf_subtitle", "../test-data/MERIDIAN_Netflix_Photon_161006/MERIDIAN_Netflix_Photon_161006_00_tt.mxf"),
+    (
+        "assetmap",
+        "../test-data/MERIDIAN_Netflix_Photon_161006/ASSETMAP.xml",
+    ),
+    (
+        "cpl",
+        "../test-data/MERIDIAN_Netflix_Photon_161006/CPL_0eb3d1b9-b77b-4d3f-bbe5-7c69b15dca85.xml",
+    ),
+    (
+        "pklist",
+        "../test-data/MERIDIAN_Netflix_Photon_161006/PKL_0eb3d1b9-b77b-4d3f-bbe5-7c69b15dca85.xml",
+    ),
+    (
+        "mxf_video",
+        "../test-data/MERIDIAN_Netflix_Photon_161006/MERIDIAN_Netflix_Photon_161006_00.mxf",
+    ),
+    (
+        "mxf_audio",
+        "../test-data/MERIDIAN_Netflix_Photon_161006/MERIDIAN_Netflix_Photon_161006_ENG-51_00.mxf",
+    ),
+    (
+        "mxf_subtitle",
+        "../test-data/MERIDIAN_Netflix_Photon_161006/MERIDIAN_Netflix_Photon_161006_00_tt.mxf",
+    ),
 ];
 
 fn load_format_test_data() -> Vec<(String, Vec<u8>)> {
@@ -99,16 +125,22 @@ fn load_format_test_data() -> Vec<(String, Vec<u8>)> {
 
         // MXF signature
         let mxf_header = vec![
-            0x06, 0x0E, 0x2B, 0x34, 0x02, 0x05, 0x01, 0x01,
-            0x0D, 0x01, 0x02, 0x01, 0x01, 0x02, 0x00, 0x00,
+            0x06, 0x0E, 0x2B, 0x34, 0x02, 0x05, 0x01, 0x01, 0x0D, 0x01, 0x02, 0x01, 0x01, 0x02,
+            0x00, 0x00,
         ];
         let mut mxf_sample = mxf_header;
         mxf_sample.extend_from_slice(&[0u8; 1024]); // Add padding
         test_data.push(("mxf".to_string(), mxf_sample));
 
         // Non-IMF files for negative testing
-        test_data.push(("plain_text".to_string(), b"This is just plain text content".to_vec()));
-        test_data.push(("random_binary".to_string(), vec![0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A])); // PNG signature
+        test_data.push((
+            "plain_text".to_string(),
+            b"This is just plain text content".to_vec(),
+        ));
+        test_data.push((
+            "random_binary".to_string(),
+            vec![0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A],
+        )); // PNG signature
     }
 
     test_data
@@ -136,7 +168,7 @@ fn bench_format_detection_by_extension(c: &mut Criterion) {
                     let detected = detect_by_filename(black_box(fname));
                     black_box(detected)
                 })
-            }
+            },
         );
     }
 
@@ -152,16 +184,12 @@ fn bench_format_detection_by_content(c: &mut Criterion) {
         let size = content.len() as u64;
         group.throughput(Throughput::Bytes(size));
 
-        group.bench_with_input(
-            BenchmarkId::new("detect", name),
-            content,
-            |b, data| {
-                b.iter(|| {
-                    let detected = detect_by_content(black_box(data));
-                    black_box(detected)
-                })
-            }
-        );
+        group.bench_with_input(BenchmarkId::new("detect", name), content, |b, data| {
+            b.iter(|| {
+                let detected = detect_by_content(black_box(data));
+                black_box(detected)
+            })
+        });
     }
 
     group.finish();
@@ -169,11 +197,26 @@ fn bench_format_detection_by_content(c: &mut Criterion) {
 
 fn bench_xml_namespace_detection(c: &mut Criterion) {
     let xml_samples = vec![
-        ("assetmap", r#"<?xml version="1.0"?><AssetMap xmlns="http://www.smpte-ra.org/schemas/2067-4/2013"><Id>test</Id></AssetMap>"#),
-        ("cpl", r#"<?xml version="1.0"?><CompositionPlaylist xmlns="http://www.smpte-ra.org/schemas/2067-3/2013"><Id>test</Id></CompositionPlaylist>"#),
-        ("pklist", r#"<?xml version="1.0"?><PackingList xmlns="http://www.smpte-ra.org/schemas/2067-4/2013"><Id>test</Id></PackingList>"#),
-        ("volindex", r#"<?xml version="1.0"?><VolumeIndex xmlns="http://www.smpte-ra.org/schemas/2067-4/2013"><Index>1</Index></VolumeIndex>"#),
-        ("unknown_xml", r#"<?xml version="1.0"?><SomeRoot xmlns="http://example.com/unknown"><Element>data</Element></SomeRoot>"#),
+        (
+            "assetmap",
+            r#"<?xml version="1.0"?><AssetMap xmlns="http://www.smpte-ra.org/schemas/2067-4/2013"><Id>test</Id></AssetMap>"#,
+        ),
+        (
+            "cpl",
+            r#"<?xml version="1.0"?><CompositionPlaylist xmlns="http://www.smpte-ra.org/schemas/2067-3/2013"><Id>test</Id></CompositionPlaylist>"#,
+        ),
+        (
+            "pklist",
+            r#"<?xml version="1.0"?><PackingList xmlns="http://www.smpte-ra.org/schemas/2067-4/2013"><Id>test</Id></PackingList>"#,
+        ),
+        (
+            "volindex",
+            r#"<?xml version="1.0"?><VolumeIndex xmlns="http://www.smpte-ra.org/schemas/2067-4/2013"><Index>1</Index></VolumeIndex>"#,
+        ),
+        (
+            "unknown_xml",
+            r#"<?xml version="1.0"?><SomeRoot xmlns="http://example.com/unknown"><Element>data</Element></SomeRoot>"#,
+        ),
     ];
 
     let mut group = c.benchmark_group("xml_namespace_detection");
@@ -190,7 +233,7 @@ fn bench_xml_namespace_detection(c: &mut Criterion) {
                     let detected = detect_xml_format(black_box(content));
                     black_box(detected)
                 })
-            }
+            },
         );
     }
 
@@ -199,16 +242,22 @@ fn bench_xml_namespace_detection(c: &mut Criterion) {
 
 fn bench_mxf_signature_detection(c: &mut Criterion) {
     let mxf_samples = vec![
-        ("valid_mxf", vec![
-            0x06, 0x0E, 0x2B, 0x34, 0x02, 0x05, 0x01, 0x01,
-            0x0D, 0x01, 0x02, 0x01, 0x01, 0x02, 0x00, 0x00,
-        ]),
+        (
+            "valid_mxf",
+            vec![
+                0x06, 0x0E, 0x2B, 0x34, 0x02, 0x05, 0x01, 0x01, 0x0D, 0x01, 0x02, 0x01, 0x01, 0x02,
+                0x00, 0x00,
+            ],
+        ),
         ("invalid_signature", vec![0x00; 16]),
         ("partial_signature", vec![0x06, 0x0E, 0x2B, 0x34, 0x02]),
-        ("wrong_header", vec![
-            0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
-            0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,
-        ]),
+        (
+            "wrong_header",
+            vec![
+                0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D, 0x49, 0x48,
+                0x44, 0x52,
+            ],
+        ),
     ];
 
     let mut group = c.benchmark_group("mxf_signature_detection");
@@ -228,7 +277,7 @@ fn bench_mxf_signature_detection(c: &mut Criterion) {
                     let detected = is_mxf_format(black_box(data));
                     black_box(detected)
                 })
-            }
+            },
         );
     }
 
@@ -237,7 +286,7 @@ fn bench_mxf_signature_detection(c: &mut Criterion) {
 
 fn bench_comprehensive_format_detection(c: &mut Criterion) {
     let test_data = load_format_test_data();
-    let filenames = vec![
+    let filenames = [
         "ASSETMAP.xml",
         "CPL_test.xml",
         "PKL_test.xml",
@@ -268,7 +317,7 @@ fn bench_comprehensive_format_detection(c: &mut Criterion) {
 
                     black_box(final_format)
                 })
-            }
+            },
         );
     }
 

@@ -3,7 +3,10 @@ use imferno_core::cpl as st2067_3;
 use std::fs;
 
 const TEST_FILES: &[(&str, &str)] = &[
-    ("small", "../test-data/MERIDIAN_Netflix_Photon_161006/CPL_0eb3d1b9-b77b-4d3f-bbe5-7c69b15dca85.xml"),
+    (
+        "small",
+        "../test-data/MERIDIAN_Netflix_Photon_161006/CPL_0eb3d1b9-b77b-4d3f-bbe5-7c69b15dca85.xml",
+    ),
     ("medium", "../test-data/ISXD/CPL_ISXD_TEST_1.xml"),
     ("complex", "../test-data/IAB/CPL_IAB_TEST_1.xml"),
 ];
@@ -51,16 +54,12 @@ fn bench_cpl_parsing_cold(c: &mut Criterion) {
         let size = content.len() as u64;
         group.throughput(Throughput::Bytes(size));
 
-        group.bench_with_input(
-            BenchmarkId::new("parse", name),
-            content,
-            |b, content| {
-                b.iter(|| {
-                    let result = st2067_3::parse_cpl(black_box(content));
-                    black_box(result)
-                })
-            }
-        );
+        group.bench_with_input(BenchmarkId::new("parse", name), content, |b, content| {
+            b.iter(|| {
+                let result = st2067_3::parse_cpl(black_box(content));
+                black_box(result)
+            })
+        });
     }
 
     group.finish();
@@ -78,16 +77,12 @@ fn bench_cpl_parsing_warm(c: &mut Criterion) {
         // Warm up the parser
         let _ = st2067_3::parse_cpl(content);
 
-        group.bench_with_input(
-            BenchmarkId::new("parse", name),
-            content,
-            |b, content| {
-                b.iter(|| {
-                    let result = st2067_3::parse_cpl(black_box(content));
-                    black_box(result)
-                })
-            }
-        );
+        group.bench_with_input(BenchmarkId::new("parse", name), content, |b, content| {
+            b.iter(|| {
+                let result = st2067_3::parse_cpl(black_box(content));
+                black_box(result)
+            })
+        });
     }
 
     group.finish();
@@ -112,7 +107,7 @@ fn bench_cpl_language_extraction(c: &mut Criterion) {
                         .unwrap_or_default();
                     black_box(languages)
                 })
-            }
+            },
         );
     }
 
@@ -126,19 +121,15 @@ fn bench_cpl_validation(c: &mut Criterion) {
 
     for (name, content) in &test_data {
         if let Ok(cpl) = st2067_3::parse_cpl(content) {
-            group.bench_with_input(
-                BenchmarkId::new("validate", name),
-                &cpl,
-                |b, cpl| {
-                    b.iter(|| {
-                        // Basic validation operations
-                        let has_title = !cpl.content_title.text.is_empty();
-                        let has_segments = !cpl.segment_list.segments.is_empty();
-                        let id_valid = cpl.id.to_string().starts_with("urn:uuid:");
-                        black_box((has_title, has_segments, id_valid))
-                    })
-                }
-            );
+            group.bench_with_input(BenchmarkId::new("validate", name), &cpl, |b, cpl| {
+                b.iter(|| {
+                    // Basic validation operations
+                    let has_title = !cpl.content_title.text.is_empty();
+                    let has_segments = !cpl.segment_list.segments.is_empty();
+                    let id_valid = cpl.id.to_string().starts_with("urn:uuid:");
+                    black_box((has_title, has_segments, id_valid))
+                })
+            });
         }
     }
 

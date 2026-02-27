@@ -168,7 +168,7 @@ impl fmt::Display for Location {
             parts.push(format!("Line:{}", line));
         }
         if let Some(ref path) = self.path {
-            parts.push(format!("{}", path));
+            parts.push(path.to_string());
         }
 
         write!(f, "{}", parts.join(", "))
@@ -229,14 +229,12 @@ impl ValidationIssue {
     }
 }
 
-
 impl fmt::Display for ValidationIssue {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "[{}] {} ({}): {}",
-            self.severity,
-            self.category,
-            self.code,
-            self.message
+        write!(
+            f,
+            "[{}] {} ({}): {}",
+            self.severity, self.category, self.code, self.message
         )?;
 
         if !self.location.to_string().is_empty() {
@@ -341,8 +339,24 @@ impl fmt::Display for ValidationReport {
         writeln!(f, "=============================")?;
         writeln!(f, "Profile: {}", self.profile)?;
         writeln!(f, "Timestamp: {}", self.timestamp)?;
-        writeln!(f, "Playable: {}", if self.is_playable { "✅ YES" } else { "❌ NO" })?;
-        writeln!(f, "Compliant: {}", if self.is_compliant { "✅ YES" } else { "❌ NO" })?;
+        writeln!(
+            f,
+            "Playable: {}",
+            if self.is_playable {
+                "✅ YES"
+            } else {
+                "❌ NO"
+            }
+        )?;
+        writeln!(
+            f,
+            "Compliant: {}",
+            if self.is_compliant {
+                "✅ YES"
+            } else {
+                "❌ NO"
+            }
+        )?;
         writeln!(f)?;
 
         if !self.critical.is_empty() {
@@ -412,7 +426,7 @@ pub mod codes;
 
 /// ESLint-style per-rule severity overrides for `ValidationReport`.
 pub mod rules;
-pub use rules::{RulesConfig, RuleSeverity};
+pub use rules::{RuleSeverity, RulesConfig};
 
 /// Result type for parsing operations that can accumulate errors
 pub type ParseResult<T> = Result<(T, ValidationReport), CriticalError>;
@@ -436,7 +450,9 @@ impl fmt::Display for CriticalError {
 
 impl std::error::Error for CriticalError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        self.cause.as_ref().map(|e| &**e as &(dyn std::error::Error + 'static))
+        self.cause
+            .as_ref()
+            .map(|e| &**e as &(dyn std::error::Error + 'static))
     }
 }
 
@@ -464,7 +480,7 @@ mod tests {
         .with_location(
             Location::new()
                 .with_cpl("urn:uuid:1234-5678".to_string())
-                .with_segment(0)
+                .with_segment(0),
         )
         .with_suggestion("Add EditRate element with value like '24 1' or '24000 1001'");
 
@@ -518,12 +534,25 @@ mod tests {
         assert!(Severity::Error > Severity::Warning);
         assert!(Severity::Warning > Severity::Info);
 
-        let severities = vec![Severity::Info, Severity::Critical, Severity::Warning, Severity::Error];
+        let severities = vec![
+            Severity::Info,
+            Severity::Critical,
+            Severity::Warning,
+            Severity::Error,
+        ];
         let mut sorted = severities.clone();
         sorted.sort();
         sorted.reverse(); // Highest first
 
-        assert_eq!(sorted, vec![Severity::Critical, Severity::Error, Severity::Warning, Severity::Info]);
+        assert_eq!(
+            sorted,
+            vec![
+                Severity::Critical,
+                Severity::Error,
+                Severity::Warning,
+                Severity::Info
+            ]
+        );
     }
 
     #[test]
@@ -608,7 +637,7 @@ mod tests {
         ));
 
         let summary = report.summary();
-        assert!(summary.contains("1 critical") || summary.len() > 0);
+        assert!(summary.contains("1 critical") || !summary.is_empty());
         assert!(summary.contains("issues") || summary.len() > 10);
         // Summary is a formatted string, check it contains useful information
         assert!(!summary.is_empty());
@@ -690,7 +719,9 @@ mod tests {
 
         let display = format!("{}", report);
         assert!(display.contains("Critical"));
-        assert!(display.contains("FILE_NOT_FOUND") || display.contains("Asset") || !display.is_empty());
+        assert!(
+            display.contains("FILE_NOT_FOUND") || display.contains("Asset") || !display.is_empty()
+        );
         assert!(display.contains("Critical test issue"));
     }
 
@@ -702,5 +733,4 @@ mod tests {
         let issue2 = ValidationIssue::new(Severity::Error, Category::Asset, "B/Code", "msg");
         assert_ne!(issue.code, issue2.code);
     }
-
 }

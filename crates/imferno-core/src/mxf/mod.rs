@@ -127,9 +127,10 @@ pub fn parse_mxf_header_info_from_reader<R: Read>(reader: &mut R) -> Result<MxfH
     // 06 0E 2B 34 02 05 01 01 0D 01 02 01
     // Byte 12 = 01 (header), 02 (body), 03 (footer)
     // We only accept header partition packs.
-    const MXF_PP_PREFIX: [u8; 12] =
-        [0x06, 0x0E, 0x2B, 0x34, 0x02, 0x05, 0x01, 0x01, 0x0D, 0x01, 0x02, 0x01];
-    if &key[..12] != &MXF_PP_PREFIX || key[12] != 0x01 {
+    const MXF_PP_PREFIX: [u8; 12] = [
+        0x06, 0x0E, 0x2B, 0x34, 0x02, 0x05, 0x01, 0x01, 0x0D, 0x01, 0x02, 0x01,
+    ];
+    if key[..12] != MXF_PP_PREFIX || key[12] != 0x01 {
         return Err(MxfParseError::NotMxf);
     }
 
@@ -177,8 +178,7 @@ pub fn parse_mxf_header_info_from_reader<R: Read>(reader: &mut R) -> Result<MxfH
     if body.len() >= 88 {
         // Batch header: 4-byte count + 4-byte element size
         let count = u32::from_be_bytes([body[80], body[81], body[82], body[83]]) as usize;
-        let elem_size =
-            u32::from_be_bytes([body[84], body[85], body[86], body[87]]) as usize;
+        let elem_size = u32::from_be_bytes([body[84], body[85], body[86], body[87]]) as usize;
 
         if elem_size == 16 {
             let mut offset = 88;
@@ -242,10 +242,22 @@ fn format_ul(bytes: &[u8]) -> String {
     format!(
         "urn:smpte:ul:{:02x}{:02x}{:02x}{:02x}.{:02x}{:02x}{:02x}{:02x}.\
          {:02x}{:02x}{:02x}{:02x}.{:02x}{:02x}{:02x}{:02x}",
-        bytes[0], bytes[1], bytes[2], bytes[3],
-        bytes[4], bytes[5], bytes[6], bytes[7],
-        bytes[8], bytes[9], bytes[10], bytes[11],
-        bytes[12], bytes[13], bytes[14], bytes[15],
+        bytes[0],
+        bytes[1],
+        bytes[2],
+        bytes[3],
+        bytes[4],
+        bytes[5],
+        bytes[6],
+        bytes[7],
+        bytes[8],
+        bytes[9],
+        bytes[10],
+        bytes[11],
+        bytes[12],
+        bytes[13],
+        bytes[14],
+        bytes[15],
     )
 }
 
@@ -263,8 +275,8 @@ mod tests {
 
         // Key: Header Partition Pack (Closed and Complete = 01 02 04 00)
         stream.extend_from_slice(&[
-            0x06, 0x0E, 0x2B, 0x34, 0x02, 0x05, 0x01, 0x01,
-            0x0D, 0x01, 0x02, 0x01, 0x01, 0x02, 0x04, 0x00,
+            0x06, 0x0E, 0x2B, 0x34, 0x02, 0x05, 0x01, 0x01, 0x0D, 0x01, 0x02, 0x01, 0x01, 0x02,
+            0x04, 0x00,
         ]);
         // BER length = 88 (fits in 1 byte)
         stream.push(88);
@@ -307,8 +319,8 @@ mod tests {
     fn valid_header_partition_pack_parsed() {
         // OP1a UL: 060E2B34.04010102.0D010201.01010900
         let op1a: [u8; 16] = [
-            0x06, 0x0E, 0x2B, 0x34, 0x04, 0x01, 0x01, 0x02,
-            0x0D, 0x01, 0x02, 0x01, 0x01, 0x01, 0x09, 0x00,
+            0x06, 0x0E, 0x2B, 0x34, 0x04, 0x01, 0x01, 0x02, 0x0D, 0x01, 0x02, 0x01, 0x01, 0x01,
+            0x09, 0x00,
         ];
         let stream = make_minimal_mxf_stream(op1a);
         let mut cursor = Cursor::new(stream);
@@ -339,8 +351,8 @@ mod tests {
     #[test]
     fn body_partition_pack_rejected() {
         let mut key = vec![
-            0x06, 0x0E, 0x2B, 0x34, 0x02, 0x05, 0x01, 0x01,
-            0x0D, 0x01, 0x02, 0x01, 0x02, 0x02, 0x04, 0x00, // key[12] = 0x02 = body
+            0x06, 0x0E, 0x2B, 0x34, 0x02, 0x05, 0x01, 0x01, 0x0D, 0x01, 0x02, 0x01, 0x02, 0x02,
+            0x04, 0x00, // key[12] = 0x02 = body
         ];
         key.extend_from_slice(&[0u8; 89]);
         let mut cursor = Cursor::new(key);
@@ -354,20 +366,20 @@ mod tests {
     #[test]
     fn essence_containers_parsed() {
         let op: [u8; 16] = [
-            0x06, 0x0E, 0x2B, 0x34, 0x04, 0x01, 0x01, 0x02,
-            0x0D, 0x01, 0x02, 0x01, 0x01, 0x01, 0x09, 0x00,
+            0x06, 0x0E, 0x2B, 0x34, 0x04, 0x01, 0x01, 0x02, 0x0D, 0x01, 0x02, 0x01, 0x01, 0x01,
+            0x09, 0x00,
         ];
         // JPEG 2000 Frame-wrapped container UL
         let ec: [u8; 16] = [
-            0x06, 0x0E, 0x2B, 0x34, 0x04, 0x01, 0x01, 0x0D,
-            0x0D, 0x01, 0x03, 0x01, 0x02, 0x0C, 0x01, 0x00,
+            0x06, 0x0E, 0x2B, 0x34, 0x04, 0x01, 0x01, 0x0D, 0x0D, 0x01, 0x03, 0x01, 0x02, 0x0C,
+            0x01, 0x00,
         ];
 
         let mut stream = Vec::new();
         // Key: Header Partition Pack (Closed and Complete)
         stream.extend_from_slice(&[
-            0x06, 0x0E, 0x2B, 0x34, 0x02, 0x05, 0x01, 0x01,
-            0x0D, 0x01, 0x02, 0x01, 0x01, 0x02, 0x04, 0x00,
+            0x06, 0x0E, 0x2B, 0x34, 0x02, 0x05, 0x01, 0x01, 0x0D, 0x01, 0x02, 0x01, 0x01, 0x02,
+            0x04, 0x00,
         ]);
         // BER length = 88 + 16 = 104 (one essence container)
         stream.push(104);
@@ -378,7 +390,7 @@ mod tests {
         stream.extend_from_slice(&[0x00, 0x00, 0x02, 0x00]); // KAGSize
         stream.extend_from_slice(&[0u8; 8 * 5 + 4 + 8 + 4]); // padding to OP offset
         stream.extend_from_slice(&op); // OperationalPattern at offset 68
-        // EssenceContainers batch: count=1, element_size=16, then 1 UL
+                                       // EssenceContainers batch: count=1, element_size=16, then 1 UL
         stream.extend_from_slice(&[0x00, 0x00, 0x00, 0x01]); // count
         stream.extend_from_slice(&[0x00, 0x00, 0x00, 0x10]); // element_size
         stream.extend_from_slice(&ec);

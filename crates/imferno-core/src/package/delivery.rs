@@ -2,10 +2,10 @@
 //!
 //! Answers the question: "Does this IMF package contain everything the delivery spec requires?"
 
+use super::source_asset::{AudioType, VideoDynamicRange, VideoQuality};
+use serde::{Deserialize, Serialize};
 #[cfg(feature = "typescript")]
 use ts_rs::TS;
-use serde::{Deserialize, Serialize};
-use super::source_asset::{AudioType, VideoQuality, VideoDynamicRange};
 
 // =============================================================================
 // DeliveryRequest
@@ -57,14 +57,8 @@ pub struct DeliveryComparison {
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
 pub enum ComparisonResult {
     Match,
-    Exceeded {
-        requested: String,
-        found: String,
-    },
-    Insufficient {
-        requested: String,
-        found: String,
-    },
+    Exceeded { requested: String, found: String },
+    Insufficient { requested: String, found: String },
 }
 
 // =============================================================================
@@ -80,7 +74,10 @@ pub fn compare(
     let missing_audio = find_missing(&request.audio_languages, &source.audio_languages);
     let missing_subtitles = find_missing(&request.subtitle_languages, &source.subtitle_languages);
     let missing_captions = find_missing(&request.caption_languages, &source.caption_languages);
-    let missing_forced = find_missing(&request.forced_narrative_languages, &source.forced_narrative_languages);
+    let missing_forced = find_missing(
+        &request.forced_narrative_languages,
+        &source.forced_narrative_languages,
+    );
     let extra_audio = find_missing(&source.audio_languages, &request.audio_languages);
     let extra_subtitles = find_missing(&source.subtitle_languages, &request.subtitle_languages);
 
@@ -142,10 +139,10 @@ fn compare_ordered<T: Ord + std::fmt::Debug>(requested: T, found: T) -> Comparis
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::source_asset::{
-        extract_source_asset, AudioType, VideoQuality, VideoDynamicRange,
+        extract_source_asset, AudioType, VideoDynamicRange, VideoQuality,
     };
+    use super::*;
 
     fn make_request(
         audio_langs: &[&str],
@@ -177,8 +174,16 @@ mod tests {
 
         // Request exactly what the source has
         let request = make_request(
-            &source.audio_languages.iter().map(|s| s.as_str()).collect::<Vec<_>>(),
-            &source.subtitle_languages.iter().map(|s| s.as_str()).collect::<Vec<_>>(),
+            &source
+                .audio_languages
+                .iter()
+                .map(|s| s.as_str())
+                .collect::<Vec<_>>(),
+            &source
+                .subtitle_languages
+                .iter()
+                .map(|s| s.as_str())
+                .collect::<Vec<_>>(),
             source.audio_type,
             source.video_quality,
             source.video_dynamic_range,
@@ -246,8 +251,14 @@ mod tests {
 
         let result = compare(&source, &request);
         assert!(result.matches, "Exceeded specs should still match");
-        assert!(matches!(result.video_quality_match, ComparisonResult::Exceeded { .. }));
-        assert!(matches!(result.video_dynamic_range_match, ComparisonResult::Exceeded { .. }));
+        assert!(matches!(
+            result.video_quality_match,
+            ComparisonResult::Exceeded { .. }
+        ));
+        assert!(matches!(
+            result.video_dynamic_range_match,
+            ComparisonResult::Exceeded { .. }
+        ));
     }
 
     #[test]
@@ -273,7 +284,10 @@ mod tests {
         // Audio type should be insufficient if source doesn't have Atmos
         if source.audio_type < AudioType::DolbyAtmos {
             assert!(!result.matches, "Insufficient audio should fail");
-            assert!(matches!(result.audio_type_match, ComparisonResult::Insufficient { .. }));
+            assert!(matches!(
+                result.audio_type_match,
+                ComparisonResult::Insufficient { .. }
+            ));
         }
     }
 
@@ -290,6 +304,9 @@ mod tests {
         let required = vec!["EN".to_string()];
         let available = vec!["en".to_string()];
         let missing = find_missing(&required, &available);
-        assert!(missing.is_empty(), "Language match should be case-insensitive");
+        assert!(
+            missing.is_empty(),
+            "Language match should be case-insensitive"
+        );
     }
 }

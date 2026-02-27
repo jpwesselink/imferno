@@ -44,14 +44,16 @@ pub fn run() {
         let name = file_name.to_string_lossy();
 
         // Skip package metadata files that the browser doesn't need.
-        if matches!(name.as_ref(), "package.json" | "README.md" | "LICENSE" | ".gitignore") {
+        if matches!(
+            name.as_ref(),
+            "package.json" | "README.md" | "LICENSE" | ".gitignore"
+        ) {
             continue;
         }
 
         let src = entry.path();
         let dst = docs_wasm.join(&file_name);
-        fs::copy(&src, &dst)
-            .unwrap_or_else(|e| panic!("copy {name}: {e}"));
+        fs::copy(&src, &dst).unwrap_or_else(|e| panic!("copy {name}: {e}"));
         copied += 1;
     }
 

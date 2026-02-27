@@ -4,10 +4,10 @@
 
 pub use crate::diagnostics::codes::ValidationCode;
 
-pub use crate::assetmap::volindex_codes::St429_9_2014;
-pub use crate::mxf::codes::St377_1_2011;
 pub use crate::assetmap::codes::St2067_2_2020;
+pub use crate::assetmap::volindex_codes::St429_9_2014;
 pub use crate::cpl::codes::St2067_3_2020;
+pub use crate::mxf::codes::St377_1_2011;
 pub use crate::scm::codes::St2067_9_2018;
 
 use crate::diagnostics::{Category, Severity};
@@ -37,7 +37,7 @@ impl ValidationCode for ImfernoCode {
     fn code(&self) -> &'static str {
         match self {
             Self::UnreferencedAsset => "IMFERNO:Package/UnreferencedAsset",
-            Self::UnlistedEssence   => "IMFERNO:Package/UnlistedEssence",
+            Self::UnlistedEssence => "IMFERNO:Package/UnlistedEssence",
         }
     }
 
@@ -53,7 +53,7 @@ impl ValidationCode for ImfernoCode {
     fn default_severity(&self) -> Severity {
         match self {
             Self::UnreferencedAsset => Severity::Info,
-            Self::UnlistedEssence   => Severity::Warning,
+            Self::UnlistedEssence => Severity::Warning,
         }
     }
 
@@ -63,10 +63,7 @@ impl ValidationCode for ImfernoCode {
 }
 
 impl ImfernoCode {
-    pub const ALL: &'static [Self] = &[
-        Self::UnreferencedAsset,
-        Self::UnlistedEssence,
-    ];
+    pub const ALL: &'static [Self] = &[Self::UnreferencedAsset, Self::UnlistedEssence];
 }
 
 impl From<ImfernoCode> for String {

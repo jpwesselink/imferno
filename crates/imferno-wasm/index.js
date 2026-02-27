@@ -4,7 +4,7 @@
  * This module automatically handles WASM initialization so developers
  * don't have to deal with init() functions or WASM buffers.
  */
-import init, * as wasm from './pkg/imf_wasm.js';
+import init, * as wasm from './pkg/imferno_wasm.js';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import path from 'path';
@@ -19,7 +19,7 @@ function ensureInit() {
             // Node.js environment - load WASM file directly
             try {
                 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-                const wasmPath = path.join(__dirname, 'pkg', 'imf_wasm_bg.wasm');
+                const wasmPath = path.join(__dirname, 'pkg', 'imferno_wasm_bg.wasm');
                 const wasmBuffer = readFileSync(wasmPath);
                 initPromise = init(wasmBuffer);
             } catch (error) {
@@ -57,5 +57,5 @@ export async function getVersion() {
 }
 
 // For users who want manual control
-export { init } from './pkg/imf_wasm.js';
-export * as wasm from './pkg/imf_wasm.js';
+export { init } from './pkg/imferno_wasm.js';
+export * as wasm from './pkg/imferno_wasm.js';

@@ -1,7 +1,7 @@
 {
-  "name": "imf-js",
-  "version": "1.0.0",
-  "description": "Fast, type-safe IMF (Interoperable Master Format) parser for JavaScript and TypeScript",
+  "name": "imferno-wasm",
+  "version": "0.1.0",
+  "description": "Fast, type-safe SMPTE ST 2067 IMF parser for JavaScript and TypeScript",
   "main": "index.js",
   "types": "index.d.ts",
   "type": "module",
@@ -15,25 +15,21 @@
   "scripts": {
     "build": "./build.sh",
     "test": "node demo-auto-init.js",
-    "prepare": "npm run build",
     "prepublishOnly": "npm run build && npm test"
   },
   "keywords": [
     "imf",
+    "imferno",
     "smpte",
+    "st2067",
     "media",
     "cinema",
-    "video",
-    "audio",
-    "parsing",
     "wasm",
     "webassembly",
     "typescript",
-    "st2067-3",
-    "st2067-4",
     "composition-playlist",
     "asset-map",
-    "packaging"
+    "parsing"
   ],
   "author": {
     "name": "JP Wesselink",
@@ -42,28 +38,17 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/jpwesselink/imf-rs.git",
-    "directory": "imf-wasm"
+    "url": "https://github.com/jpwesselink/imferno.git",
+    "directory": "crates/imferno-wasm"
   },
   "bugs": {
-    "url": "https://github.com/jpwesselink/imf-rs/issues"
+    "url": "https://github.com/jpwesselink/imferno/issues"
   },
-  "homepage": "https://github.com/jpwesselink/imf-rs/tree/main/imf-wasm#readme",
+  "homepage": "https://github.com/jpwesselink/imferno",
   "engines": {
     "node": ">=16.0.0"
   },
   "publishConfig": {
     "access": "public"
-  },
-  "devDependencies": {
-    "typescript": "^5.0.0"
-  },
-  "peerDependencies": {
-    "typescript": ">=4.5.0"
-  },
-  "peerDependenciesMeta": {
-    "typescript": {
-      "optional": true
-    }
   }
 }

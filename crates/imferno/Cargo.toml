@@ -12,7 +12,7 @@ name = "imferno"
 path = "src/main.rs"
 
 [dependencies]
-imferno-core = { path = "../imferno-core" }
+imferno-core = { path = "../imferno-core", version = "0.1.0" }
 clap = { workspace = true }
 serde_json = { workspace = true }
 anyhow = { workspace = true }

@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.3](https://github.com/jpwesselink/imferno/compare/imferno-v0.1.2...imferno-v0.1.3) - 2026-02-27
+
+### Added
+
+- migrate npm packages to @imferno scope
+- rename `report` subcommand to `export`
+
+### Other
+
+- add READMEs to platform binary packages pointing to imferno
+
 ## [0.1.2](https://github.com/jpwesselink/imferno/compare/imferno-v0.1.1...imferno-v0.1.2) - 2026-02-27
 
 ### Fixed

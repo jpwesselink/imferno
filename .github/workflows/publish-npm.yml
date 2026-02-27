@@ -32,6 +32,14 @@ jobs:
           chmod +x build.sh
           ./build.sh
 
+      - name: Install test dependencies
+        working-directory: crates/imferno-wasm
+        run: npm install
+
+      - name: Run WASM tests
+        working-directory: crates/imferno-wasm
+        run: npx vitest run
+
       - name: Update package version from git tag
         working-directory: crates/imferno-wasm
         run: |

@@ -17,7 +17,7 @@
   ],
   "scripts": {
     "build": "./build.sh",
-    "test": "node demo-auto-init.js",
+    "test": "vitest run",
     "prepublishOnly": "npm run build && npm test"
   },
   "keywords": [
@@ -53,5 +53,8 @@
   },
   "publishConfig": {
     "access": "public"
+  },
+  "devDependencies": {
+    "vitest": "^4.0.18"
   }
 }

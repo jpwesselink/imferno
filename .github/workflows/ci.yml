@@ -26,3 +26,39 @@ jobs:
 
       - name: Run workspace tests
         run: cargo test --workspace
+
+  test-wasm:
+    name: Test WASM
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@v2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install wasm-pack
+        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+
+      - name: Build WASM
+        working-directory: crates/imferno-wasm
+        run: |
+          chmod +x build.sh
+          ./build.sh
+
+      - name: Install test dependencies
+        working-directory: crates/imferno-wasm
+        run: npm install
+
+      - name: Run WASM tests
+        working-directory: crates/imferno-wasm
+        run: npx vitest run

@@ -2971,6 +2971,7 @@ mod tests {
     #[test]
     fn test_multi_pkl_single_pkl_no_cross_pkl_issues() {
         let fixture_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).parent().unwrap().parent().unwrap().join("fixture");
+        if !fixture_path.exists() { eprintln!("skipping: fixture/ not present"); return; }
         let package = Imferno::parse(read_dir(fixture_path).unwrap()).expect("parse fixture");
         let report = package.validate(&ValidationOptions::default());
         assert!(
@@ -2987,6 +2988,7 @@ mod tests {
     #[test]
     fn test_segment_durations_fixture_pass() {
         let fixture_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).parent().unwrap().parent().unwrap().join("fixture");
+        if !fixture_path.exists() { eprintln!("skipping: fixture/ not present"); return; }
         let package = Imferno::parse(read_dir(fixture_path).unwrap()).expect("parse fixture");
         let report = package.validate(&ValidationOptions::default());
         let duration_issues: Vec<_> = report.errors.iter()
@@ -3002,6 +3004,7 @@ mod tests {
     #[test]
     fn test_emitted_codes_do_not_use_general_fallback() {
         let fixture_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).parent().unwrap().parent().unwrap().join("fixture");
+        if !fixture_path.exists() { eprintln!("skipping: fixture/ not present"); return; }
         let package = Imferno::parse(read_dir(fixture_path).unwrap()).expect("parse fixture");
         let report = package.validate(&ValidationOptions::default());
 

@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.5](https://github.com/jpwesselink/imferno/compare/imferno-v0.1.4...imferno-v0.1.5) - 2026-02-27
+
+### Fixed
+
+- resolve all clippy warnings across workspace
+
 ## [0.1.4](https://github.com/jpwesselink/imferno/compare/imferno-v0.1.3...imferno-v0.1.4) - 2026-02-27
 
 ### Other

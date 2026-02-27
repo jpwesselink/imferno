@@ -69,23 +69,16 @@ jobs:
         run: pnpm run build
 
       # --- Deploy to gh-pages branch ---
-      - name: Checkout gh-pages
-        uses: actions/checkout@v4
-        with:
-          ref: gh-pages
-          path: gh-pages
-          fetch-depth: 1
-        continue-on-error: true   # branch may not exist yet
-
-      - name: Create gh-pages dir if needed
+      - name: Prepare gh-pages worktree
         run: |
-          if [ ! -d gh-pages ]; then
+          REMOTE_URL="https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
+          git clone --depth 1 --branch gh-pages "$REMOTE_URL" gh-pages 2>/dev/null || {
             mkdir gh-pages
             cd gh-pages
             git init
-            git checkout -b gh-pages
-            git remote add origin "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
-          fi
+            git checkout --orphan gh-pages
+            git remote add origin "$REMOTE_URL"
+          }
 
       - name: Copy versioned docs
         run: |
@@ -152,4 +145,4 @@ jobs:
           git add -A
           git diff --cached --quiet && echo "No changes" && exit 0
           git commit -m "docs: deploy ${{ steps.version.outputs.version }}"
-          git push origin gh-pages
+          git push -u origin gh-pages

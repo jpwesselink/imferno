@@ -397,7 +397,6 @@ impl AssetMapNamespace {
     }
 }
 
-
 impl std::fmt::Display for AssetMapNamespace {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -457,7 +456,6 @@ impl PklNamespace {
     }
 }
 
-
 impl std::fmt::Display for PklNamespace {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -515,7 +513,6 @@ impl CoreConstraintsNamespace {
         }
     }
 }
-
 
 impl std::fmt::Display for CoreConstraintsNamespace {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

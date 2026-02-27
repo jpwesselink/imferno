@@ -11,12 +11,12 @@
     "LICENSE"
   ],
   "optionalDependencies": {
-    "imferno-linux-x64-gnu": "0.1.1",
-    "imferno-linux-arm64-gnu": "0.1.1",
-    "imferno-darwin-x64": "0.1.1",
-    "imferno-darwin-arm64": "0.1.1",
-    "imferno-win32-x64-msvc": "0.1.1",
-    "imferno-win32-arm64-msvc": "0.1.1"
+    "@imferno/linux-x64-gnu": "0.1.1",
+    "@imferno/linux-arm64-gnu": "0.1.1",
+    "@imferno/darwin-x64": "0.1.1",
+    "@imferno/darwin-arm64": "0.1.1",
+    "@imferno/win32-x64-msvc": "0.1.1",
+    "@imferno/win32-arm64-msvc": "0.1.1"
   },
   "publishConfig": {
     "access": "public"

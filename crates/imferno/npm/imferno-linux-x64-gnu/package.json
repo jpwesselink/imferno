@@ -1,5 +1,5 @@
 {
-  "name": "imferno-linux-x64-gnu",
+  "name": "@imferno/linux-x64-gnu",
   "version": "0.1.1",
   "description": "imferno native binary for Linux x64 (glibc)",
   "os": ["linux"],

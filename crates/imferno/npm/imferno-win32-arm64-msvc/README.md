@@ -1,4 +1,4 @@
-# imferno-win32-arm64-msvc
+# @imferno/win32-arm64-msvc
 
 Platform-specific binary for [imferno](https://www.npmjs.com/package/imferno).
 

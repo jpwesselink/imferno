@@ -4,12 +4,12 @@ const { execFileSync } = require("child_process");
 const path = require("path");
 
 const PLATFORMS = {
-  "linux-x64": "imferno-linux-x64-gnu",
-  "linux-arm64": "imferno-linux-arm64-gnu",
-  "darwin-x64": "imferno-darwin-x64",
-  "darwin-arm64": "imferno-darwin-arm64",
-  "win32-x64": "imferno-win32-x64-msvc",
-  "win32-arm64": "imferno-win32-arm64-msvc",
+  "linux-x64": "@imferno/linux-x64-gnu",
+  "linux-arm64": "@imferno/linux-arm64-gnu",
+  "darwin-x64": "@imferno/darwin-x64",
+  "darwin-arm64": "@imferno/darwin-arm64",
+  "win32-x64": "@imferno/win32-x64-msvc",
+  "win32-arm64": "@imferno/win32-arm64-msvc",
 };
 
 const key = `${process.platform}-${process.arch}`;

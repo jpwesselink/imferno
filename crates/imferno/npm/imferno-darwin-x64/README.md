@@ -1,4 +1,4 @@
-# imferno-darwin-x64
+# @imferno/darwin-x64
 
 Platform-specific binary for [imferno](https://www.npmjs.com/package/imferno).
 

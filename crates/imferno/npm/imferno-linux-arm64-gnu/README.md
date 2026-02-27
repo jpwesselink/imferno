@@ -1,4 +1,4 @@
-# imferno-linux-arm64-gnu
+# @imferno/linux-arm64-gnu
 
 Platform-specific binary for [imferno](https://www.npmjs.com/package/imferno).
 

@@ -32,6 +32,9 @@ jobs:
           chmod +x build.sh
           ./build.sh
 
+      - name: Generate JSON schemas
+        run: cargo xtask generate-schema
+
       - name: Install test dependencies
         working-directory: crates/imferno-wasm
         run: npm install

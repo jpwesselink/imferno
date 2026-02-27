@@ -324,15 +324,15 @@ function FileCard({ file, onRemove }: { file: UploadedFile; onRemove: () => void
 function buildPackageData(files: UploadedFile[]): PackageViewData | null {
     const assetmapFile = files.find(f => f.kind === 'assetmap' && f.state.tag === 'done');
     const cplFiles = files.filter(f => f.kind === 'cpl' && f.state.tag === 'done');
-    if (!assetmapFile || cplFiles.length === 0) return null;
+    if (cplFiles.length === 0) return null;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const am = (assetmapFile.state as any).result as any;
+    const am = assetmapFile ? (assetmapFile.state as any).result as any : null;
     const assets: unknown[] = am?.asset_list?.assets ?? [];
     const pklFiles = files.filter(f => f.kind === 'pkl');
 
     const pkg: PackageViewData['package'] = {
-        assetMapId: asText(am?.id) || 'urn:uuid:unknown',
+        assetMapId: asText(am?.id) || '',
         volumeIndex: am?.volume_count ?? 1,
         assetCount: assets.length,
         cplCount: cplFiles.length,

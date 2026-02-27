@@ -390,8 +390,8 @@ export default function IMFPackageViewer({ data }: { data: PackageViewData }) {
                             <IPackage />
                         </div>
                         <div>
-                            <h2 className="text-base font-bold leading-tight text-zinc-900">IMF Package</h2>
-                            <p className="text-xs text-zinc-400 font-mono">{data.package.assetMapId.replace('urn:uuid:', '')}</p>
+                            <h2 className="text-base font-bold leading-tight text-zinc-900">{data.package.assetMapId ? 'IMF Package' : 'Composition Playlists'}</h2>
+                            {data.package.assetMapId && <p className="text-xs text-zinc-400 font-mono">{data.package.assetMapId.replace('urn:uuid:', '')}</p>}
                         </div>
                     </div>
                     {vStatus && vLabel && (
@@ -447,18 +447,20 @@ export default function IMFPackageViewer({ data }: { data: PackageViewData }) {
                 )}
 
                 {/* Stats */}
-                <div className="grid grid-cols-3 gap-2 mb-5">
-                    {[
-                        { l: 'CPLs', v: data.package.cplCount },
-                        { l: 'Assets', v: data.package.assetCount },
-                        { l: 'PKLs', v: data.package.pklCount },
-                    ].map(s => (
-                        <div key={s.l} className="px-3 py-2.5 rounded-lg border border-zinc-200 bg-white">
-                            <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 mb-0.5">{s.l}</div>
-                            <div className="text-sm font-semibold text-zinc-900 truncate">{String(s.v)}</div>
-                        </div>
-                    ))}
-                </div>
+                {data.package.assetMapId && (
+                    <div className="grid grid-cols-3 gap-2 mb-5">
+                        {[
+                            { l: 'CPLs', v: data.package.cplCount },
+                            { l: 'Assets', v: data.package.assetCount },
+                            { l: 'PKLs', v: data.package.pklCount },
+                        ].map(s => (
+                            <div key={s.l} className="px-3 py-2.5 rounded-lg border border-zinc-200 bg-white">
+                                <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 mb-0.5">{s.l}</div>
+                                <div className="text-sm font-semibold text-zinc-900 truncate">{String(s.v)}</div>
+                            </div>
+                        ))}
+                    </div>
+                )}
 
                 {/* CPL list */}
                 <div className="flex items-center justify-between mb-2.5">

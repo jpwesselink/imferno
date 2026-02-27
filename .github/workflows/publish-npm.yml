@@ -1,38 +1,14 @@
-name: Build and Publish
+name: Publish to NPM
 
 on:
   push:
     tags:
       - 'imferno-wasm-v*'
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
-
-env:
-  CARGO_TERM_COLOR: always
 
 jobs:
-  test:
-    name: Test
+  publish:
+    name: Build and publish WASM to NPM
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          lfs: true
-
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Run workspace tests
-        run: cargo test --workspace
-
-  publish-npm:
-    name: Publish to NPM
-    needs: test
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/imferno-wasm-v')
     steps:
       - uses: actions/checkout@v4
 

@@ -1,3 +1,5 @@
 [
-  {"version":"v1.0.0","latest":true}
+  {"version":"versions.json","latest":true},
+  {"version":"v1.0.1"},
+  {"version":"v1.0.0"}
 ]

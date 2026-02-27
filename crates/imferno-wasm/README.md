@@ -1,95 +1,86 @@
-# imf-wasm
+# imferno-wasm
 
-WebAssembly bindings for the `imferno` IMF parser. Exposes parsing, source-asset extraction, delivery comparison, and CPL validation to JavaScript and TypeScript.
+SMPTE ST 2067 IMF parser and validator for JavaScript and TypeScript, powered by WebAssembly.
 
-## Build
+## Install
 
 ```bash
-cd imf-wasm
-
-# Browser (ES module)
-wasm-pack build --target web --out-dir pkg .
-
-# Node.js (CommonJS)
-wasm-pack build --target nodejs --out-dir pkg .
+npm install imferno-wasm
 ```
+
+The package ships a prebuilt `.wasm` binary — no build step required.
 
 ## Usage
 
 ```javascript
-import init, {
-    parseVolindexTyped,         // VOLINDEX.xml → typed VolumeIndex
-    parseAssetmapTyped,         // ASSETMAP.xml → typed AssetMap
-    parseCplTyped,              // CPL XML      → typed CompositionPlaylist
-    extractSourceAsset,         // CPL XML      → SourceAsset
-    compareDelivery,            // SourceAsset + DeliveryRequest → DeliveryComparison
-    validateCpl,                // CPL XML      → ValidationResultV1 (auto spec)
-    validateCplWithSpecSelection, // CPL XML    → ValidationResultV1 (pinned spec)
+import {
+    parseAssetmapTyped,
+    parseCplTyped,
+    parsePklTyped,
+    parseVolindexTyped,
+    validatePackage,
+    validateCplWithSpecSelection,
+    inspectPackage,
+    extractSourceAsset,
+    compareDelivery,
     getVersion,
-} from './pkg/imf_wasm.js';
+} from 'imferno-wasm';
 
-await init();
+// Parse individual XML files
+const assetMap = await parseAssetmapTyped(assetmapXml);
+const cpl = await parseCplTyped(cplXml);
+const pkl = await parsePklTyped(pklXml);
+const volindex = await parseVolindexTyped(volindexXml);
 
-// Parse individual files
-const assetMap = parseAssetmapTyped(assetmapXml);
-const cpl = parseCplTyped(cplXml);
+// Validate a full IMF package (pass all XML files as a map)
+const report = await validatePackage({
+    'ASSETMAP.xml': assetmapXml,
+    'PKL_abc.xml': pklXml,
+    'CPL_def.xml': cplXml,
+});
+console.log(report.errors);
+console.log(report.warnings);
 
-// Extract source asset (the main integration point)
-const sourceAsset = extractSourceAsset(cplXml);
-console.log(sourceAsset.videoQuality);      // "UHD" | "HD" | "SD"
-console.log(sourceAsset.videoDynamicRange); // "SDR" | "HDR_10" | "HDR_DOLBY_VISION"
-console.log(sourceAsset.audioType);         // "STEREO" | "DOLBY_DIGITAL_PLUS" | "DOLBY_ATMOS"
+// Validate a single CPL with spec selection
+const cplReport = await validateCplWithSpecSelection(cplXml, 'v2020', 'v2023');
+
+// Inspect package structure
+const info = await inspectPackage({
+    'ASSETMAP.xml': assetmapXml,
+    'PKL_abc.xml': pklXml,
+    'CPL_def.xml': cplXml,
+});
+console.log(info.cplCount);
+console.log(info.unreferencedAssets);
+
+// Extract source asset from a CPL
+const sourceAsset = await extractSourceAsset(cplXml);
 
 // Compare against a delivery spec
-const comparison = compareDelivery(sourceAsset, {
-    audioLanguages: ["en", "nl"],
-    subtitleLanguages: ["nl"],
-    captionLanguages: [],
-    forcedNarrativeLanguages: [],
-    audioType: "DOLBY_DIGITAL_PLUS",
-    videoQuality: "UHD",
-    videoDynamicRange: "HDR_DOLBY_VISION",
-});
-console.log(comparison.matches);
-console.log(comparison.missingAudioLanguages);
-
-// Validate a CPL (auto-detects spec from CPL xmlns + ApplicationIdentification)
-const result = validateCpl(cplXml);
-console.log(result.status);  // "Valid" | "ValidWithWarnings" | "Invalid" | "Error"
-console.log(result.issues);
-
-// Validate with pinned spec versions (mirrors CLI --core-spec / --app2e-spec)
-const result2 = validateCplWithSpecSelection(cplXml, "v2020", "iab2021");
+const comparison = await compareDelivery(sourceAsset, deliverySpec);
 ```
 
-## API Reference
+WASM initialization is handled automatically on first call.
 
-All functions are synchronous after `init()` resolves.
+## API
 
 | Function | Input | Output |
 |---|---|---|
-| `parseVolindexTyped(xml)` | VOLINDEX XML string | `VolumeIndex` |
-| `parseAssetmapTyped(xml)` | ASSETMAP XML string | `AssetMap` |
-| `parseCplTyped(xml)` | CPL XML string | `CompositionPlaylist` |
-| `extractSourceAsset(cplXml)` | CPL XML string | `SourceAsset` |
-| `compareDelivery(asset, spec)` | `SourceAsset`, `DeliveryRequest` | `DeliveryComparison` |
-| `validateCpl(cplXml)` | CPL XML string | `ValidationResultV1` |
-| `validateCplWithSpecSelection(cplXml, coreSpec?, app2eSpec?)` | CPL XML, optional spec pins | `ValidationResultV1` |
-| `getVersion()` | — | `string` |
+| `parseAssetmapTyped(xml)` | ASSETMAP XML | `AssetMap` |
+| `parseCplTyped(xml)` | CPL XML | `CompositionPlaylist` |
+| `parsePklTyped(xml)` | PKL XML | `PackingList` |
+| `parseVolindexTyped(xml)` | VOLINDEX XML | `VolumeIndex` |
+| `validatePackage(files, rules?)` | `{ filename: xml }` map | `ValidationReport` |
+| `validateCplWithSpecSelection(xml, core?, app?)` | CPL XML + spec pins | `ValidationReport` |
+| `inspectPackage(files)` | `{ filename: xml }` map | package metadata |
+| `extractSourceAsset(xml)` | CPL XML | `SourceAsset` |
+| `compareDelivery(asset, spec)` | `SourceAsset` + `DeliveryRequest` | `DeliveryComparison` |
+| `getVersion()` | — | version string |
 
-### `validateCplWithSpecSelection` spec values
+### Spec selection values
 
-- `coreSpec`: `"auto"` (default) \| `"v2013"` \| `"v2016"` \| `"v2020"`
-- `app2eSpec`: `"auto"` (default) \| `"none"` \| `"v2020"` \| `"v2021"` \| `"v2023"` \| `"iab2019"` \| `"iab2021"`
-
-## TypeScript Types
-
-Types are generated from Rust structs via `ts-rs`. Run from the workspace root:
-
-```bash
-cargo run -p st2067-3 --features typescript --bin generate_types
-# Outputs .ts files to bindings/
-```
+- `coreSpec`: `"auto"` | `"v2013"` | `"v2016"` | `"v2020"`
+- `app2eSpec`: `"auto"` | `"none"` | `"v2020"` | `"v2021"` | `"v2023"`
 
 ## License
 

@@ -22,7 +22,7 @@ jobs:
             binary: imferno
             cross: true
           - target: x86_64-apple-darwin
-            runner: macos-13
+            runner: macos-latest
             npm_pkg: imferno-darwin-x64
             binary: imferno
           - target: aarch64-apple-darwin
@@ -84,6 +84,7 @@ jobs:
   publish-meta:
     name: Publish meta-package
     needs: build
+    if: ${{ always() && needs.build.result != 'cancelled' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

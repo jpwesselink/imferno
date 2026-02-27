@@ -1,11 +1,13 @@
-# imferno-wasm
+# @imferno/wasm
 
 SMPTE ST 2067 IMF parser and validator for JavaScript and TypeScript, powered by WebAssembly.
+
+Part of the [`imferno`](https://github.com/jpwesselink/imferno) ecosystem. See also [`@imferno/schema`](https://www.npmjs.com/package/@imferno/schema) for JSON Schema validation of imferno output.
 
 ## Install
 
 ```bash
-npm install imferno-wasm
+npm install @imferno/wasm
 ```
 
 The package ships a prebuilt `.wasm` binary — no build step required.
@@ -24,7 +26,7 @@ import {
     extractSourceAsset,
     compareDelivery,
     getVersion,
-} from 'imferno-wasm';
+} from '@imferno/wasm';
 
 // Parse individual XML files
 const assetMap = await parseAssetmapTyped(assetmapXml);

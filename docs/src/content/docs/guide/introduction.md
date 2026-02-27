@@ -18,25 +18,33 @@ IMF is the successor to DCP for long-form content. It supports multiple versions
 
 ## What imferno does
 
-- Parses ASSETMAP, PKL, and CPL XML per the SMPTE ST 2067 spec
-- Validates structural integrity and file hashes
+- Parses ASSETMAP, PKL, CPL, and VOLINDEX XML per the SMPTE ST 2067 spec
+- Validates structural integrity against Core Constraints and Application profiles
 - Inspects track composition, language tags, and application profiles
-- Exposes a high-level `ImfPackage` API for common queries
-- Compiles to WebAssembly for browser use
+- Exports structured JSON reports with full type definitions
+- Available as a native CLI, Rust crate, and WebAssembly module
+
+## Ecosystem
+
+| Package | Description |
+|---|---|
+| [`imferno`](https://www.npmjs.com/package/imferno) | CLI with prebuilt native binaries |
+| [`@imferno/wasm`](https://www.npmjs.com/package/@imferno/wasm) | WebAssembly bindings for JS/TS |
+| [`@imferno/schema`](https://www.npmjs.com/package/@imferno/schema) | JSON Schema definitions for structural validation |
+| [`imferno-core`](https://crates.io/crates/imferno-core) | Rust crate with all parsing and validation logic |
 
 ## Standards coverage
 
 | Standard | Description | Status |
 |---|---|---|
-| ST 429-9:2007 / ST 2067-9:2016, :2020 | Volume Index & Asset Map | Parsing |
-| ST 2067-2:2013, :2016, :2020 | Core Constraints & Packing List | Validation |
-| ST 2067-3:2013, :2016, :2020 | Composition Playlist | Parsing |
-| ST 2067-21:2014 – :2023 | Application Profile #2E (UHD/HDR) | Validation |
-| ST 2067-201:2019, :2021 | IAB (Immersive Audio Bitstream) | Validation |
-| ST 2067-202:2022 | ISXD (Immersive Sound XML Data) Plug-in | Validation |
-| ST 422 | JPEG 2000 in MXF | Profile |
-| ST 377-4 | MCA Audio Labels | Parsing |
-| ST 377-1 | MXF file structure | Partial |
+| ST 429-9:2014 | Volume Index & Asset Map | Complete |
+| ST 2067-2:2013, :2016, :2020 | Core Constraints & Packing List | Complete |
+| ST 2067-3:2013, :2016, :2020 | Composition Playlist | Complete |
+| ST 2067-9:2018 | Sidecar Composition Map | Complete |
+| ST 2067-21:2020, :2023 | Application Profile #2E (UHD/HDR) | Complete |
+| ST 2067-201:2019, :2021 | IAB (Immersive Audio Bitstream) | Complete |
+| ST 2067-202:2022 | ISXD (Immersive Sound XML Data) Plug-in | Complete |
+| ST 377-1:2011 | MXF file structure | Partial — header partition only |
 
 ## Why Rust?
 

@@ -28,4 +28,4 @@ Add pages by creating `.md` or `.mdx` files under `src/content/docs/`. The filen
 ## Related
 
 - Workspace root: [../README.md](../README.md)
-- WASM bindings: [../imf-wasm/README.md](../imf-wasm/README.md)
+- WASM bindings: [../crates/imferno-wasm/README.md](../crates/imferno-wasm/README.md)

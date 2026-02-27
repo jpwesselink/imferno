@@ -1,6 +1,6 @@
 ---
 title: API Reference
-description: imf-parser public API — Imferno, ValidationReport, low-level spec parsers.
+description: imferno-core public API — Imferno, ValidationReport, parsers.
 ---
 
 ## `read_dir`
@@ -8,7 +8,7 @@ description: imf-parser public API — Imferno, ValidationReport, low-level spec
 Reads the XML documents from an IMF package directory into a filename → content map. MXF essence files are not loaded.
 
 ```rust
-use imf_parser::read_dir;
+use imferno_core::package::read_dir;
 
 let files: HashMap<String, String> = read_dir("/path/to/your.imp")?;
 ```
@@ -151,38 +151,31 @@ For the full list of codes see [Validation Codes](/reference/codes/st2067-2/).
 
 ---
 
-## Low-level spec parsers
+## Low-level parsers
 
-Each spec crate is independently usable.
+All parsers live in `imferno_core` submodules:
 
-### `st2067-3` — CPL
+### CPL
 
 ```rust
-use st2067_3::{parse_cpl, CompositionPlaylist};
+use imferno_core::cpl::parse_cpl;
 
-let cpl: CompositionPlaylist = parse_cpl(&xml_str)?;
+let cpl = parse_cpl(&xml_str)?;
 ```
 
-### `st2067-2` — ASSETMAP / PKL
+### ASSETMAP / PKL
 
 ```rust
-use st2067_2::{parse_assetmap, parse_pkl, AssetMap, PackingList};
+use imferno_core::assetmap::{parse_assetmap, parse_pkl};
 
-let asset_map: AssetMap    = parse_assetmap(&xml_str)?;
-let pkl:       PackingList = parse_pkl(&xml_str)?;
+let asset_map = parse_assetmap(&xml_str)?;
+let pkl = parse_pkl(&xml_str)?;
 ```
 
-### `st429-9` — VOLINDEX
+### VOLINDEX
 
 ```rust
-use st429_9::{parse_volindex, VolumeIndex};
+use imferno_core::assetmap::parse_volindex;
 
-let volindex: VolumeIndex = parse_volindex(&xml_str)?;
-```
-
-### `st377-1` — MXF
-
-```rust
-use st377_1::codes::St377_1_2011;
-// Header-partition inspection only; no essence decoding.
+let volindex = parse_volindex(&xml_str)?;
 ```

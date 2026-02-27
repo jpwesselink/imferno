@@ -3,19 +3,79 @@ title: Quick Start
 description: Parse and validate your first IMF package.
 ---
 
+## CLI
+
+```bash
+npm install -g imferno
+```
+
+```sh
+# Validate an IMF package
+imferno validate /path/to/your.imp
+
+# Export a full report (JSON)
+imferno export /path/to/your.imp
+
+# Inspect package structure
+imferno inspect /path/to/your.imp
+```
+
+## JavaScript / TypeScript (WASM)
+
+```bash
+npm install @imferno/wasm
+```
+
+```javascript
+import { validatePackage, extractSourceAsset } from '@imferno/wasm';
+
+const files = {
+    'ASSETMAP.xml': assetmapXmlString,
+    'PKL_xxx.xml':  pklXmlString,
+    'CPL_xxx.xml':  cplXmlString,
+};
+
+const report = await validatePackage(files);
+console.log(report.isCompliant, report.errors);
+
+// Extract source asset metadata from a CPL
+const sourceAsset = await extractSourceAsset(cplXmlString);
+```
+
+## JSON Schema validation
+
+Validate the structure of imferno's JSON output before processing it:
+
+```bash
+npm install @imferno/schema
+```
+
+```javascript
+import Ajv from 'ajv';
+import { imfReport } from '@imferno/schema';
+
+const ajv = new Ajv();
+const validate = ajv.compile(imfReport);
+
+const data = JSON.parse(imfernoExportOutput);
+if (!validate(data)) {
+    console.error(validate.errors);
+}
+```
+
 ## Rust
 
-Add `imf-parser` to your `Cargo.toml`:
+Add `imferno-core` to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-imf-parser = { git = "https://github.com/jpwesselink/imferno" }
+imferno-core = "0.1"
 ```
 
 ### Validate a package
 
 ```rust
-use imf_parser::{Imferno, ValidationOptions, read_dir};
+use imferno_core::package::{Imferno, ValidationOptions, read_dir};
 
 let files = read_dir("/path/to/your.imp")?;
 let report = Imferno::parse_and_validate(files, &ValidationOptions::default());
@@ -35,7 +95,7 @@ if report.is_compliant {
 ### Parse and inspect
 
 ```rust
-use imf_parser::{Imferno, read_dir};
+use imferno_core::package::{Imferno, read_dir};
 
 let files = read_dir("/path/to/your.imp")?;
 let pkg = Imferno::parse(files)?;
@@ -46,48 +106,4 @@ println!("{} CPLs, {} assets", inspection.cpl_count, inspection.asset_count);
 for cpl in pkg.list_cpls() {
     println!("  {} — {}", cpl.id, cpl.title);
 }
-```
-
-### Hash verification
-
-Streams MXF essence files and compares SHA-1/SHA-256 hashes against PKL declarations. Slow on large packages; not available in WASM.
-
-```rust
-use imf_parser::{Imferno, ValidationOptions, read_dir};
-
-let files = read_dir("/path/to/your.imp")?;
-let pkg = Imferno::parse(files)?;
-let report = pkg.validate_hashes(&ValidationOptions::default());
-```
-
-## CLI
-
-```sh
-# Inspect
-imf inspect /path/to/your.imp
-
-# Validate (structural)
-imf validate /path/to/your.imp
-
-# Validate with hash verification
-imf validate /path/to/your.imp --verify-hashes
-
-# JSON output
-imf validate /path/to/your.imp --format json
-```
-
-## WASM
-
-```js
-import init, { validatePackage } from '/wasm/imf_wasm.js';
-await init();
-
-const files = {
-    'ASSETMAP.xml': assetmapXmlString,
-    'PKL_xxx.xml':  pklXmlString,
-    'CPL_xxx.xml':  cplXmlString,
-};
-
-const report = validatePackage(files, null);
-console.log(report.is_compliant, report.critical, report.errors);
 ```

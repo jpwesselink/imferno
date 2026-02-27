@@ -1,6 +1,103 @@
 # imferno
 
-SMPTE ST 2067 IMF parser and validator for Rust and WebAssembly.
+SMPTE ST 2067 IMF parser and validator for Rust, Node.js, and the browser.
+
+## Packages
+
+### Rust crates (crates.io)
+
+| Crate | Description |
+|---|---|
+| [`imferno-core`](https://crates.io/crates/imferno-core) | All parsing and validation logic |
+| [`imferno`](https://crates.io/crates/imferno) | Command-line tool |
+
+### npm packages
+
+| Package | Description |
+|---|---|
+| [`imferno`](https://www.npmjs.com/package/imferno) | CLI — prebuilt native binaries for all platforms |
+| [`@imferno/wasm`](https://www.npmjs.com/package/@imferno/wasm) | WebAssembly bindings for JS/TS |
+| [`@imferno/schema`](https://www.npmjs.com/package/@imferno/schema) | JSON Schema definitions for all IMF types |
+
+Platform binaries (installed automatically via `imferno`):
+
+| Package | Platform |
+|---|---|
+| `@imferno/linux-x64-gnu` | Linux x64 |
+| `@imferno/linux-arm64-gnu` | Linux ARM64 |
+| `@imferno/darwin-x64` | macOS x64 |
+| `@imferno/darwin-arm64` | macOS ARM64 |
+| `@imferno/win32-x64-msvc` | Windows x64 |
+| `@imferno/win32-arm64-msvc` | Windows ARM64 |
+
+## Install
+
+```bash
+# CLI via npm
+npm install -g imferno
+
+# WASM bindings
+npm install @imferno/wasm
+
+# JSON schemas for validating imferno output
+npm install @imferno/schema
+
+# Rust crate
+cargo add imferno-core
+```
+
+## Usage
+
+### CLI
+
+```bash
+# Validate an IMF package
+imferno validate ./my-imp
+
+# Export a full report (JSON)
+imferno export ./my-imp
+
+# Inspect package structure
+imferno inspect ./my-imp
+```
+
+### JavaScript / TypeScript
+
+```javascript
+import { validatePackage, extractSourceAsset } from '@imferno/wasm';
+
+const report = await validatePackage({
+  'ASSETMAP.xml': assetmapXml,
+  'PKL_abc.xml': pklXml,
+  'CPL_def.xml': cplXml,
+});
+```
+
+### JSON Schema validation
+
+```javascript
+import Ajv from 'ajv';
+import { imfReport } from '@imferno/schema';
+
+const ajv = new Ajv();
+const validate = ajv.compile(imfReport);
+
+const data = JSON.parse(imfernoExportOutput);
+if (!validate(data)) console.error(validate.errors);
+```
+
+### Rust
+
+```rust
+use imferno_core::package::{read_dir, Imferno, ValidationOptions};
+
+let files = read_dir("./my-imp")?;
+let report = Imferno::parse_and_validate(files, &ValidationOptions::default());
+
+for issue in &report.errors {
+    eprintln!("[{}] {}", issue.code, issue.message);
+}
+```
 
 ## Standards coverage
 
@@ -14,30 +111,6 @@ SMPTE ST 2067 IMF parser and validator for Rust and WebAssembly.
 | ST 2067-201 | IAB Level 0 Plug-in | Complete |
 | ST 2067-202 | ISXD Plug-in | Complete |
 | ST 377-1 | MXF File Format | Partial — header partition only |
-| ST 429-8 | D-Cinema Packing List | Not implemented |
-| ST 2067-100 | Output Profile List | Not implemented |
-| ST 2067-203 | S-ADM Audio Plug-in | Not implemented |
-| ST 377-41 | MXF MGA / S-ADM Virtual Tracks | Not implemented |
-| ST 379-2 | MXF Generic Container | Not implemented |
-| ST 422 | JPEG 2000 in MXF | Not implemented |
-
-## Crates
-
-| Crate | Description |
-|---|---|
-| [`imferno-core`](crates/imferno-core) | All parsing and validation logic |
-| [`imferno`](crates/imferno) | Command-line tool |
-| [`imferno-wasm`](crates/imferno-wasm) | WebAssembly bindings (published to npm) |
-
-## Usage
-
-```bash
-# Validate an IMF package
-imferno validate ./my-imp
-
-# Build WASM and generate docs
-cargo xtask build-docs
-```
 
 ## Docs
 

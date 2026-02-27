@@ -32,7 +32,7 @@ Checks referential integrity and file presence — does not read MXF content.
 - CPL structure conforms to ST 2067-2 and ST 2067-3 Core Constraints
 
 ```rust
-use imf_parser::{Imferno, ValidationOptions, read_dir};
+use imferno_core::package::{Imferno, ValidationOptions, read_dir};
 
 let files = read_dir("/path/to/your.imp")?;
 let report = Imferno::parse_and_validate(files, &ValidationOptions::default());
@@ -46,7 +46,7 @@ println!("{}", report.summary());
 Streams every MXF and compares SHA-1/SHA-256 hashes against PKL declarations. Slow on large packages; not available in WASM.
 
 ```rust
-use imf_parser::{Imferno, ValidationOptions, read_dir};
+use imferno_core::package::{Imferno, ValidationOptions, read_dir};
 
 let files = read_dir("/path/to/your.imp")?;
 let pkg = Imferno::parse(files)?;
@@ -58,7 +58,7 @@ let report = pkg.validate_hashes(&ValidationOptions::default());
 Severities can be adjusted per code — useful when a deployment environment has known deviations you want to suppress or promote:
 
 ```rust
-use imf_parser::{Imferno, ValidationOptions, RulesConfig, RuleSeverity, read_dir};
+use imferno_core::package::{Imferno, ValidationOptions, RulesConfig, RuleSeverity, read_dir};
 use std::collections::HashMap;
 
 let mut rules = HashMap::new();
@@ -82,11 +82,11 @@ imferno auto-detects the CPL's application profile from the namespace declared i
 
 ```sh
 # Structural validation, human-readable
-imf validate /path/to/your.imp
+imferno validate /path/to/your.imp
 
 # With hash verification
-imf validate /path/to/your.imp --verify-hashes
+imferno validate /path/to/your.imp --verify-hashes
 
 # JSON output (full ValidationReport)
-imf validate /path/to/your.imp --format json
+imferno validate /path/to/your.imp --format json
 ```

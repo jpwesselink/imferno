@@ -37,7 +37,7 @@ jobs:
         run: |
           VERSION=${GITHUB_REF#refs/tags/imferno-wasm-v}
           echo "Setting npm version to: $VERSION"
-          npm version --no-git-tag-version "$VERSION"
+          npm version --no-git-tag-version --allow-same-version "$VERSION"
 
       - name: Publish to NPM
         working-directory: crates/imferno-wasm

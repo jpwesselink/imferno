@@ -8,7 +8,7 @@ const CONFIGURABLE_RULES: Array<{ code: string; label: string; hint: string }> =
     { code: 'ST2067-2:2020:8.3/FileNotFound',        label: 'FileNotFound',      hint: 'Asset file not found on disk' },
     { code: 'ST2067-3:2020:7.2.2/SegmentDuration',   label: 'SegmentDuration',   hint: 'Unequal segment durations across tracks' },
 ];
-import IMFPackageViewer, { type PackageViewData } from './IMFPackageViewer';
+import IMFPackageViewer, { type PackageViewData, type SequenceData, type SequenceResource } from './IMFPackageViewer';
 
 // ─── global WASM handle ───────────────────────────────────────────────────────
 // The WASM module is loaded by an `is:inline` <script> in index.astro using a
@@ -346,10 +346,14 @@ function buildPackageData(files: UploadedFile[]): PackageViewData | null {
         const cpl = state.result as any;
         const segs: unknown[] = cpl?.segmentList?.segment ?? [];
 
-        // Extract tracks from the first segment's sequence list (tracks are consistent across segments)
+        // Extract edit rate from the CPL (from first resource of first sequence)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const firstSeg = segs[0] as any;
         const sl = firstSeg?.sequenceList;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const cplEditRate = cpl?.editRate ? `${cpl.editRate.numerator}/${cpl.editRate.denominator}` : null;
+
+        // Extract sequences from the first segment (tracks are consistent across segments)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         type SeqEntry = { kind: string; seqs: any[] };
         const seqGroups: SeqEntry[] = [
@@ -363,22 +367,26 @@ function buildPackageData(files: UploadedFile[]): PackageViewData | null {
         ];
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const tracks = seqGroups.flatMap(({ kind, seqs }) => seqs.map((seq: any) => {
+        const sequences: SequenceData[] = seqGroups.flatMap(({ kind, seqs }) => seqs.map((seq: any) => {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const resources: any[] = seq?.resourceList?.resource ?? [];
-            const firstRes = resources[0];
-            const er = firstRes?.editRate;
-            const editRate = er ? `${er.numerator}/${er.denominator}` : null;
-            const totalDuration = resources.reduce(
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                (sum: number, r: any) => sum + (r?.sourceDuration ?? r?.intrinsicDuration ?? 0), 0
-            );
+            const seqResources: SequenceResource[] = resources.map((r: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+                const er = r?.editRate;
+                return {
+                    id: String(r?.id ?? ''),
+                    intrinsicDuration: r?.intrinsicDuration ?? 0,
+                    sourceDuration: r?.sourceDuration ?? r?.intrinsicDuration ?? 0,
+                    sourceEncoding: r?.sourceEncoding ?? null,
+                    trackFileId: r?.trackFileId ?? null,
+                    editRate: er ? `${er.numerator}/${er.denominator}` : null,
+                    entryPoint: r?.entryPoint ?? null,
+                };
+            });
             return {
+                type: kind,
+                id: String(seq?.id ?? ''),
                 trackId: String(seq?.trackId ?? ''),
-                kind,
-                editRate,
-                intrinsicDuration: totalDuration,
-                resourceCount: resources.length,
+                sequenceResources: seqResources,
             };
         }));
 
@@ -388,13 +396,14 @@ function buildPackageData(files: UploadedFile[]): PackageViewData | null {
             issuer: asText(cpl?.issuer?.text) || asText(cpl?.issuer) || null,
             creator: asText(cpl?.creator?.text) || asText(cpl?.creator) || null,
             issueDate: asText(cpl?.issueDate) || null,
+            editRate: cplEditRate,
             applicationProfile: null,
             segmentCount: segs.length,
             timecodeStart: null,
             isSupplemental: false,
             unresolvedAncestorAssetIds: [],
             markers: [],
-            tracks,
+            sequences,
         };
     });
 

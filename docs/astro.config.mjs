@@ -25,5 +25,8 @@ export default defineConfig({
     ],
     vite: {
         plugins: [tailwindcss()],
+        optimizeDeps: {
+            include: ['react', 'react-dom', 'react/jsx-runtime', 'react/jsx-dev-runtime'],
+        },
     },
 });

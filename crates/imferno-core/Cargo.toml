@@ -6,6 +6,7 @@ description = "SMPTE ST 2067 IMF parser and validator"
 license = "MIT"
 authors = ["Pathé Home Team"]
 repository = "https://github.com/jpwesselink/imferno"
+readme = "../../README.md"
 
 [features]
 default = []

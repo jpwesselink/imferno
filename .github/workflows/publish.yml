@@ -3,7 +3,7 @@ name: Build and Publish
 on:
   push:
     tags:
-      - 'v*'
+      - 'imferno-wasm-v*'
     branches:
       - main
   pull_request:
@@ -32,7 +32,7 @@ jobs:
     name: Publish to NPM
     needs: test
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/imferno-wasm-v')
     steps:
       - uses: actions/checkout@v4
 
@@ -59,7 +59,7 @@ jobs:
       - name: Update package version from git tag
         working-directory: crates/imferno-wasm
         run: |
-          VERSION=${GITHUB_REF#refs/tags/v}
+          VERSION=${GITHUB_REF#refs/tags/imferno-wasm-v}
           echo "Setting npm version to: $VERSION"
           npm version --no-git-tag-version "$VERSION"
 

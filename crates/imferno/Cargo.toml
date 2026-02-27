@@ -6,6 +6,7 @@ description = "Command-line interface for SMPTE ST 2067 IMF packages"
 license = "MIT"
 authors = ["JP Wesselink <jpwesselink@gmail.com>"]
 repository = "https://github.com/jpwesselink/imferno"
+readme = "../../README.md"
 
 [[bin]]
 name = "imferno"

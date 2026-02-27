@@ -864,11 +864,12 @@ impl std::fmt::Display for MarkerLabel {
 /// Different spec versions have different schema constraints. The namespace URI
 /// in the root element is the authoritative signal for which spec edition applies.
 #[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "wasm", derive(Tsify), tsify(into_wasm_abi, from_wasm_abi))]
 pub enum CplNamespace {
     /// SMPTE ST 2067-3:2013 — `http://www.smpte-ra.org/schemas/2067-3/2013`
+    #[default]
     Smpte2067_3_2013,
     /// SMPTE ST 2067-3:2016 — `http://www.smpte-ra.org/schemas/2067-3/2016`
     Smpte2067_3_2016,
@@ -916,11 +917,6 @@ impl CplNamespace {
     }
 }
 
-impl Default for CplNamespace {
-    fn default() -> Self {
-        Self::Smpte2067_3_2013
-    }
-}
 
 impl std::fmt::Display for CplNamespace {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

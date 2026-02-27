@@ -362,9 +362,10 @@ impl std::fmt::Display for MimeType {
 
 /// The detected SMPTE spec version of an AssetMap document, derived from its root xmlns.
 #[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum AssetMapNamespace {
     /// DCI era — `http://www.smpte-ra.org/schemas/429-9/2007/AM`
+    #[default]
     Dci429_9,
     /// SMPTE ST 2067-9:2016 — `http://www.smpte-ra.org/schemas/2067-9/2016`
     Smpte2067_9_2016,
@@ -396,11 +397,6 @@ impl AssetMapNamespace {
     }
 }
 
-impl Default for AssetMapNamespace {
-    fn default() -> Self {
-        Self::Dci429_9
-    }
-}
 
 impl std::fmt::Display for AssetMapNamespace {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -419,9 +415,10 @@ impl std::fmt::Display for AssetMapNamespace {
 ///
 /// PKL schema evolved across three eras: DCI 429-8, IMF 2067-2 (2013-2016), and 2020.
 #[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum PklNamespace {
     /// DCI era — `http://www.smpte-ra.org/schemas/429-8/2007/PKL`
+    #[default]
     Dci429_8,
     /// SMPTE ST 2067-2:2013 — `http://www.smpte-ra.org/schemas/2067-2/2013`
     Smpte2067_2_2013,
@@ -460,11 +457,6 @@ impl PklNamespace {
     }
 }
 
-impl Default for PklNamespace {
-    fn default() -> Self {
-        Self::Dci429_8
-    }
-}
 
 impl std::fmt::Display for PklNamespace {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -489,11 +481,12 @@ impl std::fmt::Display for PklNamespace {
 /// This is distinct from the CPL namespace (ST 2067-3) and determines which core constraint
 /// rules apply.
 #[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum CoreConstraintsNamespace {
     /// SMPTE ST 2067-2:2013 — `http://www.smpte-ra.org/schemas/2067-2/2013`
     Smpte2067_2_2013,
     /// SMPTE ST 2067-2:2016 — `http://www.smpte-ra.org/schemas/2067-2/2016`
+    #[default]
     Smpte2067_2_2016,
     /// SMPTE ST 2067-2:2020 — `http://www.smpte-ra.org/ns/2067-2/2020`
     Smpte2067_2_2020,
@@ -523,11 +516,6 @@ impl CoreConstraintsNamespace {
     }
 }
 
-impl Default for CoreConstraintsNamespace {
-    fn default() -> Self {
-        Self::Smpte2067_2_2016
-    }
-}
 
 impl std::fmt::Display for CoreConstraintsNamespace {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

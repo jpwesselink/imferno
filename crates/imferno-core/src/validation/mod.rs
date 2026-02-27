@@ -3453,7 +3453,7 @@ impl App2E2021 {
                     // Non-integer if (asr_num * er_den) % (asr_den * er_num) != 0
                     let numerator = asr.numerator as u64 * edit_rate.denominator as u64;
                     let denominator = asr.denominator as u64 * edit_rate.numerator as u64;
-                    if denominator > 0 && numerator % denominator != 0 {
+                    if denominator > 0 && !numerator.is_multiple_of(denominator) {
                         non_integer_audio = true;
                         break;
                     }
@@ -3478,7 +3478,7 @@ impl App2E2021 {
                 }
             }
 
-            if segment_duration > 0 && segment_duration % 5 != 0 {
+            if segment_duration > 0 && !segment_duration.is_multiple_of(5) {
                 issues.push(
                     ValidationIssue::new(
                         Severity::Error,

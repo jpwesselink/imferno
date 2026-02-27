@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.3](https://github.com/jpwesselink/imferno/compare/imferno-core-v0.1.2...imferno-core-v0.1.3) - 2026-02-27
+
+### Other
+
+- update README and docs for @imferno npm ecosystem
+
 ## [0.1.2](https://github.com/jpwesselink/imferno/compare/imferno-core-v0.1.1...imferno-core-v0.1.2) - 2026-02-27
 
 ### Added

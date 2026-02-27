@@ -1,0 +1,24 @@
+{
+  "name": "imf-wasm",
+  "type": "module",
+  "collaborators": [
+    "JP Wesselink <jpwesselink@gmail.com>"
+  ],
+  "description": "WebAssembly bindings for IMF (Interoperable Master Format) parser",
+  "version": "0.1.0",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jpwesselink/imf-rs"
+  },
+  "files": [
+    "imf_wasm_bg.wasm",
+    "imf_wasm.js",
+    "imf_wasm.d.ts"
+  ],
+  "main": "imf_wasm.js",
+  "types": "imf_wasm.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}

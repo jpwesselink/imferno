@@ -1,0 +1,149 @@
+name: Publish NAPI Bindings to NPM
+
+on:
+  push:
+    tags: ['imferno-napi-v*']
+
+env:
+  NAPI_CRATE: imferno-napi
+  NAPI_DIR: crates/imferno-napi
+
+jobs:
+  build:
+    name: Build ${{ matrix.target }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            runner: ubuntu-latest
+          - target: aarch64-unknown-linux-gnu
+            runner: ubuntu-latest
+            use-cross: true
+          - target: x86_64-apple-darwin
+            runner: macos-latest
+          - target: aarch64-apple-darwin
+            runner: macos-14
+          - target: x86_64-pc-windows-msvc
+            runner: windows-latest
+          - target: aarch64-pc-windows-msvc
+            runner: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install napi-rs CLI
+        run: npm install -g @napi-rs/cli
+
+      - name: Install cross
+        if: matrix.use-cross
+        run: cargo install cross --locked
+
+      - name: Build native module
+        working-directory: ${{ env.NAPI_DIR }}
+        shell: bash
+        run: |
+          if [ "${{ matrix.use-cross }}" = "true" ]; then
+            napi build --release --target ${{ matrix.target }} --platform --use-cross
+          else
+            napi build --release --target ${{ matrix.target }} --platform
+          fi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bindings-${{ matrix.target }}
+          path: ${{ env.NAPI_DIR }}/imferno-node.*.node
+          if-no-files-found: error
+
+  publish:
+    name: Publish to NPM
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install napi-rs CLI
+        run: npm install -g @napi-rs/cli
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ${{ env.NAPI_DIR }}/artifacts
+          merge-multiple: true
+
+      - name: List artifacts
+        shell: bash
+        run: ls -lR ${{ env.NAPI_DIR }}/artifacts/
+
+      - name: Distribute binaries to npm packages
+        working-directory: ${{ env.NAPI_DIR }}
+        run: napi artifacts --output-dir artifacts --npm-dir npm
+
+      - name: Set version from tag
+        working-directory: ${{ env.NAPI_DIR }}
+        shell: bash
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/imferno-napi-v}
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+          # Update meta-package version + optionalDependencies
+          node -e "
+            const pkg = require('./package.json');
+            pkg.version = '$VERSION';
+            for (const dep of Object.keys(pkg.optionalDependencies || {})) {
+              pkg.optionalDependencies[dep] = '$VERSION';
+            }
+            require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+          "
+
+          # Update all platform package versions
+          for dir in npm/*/; do
+            if [ -f "$dir/package.json" ]; then
+              cd "$dir"
+              npm version --no-git-tag-version --allow-same-version "$VERSION"
+              cd ../..
+            fi
+          done
+
+      - name: Copy LICENSE
+        run: cp LICENSE ${{ env.NAPI_DIR }}/LICENSE
+
+      - name: Publish platform packages
+        working-directory: ${{ env.NAPI_DIR }}
+        shell: bash
+        run: |
+          for dir in npm/*/; do
+            if [ -f "$dir/imferno-node.*.node" ] 2>/dev/null || ls "$dir"/*.node 1>/dev/null 2>&1; then
+              echo "Publishing $dir..."
+              cd "$dir"
+              npm publish || echo "Warning: failed to publish $dir"
+              cd ../..
+            else
+              echo "Skipping $dir (no .node binary)"
+            fi
+          done
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish meta-package
+        working-directory: ${{ env.NAPI_DIR }}
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

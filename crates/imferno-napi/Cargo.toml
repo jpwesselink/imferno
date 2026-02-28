@@ -1,0 +1,21 @@
+[package]
+name = "imferno-napi"
+version = "0.1.0"
+edition = "2021"
+description = "Native Node.js bindings for the imferno SMPTE ST 2067 IMF validator"
+license = "MIT"
+repository = "https://github.com/jpwesselink/imferno"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+imferno-core = { path = "../imferno-core", version = "1.0.0" }
+napi = { version = "3", default-features = false, features = ["napi9", "serde-json"] }
+napi-derive = "3"
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+[build-dependencies]
+napi-build = "2"

@@ -4,6 +4,7 @@ members = [
     "crates/imferno-core",
     "crates/imferno",
     "crates/imferno-wasm",
+    "crates/imferno-napi",
     "crates/benchmarks",
     "crates/corpus-tests",
     "xtask",

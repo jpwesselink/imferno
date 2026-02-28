@@ -1,0 +1,17 @@
+{
+  "name": "@imferno/node-win32-x64-msvc",
+  "version": "0.1.0",
+  "description": "imferno native Node.js bindings for Windows x64",
+  "os": ["win32"],
+  "cpu": ["x64"],
+  "main": "imferno-node.node",
+  "files": ["imferno-node.node"],
+  "publishConfig": {
+    "access": "public"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jpwesselink/imferno.git"
+  }
+}

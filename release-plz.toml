@@ -14,3 +14,8 @@ name = "imferno"
 name = "imferno-wasm"
 # Built from Rust, published to npm — NOT to crates.io.
 publish = false
+
+[[package]]
+name = "imferno-napi"
+# Built from Rust, published to npm — NOT to crates.io.
+publish = false

@@ -1,0 +1,17 @@
+{
+  "name": "@imferno/node-darwin-x64",
+  "version": "0.1.0",
+  "description": "imferno native Node.js bindings for macOS x64 (Intel)",
+  "os": ["darwin"],
+  "cpu": ["x64"],
+  "main": "imferno-node.node",
+  "files": ["imferno-node.node"],
+  "publishConfig": {
+    "access": "public"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jpwesselink/imferno.git"
+  }
+}

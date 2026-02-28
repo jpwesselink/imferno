@@ -41,6 +41,44 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       </div> */}
     </section>
 
+    <!-- Get started -->
+    <section class="page-container pb-16">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div class="get-started-card">
+          <div class="get-started-header">
+            <span class="get-started-icon">$</span>
+            <span class="get-started-label">npx</span>
+          </div>
+          <p class="get-started-desc">Zero install. Run it once, straight from npm.</p>
+          <div class="code-block">
+            <code>npx imferno validate ./my-package</code>
+            <code class="code-dim"># --rules-config rules.json</code>
+          </div>
+        </div>
+        <div class="get-started-card">
+          <div class="get-started-header">
+            <span class="get-started-icon">&#x1F980;</span>
+            <span class="get-started-label">cargo install</span>
+          </div>
+          <p class="get-started-desc">Install the native Rust binary. Fast, offline, no runtime.</p>
+          <div class="code-block">
+            <code>cargo install imferno</code>
+            <code class="code-dim">imferno validate ./my-package</code>
+          </div>
+        </div>
+        <div class="get-started-card">
+          <div class="get-started-header">
+            <span class="get-started-icon">&#x1F310;</span>
+            <span class="get-started-label">Browser</span>
+          </div>
+          <p class="get-started-desc">Drop XML files below. Everything runs client-side via WebAssembly — nothing leaves your machine.</p>
+          <div class="code-block" style="text-align: center;">
+            <code style="color: #98989f;">&#x2193; scroll down to the playground</code>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- Feature cards -->
     <section class="page-container pb-16">
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
@@ -50,7 +88,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
         </div>
         <div class="feat-card">
           <h3>Strict validation</h3>
-          <p>Validate file manifests, SHA-1/SHA-256 hashes, and structural integrity of IMF packages. Hash verification runs on disk; skipped in WASM.</p>
+          <p>Validate file manifests, SHA-1/SHA-256 hashes, and structural integrity of IMF packages. ESLint-style <code class="inline-code">rules.json</code> lets you tune severity per rule or silence known issues.</p>
         </div>
         <div class="feat-card">
           <h3>WASM ready</h3>

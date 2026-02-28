@@ -51,6 +51,67 @@ body { margin: 0; min-height: 100vh; }
   margin: 0;
 }
 
+/* Inline code */
+.inline-code {
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 0.9em;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: #161618;
+  color: #f97316;
+}
+
+/* Get started cards */
+.get-started-card {
+  padding: 24px;
+  border-radius: 12px;
+  background: #202127;
+  border: 1px solid #2e2e32;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.get-started-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.get-started-icon {
+  font-size: 20px;
+  line-height: 1;
+}
+.get-started-label {
+  font-size: 15px;
+  font-weight: 700;
+  color: #dfdfd6;
+}
+.get-started-desc {
+  font-size: 13px;
+  line-height: 1.6;
+  color: #98989f;
+  margin: 0;
+  flex: 1;
+}
+.code-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: #161618;
+  border: 1px solid #2e2e32;
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 13px;
+  color: #f97316;
+  overflow-x: auto;
+}
+.code-block code {
+  white-space: nowrap;
+}
+.code-block .code-dim {
+  color: #6a6a71;
+}
+
 /* Standards table */
 .standards-table {
   width: 100%;

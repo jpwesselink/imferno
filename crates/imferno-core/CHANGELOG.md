@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-02-28
+
+### Added
+
+- unified `validate()` API for full IMF package validation
+- `ValidationOptions.core_spec` and `app_specs` for spec version selection
+- `ValidationOptions.skip_disk_checks` for XML-only validation
+- `@imferno/node` native Node.js bindings via napi-rs
+- `@imferno/schema` JSON Schema package for all IMF types
+- ST 2067-202:2022 ISXD Plug-in support
+
+### Changed
+
+- stable release of all parsing and validation APIs
+
 ## [0.1.4](https://github.com/jpwesselink/imferno/compare/imferno-core-v0.1.3...imferno-core-v0.1.4) - 2026-02-27
 
 ### Fixed

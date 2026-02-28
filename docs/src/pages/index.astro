@@ -11,7 +11,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>imferno — SMPTE ST 2067 for Rust and JavaScript</title>
-    <meta name="description" content="Parse, validate, and inspect IMF packages. Native Rust implementation of SMPTE ST 2067 — with a WebAssembly target for Node.js and the browser." />
+    <meta name="description" content="Parse, validate, and inspect IMF packages. Native Rust implementation of SMPTE ST 2067 — with native Node.js bindings and a WebAssembly target for the browser." />
   </head>
   <body>
 
@@ -34,7 +34,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
         <span class="text-5xl font-bold leading-[1.15] text-white">SMPTE ST 2067<br>for Rust and JavaScript.</span>
       </h1>
       <p class="mt-3 text-xl font-medium text-zinc-400 max-w-xl leading-8">
-        Parse, validate, and inspect IMF packages. Native Rust implementation of the ST 2067 standard family — compiles to WebAssembly for Node.js and the browser.
+        Parse, validate, and inspect IMF packages. Native Rust implementation of the ST 2067 standard family — with native Node.js bindings and a WebAssembly target for the browser.
       </p>
       {/* <div class="mt-6 flex flex-wrap gap-2">
         <a href="https://github.com/jpwesselink/imferno" class="inline-flex items-center rounded-full bg-zinc-700 hover:bg-zinc-600 text-zinc-100 font-medium text-sm px-5 h-10 transition-colors">GitHub</a>
@@ -91,8 +91,8 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
           <p>Validate file manifests, SHA-1/SHA-256 hashes, and structural integrity of IMF packages. ESLint-style <code class="inline-code">rules.json</code> lets you tune severity per rule or silence known issues.</p>
         </div>
         <div class="feat-card">
-          <h3>WASM ready</h3>
-          <p>Run the parser in the browser via WebAssembly — the same crate, zero rewrites.</p>
+          <h3>Node.js &amp; WASM</h3>
+          <p>Native bindings via <code class="inline-code">@imferno/node</code> for server-side pipelines, plus a WebAssembly build for the browser.</p>
         </div>
         <div class="feat-card">
           <h3>IMF reference corpus</h3>
@@ -123,12 +123,12 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
             <tr><td>ST 2067-21:2020, :2023</td><td>Application #2E (UHD/HDR)</td><td><span class="badge badge-done">Complete</span></td></tr>
             <tr><td>ST 2067-201:2019, :2021</td><td>IAB Level 0 Plug-in</td><td><span class="badge badge-done">Complete</span></td></tr>
             <tr><td>ST 2067-9:2018</td><td>Sidecar Composition Map</td><td><span class="badge badge-done">Complete</span></td></tr>
+            <tr><td>ST 2067-202:2022</td><td>ISXD Plug-in</td><td><span class="badge badge-done">Complete</span></td></tr>
             <tr><td colspan="3" class="table-section-header">Partial</td></tr>
             <tr><td>ST 377-1:2011</td><td>MXF File Format</td><td><span class="badge badge-partial">Partial</span></td></tr>
             <tr><td colspan="3" class="table-section-header">Not implemented</td></tr>
             <tr><td>ST 429-8</td><td>D-Cinema Packing List</td><td><span class="badge badge-none">Not implemented</span></td></tr>
             <tr><td>ST 2067-100:2014</td><td>Output Profile List</td><td><span class="badge badge-none">Not implemented</span></td></tr>
-            <tr><td>ST 2067-202:2023</td><td>ISXD Plug-in</td><td><span class="badge badge-none">Not implemented</span></td></tr>
             <tr><td>ST 2067-203:2023</td><td>S-ADM Audio Plug-in</td><td><span class="badge badge-none">Not implemented</span></td></tr>
             <tr><td>ST 377-41</td><td>MXF MGA / S-ADM Virtual Tracks</td><td><span class="badge badge-none">Not implemented</span></td></tr>
             <tr><td>ST 379-2:2010</td><td>MXF Generic Container</td><td><span class="badge badge-none">Not implemented</span></td></tr>

@@ -1,96 +1,74 @@
-# IMF WASM Parser Examples
+# @imferno/wasm Examples
 
-This directory contains examples showing how to use the IMF (Interoperable Master Format) WASM parser in both JavaScript and TypeScript.
+Examples showing how to use `@imferno/wasm` for IMF package validation and parsing.
 
 ## Quick Start
 
-```bash
-# Run the JavaScript example
-node example.mjs
-
-# For TypeScript (requires compilation)
-npx tsc example.ts && node example.js
-```
-
-## Examples Overview
-
-### `example.mjs` - JavaScript Example
-A comprehensive JavaScript demonstration showing:
-- ✅ **Working implementation** with current runtime behavior
-- 🔧 Complete IMF package parsing (VOLINDEX, ASSETMAP)
-- 📊 Asset analysis and SMPTE compliance validation
-- 🏆 Production-ready code examples
-
-### `example.ts` - TypeScript Example
-Advanced TypeScript demonstration featuring:
-- 🛡️ **Full type safety** with SMPTE interfaces
-- 📝 IntelliSense support for all 27 generated types
-- 🔧 Compile-time error prevention
-- 📚 Complete API documentation
-
-### `test-types.mjs` - Basic Test
-Simple test file for quick validation of core functionality.
-
-## Key Features Demonstrated
-
-### SMPTE Specification Support
-- **VolumeIndex**: Entry point XML parsing
-- **AssetMap**: UUID-to-file mapping with metadata
-- **CompositionPlaylist**: Complete CPL structure (planned)
-- **Asset Analysis**: Packing lists, chunks, and volume indexing
-
-### TypeScript Benefits
-- 🎯 **27 Generated Interfaces**: Complete SMPTE type coverage
-- 🔧 **IDE Support**: Full autocomplete and error detection
-- 🛡️ **Type Safety**: Catch errors at compile time
-- 📝 **camelCase Fields**: TypeScript-friendly naming conventions
-
-### Runtime Behavior
-- ⚡ **Fast**: Optimized WebAssembly parsing
-- 🔒 **Safe**: Memory-safe Rust implementation
-- 📋 **Complete**: Full SMPTE specification support
-- 🌐 **Compatible**: Works in Node.js and browsers
-
-## Usage Patterns
-
-### Basic Parsing
 ```javascript
-import init, { parseVolindexTyped } from './pkg/imf_wasm.js';
+import { validate } from '@imferno/wasm';
 
-await init();
-const volindex = parseVolindexTyped(xmlContent);
-console.log('Index:', volindex.Index);
-```
-
-### TypeScript with Full Types
-```typescript
-import { parseAssetmapTyped } from './pkg/imf-types';
-import type { AssetMap } from './pkg/imf-types';
-
-const assetmap: AssetMap = parseAssetmapTyped(xmlContent);
-// Full IntelliSense and type checking available
-```
-
-### Asset Analysis
-```javascript
-const assetmap = parseAssetmapTyped(assetmapXml);
-assetmap.AssetList.Asset.forEach(asset => {
-    console.log('Asset ID:', asset.Id);
-    console.log('File path:', asset.ChunkList.Chunk[0].Path);
-    console.log('Is packing list:', asset.PackingList || false);
+const result = await validate({
+    'ASSETMAP.xml': assetmapXml,
+    'PKL_abc.xml': pklXml,
+    'CPL_def.xml': cplXml,
 });
+
+console.log('Compliant:', result.report.is_compliant);
+console.log('Errors:', result.report.errors);
+console.log('Warnings:', result.report.warnings);
+console.log('CPLs:', result.cpls);
 ```
 
-## Notes
+## Validate with Options
 
-- **Runtime Data**: Currently uses PascalCase field names (matching SMPTE XML)
-- **TypeScript Definitions**: Provide camelCase interfaces for better DX
-- **SMPTE Compliance**: All parsing follows official SMPTE standards
-- **Performance**: WebAssembly ensures fast, efficient parsing
+```javascript
+import { validate } from '@imferno/wasm';
 
-## Next Steps
+const result = await validate(
+    {
+        'ASSETMAP.xml': assetmapXml,
+        'PKL_abc.xml': pklXml,
+        'CPL_def.xml': cplXml,
+    },
+    {
+        coreSpec: 'v2020',
+        app2eSpec: 'v2023',
+        rules: {
+            'ST2067-21:2023:7.1/AppIdMismatch': 'error',
+        },
+    },
+);
+```
 
-1. **Try the examples**: Run `node example.mjs` to see it in action
-2. **Integrate TypeScript**: Use `./pkg/imf-types.d.ts` for type safety
-3. **Explore APIs**: Check the 27 generated SMPTE interfaces
-4. **Build applications**: Use the typed parsing functions in your projects
+## Parse Individual Files
+
+```javascript
+import {
+    parseCplTyped,
+    parseAssetmapTyped,
+    parsePklTyped,
+    parseVolindexTyped,
+} from '@imferno/wasm';
+
+const cpl = await parseCplTyped(cplXml);
+const assetMap = await parseAssetmapTyped(assetmapXml);
+const pkl = await parsePklTyped(pklXml);
+const volindex = await parseVolindexTyped(volindexXml);
+```
+
+## API
+
+| Function | Description |
+|----------|-------------|
+| `validate(files, options?)` | Validate a full IMF package, returns report + parsed data |
+| `parseCplTyped(xml)` | Parse CPL XML |
+| `parseAssetmapTyped(xml)` | Parse ASSETMAP.xml |
+| `parsePklTyped(xml)` | Parse PKL XML |
+| `parseVolindexTyped(xml)` | Parse VOLINDEX.xml |
+| `getVersion()` | Get library version |
+
+WASM initialization is handled automatically on first call.
+
+## Node.js with Filesystem Access
+
+For path-based validation, hash verification, and MXF header checks, use [`@imferno/node`](https://www.npmjs.com/package/@imferno/node) instead.

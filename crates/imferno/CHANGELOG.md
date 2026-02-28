@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-02-28
+
+### Added
+
+- `--rules-config` flag for ESLint-style severity overrides
+- `--xml-only` flag for skipping disk checks
+- `--exit-zero` flag for CI pipelines
+
+### Changed
+
+- stable release matching imferno-core v1.0.0
+
 ## [0.1.5](https://github.com/jpwesselink/imferno/compare/imferno-v0.1.4...imferno-v0.1.5) - 2026-02-27
 
 ### Fixed

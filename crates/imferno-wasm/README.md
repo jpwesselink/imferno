@@ -10,6 +10,8 @@ Part of the [`imferno`](https://github.com/jpwesselink/imferno) ecosystem. See a
 npm install @imferno/wasm
 ```
 
+> **Note:** For Node.js with filesystem access (path-based validation, hash verification), use [`@imferno/node`](https://www.npmjs.com/package/@imferno/node) instead.
+
 The package ships a prebuilt `.wasm` binary — no build step required.
 
 ## Usage

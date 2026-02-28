@@ -60,8 +60,8 @@ fn c_dim(s: &str, on: bool) -> String {
 }
 
 #[derive(Parser)]
-#[command(name = "imf")]
-#[command(about = "IMF package inspection tool", long_about = None)]
+#[command(name = "imferno")]
+#[command(about = "SMPTE ST 2067 IMF validator and inspector", long_about = None)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,

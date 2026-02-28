@@ -2,7 +2,7 @@ name: Deploy Docs to GitHub Pages
 
 on:
   push:
-    tags: ['v*']
+    tags: ['v*', 'imferno-v*', 'imferno-core-v*', 'imferno-wasm-v*', 'imferno-napi-v*']
   workflow_dispatch:
     inputs:
       version:

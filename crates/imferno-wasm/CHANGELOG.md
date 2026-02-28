@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-02-28
+
+### Added
+
+- unified `validate(files, options?)` API replacing individual validator functions
+- spec version selection via `coreSpec` and `app2eSpec` options
+- ESLint-style rules config for severity overrides
+
+### Removed
+
+- `extractSourceAsset`, `compareDelivery` — removed in favor of unified validate API
+- `validateCpl`, `validateCplWithSpecSelection` — replaced by `validate()`
+
 ## [0.1.3](https://github.com/jpwesselink/imferno/releases/tag/imferno-wasm-v0.1.3) - 2026-02-27
 
 ### Added

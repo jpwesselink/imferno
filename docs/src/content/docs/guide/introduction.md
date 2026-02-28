@@ -30,6 +30,7 @@ IMF is the successor to DCP for long-form content. It supports multiple versions
 |---|---|
 | [`imferno`](https://www.npmjs.com/package/imferno) | CLI with prebuilt native binaries |
 | [`@imferno/wasm`](https://www.npmjs.com/package/@imferno/wasm) | WebAssembly bindings for JS/TS |
+| [`@imferno/node`](https://www.npmjs.com/package/@imferno/node) | Native Node.js bindings (filesystem + hash verification) |
 | [`@imferno/schema`](https://www.npmjs.com/package/@imferno/schema) | JSON Schema definitions for structural validation |
 | [`imferno-core`](https://crates.io/crates/imferno-core) | Rust crate with all parsing and validation logic |
 

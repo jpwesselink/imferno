@@ -63,10 +63,19 @@ fn analyze_tracks(&self) -> Vec<TrackAnalysis>
 pub struct ValidationOptions {
     pub rules: RulesConfig,
 
-    // Native only — set to stream MXF from this path for hash verification.
-    // Always None in WASM.
+    /// Core constraints spec version. None = auto-detect from CPL namespace.
+    pub core_spec: Option<CoreSpecTarget>,
+
+    /// Application profile spec versions. None = auto-detect from CPL.
+    pub app_specs: Option<Vec<AppSpecTarget>>,
+
+    /// Path for hash verification (native only). None = skip.
     #[cfg(not(target_arch = "wasm32"))]
     pub verify_hashes: Option<PathBuf>,
+
+    /// Skip file manifest and MXF header checks (native only).
+    #[cfg(not(target_arch = "wasm32"))]
+    pub skip_disk_checks: bool,
 }
 ```
 

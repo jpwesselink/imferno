@@ -17,6 +17,7 @@ SMPTE ST 2067 IMF parser and validator for Rust, Node.js, and the browser.
 |---|---|
 | [`imferno`](https://www.npmjs.com/package/imferno) | CLI — prebuilt native binaries for all platforms |
 | [`@imferno/wasm`](https://www.npmjs.com/package/@imferno/wasm) | WebAssembly bindings for JS/TS |
+| [`@imferno/node`](https://www.npmjs.com/package/@imferno/node) | Native Node.js bindings (filesystem + hash verification) |
 | [`@imferno/schema`](https://www.npmjs.com/package/@imferno/schema) | JSON Schema definitions for all IMF types |
 
 Platform binaries (installed automatically via `imferno`):
@@ -36,8 +37,11 @@ Platform binaries (installed automatically via `imferno`):
 # CLI via npm
 npm install -g imferno
 
-# WASM bindings
+# WASM bindings (browser + Node.js)
 npm install @imferno/wasm
+
+# Native Node.js bindings (filesystem access, hash verification)
+npm install @imferno/node
 
 # JSON schemas for validating imferno output
 npm install @imferno/schema
@@ -61,7 +65,15 @@ imferno export ./my-imp
 imferno inspect ./my-imp
 ```
 
-### JavaScript / TypeScript
+### Node.js (native bindings)
+
+```javascript
+const { validatePath } = require('@imferno/node');
+
+const { report, cpls, assetMap } = validatePath('./my-imp');
+```
+
+### Browser / WASM
 
 ```javascript
 import { validate } from '@imferno/wasm';

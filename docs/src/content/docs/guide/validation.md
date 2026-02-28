@@ -58,7 +58,8 @@ let report = pkg.validate_hashes(&ValidationOptions::default());
 Severities can be adjusted per code — useful when a deployment environment has known deviations you want to suppress or promote:
 
 ```rust
-use imferno_core::package::{Imferno, ValidationOptions, RulesConfig, RuleSeverity, read_dir};
+use imferno_core::diagnostics::{RulesConfig, RuleSeverity};
+use imferno_core::package::{Imferno, ValidationOptions, read_dir};
 use std::collections::HashMap;
 
 let mut rules = HashMap::new();

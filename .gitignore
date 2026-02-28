@@ -23,6 +23,10 @@ bindings/
 crates/imferno/npm/imferno-*/imferno
 crates/imferno/npm/imferno-*/imferno.exe
 
+# NAPI build output
+crates/imferno-napi/*.node
+crates/imferno-napi/npm/node-*/*.node
+
 # Generated JSON schemas (built by cargo xtask generate-schema)
 crates/imferno-core/npm/schema/schemas/
 

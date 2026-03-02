@@ -138,6 +138,14 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       </div>
     </section>
 
+    <!-- Sponsor -->
+    <section class="page-container pb-20" style="text-align: center;">
+      <p style="font-size: 14px; color: #6a6a71;">
+        If imferno is useful to your workflow, consider
+        <a href="https://github.com/sponsors/jpwesselink" style="color: #f97316; text-decoration: underline;">sponsoring the project</a>.
+      </p>
+    </section>
+
     <!-- Load WASM module via native browser ES module import (outside Vite's module graph). -->
     <script is:inline define:vars={{ base, cacheBust: Date.now().toString(36) }}>
       (async function () {

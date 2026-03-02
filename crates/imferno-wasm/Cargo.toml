@@ -11,7 +11,7 @@ repository = "https://github.com/jpwesselink/imferno"
 crate-type = ["cdylib"]
 
 [dependencies]
-imferno-core = { path = "../imferno-core", version = "1.0.0", features = ["wasm"] }
+imferno-core = { path = "../imferno-core", version = "1.0.1", features = ["wasm"] }
 wasm-bindgen = { workspace = true, features = ["serde-serialize"] }
 js-sys = { workspace = true }
 web-sys = { workspace = true, features = ["console"] }

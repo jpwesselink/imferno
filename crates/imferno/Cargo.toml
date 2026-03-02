@@ -1,6 +1,6 @@
 [package]
 name = "imferno"
-version = "1.0.0"
+version = "1.0.1"
 edition = "2021"
 description = "Command-line interface for SMPTE ST 2067 IMF packages"
 license = "MIT"
@@ -13,7 +13,7 @@ name = "imferno"
 path = "src/main.rs"
 
 [dependencies]
-imferno-core = { path = "../imferno-core", version = "1.0.0" }
+imferno-core = { path = "../imferno-core", version = "1.0.1" }
 clap = { workspace = true }
 serde_json = { workspace = true }
 anyhow = { workspace = true }

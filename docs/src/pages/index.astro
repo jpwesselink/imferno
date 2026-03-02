@@ -1,6 +1,7 @@
 ---
 import '../styles/homepage.css';
 import ImfPlayground from '../components/ImfPlayground';
+import VersionPicker from '../components/VersionPicker.astro';
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 ---
@@ -19,6 +20,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
     <header class="sticky top-0 z-10 border-b border-white/10 bg-[#161618]/95 backdrop-blur-sm">
       <div class="nav-container">
         <a href={base + '/'} class="font-semibold text-white text-[15px] mr-8 shrink-0">imferno</a>
+        <VersionPicker />
         <div class="ml-auto flex items-center gap-6 shrink-0">
           <a href={base + '/guide/introduction/'} class="text-zinc-400 hover:text-white transition-colors text-sm">Docs</a>
           <a href="https://github.com/jpwesselink/imferno" class="text-zinc-400 hover:text-white transition-colors" aria-label="GitHub">

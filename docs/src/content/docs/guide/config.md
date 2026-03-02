@@ -26,17 +26,19 @@ imferno validate ./my-package --rules-config rules.json
 
 ### Rust
 
-```rust
-use imferno_core::diagnostics::{RulesConfig, RuleSeverity};
-use imferno_core::package::{Imferno, ValidationOptions, read_dir};
-use std::collections::HashMap;
+Every validation code has a typed enum variant — no raw strings needed:
 
-let mut rules = HashMap::new();
-rules.insert("ST2067-2:2016:8/DigitalSignature".to_string(), RuleSeverity::Off);
-rules.insert("ST2067-2:2020:8.3/FileNotFound".to_string(), RuleSeverity::Critical);
+```rust
+use imferno_core::assetmap::codes::St2067_2_2020;
+use imferno_core::diagnostics::rules::{RulesConfig, RuleSeverity};
+use imferno_core::package::{Imferno, ValidationOptions, read_dir};
+
+let mut rules = RulesConfig::default();
+rules.set(St2067_2_2020::FileNotFound, RuleSeverity::Critical);
+rules.set(St2067_2_2020::ChecksumMismatch, RuleSeverity::Off);
 
 let options = ValidationOptions {
-    rules: RulesConfig(rules),
+    rules,
     ..Default::default()
 };
 
@@ -46,12 +48,24 @@ let report = Imferno::parse_and_validate(files, &options);
 
 ### JavaScript / TypeScript
 
+Import the `codes` object for autocomplete and typo protection:
+
 ```typescript
-import { validate } from '@imferno/wasm';
+import { validate, codes } from '@imferno/wasm';
 
 const result = await validate(files, {
   rules: {
-    "ST2067-2:2016:8/DigitalSignature": "off",
+    [codes.ST2067_2_2020.FileNotFound]: "critical",
+    [codes.ST2067_2_2020.ChecksumMismatch]: "off",
+  },
+});
+```
+
+Raw strings still work if you prefer:
+
+```typescript
+const result = await validate(files, {
+  rules: {
     "ST2067-2:2020:8.3/FileNotFound": "critical",
   },
 });

@@ -1,4 +1,5 @@
 mod build_wasm;
+mod generate_codes_ts;
 mod generate_docs;
 mod generate_schema;
 
@@ -8,9 +9,11 @@ fn main() {
         Some("build-wasm") => build_wasm::run(),
         Some("generate-docs") => generate_docs::run(),
         Some("generate-schema") => generate_schema::run(),
+        Some("generate-codes-ts") => generate_codes_ts::run(),
         Some("build-docs") => {
             build_wasm::run();
             generate_docs::run();
+            generate_codes_ts::run();
         }
         Some(cmd) => {
             eprintln!("unknown command: {cmd}");
@@ -28,8 +31,9 @@ fn usage() {
     eprintln!("usage: cargo xtask <command>");
     eprintln!();
     eprintln!("commands:");
-    eprintln!("  build-wasm       build imf-wasm with wasm-pack and sync to docs/public/wasm/");
-    eprintln!("  generate-docs    generate reference/codes/*.md from spec crate enums");
-    eprintln!("  generate-schema  generate JSON Schema files into crates/imferno-core/npm/schema/schemas/");
-    eprintln!("  build-docs       run build-wasm then generate-docs");
+    eprintln!("  build-wasm         build imf-wasm with wasm-pack and sync to docs/public/wasm/");
+    eprintln!("  generate-docs      generate reference/codes/*.md from spec crate enums");
+    eprintln!("  generate-schema    generate JSON Schema files into crates/imferno-core/npm/schema/schemas/");
+    eprintln!("  generate-codes-ts  generate codes.js + codes.d.ts from validation-code enums");
+    eprintln!("  build-docs         run build-wasm, generate-docs, and generate-codes-ts");
 }

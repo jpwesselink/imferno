@@ -61,5 +61,8 @@ export function getVersion(): Promise<string>;
 /** Manual WASM initialization (for advanced use) */
 export function init(wasmBuffer?: ArrayBuffer): Promise<void>;
 
+/** Typed validation code constants for use in rules config */
+export { codes } from './codes.js';
+
 /** Raw WASM bindings (for advanced use) */
 export declare const wasm: typeof import('./imferno_wasm.js');

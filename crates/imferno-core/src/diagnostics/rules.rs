@@ -8,6 +8,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+use crate::diagnostics::codes::ValidationCode;
 use crate::{Severity, ValidationReport};
 
 /// Per-rule severity override.
@@ -44,6 +45,21 @@ pub enum RuleSeverity {
 #[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct RulesConfig(pub HashMap<String, RuleSeverity>);
+
+impl RulesConfig {
+    /// Set the severity for a typed validation code.
+    ///
+    /// ```
+    /// use imferno_core::diagnostics::rules::{RulesConfig, RuleSeverity};
+    /// use imferno_core::assetmap::codes::St2067_2_2020;
+    ///
+    /// let mut rules = RulesConfig::default();
+    /// rules.set(St2067_2_2020::FileNotFound, RuleSeverity::Critical);
+    /// ```
+    pub fn set(&mut self, code: impl ValidationCode, severity: RuleSeverity) {
+        self.0.insert(code.code().to_string(), severity);
+    }
+}
 
 fn rule_matches(code: &str, key: &str) -> bool {
     // Full normalised code match first, then suffix match.

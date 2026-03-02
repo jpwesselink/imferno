@@ -63,6 +63,9 @@ export async function getVersion() {
     return wasm.getVersion();
 }
 
+// Typed validation codes
+export { codes } from './codes.js';
+
 // For users who want manual control
 export { wasmInit as init };
 export { wasm };

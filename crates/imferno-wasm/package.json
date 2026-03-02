@@ -10,6 +10,8 @@
     "imferno_wasm.d.ts",
     "imferno_wasm_bg.wasm",
     "imferno_wasm_bg.wasm.d.ts",
+    "codes.js",
+    "codes.d.ts",
     "index.js",
     "index.d.ts",
     "README.md",

@@ -11,7 +11,7 @@ publish = false
 crate-type = ["cdylib"]
 
 [dependencies]
-imferno-core = { path = "../imferno-core", version = "1.0.0" }
+imferno-core = { path = "../imferno-core", version = "1.0.1" }
 napi = { version = "3", default-features = false, features = ["napi9", "serde-json"] }
 napi-derive = "3"
 serde = { workspace = true }

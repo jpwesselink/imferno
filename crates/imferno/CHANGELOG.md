@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.1](https://github.com/jpwesselink/imferno/compare/imferno-v1.0.0...imferno-v1.0.1) - 2026-03-02
+
+### Fixed
+
+- update CLI help test to match renamed about text and export subcommand
+
+### Other
+
+- update documentation and fix consistency issues
+
 ## [1.0.0] - 2026-02-28
 
 ### Added

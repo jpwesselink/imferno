@@ -64,6 +64,15 @@ let volindex = parse_volindex(volindex_xml)?;
 | ST 2067-202 | ISXD Plug-in | Complete |
 | ST 377-1 | MXF File Format | Partial — header partition only |
 
+## Development
+
+MXF test fixtures are stored as GitHub Release assets. Fetch them before running tests:
+
+```bash
+./scripts/fetch-test-data.sh
+cargo test -p imferno-core
+```
+
 ## License
 
 MIT

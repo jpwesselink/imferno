@@ -90,4 +90,7 @@ imferno validate /path/to/your.imp --verify-hashes
 
 # JSON output (full ValidationReport)
 imferno validate /path/to/your.imp --format json
+
+# Export a full report (package metadata + validation + CPL analysis)
+imferno export /path/to/your.imp
 ```

@@ -124,9 +124,22 @@ for issue in &report.errors {
 | ST 2067-202 | ISXD Plug-in | Complete |
 | ST 377-1 | MXF File Format | Partial — header partition only |
 
+## Development
+
+MXF test fixtures are stored as GitHub Release assets (not in git). Fetch them before running tests:
+
+```bash
+./scripts/fetch-test-data.sh
+cargo test --workspace
+```
+
 ## Docs
 
 https://jpwesselink.github.io/imferno
+
+## Sponsor
+
+If imferno is useful to your workflow, consider [sponsoring the project](https://github.com/sponsors/jpwesselink).
 
 ## License
 

@@ -1,0 +1,18 @@
+---
+import type { Props } from '@astrojs/starlight/props';
+import Default from '@astrojs/starlight/components/SiteTitle.astro';
+import VersionPicker from './VersionPicker.astro';
+---
+
+<div class="site-title-with-version">
+  <Default {...Astro.props}><slot /></Default>
+  <VersionPicker />
+</div>
+
+<style>
+  .site-title-with-version {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+</style>

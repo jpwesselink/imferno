@@ -20,6 +20,9 @@ export default defineConfig({
                 { icon: 'github', label: 'GitHub', href: 'https://github.com/jpwesselink/imferno' },
             ],
             sidebar: [],
+            components: {
+                SiteTitle: './src/components/SiteTitle.astro',
+            },
         }),
         react(),
     ],

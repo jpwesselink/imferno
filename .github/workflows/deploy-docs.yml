@@ -2,7 +2,7 @@ name: Deploy Docs to GitHub Pages
 
 on:
   push:
-    tags: ['v*', 'imferno-v*', 'imferno-core-v*', 'imferno-wasm-v*', 'imferno-napi-v*']
+    tags: ['v*', 'imferno-core-v*']
   workflow_dispatch:
     inputs:
       version:
@@ -23,7 +23,9 @@ jobs:
         id: version
         run: |
           if [[ "${{ github.event_name }}" == "push" ]]; then
-            VERSION="${GITHUB_REF#refs/tags/}"
+            TAG="${GITHUB_REF#refs/tags/}"
+            # Normalize crate-prefixed tags: imferno-core-v1.1.0 → v1.1.0
+            VERSION="${TAG#imferno-core-}"
           elif [[ -n "${{ github.event.inputs.version }}" ]]; then
             VERSION="${{ github.event.inputs.version }}"
           else

@@ -1,0 +1,72 @@
+---
+const docsVersion = import.meta.env.DOCS_VERSION || 'latest';
+---
+
+<div class="version-picker">
+  <select id="version-select" aria-label="Documentation version">
+    <option value="" selected>{docsVersion}</option>
+  </select>
+</div>
+
+<style>
+  .version-picker {
+    display: flex;
+    align-items: center;
+  }
+  #version-select {
+    appearance: none;
+    background: var(--sl-color-gray-6, #2a2a30);
+    border: 1px solid var(--sl-color-gray-5, #3c3f44);
+    border-radius: 6px;
+    color: var(--sl-color-white, #dfdfd6);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 3px 24px 3px 8px;
+    cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%236a6a71' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 6px center;
+  }
+  #version-select:hover {
+    border-color: var(--sl-color-accent, #f97316);
+  }
+</style>
+
+<script is:inline>
+  (function () {
+    var select = document.getElementById('version-select');
+    if (!select) return;
+
+    // Resolve the base path to find versions.json at the site root
+    var siteRoot = '/imferno/';
+
+    fetch(siteRoot + 'versions.json')
+      .then(function (r) { return r.json(); })
+      .then(function (versions) {
+        // Current version from the URL path
+        var path = window.location.pathname;
+        var match = path.match(/\/imferno\/(v[^/]+)\//);
+        var current = match ? match[1] : 'latest';
+
+        select.innerHTML = '';
+        versions.forEach(function (v) {
+          var opt = document.createElement('option');
+          opt.value = v.version;
+          opt.textContent = v.version + (v.latest ? ' (latest)' : '');
+          if (v.version === current) opt.selected = true;
+          select.appendChild(opt);
+        });
+
+        select.addEventListener('change', function () {
+          var target = select.value;
+          if (target) {
+            window.location.href = siteRoot + target + '/';
+          }
+        });
+      })
+      .catch(function () {
+        // versions.json not available — hide picker
+        select.parentElement.style.display = 'none';
+      });
+  })();
+</script>

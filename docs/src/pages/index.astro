@@ -41,6 +41,28 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       </div> */}
     </section>
 
+    <!-- Feature cards -->
+    <section class="page-container pb-16">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+        <div class="feat-card">
+          <h3>Full IMF support</h3>
+          <p>Parse AssetMaps, PKLs, and CPLs per SMPTE ST 2067-2, ST 2067-3, and Application profiles including ST 2067-21 and ST 2067-201.</p>
+        </div>
+        <div class="feat-card">
+          <h3>Strict validation</h3>
+          <p>Over 250 rules across 8 SMPTE standards. Every rule can be set to <code class="inline-code">off</code>, <code class="inline-code">info</code>, <code class="inline-code">warning</code>, <code class="inline-code">error</code>, or <code class="inline-code">critical</code> via config.</p>
+        </div>
+        <div class="feat-card">
+          <h3>Node.js &amp; WASM</h3>
+          <p>Native bindings via <code class="inline-code">@imferno/node</code> for server-side pipelines, plus a WebAssembly build for the browser.</p>
+        </div>
+        <div class="feat-card">
+          <h3>IMF reference corpus</h3>
+          <p>Tested against the Netflix Photon MERIDIAN reference corpus. ST 2067-2, ST 2067-3, ST 2067-21, and ST 2067-201 fully covered.</p>
+        </div>
+      </div>
+    </section>
+
     <!-- Get started -->
     <section class="page-container pb-16">
       <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -75,28 +97,6 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
           <div class="code-block" style="text-align: center;">
             <code style="color: #98989f;">&#x2193; scroll down to the playground</code>
           </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Feature cards -->
-    <section class="page-container pb-16">
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
-        <div class="feat-card">
-          <h3>Full IMF support</h3>
-          <p>Parse AssetMaps, PKLs, and CPLs per SMPTE ST 2067-2, ST 2067-3, and Application profiles including ST 2067-21 and ST 2067-201.</p>
-        </div>
-        <div class="feat-card">
-          <h3>Strict validation</h3>
-          <p>Validate file manifests, SHA-1/SHA-256 hashes, and structural integrity of IMF packages. ESLint-style <code class="inline-code">rules.json</code> lets you tune severity per rule or silence known issues.</p>
-        </div>
-        <div class="feat-card">
-          <h3>Node.js &amp; WASM</h3>
-          <p>Native bindings via <code class="inline-code">@imferno/node</code> for server-side pipelines, plus a WebAssembly build for the browser.</p>
-        </div>
-        <div class="feat-card">
-          <h3>IMF reference corpus</h3>
-          <p>Tested against the Netflix Photon MERIDIAN reference corpus. ST 2067-2, ST 2067-3, ST 2067-21, and ST 2067-201 fully covered.</p>
         </div>
       </div>
     </section>

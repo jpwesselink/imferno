@@ -50,11 +50,11 @@ fn test_cli_help() {
     let (success, stdout, _) = run_cli_command(&["--help"]);
 
     assert!(success);
-    assert!(stdout.contains("IMF package inspection tool"));
+    assert!(stdout.contains("SMPTE ST 2067 IMF validator and inspector"));
     assert!(stdout.contains("inspect"));
     assert!(stdout.contains("cpl"));
     assert!(stdout.contains("validate"));
-    assert!(stdout.contains("report"));
+    assert!(stdout.contains("export"));
 }
 
 #[test]

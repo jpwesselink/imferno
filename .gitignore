@@ -1,3 +1,6 @@
+# MXF test data (fetched from GitHub Release assets, not stored in git)
+*.mxf
+
 # Fixture media (large production IMF packages)
 fixture/
 

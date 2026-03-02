@@ -141,7 +141,7 @@ Add `imferno-core` to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-imferno-core = "1.0"
+imferno-core = "1.1"
 ```
 
 ### Validate a package

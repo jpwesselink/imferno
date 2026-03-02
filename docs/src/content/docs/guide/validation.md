@@ -55,29 +55,7 @@ let report = pkg.validate_hashes(&ValidationOptions::default());
 
 ## Severity overrides
 
-Severities can be adjusted per code — useful when a deployment environment has known deviations you want to suppress or promote:
-
-```rust
-use imferno_core::diagnostics::{RulesConfig, RuleSeverity};
-use imferno_core::package::{Imferno, ValidationOptions, read_dir};
-use std::collections::HashMap;
-
-let mut rules = HashMap::new();
-rules.insert("ST2067-2:2016:8/DigitalSignature".to_string(), RuleSeverity::Off);
-rules.insert("ST2067-2:2020:8.3/FileNotFound".to_string(), RuleSeverity::Critical);
-
-let options = ValidationOptions {
-    rules: RulesConfig(rules),
-    ..Default::default()
-};
-
-let files = read_dir("/path/to/your.imp")?;
-let report = Imferno::parse_and_validate(files, &options);
-```
-
-## Application profile selection
-
-imferno auto-detects the CPL's application profile from the namespace declared in the CPL XML.
+Every validation rule can be set to `off`, `info`, `warn`, `error`, or `critical`. See [Configuration](/guide/config/) for details.
 
 ## CLI
 

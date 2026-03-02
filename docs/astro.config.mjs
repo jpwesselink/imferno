@@ -19,7 +19,14 @@ export default defineConfig({
             social: [
                 { icon: 'github', label: 'GitHub', href: 'https://github.com/jpwesselink/imferno' },
             ],
-            sidebar: [],
+            tableOfContents: false,
+            sidebar: [
+                { label: 'Introduction', slug: 'guide/introduction' },
+                { label: 'Getting Started', slug: 'guide/quick-start' },
+                { label: 'Validation', slug: 'guide/validation' },
+                { label: 'Configuration', slug: 'guide/config' },
+                { label: 'API Reference', slug: 'reference/api' },
+            ],
             components: {
                 SiteTitle: './src/components/SiteTitle.astro',
             },

@@ -1,6 +1,7 @@
 ---
 title: Quick Start
 description: Parse and validate your first IMF package.
+tableOfContents: true
 ---
 
 ## CLI

@@ -1,6 +1,7 @@
 ---
 title: API Reference
 description: imferno-core public API — Imferno, ValidationReport, parsers.
+tableOfContents: true
 ---
 
 ## `read_dir`

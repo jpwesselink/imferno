@@ -1,5 +1,10 @@
 @import "tailwindcss/utilities";
 
+/* ── Sidebar: compact ── */
+:root {
+  --sl-sidebar-width: 14rem;
+}
+
 /* ── Accent: dark mode ── */
 :root,
 [data-theme='dark'] {

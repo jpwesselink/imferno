@@ -68,50 +68,15 @@
   background-clip: text;
 }
 
-/* ── Hero image glow ── */
-.hero img {
-  filter:
-    drop-shadow(0 0 24px rgba(249, 115, 22, 0.8))
-    drop-shadow(0 0 64px rgba(251, 191, 36, 0.4));
-}
-
-[data-theme='light'] .hero img {
-  filter:
-    drop-shadow(0 0 20px rgba(194, 65, 12, 0.5))
-    drop-shadow(0 0 48px rgba(217, 119, 6, 0.25));
-}
-
-/* ── Ambient radial behind the image ── */
-.hero {
-  position: relative;
-  overflow: visible;
-}
-
+/* ── Hide hero image and ambient glow (we use a custom hero section) ── */
+.hero img,
 .hero::after {
-  content: '';
-  position: absolute;
-  right: 10%;
-  top: 50%;
-  width: 420px;
-  height: 420px;
-  background: radial-gradient(
-    circle,
-    rgba(249, 115, 22, 0.18) 0%,
-    rgba(251, 191, 36, 0.08) 45%,
-    transparent 70%
-  );
-  transform: translateY(-50%);
-  pointer-events: none;
-  z-index: 0;
+  display: none;
 }
 
-[data-theme='light'] .hero::after {
-  background: radial-gradient(
-    circle,
-    rgba(194, 65, 12, 0.10) 0%,
-    rgba(217, 119, 6, 0.05) 45%,
-    transparent 70%
-  );
+/* ── Hide empty Starlight tagline ── */
+.hero .tagline:empty {
+  display: none;
 }
 
 /* ── Splash page: break container out of 45rem centering ── */

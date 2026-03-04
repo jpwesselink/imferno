@@ -10,7 +10,6 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 
     <!-- Hero -->
     <section class="hero-section">
-      <h1 class="hero-title">imferno</h1>
       <p class="hero-subtitle">SMPTE ST 2067<br/>for Rust and JavaScript.</p>
       <p class="hero-desc">Parse, validate, and inspect IMF packages with native Node.js bindings and a WebAssembly target for the browser.</p>
     </section>
@@ -287,16 +286,8 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 
   /* ── Hero ── */
   .homepage .hero-section {
-    padding-top: 2rem;
+    padding-top: 0;
     padding-bottom: 3rem;
-  }
-  .homepage .hero-title {
-    font-size: clamp(3rem, 8vw, 5rem) !important;
-    font-weight: 800;
-    color: var(--sl-color-accent);
-    line-height: 1.05 !important;
-    margin: 0 0 0.25em !important;
-    letter-spacing: -0.02em;
   }
   .homepage .hero-subtitle {
     font-size: clamp(1.75rem, 5vw, 3rem) !important;
@@ -311,12 +302,6 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
     color: var(--sl-color-gray-3);
     max-width: 640px;
     margin: 0 !important;
-  }
-
-  /* Hide Starlight's default hero tagline since we use a custom one */
-  [data-page-title] .hero .tagline:empty,
-  .hero .tagline:empty {
-    display: none;
   }
 
   /* Sponsor */

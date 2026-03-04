@@ -45,7 +45,13 @@
         // Current version from the URL path
         var path = window.location.pathname;
         var match = path.match(/\/imferno\/(v[^/]+)\//);
-        var current = match ? match[1] : 'latest';
+        var current = match ? match[1] : null;
+
+        // Hide picker on non-release paths (PR previews, local dev, etc.)
+        if (!current) {
+          select.parentElement.style.display = 'none';
+          return;
+        }
 
         select.innerHTML = '';
         versions.forEach(function (v) {
@@ -86,7 +92,7 @@
 If imferno is useful to your workflow, consider
 <a href="https://github.com/sponsors/jpwesselink" class="sponsor-link">sponsoring the project</a>.
 </p> </section> </div>  <script>(function(){const base = "/imferno/pr-10";
-const cacheBust = "mmceuykk";
+const cacheBust = "mmcf047a";
 
     (async function () {
       try {

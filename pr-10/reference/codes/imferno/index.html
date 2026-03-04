@@ -44,7 +44,13 @@
         // Current version from the URL path
         var path = window.location.pathname;
         var match = path.match(/\/imferno\/(v[^/]+)\//);
-        var current = match ? match[1] : 'latest';
+        var current = match ? match[1] : null;
+
+        // Hide picker on non-release paths (PR previews, local dev, etc.)
+        if (!current) {
+          select.parentElement.style.display = 'none';
+          return;
+        }
 
         select.innerHTML = '';
         versions.forEach(function (v) {

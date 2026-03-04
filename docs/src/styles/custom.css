@@ -89,7 +89,13 @@
   padding-top: 0;
 }
 
-/* ── Align Starlight hero with .homepage content ── */
+/* ── Align Starlight header + hero with .homepage content ── */
+header.header {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding-inline: 1.5rem;
+}
+
 .hero {
   max-width: 1280px;
   margin: 0 auto;

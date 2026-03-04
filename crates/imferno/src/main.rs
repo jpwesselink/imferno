@@ -1,4 +1,6 @@
-//! IMF CLI - Command-line tool for validating IMF packages
+//! IMF CLI — Command-line tool for validating IMF packages.
+//!
+//! Uses [`build_report`] / [`format_report`] from `imferno-core`.
 
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};

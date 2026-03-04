@@ -22,4 +22,4 @@ tsify = "0.4"
 getrandom = { workspace = true }
 
 [package.metadata.wasm-pack.profile.release]
-wasm-opt = ["-Oz"]
+wasm-opt = false

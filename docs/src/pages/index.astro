@@ -259,7 +259,11 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
   .homepage .section-title { font-size: 1.5rem !important; font-weight: 700; color: var(--sl-color-text); margin-bottom: 0.5rem !important; }
   .homepage .section-subtitle { color: var(--sl-color-gray-3); font-size: 0.875rem !important; margin-bottom: 1.5rem !important; }
   .homepage .table-wrap { border-radius: 12px; overflow: hidden; border: 1px solid var(--sl-color-hairline); }
-  .homepage .std-table { width: 100%; border-collapse: collapse; font-size: 14px !important; }
+  .homepage .std-table { width: 100%; border-collapse: collapse; font-size: 14px !important; table-layout: fixed; }
+  .homepage .std-table th:nth-child(1),
+  .homepage .std-table td:nth-child(1) { width: 30%; }
+  .homepage .std-table th:nth-child(3),
+  .homepage .std-table td:nth-child(3) { width: 140px; }
   .homepage .std-table th { text-align: left; padding: 8px 16px !important; color: var(--sl-color-gray-3); font-weight: 500; border-bottom: 1px solid var(--sl-color-hairline); }
   .homepage .std-table td { padding: 10px 16px !important; border-bottom: 1px solid var(--sl-color-hairline); color: var(--sl-color-text); font-size: 14px !important; }
   .homepage .std-table tr:last-child td { border-bottom: none; }

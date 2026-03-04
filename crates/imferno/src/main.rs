@@ -2,9 +2,7 @@
 
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
-use imferno_core::package::{
-    build_report, format_report, Imferno, ImfReport, ValidationOptions,
-};
+use imferno_core::package::{build_report, format_report, ImfReport, Imferno, ValidationOptions};
 use imferno_core::validation::{AppSpecTarget, CoreSpecTarget};
 use imferno_core::{Category, Severity, ValidationIssue, ValidationProfile, ValidationReport};
 use std::io::{IsTerminal, Read as _};
@@ -271,8 +269,7 @@ fn cmd_validate(
     };
 
     // Build report
-    let mut report = build_report(&package, &options, None)
-        .map_err(|e| anyhow::anyhow!(e))?;
+    let mut report = build_report(&package, &options, None).map_err(|e| anyhow::anyhow!(e))?;
 
     // Hash verification (appends to report.validation)
     if verify_hashes {
@@ -339,8 +336,8 @@ fn cmd_export(
         None
     };
 
-    let report = build_report(&package, &options, ancestor.as_ref())
-        .map_err(|e| anyhow::anyhow!(e))?;
+    let report =
+        build_report(&package, &options, ancestor.as_ref()).map_err(|e| anyhow::anyhow!(e))?;
 
     println!("{}", serde_json::to_string_pretty(&report)?);
 
@@ -359,8 +356,7 @@ fn cmd_report(path: &str) -> Result<()> {
             .with_context(|| format!("Cannot read report file: {}", path))?
     };
 
-    let report: ImfReport =
-        serde_json::from_str(&json).context("Invalid ImfReport JSON")?;
+    let report: ImfReport = serde_json::from_str(&json).context("Invalid ImfReport JSON")?;
 
     let color = use_color();
     print!("{}", format_report(&report, color));

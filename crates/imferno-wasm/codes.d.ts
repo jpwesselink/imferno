@@ -222,8 +222,8 @@ export declare const codes: {
     readonly RequiredChannelCount: "ST2067-21:2023:6.5/Required-ChannelCount";
     readonly RequiredQuantizationBits: "ST2067-21:2023:6.5/Required-QuantizationBits";
     readonly AlphaTransparency: "ST2067-21:2023:6.2.1/AlphaTransparency";
-    readonly 6.2.1CodingEquations: "ST2067-21:2023:6.2.1/CodingEquations";
-    readonly 6.2.1ColorPrimaries: "ST2067-21:2023:6.2.1/ColorPrimaries";
+    readonly "6.2.1CodingEquations": "ST2067-21:2023:6.2.1/CodingEquations";
+    readonly "6.2.1ColorPrimaries": "ST2067-21:2023:6.2.1/ColorPrimaries";
     readonly FieldDominance: "ST2067-21:2023:6.2.1/FieldDominance";
     readonly FrameLayout: "ST2067-21:2023:6.2.1/FrameLayout";
     readonly FrameLayoutInterlaced: "ST2067-21:2023:6.2.1/FrameLayoutInterlaced";
@@ -235,10 +235,10 @@ export declare const codes: {
     readonly SampledXOffset: "ST2067-21:2023:6.2.1/SampledXOffset";
     readonly SampledYOffset: "ST2067-21:2023:6.2.1/SampledYOffset";
     readonly StoredF2Offset: "ST2067-21:2023:6.2.1/StoredF2Offset";
-    readonly 6.2.1TransferCharacteristic: "ST2067-21:2023:6.2.1/TransferCharacteristic";
-    readonly 6.2.2TransferCharacteristic: "ST2067-21:2023:6.2.2/TransferCharacteristic";
-    readonly 6.2.3CodingEquations: "ST2067-21:2023:6.2.3/CodingEquations";
-    readonly 6.2.4ColorPrimaries: "ST2067-21:2023:6.2.4/ColorPrimaries";
+    readonly "6.2.1TransferCharacteristic": "ST2067-21:2023:6.2.1/TransferCharacteristic";
+    readonly "6.2.2TransferCharacteristic": "ST2067-21:2023:6.2.2/TransferCharacteristic";
+    readonly "6.2.3CodingEquations": "ST2067-21:2023:6.2.3/CodingEquations";
+    readonly "6.2.4ColorPrimaries": "ST2067-21:2023:6.2.4/ColorPrimaries";
     readonly J2KRequired: "ST2067-21:2023:6.2.5/J2KRequired";
     readonly AlphaMaxRef: "ST2067-21:2023:6.3/AlphaMaxRef";
     readonly AlphaMinRef: "ST2067-21:2023:6.3/AlphaMinRef";

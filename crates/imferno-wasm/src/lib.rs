@@ -3,7 +3,7 @@
 //! Provides `buildReport` / `formatReport` plus `getVersion`.
 
 use imferno_core::package::{
-    build_report, format_report, Imferno, ImfReport, RulesConfig, ValidationOptions,
+    build_report, format_report, ImfReport, Imferno, RulesConfig, ValidationOptions,
 };
 use imferno_core::validation::{AppSpecTarget, CoreSpecTarget};
 use serde::Serialize;
@@ -52,9 +52,8 @@ pub fn build_report_js(
     #[wasm_bindgen(js_name = "files")] files_js: JsValue,
     #[wasm_bindgen(js_name = "options")] options_js: JsValue,
 ) -> Result<JsValue, JsValue> {
-    let files: std::collections::HashMap<String, String> =
-        serde_wasm_bindgen::from_value(files_js)
-            .map_err(|e| JsValue::from_str(&format!("Invalid files argument: {}", e)))?;
+    let files: std::collections::HashMap<String, String> = serde_wasm_bindgen::from_value(files_js)
+        .map_err(|e| JsValue::from_str(&format!("Invalid files argument: {}", e)))?;
 
     let (rules, core_spec, app_specs) = parse_options(&options_js)?;
 

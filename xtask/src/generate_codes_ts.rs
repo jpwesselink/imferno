@@ -84,7 +84,11 @@ fn entries<C: ValidationCode>(codes: &[C]) -> Vec<(String, &'static str)> {
 fn js_object<C: ValidationCode>(name: &str, codes: &[C]) -> String {
     let mut out = format!("  {name}: {{\n");
     for (key, code) in entries(codes) {
-        out.push_str(&format!("    {key}: \"{code}\",\n"));
+        if key.starts_with(|c: char| c.is_ascii_digit()) || key.contains('.') {
+            out.push_str(&format!("    \"{key}\": \"{code}\",\n"));
+        } else {
+            out.push_str(&format!("    {key}: \"{code}\",\n"));
+        }
     }
     out.push_str("  }");
     out
@@ -94,7 +98,11 @@ fn js_object<C: ValidationCode>(name: &str, codes: &[C]) -> String {
 fn dts_object<C: ValidationCode>(name: &str, codes: &[C]) -> String {
     let mut out = format!("  readonly {name}: {{\n");
     for (key, code) in entries(codes) {
-        out.push_str(&format!("    readonly {key}: \"{code}\";\n"));
+        if key.starts_with(|c: char| c.is_ascii_digit()) || key.contains('.') {
+            out.push_str(&format!("    readonly \"{key}\": \"{code}\";\n"));
+        } else {
+            out.push_str(&format!("    readonly {key}: \"{code}\";\n"));
+        }
     }
     out.push_str("  }");
     out

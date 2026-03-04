@@ -1,6 +1,10 @@
 [workspace]
 # Only bump versions based on conventional commits.
 # release-plz opens a Release PR; merging it triggers a crates.io publish.
+#
+# Disable cargo-semver-checks: breaking changes often affect the WASM/JS API
+# (not the Rust API), so conventional commits (feat!) must drive major bumps.
+semver_check = false
 
 [[package]]
 name = "imferno-core"

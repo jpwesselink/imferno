@@ -1,7 +1,12 @@
-//! IMF Core - Integrated IMF Package Parser
+//! IMF Core — Integrated IMF Package Parser
 //!
-//! This library provides a high-level interface for parsing complete IMF packages
+//! This module provides a high-level interface for parsing complete IMF packages
 //! by coordinating the individual SMPTE standard parsers.
+//!
+//! ## Key entry points
+//!
+//! - [`build_report`] — parse and validate an IMF package, returning an [`ImfReport`].
+//! - [`format_report`] — render an [`ImfReport`] as a human-readable string.
 
 use crate::assetmap::ImfUuid;
 use crate::cpl::EditRate;

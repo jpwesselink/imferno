@@ -41,8 +41,8 @@ pub fn build_report_js(
     let package = Imferno::parse(files)
         .map_err(|e| napi::Error::from_reason(format!("Failed to parse IMF package: {}", e)))?;
 
-    let report = build_report(&package, &validation_options, None)
-        .map_err(napi::Error::from_reason)?;
+    let report =
+        build_report(&package, &validation_options, None).map_err(napi::Error::from_reason)?;
 
     serde_json::to_value(&report)
         .map_err(|e| napi::Error::from_reason(format!("Serialization error: {}", e)))
@@ -74,8 +74,8 @@ pub fn build_report_from_path(
     let package = Imferno::parse(files)
         .map_err(|e| napi::Error::from_reason(format!("Failed to parse IMF package: {}", e)))?;
 
-    let report = build_report(&package, &validation_options, None)
-        .map_err(napi::Error::from_reason)?;
+    let report =
+        build_report(&package, &validation_options, None).map_err(napi::Error::from_reason)?;
 
     serde_json::to_value(&report)
         .map_err(|e| napi::Error::from_reason(format!("Serialization error: {}", e)))

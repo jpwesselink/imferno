@@ -5,6 +5,9 @@
 # Disable cargo-semver-checks: breaking changes often affect the WASM/JS API
 # (not the Rust API), so conventional commits (feat!) must drive major bumps.
 semver_check = false
+#
+# All crates share the same version — a breaking change in any crate bumps all.
+version_group = ["imferno-core", "imferno", "imferno-wasm", "imferno-napi"]
 
 [[package]]
 name = "imferno-core"

@@ -1,6 +1,6 @@
 [package]
 name = "imferno-wasm"
-version = "1.1.0"
+version = "2.0.0"
 edition = "2021"
 description = "WebAssembly bindings for SMPTE ST 2067 IMF packages"
 license = "MIT"
@@ -11,7 +11,7 @@ repository = "https://github.com/jpwesselink/imferno"
 crate-type = ["cdylib"]
 
 [dependencies]
-imferno-core = { path = "../imferno-core", version = "1.1.0", features = ["wasm"] }
+imferno-core = { path = "../imferno-core", version = "2.0.0", features = ["wasm"] }
 wasm-bindgen = { workspace = true, features = ["serde-serialize"] }
 js-sys = { workspace = true }
 web-sys = { workspace = true, features = ["console"] }

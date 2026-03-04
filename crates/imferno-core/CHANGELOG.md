@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0](https://github.com/jpwesselink/imferno/compare/imferno-core-v1.1.0...imferno-core-v2.0.0) - 2026-03-04
+
+### Added
+
+- [**breaking**] document v2 API entry points ([#13](https://github.com/jpwesselink/imferno/pull/13))
+- unified buildReport API, timeline sequences, and docs playground overhaul
+- typed validation code constants for Rust and TypeScript
+
+### Fixed
+
+- update WASM tests and wrapper for buildReport API ([#9](https://github.com/jpwesselink/imferno/pull/9))
+
+### Other
+
+- bump version references to 1.1.0
+
 ## [1.0.1](https://github.com/jpwesselink/imferno/compare/imferno-core-v1.0.0...imferno-core-v1.0.1) - 2026-03-02
 
 ### Other

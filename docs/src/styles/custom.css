@@ -89,6 +89,14 @@
   padding-top: 0;
 }
 
+/* ── Align Starlight hero with .homepage content ── */
+.hero {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding-inline: 1.5rem;
+  padding-bottom: 0;
+}
+
 /* ── Primary button ── */
 .sl-link-button.primary {
   background: var(--sl-color-accent) !important;

@@ -197,9 +197,7 @@ fn merge_sequences(
 }
 
 /// Extract all virtual tracks from a CPL, merged across segments
-fn extract_sequences(
-    cpl: &crate::cpl::CompositionPlaylist,
-) -> (Option<String>, Vec<CplSequence>) {
+fn extract_sequences(cpl: &crate::cpl::CompositionPlaylist) -> (Option<String>, Vec<CplSequence>) {
     let edit_rate = cpl
         .edit_rate
         .as_ref()
@@ -209,9 +207,24 @@ fn extract_sequences(
 
     for seg in &cpl.segment_list.segments {
         let sl = &seg.sequence_list;
-        merge_sequences(&mut track_map, "MainImage", &sl.main_image_sequences, &edit_rate);
-        merge_sequences(&mut track_map, "MainAudio", &sl.main_audio_sequences, &edit_rate);
-        merge_sequences(&mut track_map, "Subtitles", &sl.subtitles_sequences, &edit_rate);
+        merge_sequences(
+            &mut track_map,
+            "MainImage",
+            &sl.main_image_sequences,
+            &edit_rate,
+        );
+        merge_sequences(
+            &mut track_map,
+            "MainAudio",
+            &sl.main_audio_sequences,
+            &edit_rate,
+        );
+        merge_sequences(
+            &mut track_map,
+            "Subtitles",
+            &sl.subtitles_sequences,
+            &edit_rate,
+        );
         merge_sequences(
             &mut track_map,
             "HearingImpairedCaptions",

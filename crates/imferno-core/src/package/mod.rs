@@ -1961,7 +1961,6 @@ impl Imferno {
 
         analyses
     }
-
 }
 
 // ── Pipeline options ──────────────────────────────────────────────────────────
@@ -2290,9 +2289,7 @@ mod tests {
         assert!(!package.composition_playlists.is_empty());
 
         let first_cpl = package.composition_playlists.values().next().unwrap();
-        let details = package
-            .get_cpl_details(&first_cpl.id.to_string())
-            .unwrap();
+        let details = package.get_cpl_details(&first_cpl.id.to_string()).unwrap();
         assert_eq!(details.title, first_cpl.content_title.text);
 
         for version in &details.content_versions {

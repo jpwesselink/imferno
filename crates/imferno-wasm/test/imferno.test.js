@@ -40,138 +40,106 @@ describe('getVersion', () => {
     });
 });
 
-// ─── parseVolindexTyped ──────────────────────────────────────────────────────
-describe('parseVolindexTyped', () => {
-    it('parses a valid VOLINDEX', () => {
-        const result = wasm.parseVolindexTyped(volindexXml);
+// ─── buildReport ─────────────────────────────────────────────────────────────
+describe('buildReport', () => {
+    it('builds a report from a valid package', () => {
+        const result = wasm.buildReport(packageFiles);
         expect(result).toBeDefined();
+        expect(result).toHaveProperty('package');
+        expect(result).toHaveProperty('cpls');
+        expect(result).toHaveProperty('validation');
     });
 
-    it('throws on invalid XML', () => {
-        expect(() => wasm.parseVolindexTyped('<bad>')).toThrow();
-    });
-});
-
-// ─── parseAssetmapTyped ──────────────────────────────────────────────────────
-describe('parseAssetmapTyped', () => {
-    it('parses a valid ASSETMAP and returns the id', () => {
-        const result = wasm.parseAssetmapTyped(assetmapXml);
-        expect(result).toBeDefined();
-        expect(result.id).toBe('aa8669d7-6ebc-4839-9855-b5d7f9aa7f21');
+    it('package summary has expected fields', () => {
+        const result = wasm.buildReport(packageFiles);
+        const pkg = result.package;
+        expect(pkg.assetMapId).toBe('aa8669d7-6ebc-4839-9855-b5d7f9aa7f21');
+        expect(pkg.assetCount).toBe(5);
+        expect(pkg.cplCount).toBeGreaterThan(0);
+        expect(pkg.pklCount).toBeGreaterThan(0);
     });
 
-    it('returns asset_list with correct count', () => {
-        const result = wasm.parseAssetmapTyped(assetmapXml);
-        expect(result.asset_list.assets.length).toBe(5);
+    it('returns CPL reports with sequences', () => {
+        const result = wasm.buildReport(packageFiles);
+        expect(Array.isArray(result.cpls)).toBe(true);
+        expect(result.cpls.length).toBeGreaterThan(0);
+        const cpl = result.cpls[0];
+        expect(cpl).toHaveProperty('id');
+        expect(cpl).toHaveProperty('title');
+        expect(cpl).toHaveProperty('segmentCount');
+        expect(cpl).toHaveProperty('sequences');
+        expect(Array.isArray(cpl.sequences)).toBe(true);
     });
 
-    it('assets have id and chunk_list', () => {
-        const result = wasm.parseAssetmapTyped(assetmapXml);
-        const first = result.asset_list.assets[0];
-        expect(first.id).toBeDefined();
-        expect(first.chunk_list.chunks.length).toBeGreaterThan(0);
-        expect(first.chunk_list.chunks[0].path).toBeDefined();
-    });
-
-    it('throws on invalid XML', () => {
-        expect(() => wasm.parseAssetmapTyped('not xml')).toThrow();
-    });
-});
-
-// ─── parsePklTyped ───────────────────────────────────────────────────────────
-describe('parsePklTyped', () => {
-    it('parses a valid PKL and returns the id', () => {
-        const result = wasm.parsePklTyped(pklXml);
-        expect(result).toBeDefined();
-        expect(result.id).toBe('f45a2034-317d-40fa-b07f-b9c5f3f15cfa');
-    });
-
-    it('returns assets with hashes and sizes', () => {
-        const result = wasm.parsePklTyped(pklXml);
-        const assets = result.asset_list.assets;
-        expect(assets.length).toBe(4);
-        for (const asset of assets) {
-            expect(asset.hash).toBeDefined();
-            expect(asset.size).toBeDefined();
+    it('sequences have resources with durations', () => {
+        const result = wasm.buildReport(packageFiles);
+        const cpl = result.cpls[0];
+        if (cpl.sequences.length > 0) {
+            const seq = cpl.sequences[0];
+            expect(seq).toHaveProperty('type');
+            expect(seq).toHaveProperty('id');
+            expect(seq).toHaveProperty('trackId');
+            expect(Array.isArray(seq.resources)).toBe(true);
+            if (seq.resources.length > 0) {
+                const res = seq.resources[0];
+                expect(res).toHaveProperty('id');
+                expect(res).toHaveProperty('intrinsicDuration');
+            }
         }
     });
 
-    it('throws on invalid XML', () => {
-        expect(() => wasm.parsePklTyped('<oops/>')).toThrow();
-    });
-});
-
-// ─── parseCplTyped ───────────────────────────────────────────────────────────
-describe('parseCplTyped', () => {
-    it('parses a valid CPL', () => {
-        const result = wasm.parseCplTyped(cplXml);
-        expect(result).toBeDefined();
+    it('validation report has expected shape', () => {
+        const result = wasm.buildReport(packageFiles);
+        const v = result.validation;
+        expect(v).toHaveProperty('errors');
+        expect(v).toHaveProperty('warnings');
+        expect(v).toHaveProperty('info');
+        expect(Array.isArray(v.errors)).toBe(true);
     });
 
-    it('throws on invalid XML', () => {
-        expect(() => wasm.parseCplTyped('<nope/>')).toThrow();
-    });
-});
-
-// ─── validate ────────────────────────────────────────────────────────────────
-describe('validate', () => {
-    it('validates a package and returns report + parsed data', () => {
-        const result = wasm.validate(packageFiles);
-        expect(result).toBeDefined();
-        expect(result).toHaveProperty('report');
-        expect(result).toHaveProperty('cpls');
-        expect(result).toHaveProperty('assetMap');
-        expect(result).toHaveProperty('packingLists');
-        expect(result).toHaveProperty('volumeIndex');
-        expect(result).toHaveProperty('unreferencedAssets');
-        expect(result).toHaveProperty('declaredSidecars');
-    });
-
-    it('report has expected shape', () => {
-        const result = wasm.validate(packageFiles);
-        expect(result.report).toHaveProperty('errors');
-        expect(result.report).toHaveProperty('warnings');
-        expect(result.report).toHaveProperty('info');
-        expect(Array.isArray(result.report.errors)).toBe(true);
-    });
-
-    it('returns parsed CPLs', () => {
-        const result = wasm.validate(packageFiles);
-        expect(Array.isArray(result.cpls)).toBe(true);
-        expect(result.cpls.length).toBeGreaterThan(0);
-    });
-
-    it('returns parsed asset map', () => {
-        const result = wasm.validate(packageFiles);
-        expect(result.assetMap).toBeDefined();
-        expect(result.assetMap.id).toBe('aa8669d7-6ebc-4839-9855-b5d7f9aa7f21');
-    });
-
-    it('returns errors for missing ASSETMAP', () => {
+    it('throws on missing ASSETMAP', () => {
         const files = { 'random.xml': '<foo/>' };
-        const result = wasm.validate(files);
-        expect(result).toBeDefined();
-        expect(result.report.critical.length).toBeGreaterThan(0);
-        expect(result.assetMap).toBeFalsy();
+        expect(() => wasm.buildReport(files)).toThrow();
     });
 
-    it('accepts spec selection options', () => {
-        const result = wasm.validate(packageFiles, {
+    it('accepts coreSpec option', () => {
+        const result = wasm.buildReport(packageFiles, {
             coreSpec: 'v2020',
+        });
+        expect(result).toBeDefined();
+        expect(result.validation).toHaveProperty('errors');
+    });
+
+    it('accepts app2eSpec option', () => {
+        const result = wasm.buildReport(packageFiles, {
             app2eSpec: 'v2023',
         });
         expect(result).toBeDefined();
-        expect(result.report).toHaveProperty('errors');
     });
 
     it('accepts rules option', () => {
-        const result = wasm.validate(packageFiles, { rules: {} });
+        const result = wasm.buildReport(packageFiles, { rules: {} });
         expect(result).toBeDefined();
-        expect(result.report).toHaveProperty('errors');
     });
 
     it('rejects invalid coreSpec', () => {
-        expect(() => wasm.validate(packageFiles, { coreSpec: 'v9999' })).toThrow();
+        expect(() => wasm.buildReport(packageFiles, { coreSpec: 'v9999' })).toThrow();
+    });
+});
+
+// ─── formatReport ────────────────────────────────────────────────────────────
+describe('formatReport', () => {
+    it('formats a report as a string', () => {
+        const report = wasm.buildReport(packageFiles);
+        const formatted = wasm.formatReport(report);
+        expect(typeof formatted).toBe('string');
+        expect(formatted.length).toBeGreaterThan(0);
+    });
+
+    it('output contains validation info', () => {
+        const report = wasm.buildReport(packageFiles);
+        const formatted = wasm.formatReport(report);
+        expect(formatted).toMatch(/ok|error|warning|valid/i);
     });
 });
 
@@ -186,8 +154,8 @@ describe('schema validation', () => {
 
     it('all schemas compile without errors', () => {
         const names = [
-            'imf-report', 'validation-report', 'composition-playlist',
-            'asset-map', 'packing-list', 'volume-index', 'rules-config',
+            'imf-report', 'validation-report',
+            'rules-config',
         ];
         for (const name of names) {
             const schema = loadSchema(name);
@@ -195,75 +163,19 @@ describe('schema validation', () => {
         }
     });
 
-    it('validate() report matches validation-report schema', () => {
-        const schema = loadSchema('validation-report');
+    it('buildReport output matches imf-report schema', () => {
+        const schema = loadSchema('imf-report');
         const validate = ajv.compile(schema);
-        const result = wasm.validate(packageFiles);
-        expect(validate(result.report)).toBe(true);
-    });
-
-    it('validate() assetMap matches asset-map schema', () => {
-        const schema = loadSchema('asset-map');
-        const validate = ajv.compile(schema);
-        const result = wasm.validate(packageFiles);
-        expect(validate(result.assetMap)).toBe(true);
-    });
-
-    it('validate() packingLists match packing-list schema', () => {
-        const schema = loadSchema('packing-list');
-        const validate = ajv.compile(schema);
-        const result = wasm.validate(packageFiles);
-        for (const pkl of result.packingLists) {
-            expect(validate(pkl)).toBe(true);
+        const result = wasm.buildReport(packageFiles);
+        const valid = validate(result);
+        if (!valid) {
+            console.error('Schema validation errors:', JSON.stringify(validate.errors, null, 2));
         }
+        expect(valid).toBe(true);
     });
 
-    it('validate() volumeIndex matches volume-index schema', () => {
-        const schema = loadSchema('volume-index');
-        const validate = ajv.compile(schema);
-        const result = wasm.validate(packageFiles);
-        expect(validate(result.volumeIndex)).toBe(true);
-    });
-
-    // CPL schema uses PascalCase (ContentTitle) from non-wasm serde, but WASM
-    // output uses camelCase (contentTitle) from wasm-specific serde overrides.
-    // TODO: generate a separate wasm-compatible schema or normalise casing.
-    it.skip('validate() cpls match composition-playlist schema', () => {
-        const schema = loadSchema('composition-playlist');
-        const validate = ajv.compile(schema);
-        const result = wasm.validate(packageFiles);
-        for (const cpl of result.cpls) {
-            const valid = validate(cpl);
-            if (!valid) {
-                console.error('CPL validation errors:', JSON.stringify(validate.errors, null, 2));
-            }
-            expect(valid).toBe(true);
-        }
-    });
-
-    it('parseAssetmapTyped output matches asset-map schema', () => {
-        const schema = loadSchema('asset-map');
-        const validate = ajv.compile(schema);
-        const result = wasm.parseAssetmapTyped(assetmapXml);
-        expect(validate(result)).toBe(true);
-    });
-
-    it('parsePklTyped output matches packing-list schema', () => {
-        const schema = loadSchema('packing-list');
-        const validate = ajv.compile(schema);
-        const result = wasm.parsePklTyped(pklXml);
-        expect(validate(result)).toBe(true);
-    });
-
-    it('parseVolindexTyped output matches volume-index schema', () => {
-        const schema = loadSchema('volume-index');
-        const validate = ajv.compile(schema);
-        const result = wasm.parseVolindexTyped(volindexXml);
-        expect(validate(result)).toBe(true);
-    });
-
-    it('rejects invalid data against asset-map schema', () => {
-        const schema = loadSchema('asset-map');
+    it('rejects invalid data against imf-report schema', () => {
+        const schema = loadSchema('imf-report');
         const validate = ajv.compile(schema);
         expect(validate({ bogus: true })).toBe(false);
         expect(validate.errors.length).toBeGreaterThan(0);
@@ -290,24 +202,19 @@ describe('auto-init wrapper (index.js)', () => {
         wrapper = await import('../index.js');
     });
 
-    it('parseAssetmapTyped works through wrapper', async () => {
-        const result = await wrapper.parseAssetmapTyped(assetmapXml);
-        expect(result.id).toBe('aa8669d7-6ebc-4839-9855-b5d7f9aa7f21');
+    it('buildReport works through wrapper', async () => {
+        const result = await wrapper.buildReport(packageFiles);
+        expect(result).toHaveProperty('package');
+        expect(result).toHaveProperty('cpls');
+        expect(result).toHaveProperty('validation');
+        expect(result.package.assetMapId).toBe('aa8669d7-6ebc-4839-9855-b5d7f9aa7f21');
     });
 
-    it('parseCplTyped works through wrapper', async () => {
-        const result = await wrapper.parseCplTyped(cplXml);
-        expect(result).toBeDefined();
-    });
-
-    it('parsePklTyped works through wrapper', async () => {
-        const result = await wrapper.parsePklTyped(pklXml);
-        expect(result.id).toBe('f45a2034-317d-40fa-b07f-b9c5f3f15cfa');
-    });
-
-    it('parseVolindexTyped works through wrapper', async () => {
-        const result = await wrapper.parseVolindexTyped(volindexXml);
-        expect(result).toBeDefined();
+    it('formatReport works through wrapper', async () => {
+        const report = await wrapper.buildReport(packageFiles);
+        const formatted = await wrapper.formatReport(report);
+        expect(typeof formatted).toBe('string');
+        expect(formatted.length).toBeGreaterThan(0);
     });
 
     it('getVersion works through wrapper', async () => {
@@ -315,15 +222,8 @@ describe('auto-init wrapper (index.js)', () => {
         expect(version).toMatch(/^\d+\.\d+\.\d+/);
     });
 
-    it('validate works through wrapper', async () => {
-        const result = await wrapper.validate(packageFiles);
-        expect(result).toHaveProperty('report');
-        expect(result).toHaveProperty('cpls');
-        expect(result.report).toHaveProperty('errors');
-    });
-
-    it('validate with options works through wrapper', async () => {
-        const result = await wrapper.validate(packageFiles, { coreSpec: 'auto' });
-        expect(result).toHaveProperty('report');
+    it('buildReport with options works through wrapper', async () => {
+        const result = await wrapper.buildReport(packageFiles, { coreSpec: 'auto' });
+        expect(result).toHaveProperty('package');
     });
 });

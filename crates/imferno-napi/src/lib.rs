@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 use imferno_core::package::{
-    build_report, format_report, Imferno, ImfReport, RulesConfig, ValidationOptions,
+    build_report, format_report, ImfReport, Imferno, RulesConfig, ValidationOptions,
 };
 use imferno_core::validation::{AppSpecTarget, CoreSpecTarget};
 use napi_derive::napi;

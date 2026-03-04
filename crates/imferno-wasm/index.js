@@ -30,31 +30,16 @@ function ensureInit() {
     return initPromise;
 }
 
-// Parsing
-export async function parseAssetmapTyped(xmlContent) {
+// Build a structured report from an IMF package
+export async function buildReport(files, options) {
     await ensureInit();
-    return wasm.parseAssetmapTyped(xmlContent);
+    return wasm.buildReport(files, options);
 }
 
-export async function parseCplTyped(xmlContent) {
+// Format an ImfReport as a human-readable string
+export async function formatReport(report) {
     await ensureInit();
-    return wasm.parseCplTyped(xmlContent);
-}
-
-export async function parsePklTyped(xmlContent) {
-    await ensureInit();
-    return wasm.parsePklTyped(xmlContent);
-}
-
-export async function parseVolindexTyped(xmlContent) {
-    await ensureInit();
-    return wasm.parseVolindexTyped(xmlContent);
-}
-
-// Validation — the unified function
-export async function validate(files, options) {
-    await ensureInit();
-    return wasm.validate(files, options);
+    return wasm.formatReport(report);
 }
 
 // Utility

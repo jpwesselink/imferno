@@ -13,8 +13,6 @@ specs/
 Cargo.lock
 
 # WASM build output
-imf-wasm/pkg/
-imf-wasm/node_modules/
 crates/imferno-wasm/pkg/
 crates/imferno-wasm/imferno_wasm.js
 crates/imferno-wasm/imferno_wasm.d.ts

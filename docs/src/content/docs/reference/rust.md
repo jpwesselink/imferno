@@ -1,5 +1,5 @@
 ---
-title: API Reference
+title: Rust API
 description: imferno-core public API — Imferno, ValidationReport, parsers.
 tableOfContents: true
 ---
@@ -44,16 +44,27 @@ fn validate(&self, options: &ValidationOptions) -> ValidationReport
 fn validate_hashes(&self, options: &ValidationOptions) -> ValidationReport
 ```
 
-### Inspect
+### Query
 
 ```rust
-fn inspect(&self) -> PackageInspection
-fn list_cpls(&self) -> Vec<CplSummary>
 fn get_cpl(&self, uuid: ImfUuid) -> Option<&CompositionPlaylist>
 fn get_main_cpl(&self) -> Option<&CompositionPlaylist>
+fn get_cpl_details(&self, uuid: &str) -> Option<CplDetails>
 fn get_asset_path(&self, uuid: ImfUuid) -> Option<&PathBuf>
 fn analyze_tracks(&self) -> Vec<TrackAnalysis>
 ```
+
+### Report
+
+```rust
+use imferno_core::package::{build_report, format_report, ValidationOptions};
+
+let report = build_report(&package, &ValidationOptions::default(), None)?;
+let text = format_report(&report, false);  // false = no ANSI color
+```
+
+`build_report()` returns an `ImfReport` (the same JSON the CLI `export` command produces).
+`format_report()` renders it as a human-readable string (the same output as CLI `validate`).
 
 ---
 
@@ -77,42 +88,6 @@ pub struct ValidationOptions {
     /// Skip file manifest and MXF header checks (native only).
     #[cfg(not(target_arch = "wasm32"))]
     pub skip_disk_checks: bool,
-}
-```
-
----
-
-## `PackageInspection`
-
-```rust
-pub struct PackageInspection {
-    pub path:                 PathBuf,
-    pub volume_index:         u32,
-    pub asset_map_id:         String,
-    pub asset_count:          usize,
-    pub cpl_count:            usize,
-    pub cpl_uuids:            Vec<String>,
-    pub main_cpl:             Option<CplSummary>,
-    pub asset_map_issuer:     Option<String>,
-    pub asset_map_creator:    Option<String>,
-    pub asset_map_issue_date: String,
-}
-```
-
----
-
-## `CplSummary`
-
-```rust
-pub struct CplSummary {
-    pub id:         String,
-    pub title:      String,
-    pub kind:       String,
-    pub issue_date: String,
-    pub segments:   usize,
-    pub issuer:     Option<String>,
-    pub creator:    Option<String>,
-    pub annotation: Option<String>,
 }
 ```
 
@@ -157,7 +132,7 @@ pub struct ValidationIssue {
 }
 ```
 
-For the full list of codes see [Validation Codes](/reference/codes/st2067-2/).
+For the full list of codes see the [Validation Codes](/reference/codes/st2067-2/) reference.
 
 ---
 

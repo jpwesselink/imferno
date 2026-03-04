@@ -31,7 +31,7 @@ fn usage() {
     eprintln!("usage: cargo xtask <command>");
     eprintln!();
     eprintln!("commands:");
-    eprintln!("  build-wasm         build imf-wasm with wasm-pack and sync to docs/public/wasm/");
+    eprintln!("  build-wasm         build imferno-wasm with wasm-pack and sync to docs/public/wasm/");
     eprintln!("  generate-docs      generate reference/codes/*.md from spec crate enums");
     eprintln!("  generate-schema    generate JSON Schema files into crates/imferno-core/npm/schema/schemas/");
     eprintln!("  generate-codes-ts  generate codes.js + codes.d.ts from validation-code enums");

@@ -9,37 +9,27 @@ export function init(): void;
  */
 export function getVersion(): string;
 /**
- * Parse VOLINDEX.xml and return a typed VolumeIndex object
- */
-export function parseVolindexTyped(xmlContent: string): VolumeIndex;
-/**
- * Parse ASSETMAP.xml and return a typed AssetMap object
- */
-export function parseAssetmapTyped(xmlContent: string): any;
-/**
- * Parse PKL XML and return a typed PackingList object
- */
-export function parsePklTyped(xmlContent: string): any;
-/**
- * Parse CPL XML and return a typed CompositionPlaylist object
- */
-export function parseCplTyped(xmlContent: string): CompositionPlaylist;
-/**
- * Validate a full IMF package and return both the validation report and parsed data.
+ * Build a structured report from an IMF package.
  *
- * Pass all XML files from the package as a plain JS object where each key is
- * the filename and each value is the file's text content. ASSETMAP.xml is
- * required; VOLINDEX.xml, PKL files, and CPL files are resolved automatically
- * from the AssetMap.
+ * Pass all XML files as a plain JS object where each key is the filename
+ * and each value is the file's text content.
+ *
+ * Returns an `ImfReport` containing package metadata, CPL analysis, and
+ * validation results. This is the same JSON that the CLI `export` command produces.
  *
  * Options (all optional):
- * - `coreSpec`: `"auto"` | `"v2013"` | `"v2016"` | `"v2020"` — core constraints version
- * - `app2eSpec`: `"auto"` | `"none"` | `"v2020"` | `"v2021"` | `"v2023"` — app profile version
+ * - `coreSpec`: `"auto"` | `"v2013"` | `"v2016"` | `"v2020"`
+ * - `app2eSpec`: `"auto"` | `"none"` | `"v2020"` | `"v2021"` | `"v2023"`
  * - `rules`: ESLint-style rules configuration object
- *
- * Returns `{ report, cpls, assetMap, packingLists, volumeIndex, unreferencedAssets, declaredSidecars }`
  */
-export function validate(files: any, options: any): any;
+export function buildReport(files: any, options: any): any;
+/**
+ * Format a previously built `ImfReport` as a human-readable string.
+ *
+ * Pass the object returned by `buildReport()` (or any valid `ImfReport` JSON).
+ * Returns the same output as `imferno report` on the CLI.
+ */
+export function formatReport(report: any): string;
 export interface TrackInfo {
     track_id: string;
     track_type: string;
@@ -517,11 +507,8 @@ export interface InitOutput {
   readonly memory: WebAssembly.Memory;
   readonly init: () => void;
   readonly getVersion: () => [number, number];
-  readonly parseVolindexTyped: (a: number, b: number) => [number, number, number];
-  readonly parseAssetmapTyped: (a: number, b: number) => [number, number, number];
-  readonly parsePklTyped: (a: number, b: number) => [number, number, number];
-  readonly parseCplTyped: (a: number, b: number) => [number, number, number];
-  readonly validate: (a: any, b: any) => [number, number, number];
+  readonly buildReport: (a: any, b: any) => [number, number, number];
+  readonly formatReport: (a: any) => [number, number, number, number];
   readonly __wbindgen_malloc: (a: number, b: number) => number;
   readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
   readonly __wbindgen_exn_store: (a: number) => void;

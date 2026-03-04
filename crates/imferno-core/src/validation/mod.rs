@@ -294,7 +294,7 @@ pub fn validate_cpl_with_builtin_registry(cpl: &CompositionPlaylist) -> Vec<Vali
 
 /// Run all applicable validators from a provided registry on a CPL.
 ///
-/// This is designed to plug directly into `imf-parser`'s
+/// This is designed to plug directly into the package validator's
 /// `validate_package_structure_with_cpl_validator` seam.
 pub fn validate_cpl_with_registry(
     cpl: &CompositionPlaylist,

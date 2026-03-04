@@ -25,7 +25,29 @@ export default defineConfig({
                 { label: 'Getting Started', slug: 'guide/quick-start' },
                 { label: 'Validation', slug: 'guide/validation' },
                 { label: 'Configuration', slug: 'guide/config' },
-                { label: 'API Reference', slug: 'reference/api' },
+                {
+                    label: 'API Reference',
+                    items: [
+                        { label: 'Rust', slug: 'reference/rust' },
+                        { label: 'WASM', slug: 'reference/wasm' },
+                        { label: 'Node.js', slug: 'reference/node' },
+                        { label: 'CLI', slug: 'reference/cli' },
+                    ],
+                },
+                {
+                    label: 'Validation Codes',
+                    items: [
+                        { label: 'ST 429-9', slug: 'reference/codes/st429-9' },
+                        { label: 'ST 377-1', slug: 'reference/codes/st377-1' },
+                        { label: 'ST 2067-2', slug: 'reference/codes/st2067-2' },
+                        { label: 'ST 2067-3', slug: 'reference/codes/st2067-3' },
+                        { label: 'ST 2067-9', slug: 'reference/codes/st2067-9' },
+                        { label: 'ST 2067-21', slug: 'reference/codes/st2067-21' },
+                        { label: 'ST 2067-201', slug: 'reference/codes/st2067-201' },
+                        { label: 'ST 2067-202', slug: 'reference/codes/st2067-202' },
+                        { label: 'imferno', slug: 'reference/codes/imferno' },
+                    ],
+                },
             ],
             components: {
                 SiteTitle: './src/components/SiteTitle.astro',

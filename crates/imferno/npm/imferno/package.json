@@ -1,7 +1,7 @@
 {
   "name": "imferno",
   "version": "0.1.1",
-  "description": "SMPTE ST 2067 IMF validator and inspector",
+  "description": "SMPTE ST 2067 IMF validator",
   "bin": {
     "imferno": "bin/imferno.js"
   },

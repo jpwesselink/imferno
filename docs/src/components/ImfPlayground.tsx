@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 
 // ─── configurable rules ───────────────────────────────────────────────────────
 
@@ -8,12 +8,9 @@ const CONFIGURABLE_RULES: Array<{ code: string; label: string; hint: string }> =
     { code: 'ST2067-2:2020:8.3/FileNotFound',        label: 'FileNotFound',      hint: 'Asset file not found on disk' },
     { code: 'ST2067-3:2020:7.2.2/SegmentDuration',   label: 'SegmentDuration',   hint: 'Unequal segment durations across tracks' },
 ];
-import IMFPackageViewer, { type PackageViewData, type SequenceData, type SequenceResource } from './IMFPackageViewer';
+import IMFPackageViewer from './IMFPackageViewer';
 
 // ─── global WASM handle ───────────────────────────────────────────────────────
-// The WASM module is loaded by an `is:inline` <script> in index.astro using a
-// native browser ES-module import (outside Vite's module graph). It exposes
-// the parse functions on window.__imfWasm and fires 'imf-wasm-ready' when done.
 
 declare global {
     interface Window {
@@ -32,17 +29,11 @@ function getWasmModule(): any | null {
 
 type FileKind = 'volindex' | 'assetmap' | 'cpl' | 'pkl' | 'opl';
 
-type ParseState =
-    | { tag: 'parsing' }
-    | { tag: 'done'; result: unknown }
-    | { tag: 'error'; message: string };
-
 interface UploadedFile {
     uid: string;
     name: string;
     size: number;
     kind: FileKind | 'unknown';
-    state: ParseState;
 }
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -69,150 +60,113 @@ function makeUid() {
     return Math.random().toString(36).slice(2);
 }
 
-// ─── value coercion ───────────────────────────────────────────────────────────
-// quick-xml serialises XML text+attribute elements as { "$text": "...", "@scope": "..." }.
-// This helper extracts a renderable string from any field that may have that shape.
-function asText(v: unknown): string {
-    if (v == null) return '';
-    if (typeof v === 'string') return v;
-    if (typeof v === 'number' || typeof v === 'boolean') return String(v);
-    if (typeof v === 'object') {
-        const obj = v as Record<string, unknown>;
-        if ('$text' in obj) return String(obj['$text'] ?? '');
-        if ('text' in obj) return String(obj['text'] ?? '');
-    }
-    return String(v);
+/** Convert edit rate from "N/D" (Rust) to "N D" (component expects whitespace-split) */
+function normalizeEditRate(er: string | null | undefined): string | null {
+    if (!er) return null;
+    return er.replace('/', ' ');
 }
 
-// ─── result renderers ─────────────────────────────────────────────────────────
-
-function Row({ label, value }: { label: string; value: React.ReactNode }) {
-    return (
-        <div style={{
-            display: 'flex',
-            gap: '12px',
-            padding: '6px 0',
-            borderBottom: '1px solid #2e2e32',
-            fontSize: '13px',
-        }}>
-            <span style={{ color: '#6a6a71', minWidth: '130px', flexShrink: 0 }}>{label}</span>
-            <span style={{ color: '#dfdfd6', wordBreak: 'break-all' }}>{value}</span>
-        </div>
-    );
+/** Convert Rust sequence type to component sequence type (add "Sequence" suffix) */
+function normalizeSeqType(type: string): string {
+    if (type.endsWith('Sequence')) return type;
+    return type + 'Sequence';
 }
+
+// ─── map buildReport → IMFPackageViewer data ─────────────────────────────────
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function VolindexResult({ r }: { r: any }) {
-    return <Row label="Volume index" value={String(r.Index)} />;
-}
+function mapReportToViewData(report: any): any {
+    const pkg = report.package;
+    const v = report.validation;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function AssetMapResult({ r }: { r: any }) {
-    const assets: unknown[] = r.asset_list?.assets ?? [];
-    return (
-        <div>
-            <Row label="ID" value={asText(r.id)} />
-            <Row label="Issue date" value={asText(r.issue_date)} />
-            {r.volume_count !== undefined && <Row label="Volume count" value={String(r.volume_count)} />}
-            {r.issuer && <Row label="Issuer" value={asText(r.issuer)} />}
-            {r.creator && <Row label="Creator" value={asText(r.creator)} />}
-            {r.annotation_text && <Row label="Annotation" value={asText(r.annotation_text)} />}
-            <Row label="Assets" value={String(assets.length)} />
-            {assets.length > 0 && (
-                <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                    {assets.map((asset: any, i: number) => {
-                        const path = asset.chunk_list?.chunks?.[0]?.path ?? '—';
-                        const isPkl = asset.packing_list === true;
-                        return (
-                            <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', padding: '4px 0' }}>
-                                <span style={{
-                                    flexShrink: 0,
-                                    fontSize: '10px',
-                                    fontFamily: 'monospace',
-                                    padding: '1px 6px',
-                                    borderRadius: '4px',
-                                    background: isPkl ? 'rgba(194,97,38,0.2)' : '#2a2a30',
-                                    color: isPkl ? '#f97316' : '#6a6a71',
-                                }}>
-                                    {isPkl ? 'PKL' : 'ASSET'}
-                                </span>
-                                <div style={{ minWidth: 0 }}>
-                                    <div style={{ fontSize: '11px', fontFamily: 'monospace', color: '#98989f', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{asset.id}</div>
-                                    <div style={{ fontSize: '11px', color: '#6a6a71', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{path}</div>
-                                </div>
-                            </div>
-                        );
-                    })}
-                </div>
-            )}
-        </div>
-    );
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function CplResult({ r }: { r: any }) {
-    const locales: unknown[] = r.localeList?.locale ?? [];
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const langs: string[] = locales.flatMap((l: any) => l.languageList?.language ?? []);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const regions: string[] = locales.flatMap((l: any) => l.regionList?.region ?? []);
-    const descCount: number = r.essenceDescriptorList?.essenceDescriptor?.length ?? 0;
-    const segs: unknown[] = r.segmentList?.segment ?? [];
-    const kindText = asText(r.contentKind);
-    return (
-        <div>
-            <Row label="ID" value={asText(r.id)} />
-            <Row label="Title" value={asText(r.contentTitle?.text) || asText(r.contentTitle) || '—'} />
-            <Row label="Issue date" value={asText(r.issueDate)} />
-            {kindText && <Row label="Content kind" value={kindText} />}
-            {r.issuer && <Row label="Issuer" value={asText(r.issuer?.text) || asText(r.issuer)} />}
-            {r.creator && <Row label="Creator" value={asText(r.creator?.text) || asText(r.creator)} />}
-            {r.contentOriginator && <Row label="Content originator" value={asText(r.contentOriginator?.text) || asText(r.contentOriginator)} />}
-            {langs.length > 0 && <Row label="Languages" value={langs.join(', ')} />}
-            {regions.length > 0 && <Row label="Regions" value={regions.join(', ')} />}
-            <Row label="Segments" value={String(segs.length)} />
-            {descCount > 0 && <Row label="Essence descriptors" value={String(descCount)} />}
-        </div>
-    );
-}
+    const flatIssues: any[] = [
+        ...(v.critical ?? []),
+        ...(v.errors ?? []),
+        ...(v.warnings ?? []),
+        ...(v.info ?? []),
+    ];
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function PklResult({ r }: { r: any }) {
-    const assets: unknown[] = r.asset_list?.assets ?? [];
-    return (
-        <div>
-            <Row label="ID" value={asText(r.id)} />
-            <Row label="Issue date" value={asText(r.issue_date)} />
-            {r.issuer && <Row label="Issuer" value={asText(r.issuer)} />}
-            {r.creator && <Row label="Creator" value={asText(r.creator)} />}
-            <Row label="Assets" value={String(assets.length)} />
-            {assets.length > 0 && (
-                <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                    {assets.map((asset: any, i: number) => (
-                        <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', padding: '4px 0' }}>
-                            <span style={{
-                                flexShrink: 0,
-                                fontSize: '10px',
-                                fontFamily: 'monospace',
-                                padding: '1px 6px',
-                                borderRadius: '4px',
-                                background: '#2a2a30',
-                                color: '#6a6a71',
-                            }}>
-                                {String(asset.mime_type ?? 'ASSET')}
-                            </span>
-                            <div style={{ minWidth: 0 }}>
-                                <div style={{ fontSize: '11px', fontFamily: 'monospace', color: '#98989f', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{asset.id}</div>
-                                <div style={{ fontSize: '11px', color: '#6a6a71' }}>{formatBytes(Number(asset.size ?? 0))}</div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            )}
-        </div>
-    );
+    const hasCritical = (v.critical?.length ?? 0) > 0;
+    const hasErrors = (v.errors?.length ?? 0) > 0;
+    const valid = !hasCritical && !hasErrors;
+
+    return {
+        package: {
+            assetMapId: pkg.assetMapId ?? '',
+            volumeIndex: pkg.volumeIndex ?? 1,
+            assetCount: pkg.assetCount ?? 0,
+            cplCount: pkg.cplCount ?? 0,
+            pklCount: pkg.pklCount ?? 0,
+        },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        cpls: (report.cpls ?? []).map((cpl: any) => {
+            const editRate = normalizeEditRate(cpl.editRate);
+            return {
+                id: cpl.id ?? '',
+                title: cpl.title ?? '',
+                applicationProfile: cpl.applicationProfile ?? null,
+                segmentCount: cpl.segmentCount ?? 0,
+                timecodeStart: cpl.timecodeStart ?? null,
+                isSupplemental: cpl.isSupplemental ?? false,
+                markers: (cpl.markers ?? []).map((m: any) => ({ // eslint-disable-line @typescript-eslint/no-explicit-any
+                    label: m.label ?? '',
+                    offset: m.offset ?? null,
+                    scope: m.annotation ?? null,
+                })),
+                sourceAsset: {
+                    contentKind: null,
+                    contentTitle: cpl.title ?? null,
+                    territory: null,
+                    editRate,
+                    frameRate: editRate ? (() => {
+                        const parts = editRate.split(/\s+/);
+                        if (parts.length === 2) {
+                            const fps = parseInt(parts[0]) / parseInt(parts[1]);
+                            return fps ? Math.round(fps * 100) / 100 : null;
+                        }
+                        return null;
+                    })() : null,
+                    duration: null,
+                    audioLanguages: [],
+                    subtitleLanguages: [],
+                    forcedNarrativeLanguages: [],
+                    audioType: null,
+                    videoQuality: null,
+                    videoDynamicRange: null,
+                    tracks: { VIDEO: [], AUDIO: [], SUBTITLES: [], CAPTIONS: [], FORCED_NARRATIVE: [] },
+                    sequences: (cpl.sequences ?? []).map((seq: any, i: number) => ({ // eslint-disable-line @typescript-eslint/no-explicit-any
+                        type: normalizeSeqType(seq.type),
+                        id: seq.id ?? '',
+                        trackId: seq.trackId ?? '',
+                        segmentId: null,
+                        sequenceNumber: i,
+                        sequenceResources: (seq.resources ?? []).map((r: any) => ({ // eslint-disable-line @typescript-eslint/no-explicit-any
+                            id: r.id ?? '',
+                            intrinsicDuration: r.intrinsicDuration ?? 0,
+                            sourceDuration: r.sourceDuration ?? r.intrinsicDuration ?? 0,
+                            sourceEncoding: r.sourceEncoding ?? null,
+                            trackFileId: r.trackFileId ?? null,
+                            editRate: normalizeEditRate(r.editRate) ?? editRate,
+                            entryPoint: r.entryPoint ?? null,
+                        })),
+                    })),
+                },
+            };
+        }),
+        validation: {
+            valid,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            issues: flatIssues.map((issue: any) => ({
+                severity: String(issue.severity ?? ''),
+                category: String(issue.category ?? ''),
+                code: String(issue.code ?? ''),
+                message: String(issue.message ?? ''),
+                suggestion: issue.suggestion ?? null,
+                cplId: issue.location?.cplId ?? issue.location?.cpl_id ?? undefined,
+            })),
+        },
+    };
 }
 
 // ─── file card ────────────────────────────────────────────────────────────────
@@ -229,8 +183,8 @@ function FileCard({ file, onRemove }: { file: UploadedFile; onRemove: () => void
     return (
         <div style={{
             borderRadius: '12px',
-            border: '1px solid #2e2e32',
-            background: '#202127',
+            border: '1px solid var(--sl-color-hairline, #2e2e32)',
+            background: 'var(--hp-card-bg, #202127)',
             overflow: 'hidden',
         }}>
             <div style={{
@@ -238,7 +192,6 @@ function FileCard({ file, onRemove }: { file: UploadedFile; onRemove: () => void
                 alignItems: 'center',
                 gap: '10px',
                 padding: '10px 16px',
-                borderBottom: '1px solid #2e2e32',
             }}>
                 {file.kind !== 'unknown' ? (
                     <span style={{
@@ -248,18 +201,18 @@ function FileCard({ file, onRemove }: { file: UploadedFile; onRemove: () => void
                         padding: '2px 8px',
                         borderRadius: '4px',
                         background: 'rgba(194,97,38,0.2)',
-                        color: '#f97316',
+                        color: 'var(--sl-color-accent, #f97316)',
                         flexShrink: 0,
                     }}>
                         {KIND_LABEL[file.kind]}
                     </span>
                 ) : (
-                    <span style={{ fontSize: '11px', color: '#6a6a71', fontStyle: 'italic', flexShrink: 0 }}>unknown</span>
+                    <span style={{ fontSize: '11px', color: 'var(--sl-color-gray-4, #6a6a71)', fontStyle: 'italic', flexShrink: 0 }}>unknown</span>
                 )}
-                <span style={{ fontSize: '13px', color: '#dfdfd6', fontWeight: 500, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <span style={{ fontSize: '13px', color: 'var(--sl-color-text, #dfdfd6)', fontWeight: 500, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {file.name}
                 </span>
-                <span style={{ fontSize: '11px', color: '#6a6a71', flexShrink: 0 }}>{formatBytes(file.size)}</span>
+                <span style={{ fontSize: '11px', color: 'var(--sl-color-gray-4, #6a6a71)', flexShrink: 0 }}>{formatBytes(file.size)}</span>
                 <button
                     onClick={onRemove}
                     aria-label="Remove"
@@ -267,7 +220,7 @@ function FileCard({ file, onRemove }: { file: UploadedFile; onRemove: () => void
                         background: 'none',
                         border: 'none',
                         cursor: 'pointer',
-                        color: '#6a6a71',
+                        color: 'var(--sl-color-gray-4, #6a6a71)',
                         fontSize: '16px',
                         lineHeight: 1,
                         padding: '0 2px',
@@ -275,153 +228,8 @@ function FileCard({ file, onRemove }: { file: UploadedFile; onRemove: () => void
                     }}
                 >×</button>
             </div>
-
-            <div style={{ padding: '12px 16px' }}>
-                {file.state.tag === 'parsing' && (
-                    <span style={{ fontSize: '12px', color: '#98989f' }}>Parsing…</span>
-                )}
-                {file.state.tag === 'error' && (
-                    <pre style={{
-                        fontSize: '11px',
-                        color: '#f87171',
-                        fontFamily: 'monospace',
-                        margin: 0,
-                        whiteSpace: 'pre-wrap',
-                        wordBreak: 'break-all',
-                    }}>
-                        {file.state.message}
-                    </pre>
-                )}
-                {file.state.tag === 'done' && file.kind === 'volindex' && (
-                    <VolindexResult r={file.state.result} />
-                )}
-                {file.state.tag === 'done' && file.kind === 'assetmap' && (
-                    <AssetMapResult r={file.state.result} />
-                )}
-                {file.state.tag === 'done' && file.kind === 'cpl' && (
-                    <CplResult r={file.state.result} />
-                )}
-                {file.state.tag === 'done' && file.kind === 'pkl' && file.state.result != null && (
-                    <PklResult r={file.state.result} />
-                )}
-                {file.state.tag === 'done' && file.kind === 'opl' && (
-                    <span style={{ fontSize: '12px', color: '#6a6a71' }}>
-                        OPL (Output Profile List) is a DCP-only document — not part of IMF. No parsing needed.
-                    </span>
-                )}
-                {file.state.tag === 'done' && file.kind === 'unknown' && (
-                    <span style={{ fontSize: '12px', color: '#6a6a71' }}>
-                        File name not recognized. Expected <code>VOLINDEX.xml</code>, <code>ASSETMAP.xml</code>, <code>PKL_*.xml</code>, or a CPL <code>.xml</code> file.
-                    </span>
-                )}
-            </div>
         </div>
     );
-}
-
-// ─── package data assembly ────────────────────────────────────────────────────
-
-function buildPackageData(files: UploadedFile[]): PackageViewData | null {
-    const assetmapFile = files.find(f => f.kind === 'assetmap' && f.state.tag === 'done');
-    const cplFiles = files.filter(f => f.kind === 'cpl' && f.state.tag === 'done');
-    if (cplFiles.length === 0) return null;
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const am = assetmapFile ? (assetmapFile.state as any).result as any : null;
-    const assets: unknown[] = am?.asset_list?.assets ?? [];
-    const pklFiles = files.filter(f => f.kind === 'pkl');
-
-    const pkg: PackageViewData['package'] = {
-        assetMapId: asText(am?.id) || '',
-        volumeIndex: am?.volume_count ?? 1,
-        assetCount: assets.length,
-        cplCount: cplFiles.length,
-        pklCount: pklFiles.length || assets.filter((a: unknown) => (a as Record<string, unknown>)?.packing_list === true).length,
-    };
-
-    const cpls: PackageViewData['cpls'] = cplFiles.map(f => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const state = f.state as any;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const cpl = state.result as any;
-        const segs: unknown[] = cpl?.segmentList?.segment ?? [];
-
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const cplEditRate = cpl?.editRate ? `${cpl.editRate.numerator}/${cpl.editRate.denominator}` : null;
-
-        // Extract sequences across ALL segments, merging resources per trackId.
-        // In IMF, the same virtual tracks span across segments — each segment
-        // contributes its own resources to the same track.
-        const seqKinds = [
-            { kind: 'MainImage', key: 'mainImageSequence' },
-            { kind: 'MainAudio', key: 'mainAudioSequence' },
-            { kind: 'Subtitles', key: 'subtitlesSequence' },
-            { kind: 'HearingImpairedCaptions', key: 'hearingImpairedCaptionsSequence' },
-            { kind: 'ForcedNarrative', key: 'forcedNarrativeSequence' },
-            { kind: 'IAB', key: 'iabSequence' },
-            { kind: 'ISXD', key: 'isxdSequence' },
-        ];
-
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const extractResources = (r: any): SequenceResource => {
-            const er = r?.editRate;
-            return {
-                id: String(r?.id ?? ''),
-                intrinsicDuration: r?.intrinsicDuration ?? 0,
-                sourceDuration: r?.sourceDuration ?? r?.intrinsicDuration ?? 0,
-                sourceEncoding: r?.sourceEncoding ?? null,
-                trackFileId: r?.trackFileId ?? null,
-                editRate: er ? `${er.numerator}/${er.denominator}` : null,
-                entryPoint: r?.entryPoint ?? null,
-            };
-        };
-
-        // Accumulate by trackId across all segments
-        const trackMap = new Map<string, SequenceData>();
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        for (const seg of segs as any[]) {
-            const sl = seg?.sequenceList;
-            if (!sl) continue;
-            for (const { kind, key } of seqKinds) {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                for (const seq of (sl[key] ?? []) as any[]) {
-                    const tid = String(seq?.trackId ?? '');
-                    const existing = trackMap.get(tid);
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    const resources = ((seq?.resourceList?.resource ?? []) as any[]).map(extractResources);
-                    if (existing) {
-                        existing.sequenceResources.push(...resources);
-                    } else {
-                        trackMap.set(tid, {
-                            type: kind,
-                            id: String(seq?.id ?? ''),
-                            trackId: tid,
-                            sequenceResources: resources,
-                        });
-                    }
-                }
-            }
-        }
-        const sequences: SequenceData[] = Array.from(trackMap.values());
-
-        return {
-            id: String(cpl?.id ?? f.uid),
-            title: asText(cpl?.contentTitle?.text) || asText(cpl?.contentTitle) || f.name,
-            issuer: asText(cpl?.issuer?.text) || asText(cpl?.issuer) || null,
-            creator: asText(cpl?.creator?.text) || asText(cpl?.creator) || null,
-            issueDate: asText(cpl?.issueDate) || null,
-            editRate: cplEditRate,
-            applicationProfile: null,
-            segmentCount: segs.length,
-            timecodeStart: null,
-            isSupplemental: false,
-            unresolvedAncestorAssetIds: [],
-            markers: [],
-            sequences,
-        };
-    });
-
-    return { package: pkg, cpls, validation: { status: null, issues: [] } };
 }
 
 // ─── main component ───────────────────────────────────────────────────────────
@@ -432,7 +240,8 @@ export default function ImfPlayground() {
     const [wasmError, setWasmError] = useState<string | null>(null);
     const [dragging, setDragging] = useState(false);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const [packageValidation, setPackageValidation] = useState<any>(null);
+    const [packageData, setPackageData] = useState<any | null>(null);
+    const [parseError, setParseError] = useState<string | null>(null);
     const [rulesConfig, setRulesConfig] = useState<Record<string, RuleSeverity>>({
         'ST2067-2:2020:8.3/FileNotFound': 'info',
     });
@@ -461,8 +270,9 @@ export default function ImfPlayground() {
         const mod = getWasmModule();
         if (!mod || Object.keys(xmlMapRef.current).length === 0) return;
         try {
-            const result = mod.validate(xmlMapRef.current, { rules: rulesConfig });
-            setPackageValidation(result.report);
+            const report = mod.buildReport(xmlMapRef.current, { rules: rulesConfig });
+            setPackageData(mapReportToViewData(report));
+            setParseError(null);
         } catch (e) {
             console.error('[imf] re-validate error:', e);
         }
@@ -479,59 +289,30 @@ export default function ImfPlayground() {
             name: f.name,
             size: f.size,
             kind: detectKind(f.name),
-            state: { tag: 'parsing' },
         }));
         setFiles(entries);
-        setPackageValidation(null);
+        setPackageData(null);
+        setParseError(null);
 
+        // Read all XML files
         const xmlMap: Record<string, string> = {};
-        xmlMapRef.current = {};
-
-        for (let i = 0; i < list.length; i++) {
-            const f = list[i];
-            const entry = entries[i];
-            let state: ParseState;
-            try {
-                const xml = await f.text();
-                const mod = getWasmModule();
-                if (!mod) throw new Error('WASM module not ready');
-
-                // Collect all XML for package-level validation
-                if (entry.kind !== 'unknown') {
-                    xmlMap[f.name] = xml;
-                    xmlMapRef.current = { ...xmlMap };
-                }
-
-                if (entry.kind === 'volindex') {
-                    state = { tag: 'done', result: mod.parseVolindexTyped(xml) };
-                } else if (entry.kind === 'assetmap') {
-                    state = { tag: 'done', result: mod.parseAssetmapTyped(xml) };
-                } else if (entry.kind === 'pkl') {
-                    state = { tag: 'done', result: mod.parsePklTyped(xml) };
-                } else if (entry.kind === 'opl') {
-                    state = { tag: 'done', result: null };
-                } else if (entry.kind === 'cpl') {
-                    const result = mod.parseCplTyped(xml);
-                    state = { tag: 'done', result };
-                } else {
-                    state = { tag: 'done', result: null };
-                }
-            } catch (e: unknown) {
-                state = { tag: 'error', message: String(e) };
+        for (const f of list) {
+            const kind = detectKind(f.name);
+            if (kind !== 'unknown') {
+                xmlMap[f.name] = await f.text();
             }
-            setFiles((prev) =>
-                prev.map((p) => (p.uid === entry.uid ? { ...p, state } : p)),
-            );
         }
+        xmlMapRef.current = xmlMap;
 
-        // Package-level validation — runs after all files are parsed
+        // Build report from all files at once
         const mod = getWasmModule();
         if (mod && Object.keys(xmlMap).length > 0) {
             try {
-                const result = mod.validate(xmlMap, { rules: rulesConfigRef.current });
-                setPackageValidation(result.report);
+                const report = mod.buildReport(xmlMap, { rules: rulesConfigRef.current });
+                setPackageData(mapReportToViewData(report));
             } catch (e) {
-                console.error('[imf] validate error:', e);
+                console.error('[imf] buildReport error:', e);
+                setParseError(String(e));
             }
         }
     }, []);
@@ -556,69 +337,18 @@ export default function ImfPlayground() {
 
     const removeFile = useCallback((uid: string) => {
         setFiles((prev) => prev.filter((f) => f.uid !== uid));
-        setPackageValidation(null);
+        setPackageData(null);
+        setParseError(null);
         xmlMapRef.current = {};
     }, []);
 
-    // Assemble package data once assetmap + >=1 CPL are ready.
-    // Merge package-level validation from ValidationReport (severity buckets) when available.
-    const packageData = useMemo(() => {
-        const base = buildPackageData(files);
-        if (!base) return null;
-        if (!packageValidation) return base;
-
-        // validate() returns { report, cpls, assetMap, ... } — we use the report.
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const pv = packageValidation as any;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const flatIssues: any[] = [
-            ...(pv.critical ?? []),
-            ...(pv.errors ?? []),
-            ...(pv.warnings ?? []),
-            ...(pv.info ?? []),
-        ];
-
-        const hasCritical = (pv.critical?.length ?? 0) > 0;
-        const hasPkgErrors = (pv.errors?.length ?? 0) > 0;
-        const hasPkgWarnings = (pv.warnings?.length ?? 0) > 0;
-        const pkgStatus = hasCritical || hasPkgErrors ? 'Invalid' : hasPkgWarnings ? 'ValidWithWarnings' : 'Valid';
-
-        const summary = {
-            total: flatIssues.length,
-            critical: pv.critical?.length ?? 0,
-            errors: pv.errors?.length ?? 0,
-            warnings: pv.warnings?.length ?? 0,
-            info: pv.info?.length ?? 0,
-            is_playable: pv.is_playable ?? true,
-            is_compliant: pv.is_compliant ?? true,
-        };
-
-        return {
-            ...base,
-            validation: {
-                status: pkgStatus as typeof base.validation.status,
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                issues: flatIssues.map((issue: any) => ({
-                    severity: String(issue.severity ?? ''),
-                    category: String(issue.category ?? ''),
-                    code: String(issue.code ?? ''),
-                    message: String(issue.message ?? ''),
-                    suggestion: issue.suggestion ?? null,
-                    source: undefined,
-                    cplId: issue.location?.cpl_id ?? undefined,
-                })),
-                summary,
-            },
-        };
-    }, [files, packageValidation]);
-
     return (
-        <section style={{ paddingBottom: '80px' }}>
+        <section className="not-content" style={{ paddingBottom: 0 }}>
             <div style={{ marginBottom: '24px' }}>
-                <h2 style={{ fontSize: '24px', fontWeight: 700, color: '#dfdfd6', margin: '0 0 8px' }}>
+                <h2 style={{ fontSize: '24px', fontWeight: 700, color: 'var(--sl-color-text, #dfdfd6)', margin: '0 0 8px' }}>
                     Try it in your browser
                 </h2>
-                <p style={{ fontSize: '14px', color: '#98989f', margin: 0 }}>
+                <p style={{ fontSize: '14px', color: 'var(--sl-color-gray-3, #98989f)', margin: 0 }}>
                     Drop any IMF XML file — the parser runs entirely in WebAssembly. Nothing leaves your browser.
                 </p>
             </div>
@@ -647,8 +377,8 @@ export default function ImfPlayground() {
                     marginBottom: '16px',
                     padding: '36px 24px',
                     borderRadius: '12px',
-                    border: `2px dashed ${dragging ? '#f97316' : '#3c3f44'}`,
-                    background: dragging ? 'rgba(249,115,22,0.05)' : '#202127',
+                    border: `2px dashed ${dragging ? 'var(--sl-color-accent, #f97316)' : 'var(--sl-color-gray-5, #3c3f44)'}`,
+                    background: dragging ? 'rgba(249,115,22,0.05)' : 'var(--hp-card-bg, #202127)',
                     cursor: wasmReady ? 'pointer' : 'default',
                     textAlign: 'center',
                     transition: 'border-color 0.2s, background 0.2s',
@@ -666,7 +396,7 @@ export default function ImfPlayground() {
                 />
 
                 {!wasmReady && !wasmError && (
-                    <p style={{ fontSize: '13px', color: '#6a6a71', margin: 0 }}>
+                    <p style={{ fontSize: '13px', color: 'var(--sl-color-gray-4, #6a6a71)', margin: 0 }}>
                         Loading WebAssembly module…
                     </p>
                 )}
@@ -676,10 +406,10 @@ export default function ImfPlayground() {
                         <div style={{ fontSize: '28px', marginBottom: '10px', opacity: dragging ? 1 : 0.35, transition: 'opacity 0.2s' }}>
                             ⬆
                         </div>
-                        <p style={{ fontSize: '14px', color: '#dfdfd6', margin: '0 0 4px', fontWeight: 500 }}>
+                        <p style={{ fontSize: '14px', color: 'var(--sl-color-text, #dfdfd6)', margin: '0 0 4px', fontWeight: 500 }}>
                             Drop ASSETMAP.xml, VOLINDEX.xml, PKL_*.xml, or CPL .xml files
                         </p>
-                        <p style={{ fontSize: '12px', color: '#6a6a71', margin: 0 }}>
+                        <p style={{ fontSize: '12px', color: 'var(--sl-color-gray-4, #6a6a71)', margin: 0 }}>
                             or click to browse · max 2 MB per file · drop all files from a package to see the full view
                         </p>
                     </>
@@ -698,7 +428,7 @@ export default function ImfPlayground() {
                             background: 'none',
                             border: 'none',
                             cursor: 'pointer',
-                            color: showRules ? '#f97316' : '#6a6a71',
+                            color: showRules ? 'var(--sl-color-accent, #f97316)' : 'var(--sl-color-gray-4, #6a6a71)',
                             fontSize: '12px',
                             fontWeight: 500,
                             padding: '4px 0',
@@ -721,8 +451,8 @@ export default function ImfPlayground() {
                             marginTop: '8px',
                             padding: '12px 14px',
                             borderRadius: '10px',
-                            border: '1px solid #2e2e32',
-                            background: '#202127',
+                            border: '1px solid var(--sl-color-hairline, #2e2e32)',
+                            background: 'var(--hp-card-bg, #202127)',
                             display: 'flex',
                             flexDirection: 'column',
                             gap: '10px',
@@ -731,16 +461,16 @@ export default function ImfPlayground() {
                                 const current = rulesConfig[rule.code] ?? 'error';
                                 return (
                                     <div key={rule.code} style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                                        <code style={{ fontSize: '11px', fontFamily: 'monospace', color: '#f97316', flexShrink: 0 }}>{rule.code}</code>
-                                        <span style={{ fontSize: '11px', color: '#6a6a71', flex: 1, minWidth: '100px' }}>{rule.hint}</span>
+                                        <code style={{ fontSize: '11px', fontFamily: 'monospace', color: 'var(--sl-color-accent, #f97316)', flexShrink: 0 }}>{rule.code}</code>
+                                        <span style={{ fontSize: '11px', color: 'var(--sl-color-gray-4, #6a6a71)', flex: 1, minWidth: '100px' }}>{rule.hint}</span>
                                         <select
                                             value={current}
                                             onChange={e => setRulesConfig(prev => ({ ...prev, [rule.code]: e.target.value as RuleSeverity }))}
                                             style={{
-                                                background: '#2a2a30',
-                                                border: '1px solid #3c3f44',
+                                                background: 'var(--hp-code-bg, #2a2a30)',
+                                                border: '1px solid var(--sl-color-gray-5, #3c3f44)',
                                                 borderRadius: '6px',
-                                                color: current === 'off' ? '#6a6a71' : current === 'warn' ? '#f59e0b' : current === 'info' ? '#60a5fa' : current === 'critical' ? '#ef4444' : '#f87171',
+                                                color: current === 'off' ? 'var(--sl-color-gray-4, #6a6a71)' : current === 'warn' ? '#f59e0b' : current === 'info' ? '#60a5fa' : current === 'critical' ? '#ef4444' : '#f87171',
                                                 fontSize: '11px',
                                                 fontWeight: 600,
                                                 padding: '3px 8px',
@@ -764,7 +494,25 @@ export default function ImfPlayground() {
 
             {files.length > 0 && (
                 <>
-                    {/* Package view: shown when assetmap + >=1 CPL are ready */}
+                    {/* Parse error */}
+                    {parseError && (
+                        <div style={{
+                            marginBottom: '16px',
+                            padding: '10px 14px',
+                            borderRadius: '8px',
+                            background: 'rgba(248,113,113,0.1)',
+                            border: '1px solid rgba(248,113,113,0.3)',
+                            fontSize: '12px',
+                            color: '#f87171',
+                            fontFamily: 'monospace',
+                            whiteSpace: 'pre-wrap',
+                            wordBreak: 'break-all',
+                        }}>
+                            {parseError}
+                        </div>
+                    )}
+
+                    {/* Package view */}
                     {packageData && (
                         <div style={{ marginBottom: '20px' }}>
                             <IMFPackageViewer data={packageData} />

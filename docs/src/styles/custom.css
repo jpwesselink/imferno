@@ -1,21 +1,54 @@
+@import "tailwindcss/theme" layer(theme);
+@import "tailwindcss/utilities";
+
+/* ── Reset user-agent styles inside not-content (Starlight's reset doesn't reach here) ── */
+/* :where() gives zero specificity so Tailwind classes always win */
+:where(.not-content) button {
+  appearance: none;
+  background: transparent;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
 /* ── Sidebar: compact ── */
 :root {
   --sl-sidebar-width: 14rem;
 }
 
-/* ── Accent: dark mode ── */
+/* ── Accent + homepage tokens: dark mode ── */
 :root,
 [data-theme='dark'] {
   --sl-color-accent-low: #431407;
   --sl-color-accent: #f97316;
   --sl-color-accent-high: #fed7aa;
+  --hp-card-bg: #202127;
+  --hp-code-bg: #161618;
+  --hp-section-bg: #1a1a1e;
+  --hp-badge-done-bg: #1a3a25;
+  --hp-badge-done-fg: #3dd68c;
+  --hp-badge-partial-bg: #2a2a10;
+  --hp-badge-partial-fg: #f9b44e;
+  --hp-badge-none-bg: #1e1e22;
+  --hp-badge-none-fg: #5a5a62;
 }
 
-/* ── Accent: light mode ── */
+/* ── Accent + homepage tokens: light mode ── */
 [data-theme='light'] {
   --sl-color-accent-low: #fff7ed;
   --sl-color-accent: #c2410c;
   --sl-color-accent-high: #431407;
+  --hp-card-bg: #f3f3f5;
+  --hp-code-bg: #eaeaed;
+  --hp-section-bg: #f5f5f7;
+  --hp-badge-done-bg: #dcfce7;
+  --hp-badge-done-fg: #166534;
+  --hp-badge-partial-bg: #fef9c3;
+  --hp-badge-partial-fg: #854d0e;
+  --hp-badge-none-bg: #f1f1f3;
+  --hp-badge-none-fg: #71717a;
 }
 
 /* ── Hero title gradient ── */

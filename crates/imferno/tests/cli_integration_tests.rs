@@ -50,57 +50,11 @@ fn test_cli_help() {
     let (success, stdout, _) = run_cli_command(&["--help"]);
 
     assert!(success);
-    assert!(stdout.contains("SMPTE ST 2067 IMF validator and inspector"));
-    assert!(stdout.contains("inspect"));
+    assert!(stdout.contains("SMPTE ST 2067 IMF validator"));
     assert!(stdout.contains("cpl"));
     assert!(stdout.contains("validate"));
     assert!(stdout.contains("export"));
-}
-
-#[test]
-fn test_cli_inspect_summary() {
-    let (success, stdout, stderr) =
-        run_cli_command(&["inspect", TEST_PACKAGE, "--format", "summary"]);
-
-    assert!(success, "CLI inspect failed: {}", stderr);
-    assert!(stdout.contains("IMF Package:"));
-    assert!(stdout.contains("MERIDIAN_Netflix_Photon_161006"));
-    assert!(stdout.contains("Volume Index: 1"));
-    assert!(stdout.contains("Total Assets: 6"));
-    assert!(stdout.contains("CPL Count: 1"));
-    assert!(stdout.contains("Main CPL:"));
-    assert!(stdout.contains("Title: MERIDIAN"));
-    assert!(stdout.contains("Kind: Test"));
-}
-
-#[test]
-fn test_cli_inspect_json() {
-    let (success, stdout, stderr) = run_cli_command(&["inspect", TEST_PACKAGE, "--format", "json"]);
-
-    assert!(success, "CLI inspect JSON failed: {}", stderr);
-
-    // Parse as JSON to verify it's valid JSON
-    let json_result: Result<serde_json::Value, _> = serde_json::from_str(&stdout);
-    assert!(json_result.is_ok(), "Output is not valid JSON: {}", stdout);
-
-    let json = json_result.unwrap();
-    assert!(json.get("volume_index").is_some());
-    assert!(json.get("asset_count").is_some());
-    assert!(json.get("cpl_count").is_some());
-    assert!(json.get("asset_map_id").is_some());
-}
-
-#[test]
-fn test_cli_inspect_detailed() {
-    let (success, stdout, stderr) =
-        run_cli_command(&["inspect", TEST_PACKAGE, "--format", "detailed"]);
-
-    assert!(success, "CLI inspect detailed failed: {}", stderr);
-    assert!(stdout.contains("IMF Package Details"));
-    assert!(stdout.contains("Asset Map:"));
-    assert!(stdout.contains("Assets (6):"));
-    assert!(stdout.contains("Composition Playlists (1):"));
-    assert!(stdout.contains("Issue Date:"));
+    assert!(stdout.contains("report"));
 }
 
 #[test]
@@ -141,7 +95,6 @@ fn test_cli_validate_success() {
     let (success, stdout, stderr) = run_cli_command(&["validate", TEST_PACKAGE]);
 
     assert!(success, "CLI validate failed: {}", stderr);
-    assert!(stdout.contains("Validating IMF package"));
     assert!(stdout.contains("VOLINDEX.xml found"));
     assert!(stdout.contains("ASSETMAP.xml found"));
     assert!(stdout.contains("assets mapped"));
@@ -175,10 +128,6 @@ fn test_cli_validate_failure() {
 fn test_cli_error_handling_invalid_path() {
     let invalid_path = "/nonexistent/path/to/package";
 
-    let (success, _stdout, stderr) = run_cli_command(&["inspect", invalid_path]);
-    assert!(!success);
-    assert!(!stderr.is_empty());
-
     let (success, _stdout, stderr) = run_cli_command(&["validate", invalid_path]);
     assert!(!success);
     assert!(!stderr.is_empty());
@@ -188,12 +137,12 @@ fn test_cli_error_handling_invalid_path() {
 fn test_cli_error_handling_invalid_args() {
     // Test invalid format
     let (success, _stdout, stderr) =
-        run_cli_command(&["inspect", TEST_PACKAGE, "--format", "invalid"]);
+        run_cli_command(&["validate", TEST_PACKAGE, "--format", "invalid"]);
     assert!(!success);
     assert!(stderr.contains("invalid") || stderr.contains("error"));
 
     // Test missing required arguments
-    let (success, _stdout, stderr) = run_cli_command(&["inspect"]);
+    let (success, _stdout, stderr) = run_cli_command(&["validate"]);
     assert!(!success);
     assert!(!stderr.is_empty());
 }
@@ -202,19 +151,6 @@ fn test_cli_error_handling_invalid_args() {
 fn test_cli_performance() {
     use std::time::Instant;
 
-    // All commands should complete within reasonable time (10 seconds for debug build)
-    let start = Instant::now();
-    let (success, _stdout, _stderr) = run_cli_command(&["inspect", TEST_PACKAGE]);
-    let duration = start.elapsed();
-
-    assert!(success);
-    assert!(
-        duration.as_secs() < 10,
-        "Inspect command took too long: {:?}",
-        duration
-    );
-
-    // Test other commands for performance
     for cmd in &["validate", "cpl"] {
         let start = Instant::now();
         let (success, _stdout, _stderr) = run_cli_command(&[cmd, TEST_PACKAGE]);

@@ -23,6 +23,7 @@ import {
     parsePklTyped,
     parseVolindexTyped,
     validate,
+    codes,
     getVersion,
 } from '@imferno/wasm';
 
@@ -43,14 +44,21 @@ console.log(result.report.warnings);
 console.log(result.cpls);
 console.log(result.unreferencedAssets);
 
-// Validate with spec selection and custom rules
+// Validate with custom rules (typed codes give autocomplete + typo protection)
 const result2 = await validate(
     {
         'ASSETMAP.xml': assetmapXml,
         'PKL_abc.xml': pklXml,
         'CPL_def.xml': cplXml,
     },
-    { coreSpec: 'v2020', app2eSpec: 'v2023' },
+    {
+        coreSpec: 'v2020',
+        app2eSpec: 'v2023',
+        rules: {
+            [codes.ST2067_2_2020.FileNotFound]: 'critical',
+            [codes.ST2067_2_2020.ChecksumMismatch]: 'off',
+        },
+    },
 );
 ```
 
@@ -58,13 +66,14 @@ WASM initialization is handled automatically on first call.
 
 ## API
 
-| Function | Description |
-|----------|-------------|
+| Export | Description |
+|--------|-------------|
 | `validate(files, options?)` | Validate a full IMF package, returns report + parsed data |
 | `parseCplTyped(xml)` | Parse CPL XML |
 | `parseAssetmapTyped(xml)` | Parse ASSETMAP.xml |
 | `parsePklTyped(xml)` | Parse PKL XML |
 | `parseVolindexTyped(xml)` | Parse VOLINDEX.xml |
+| `codes` | Typed validation code constants for use in `rules` config |
 | `getVersion()` | Get library version |
 
 ### Spec selection values

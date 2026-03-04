@@ -1,166 +1,284 @@
 ---
-import '../styles/homepage.css';
+import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
 import ImfPlayground from '../components/ImfPlayground';
-import VersionPicker from '../components/VersionPicker.astro';
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 ---
 
-<!doctype html>
-<html lang="en" data-theme="dark">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>imferno — SMPTE ST 2067 for Rust and JavaScript</title>
-    <meta name="description" content="Parse, validate, and inspect IMF packages. Native Rust implementation of SMPTE ST 2067 — with native Node.js bindings and a WebAssembly target for the browser." />
-  </head>
-  <body>
-
-    {/* Nav */}
-    <header class="sticky top-0 z-10 border-b border-white/10 bg-[#161618]/95 backdrop-blur-sm">
-      <div class="nav-container">
-        <a href={base + '/'} class="font-semibold text-white text-[15px] mr-8 shrink-0">imferno</a>
-        <VersionPicker />
-        <div class="ml-auto flex items-center gap-6 shrink-0">
-          <a href={base + '/guide/introduction/'} class="text-zinc-400 hover:text-white transition-colors text-sm">Docs</a>
-          <a href="https://github.com/jpwesselink/imferno" class="text-zinc-400 hover:text-white transition-colors" aria-label="GitHub">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844a9.59 9.59 0 0 1 2.504.337c1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.02 10.02 0 0 0 22 12.017C22 6.484 17.522 2 12 2Z"/></svg>
-          </a>
-        </div>
-      </div>
-    </header>
-
-    <!-- Hero -->
-    <section class="page-container pt-20 pb-16">
-      <h1 class="flex flex-col tracking-tight mb-3">
-        <span class="text-5xl font-bold leading-[1.15] text-orange-400">imferno</span>
-        <span class="text-5xl font-bold leading-[1.15] text-white">SMPTE ST 2067<br>for Rust and JavaScript.</span>
-      </h1>
-      <p class="mt-3 text-xl font-medium text-zinc-400 max-w-xl leading-8">
-        Parse, validate, and inspect IMF packages. Native Rust implementation of the ST 2067 standard family — with native Node.js bindings and a WebAssembly target for the browser.
-      </p>
-      {/* <div class="mt-6 flex flex-wrap gap-2">
-        <a href="https://github.com/jpwesselink/imferno" class="inline-flex items-center rounded-full bg-zinc-700 hover:bg-zinc-600 text-zinc-100 font-medium text-sm px-5 h-10 transition-colors">GitHub</a>
-      </div> */}
-    </section>
+<StarlightPage frontmatter={{ title: 'imferno', template: 'splash', hero: { tagline: 'SMPTE ST 2067 for Rust, Node.js and WASM. Parse, validate, and inspect IMF packages with native Node.js bindings and a WebAssembly target for the browser.' }, tableOfContents: false }}>
+  <div class="homepage">
 
     <!-- Feature cards -->
-    <section class="page-container pb-16">
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
-        <div class="feat-card">
-          <h3>Full IMF support</h3>
+    <section class="section">
+      <div class="card-grid four">
+        <a class="feat-card" href={`${base}/reference/standards/`}>
+          <h3>IMF core + applications</h3>
           <p>Parse AssetMaps, PKLs, and CPLs per SMPTE ST 2067-2, ST 2067-3, and Application profiles including ST 2067-21 and ST 2067-201.</p>
-        </div>
-        <div class="feat-card">
-          <h3>Strict validation</h3>
-          <p>Over 250 rules across 8 SMPTE standards. Every rule can be set to <code class="inline-code">off</code>, <code class="inline-code">info</code>, <code class="inline-code">warn</code>, <code class="inline-code">error</code>, or <code class="inline-code">critical</code> via config.</p>
-        </div>
-        <div class="feat-card">
-          <h3>Node.js &amp; WASM</h3>
-          <p>Native bindings via <code class="inline-code">@imferno/node</code> for server-side pipelines, plus a WebAssembly build for the browser.</p>
-        </div>
-        <div class="feat-card">
+        </a>
+        <a class="feat-card" href={`${base}/guide/config/`}>
+          <h3>Flexible strictness</h3>
+          <p>250+ validation rules across 8 SMPTE standards. Tune each rule individually: set any code to <code class="icode">off</code>, <code class="icode">info</code>, <code class="icode">warn</code>, <code class="icode">error</code>, or <code class="icode">critical</code> to match your workflow.</p>
+        </a>
+        <a class="feat-card" href={`${base}/guide/quick-start/`}>
+          <h3>Rust, Node.js &amp; WASM</h3>
+          <p>Use the native Rust library or CLI directly, <code class="icode">@imferno/node</code> bindings for server-side pipelines, or the WebAssembly build for the browser.</p>
+        </a>
+        <a class="feat-card" href={`${base}/guide/validation/`}>
           <h3>IMF reference corpus</h3>
           <p>Tested against the Netflix Photon MERIDIAN reference corpus. ST 2067-2, ST 2067-3, ST 2067-21, and ST 2067-201 fully covered.</p>
-        </div>
+        </a>
       </div>
     </section>
 
     <!-- Get started -->
-    <section class="page-container pb-16">
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <div class="get-started-card">
-          <div class="get-started-header">
-            <span class="get-started-icon">$</span>
-            <span class="get-started-label">npx</span>
+    <section class="section">
+      <div class="card-grid two">
+        <a class="get-started-card" href={`${base}/reference/cli/`}>
+          <div class="gs-header"><span class="gs-icon">$</span><span class="gs-label">npx</span></div>
+          <p class="gs-desc">No global install needed. Run the latest version directly.</p>
+          <div class="codeblock">
+            <code>npx imferno@latest validate ./my-package</code>
           </div>
-          <p class="get-started-desc">Zero install. Run it once, straight from npm.</p>
-          <div class="code-block">
-            <code>npx imferno validate ./my-package</code>
-            <code class="code-dim"># --rules-config rules.json</code>
-          </div>
-        </div>
-        <div class="get-started-card">
-          <div class="get-started-header">
-            <span class="get-started-icon">&#x1F980;</span>
-            <span class="get-started-label">cargo install</span>
-          </div>
-          <p class="get-started-desc">Install the native Rust binary. Fast, offline, no runtime.</p>
-          <div class="code-block">
+        </a>
+        <a class="get-started-card" href={`${base}/reference/rust/`}>
+          <div class="gs-header"><span class="gs-icon">&#x1F980;</span><span class="gs-label">Rust</span></div>
+          <p class="gs-desc">Install the native Rust binary. Offline, no runtime.</p>
+          <div class="codeblock">
             <code>cargo install imferno</code>
-            <code class="code-dim">imferno validate ./my-package</code>
+            <code class="dim">imferno validate ./my-package</code>
           </div>
-        </div>
-        <div class="get-started-card">
-          <div class="get-started-header">
-            <span class="get-started-icon">&#x1F310;</span>
-            <span class="get-started-label">Browser</span>
+        </a>
+        <a class="get-started-card" href={`${base}/reference/node/`}>
+          <div class="gs-header"><span class="gs-icon">&#x1F4E6;</span><span class="gs-label">Node.js</span></div>
+          <p class="gs-desc">Native bindings for server-side pipelines and automation.</p>
+          <div class="codeblock">
+            <code>npm install @imferno/node</code>
           </div>
-          <p class="get-started-desc">Drop XML files below. Everything runs client-side via WebAssembly — nothing leaves your machine.</p>
-          <div class="code-block" style="text-align: center;">
-            <code style="color: #98989f;">&#x2193; scroll down to the playground</code>
+        </a>
+        <a class="get-started-card" href={`${base}/reference/wasm/`}>
+          <div class="gs-header"><span class="gs-icon">&#x1F310;</span><span class="gs-label">WASM</span></div>
+          <p class="gs-desc">ESM module powered by WebAssembly. Use it in any browser or bundler.</p>
+          <div class="codeblock">
+            <code>npm install @imferno/wasm</code>
           </div>
-        </div>
+        </a>
       </div>
     </section>
 
     <!-- IMF Playground -->
-    <section class="page-container">
+    <section class="section">
       <ImfPlayground client:only="react" />
     </section>
 
     <!-- Standards coverage -->
-    <section class="page-container pb-20">
-      <h2 class="text-2xl font-bold text-white mb-2">Standards coverage</h2>
-      <p class="text-zinc-400 text-sm mb-6">SMPTE ST 2067 implementation status.</p>
-      <div class="rounded-xl overflow-hidden border border-[#2e2e32]">
-        <table class="standards-table">
+    <section class="section">
+      <h2 class="section-title">Standards coverage</h2>
+      <p class="section-subtitle">SMPTE ST 2067 implementation status.</p>
+      <div class="table-wrap">
+        <table class="std-table">
           <thead>
             <tr><th>Standard</th><th>Description</th><th>Status</th></tr>
           </thead>
           <tbody>
-            <tr><td colspan="3" class="table-section-header">Complete</td></tr>
-            <tr><td>ST 429-9</td><td>Volume Index / Asset Map</td><td><span class="badge badge-done">Complete</span></td></tr>
-            <tr><td>ST 2067-2:2013, :2016, :2020</td><td>Core Constraints &amp; Packing List</td><td><span class="badge badge-done">Complete</span></td></tr>
-            <tr><td>ST 2067-3:2013, :2016, :2020</td><td>Composition Playlist</td><td><span class="badge badge-done">Complete</span></td></tr>
-            <tr><td>ST 2067-21:2020, :2023</td><td>Application #2E (UHD/HDR)</td><td><span class="badge badge-done">Complete</span></td></tr>
-            <tr><td>ST 2067-201:2019, :2021</td><td>IAB Level 0 Plug-in</td><td><span class="badge badge-done">Complete</span></td></tr>
-            <tr><td>ST 2067-9:2018</td><td>Sidecar Composition Map</td><td><span class="badge badge-done">Complete</span></td></tr>
-            <tr><td>ST 2067-202:2022</td><td>ISXD Plug-in</td><td><span class="badge badge-done">Complete</span></td></tr>
-            <tr><td colspan="3" class="table-section-header">Partial</td></tr>
-            <tr><td>ST 377-1:2011</td><td>MXF File Format</td><td><span class="badge badge-partial">Partial</span></td></tr>
-            <tr><td colspan="3" class="table-section-header">Not implemented</td></tr>
-            <tr><td>ST 429-8</td><td>D-Cinema Packing List</td><td><span class="badge badge-none">Not implemented</span></td></tr>
-            <tr><td>ST 2067-100:2014</td><td>Output Profile List</td><td><span class="badge badge-none">Not implemented</span></td></tr>
-            <tr><td>ST 2067-203:2023</td><td>S-ADM Audio Plug-in</td><td><span class="badge badge-none">Not implemented</span></td></tr>
-            <tr><td>ST 377-41</td><td>MXF MGA / S-ADM Virtual Tracks</td><td><span class="badge badge-none">Not implemented</span></td></tr>
-            <tr><td>ST 379-2:2010</td><td>MXF Generic Container</td><td><span class="badge badge-none">Not implemented</span></td></tr>
-            <tr><td>ST 422:2014</td><td>JPEG 2000 in MXF</td><td><span class="badge badge-none">Not implemented</span></td></tr>
+            <tr><td colspan="3" class="section-row">Complete</td></tr>
+            <tr><td>ST 429-9</td><td>Volume Index / Asset Map</td><td><span class="badge done">Complete</span></td></tr>
+            <tr><td>ST 2067-2:2013, :2016, :2020</td><td>Core Constraints &amp; Packing List</td><td><span class="badge done">Complete</span></td></tr>
+            <tr><td>ST 2067-3:2013, :2016, :2020</td><td>Composition Playlist</td><td><span class="badge done">Complete</span></td></tr>
+            <tr><td>ST 2067-21:2020, :2023, :2025</td><td>Application #2E (UHD/HDR)</td><td><span class="badge done">Complete</span></td></tr>
+            <tr><td>ST 2067-201:2019, :2021</td><td>IAB Level 0 Plug-in</td><td><span class="badge done">Complete</span></td></tr>
+            <tr><td>ST 2067-9:2018</td><td>Sidecar Composition Map</td><td><span class="badge done">Complete</span></td></tr>
+            <tr><td>ST 2067-202:2022</td><td>ISXD Plug-in</td><td><span class="badge done">Complete</span></td></tr>
+            <tr><td colspan="3" class="section-row">Partial</td></tr>
+            <tr><td>ST 377-1:2011</td><td>MXF File Format</td><td><span class="badge partial">Partial</span></td></tr>
+            <tr><td colspan="3" class="section-row">Not implemented</td></tr>
+            <tr><td>ST 429-8</td><td>D-Cinema Packing List</td><td><span class="badge none">Not implemented</span></td></tr>
+            <tr><td>ST 2067-100:2014</td><td>Output Profile List</td><td><span class="badge none">Not implemented</span></td></tr>
+            <tr><td>ST 2067-203:2023</td><td>S-ADM Audio Plug-in</td><td><span class="badge none">Not implemented</span></td></tr>
+            <tr><td>ST 377-41</td><td>MXF MGA / S-ADM Virtual Tracks</td><td><span class="badge none">Not implemented</span></td></tr>
+            <tr><td>ST 379-2:2010</td><td>MXF Generic Container</td><td><span class="badge none">Not implemented</span></td></tr>
+            <tr><td>ST 422:2014</td><td>JPEG 2000 in MXF</td><td><span class="badge none">Not implemented</span></td></tr>
           </tbody>
         </table>
       </div>
     </section>
 
     <!-- Sponsor -->
-    <section class="page-container pb-20" style="text-align: center;">
-      <p style="font-size: 14px; color: #6a6a71;">
+    <section class="section" style="text-align: center; padding-bottom: 4rem;">
+      <p class="sponsor-text">
         If imferno is useful to your workflow, consider
-        <a href="https://github.com/sponsors/jpwesselink" style="color: #f97316; text-decoration: underline;">sponsoring the project</a>.
+        <a href="https://github.com/sponsors/jpwesselink" class="sponsor-link">sponsoring the project</a>.
       </p>
     </section>
+  </div>
 
-    <!-- Load WASM module via native browser ES module import (outside Vite's module graph). -->
-    <script is:inline define:vars={{ base, cacheBust: Date.now().toString(36) }}>
-      (async function () {
-        try {
-          var mod = await import(base + '/wasm/imferno_wasm.js?v=' + cacheBust);
-          await mod.default();
-          window.__imfWasm = mod;
-        } catch (e) {
-          window.__imfWasmError = String(e);
-        }
-        window.dispatchEvent(new CustomEvent('imf-wasm-ready'));
-      })();
-    </script>
-  </body>
-</html>
+  <!-- Load WASM module -->
+  <script is:inline define:vars={{ base, cacheBust: Date.now().toString(36) }}>
+    (async function () {
+      try {
+        var mod = await import(base + '/wasm/imferno_wasm.js?v=' + cacheBust);
+        await mod.default();
+        window.__imfWasm = mod;
+      } catch (e) {
+        window.__imfWasmError = String(e);
+      }
+      window.dispatchEvent(new CustomEvent('imf-wasm-ready'));
+    })();
+  </script>
+</StarlightPage>
+
+<style is:global>
+  /*
+   * Homepage styles — uses is:global to bypass Astro's :where() scoping
+   * so we can reliably override Starlight's content styles.
+   */
+
+  /* Kill Starlight's content-gap margin inside the homepage */
+  .homepage h1,
+  .homepage h2,
+  .homepage h3,
+  .homepage h4,
+  .homepage p,
+  .homepage section,
+  .homepage div,
+  .homepage table,
+  .homepage th,
+  .homepage td,
+  .homepage code {
+    margin-top: 0 !important;
+    line-height: inherit;
+  }
+
+  /* Container — kill Starlight's content gap */
+  .homepage {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding-inline: 1.5rem;
+    --sl-content-gap-y: 0 !important;
+  }
+
+  .homepage .section { padding-bottom: 2rem; }
+
+  /* ── Card grids ── */
+  .homepage .card-grid { display: grid !important; gap: 0.5rem; }
+  .homepage .card-grid.four { grid-template-columns: repeat(4, 1fr) !important; }
+  .homepage .card-grid.two { grid-template-columns: repeat(2, 1fr) !important; }
+  @media (max-width: 960px) {
+    .homepage .card-grid.four { grid-template-columns: repeat(2, 1fr) !important; }
+  }
+  @media (max-width: 600px) {
+    .homepage .card-grid.four,
+    .homepage .card-grid.two { grid-template-columns: 1fr !important; }
+  }
+
+  /* ── Feature cards ── */
+  .homepage .feat-card {
+    padding: 24px;
+    border-radius: 12px;
+    background: var(--hp-card-bg);
+    border: 1px solid var(--hp-card-bg);
+    transition: border-color 0.25s;
+    min-width: 0;
+    text-decoration: none !important;
+    color: inherit !important;
+    cursor: pointer;
+  }
+  .homepage .feat-card:hover { border-color: var(--sl-color-accent); }
+  .homepage .feat-card h3 {
+    font-size: 15px !important;
+    font-weight: 600;
+    color: var(--sl-color-text);
+    margin: 0 0 8px !important;
+    line-height: 1.3 !important;
+  }
+  .homepage .feat-card p {
+    font-size: 13px !important;
+    line-height: 1.6 !important;
+    color: var(--sl-color-gray-3);
+    margin: 0 !important;
+  }
+
+  /* Inline code */
+  .homepage .icode {
+    font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+    font-size: 0.9em !important;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: var(--hp-code-bg);
+    color: var(--sl-color-accent);
+  }
+
+  /* ── Get started cards ── */
+  .homepage .get-started-card {
+    padding: 24px;
+    border-radius: 12px;
+    background: var(--hp-card-bg);
+    border: 1px solid var(--sl-color-hairline);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 0;
+    text-decoration: none !important;
+    color: inherit !important;
+    transition: border-color 0.25s;
+    cursor: pointer;
+  }
+  .homepage .get-started-card:hover { border-color: var(--sl-color-accent); }
+  .homepage .gs-header { display: flex; align-items: center; gap: 10px; }
+  .homepage .gs-icon { font-size: 20px; line-height: 1; }
+  .homepage .gs-label { font-size: 15px !important; font-weight: 700; color: var(--sl-color-text); }
+  .homepage .gs-desc { font-size: 13px !important; line-height: 1.6 !important; color: var(--sl-color-gray-3); margin: 0 !important; flex: 1; }
+  .homepage .codeblock {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 12px 14px;
+    border-radius: 8px;
+    background: var(--hp-code-bg);
+    border: 1px solid var(--sl-color-hairline);
+    font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+    font-size: 13px !important;
+    color: var(--sl-color-accent);
+    overflow-x: auto;
+  }
+  .homepage .codeblock code {
+    white-space: nowrap;
+    font-size: inherit !important;
+    padding: 0 !important;
+    background: none !important;
+    border: none !important;
+  }
+  .homepage .codeblock .dim { color: var(--sl-color-gray-4); }
+
+  /* ── Standards table ── */
+  .homepage .section-title { font-size: 1.5rem !important; font-weight: 700; color: var(--sl-color-text); margin-bottom: 0.5rem !important; }
+  .homepage .section-subtitle { color: var(--sl-color-gray-3); font-size: 0.875rem !important; margin-bottom: 1.5rem !important; }
+  .homepage .table-wrap { border-radius: 12px; overflow: hidden; border: 1px solid var(--sl-color-hairline); }
+  .homepage .std-table { width: 100%; border-collapse: collapse; font-size: 14px !important; }
+  .homepage .std-table th { text-align: left; padding: 8px 16px !important; color: var(--sl-color-gray-3); font-weight: 500; border-bottom: 1px solid var(--sl-color-hairline); }
+  .homepage .std-table td { padding: 10px 16px !important; border-bottom: 1px solid var(--sl-color-hairline); color: var(--sl-color-text); font-size: 14px !important; }
+  .homepage .std-table tr:last-child td { border-bottom: none; }
+  .homepage .section-row {
+    background: var(--hp-section-bg);
+    color: var(--sl-color-gray-3);
+    font-size: 11px !important;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 6px 16px !important;
+    border-bottom: 1px solid var(--sl-color-hairline);
+  }
+  .homepage .badge {
+    display: inline-block;
+    padding: 2px 8px !important;
+    border-radius: 4px;
+    font-size: 12px !important;
+    font-weight: 500;
+  }
+  .homepage .badge.done { background: var(--hp-badge-done-bg); color: var(--hp-badge-done-fg); }
+  .homepage .badge.partial { background: var(--hp-badge-partial-bg); color: var(--hp-badge-partial-fg); }
+  .homepage .badge.none { background: var(--hp-badge-none-bg); color: var(--hp-badge-none-fg); }
+
+  /* Sponsor */
+  .homepage .sponsor-text { font-size: 14px !important; color: var(--sl-color-gray-4); }
+  .homepage .sponsor-link { color: var(--sl-color-accent); text-decoration: underline; }
+</style>

@@ -15,6 +15,8 @@ use imferno_core::mxf::codes::St377_1_2011;
 use imferno_core::scm::codes::St2067_9_2018;
 use imferno_core::validation::codes::{St2067_21_2020, St2067_21_2023, St2067_21_2025};
 use imferno_core::validation::iab_codes::{St2067_201_2019, St2067_201_2021};
+use imferno_core::validation::isxd_codes::St2067_202_2022;
+use imferno_core::package::codes::ImfernoCode;
 
 use std::fs;
 use std::path::Path;
@@ -39,7 +41,9 @@ pub fn run() {
     write(&out, "st2067-3.md", st2067_3_page());
     write(&out, "st2067-21.md", st2067_21_page());
     write(&out, "st2067-201.md", st2067_201_page());
+    write(&out, "st2067-202.md", st2067_202_page());
     write(&out, "st2067-9.md", st2067_9_page());
+    write(&out, "imferno.md", imferno_page());
 
     println!("docs written to {}", out.display());
 }
@@ -122,10 +126,10 @@ fn st2067_2_page() -> String {
     s.push_str(
         "ST 2067-2 contributes two groups of codes:\n\n\
          1. **Package-level codes** (`St2067_2_2020`) — AssetMap, PKL, and file-integrity \
-         checks emitted by `imf-parser`.\n\
+         checks emitted by `imferno-core`.\n\
          2. **Core Constraints CPL codes** — CPL structure rules shared across all three spec \
-         editions (2013 / 2016 / 2020), emitted by the CoreConstraints validators in \
-         `st2067-21`. The only difference between editions is the year in the code prefix.\n\n\
+         editions (2013 / 2016 / 2020), emitted by the CoreConstraints validators. \
+         The only difference between editions is the year in the code prefix.\n\n\
          ---\n\n",
     );
 
@@ -262,6 +266,32 @@ fn st2067_9_page() -> String {
          with a CPL by UUID without modifying the CPL itself.\n\n",
     );
     s.push_str(&section("St2067\\_9\\_2018", St2067_9_2018::ALL));
+    s
+}
+
+fn st2067_202_page() -> String {
+    let mut s = frontmatter(
+        "ST 2067-202 Validation Codes",
+        "Validation codes from SMPTE ST 2067-202:2022 (ISXD Plug-in).",
+    );
+    s.push_str(
+        "These codes are emitted when validating the ISXD (Immersive Sound eXtensible \
+         Description) Plug-in per SMPTE ST 2067-202:2022.\n\n",
+    );
+    s.push_str(&section("St2067\\_202\\_2022", St2067_202_2022::ALL));
+    s
+}
+
+fn imferno_page() -> String {
+    let mut s = frontmatter(
+        "imferno Validation Codes",
+        "Validation codes emitted by imferno itself (not tied to a specific SMPTE spec).",
+    );
+    s.push_str(
+        "These codes are emitted by imferno's package-level logic for conditions \
+         that don't map to a specific SMPTE spec clause.\n\n",
+    );
+    s.push_str(&section("Imferno", ImfernoCode::ALL));
     s
 }
 

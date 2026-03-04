@@ -15,7 +15,7 @@ pub fn run() {
     let docs_wasm = workspace_root.join("docs/public/wasm");
 
     // ── 1. Run wasm-pack ────────────────────────────────────────────────────
-    println!("building imf-wasm with wasm-pack…");
+    println!("building imferno-wasm with wasm-pack…");
 
     let status = Command::new("wasm-pack")
         .args(["build", "--target", "web"])

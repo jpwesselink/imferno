@@ -29,24 +29,12 @@ console.log('Warnings:', data.warnings.length);
 
 echo ""
 
-# validate (detailed)
-echo "=== validate (detailed) ==="
-$BIN validate "$TEST_DATA" --format detailed
-
-echo ""
-
 # validate with rules override
 echo "=== validate with rules override ==="
 RULES_FILE=$(mktemp)
 echo '{ "ST2067-21:2023:7.1/AppIdMismatch": "error" }' > "$RULES_FILE"
 $BIN validate "$TEST_DATA" --rules-config "$RULES_FILE" --exit-zero
 rm -f "$RULES_FILE"
-
-echo ""
-
-# inspect
-echo "=== inspect ==="
-$BIN inspect "$TEST_DATA"
 
 echo ""
 

@@ -1,10 +1,17 @@
 //! Unified IMF report — the single JSON document for UI consumption
 //!
 //! Combines package metadata, validation, and structural analysis into one structure.
+//! Also provides `format_report()` for pretty-printing to a terminal.
 
+use crate::cpl::SequenceAccess;
+use crate::diagnostics::{Severity, ValidationReport};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::fmt::Write;
 #[cfg(feature = "typescript")]
 use ts_rs::TS;
+
+// ── Report structs ───────────────────────────────────────────────────────────
 
 #[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -14,7 +21,7 @@ use ts_rs::TS;
 pub struct ImfReport {
     pub package: PackageSummary,
     pub cpls: Vec<CplReport>,
-    pub validation: ValidationSummary,
+    pub validation: ValidationReport,
 }
 
 #[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
@@ -27,6 +34,8 @@ pub struct CplReport {
     pub title: String,
     /// Application profile, e.g. "App2E_2021", "App2E_2014", "App5"
     pub application_profile: Option<String>,
+    /// CPL-level edit rate, e.g. "24000/1001"
+    pub edit_rate: Option<String>,
     /// Number of segments in this CPL
     pub segment_count: usize,
     /// Timecode start address, e.g. "01:00:00:00"
@@ -37,6 +46,8 @@ pub struct CplReport {
     /// These must be resolved from an ancestor package.
     pub unresolved_ancestor_asset_ids: Vec<String>,
     pub markers: Vec<CplMarker>,
+    /// Virtual tracks (sequences) merged across all segments
+    pub sequences: Vec<CplSequence>,
 }
 
 #[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
@@ -55,6 +66,35 @@ pub struct CplMarker {
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
+pub struct CplSequence {
+    /// Sequence type: "MainImage", "MainAudio", "Subtitles", etc.
+    pub r#type: String,
+    pub id: String,
+    pub track_id: String,
+    pub resources: Vec<CplResource>,
+}
+
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "typescript", derive(TS))]
+#[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
+pub struct CplResource {
+    pub id: String,
+    /// Edit rate as "N/D" string, e.g. "24000/1001"
+    pub edit_rate: Option<String>,
+    pub intrinsic_duration: u64,
+    pub source_duration: Option<u64>,
+    pub entry_point: Option<u64>,
+    pub source_encoding: Option<String>,
+    pub track_file_id: Option<String>,
+}
+
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "typescript", derive(TS))]
+#[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
 pub struct PackageSummary {
     pub asset_map_id: String,
     pub volume_index: u32,
@@ -64,6 +104,9 @@ pub struct PackageSummary {
     pub issuer: Option<String>,
     pub creator: Option<String>,
     pub pkl_count: usize,
+    pub scm_count: usize,
+    pub sidecar_count: usize,
+    pub unreferenced_assets: Vec<UnreferencedAsset>,
 }
 
 #[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
@@ -71,20 +114,12 @@ pub struct PackageSummary {
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
-pub struct ValidationSummary {
-    pub valid: bool,
-    pub issues: Vec<ValidationIssueEntry>,
+pub struct UnreferencedAsset {
+    pub id: String,
+    pub path: String,
 }
 
-#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-#[cfg_attr(feature = "typescript", derive(TS))]
-#[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
-pub struct ValidationIssueEntry {
-    pub severity: String,
-    pub message: String,
-}
+// ── build_report ─────────────────────────────────────────────────────────────
 
 /// Map an ApplicationIdentification URL to a friendly profile name
 fn parse_application_profile(url: &str) -> String {
@@ -111,6 +146,89 @@ fn parse_application_profile(url: &str) -> String {
     }
     // Fallback: return the URL tail after the last '/'
     url.rsplit('/').next().unwrap_or(url).to_string()
+}
+
+/// Map a single resource to a CplResource, falling back to the CPL edit rate
+fn map_resource(r: &crate::cpl::Resource, cpl_er: &Option<String>) -> CplResource {
+    CplResource {
+        id: r.id.to_string(),
+        edit_rate: r
+            .edit_rate
+            .as_ref()
+            .map(|er| format!("{}/{}", er.numerator, er.denominator))
+            .or_else(|| cpl_er.clone()),
+        intrinsic_duration: r.intrinsic_duration,
+        source_duration: r.source_duration,
+        entry_point: r.entry_point,
+        source_encoding: r.source_encoding.as_ref().map(|u| u.to_string()),
+        track_file_id: r.track_file_id.as_ref().map(|u| u.to_string()),
+    }
+}
+
+/// Merge sequences of one type into the track map, accumulating resources by track_id
+fn merge_sequences(
+    track_map: &mut HashMap<String, CplSequence>,
+    type_name: &str,
+    sequences: &[impl SequenceAccess],
+    cpl_er: &Option<String>,
+) {
+    for seq in sequences {
+        let tid = seq.track_id().to_string();
+        let resources: Vec<CplResource> = seq
+            .resource_list()
+            .resources
+            .iter()
+            .map(|r| map_resource(r, cpl_er))
+            .collect();
+        if let Some(existing) = track_map.get_mut(&tid) {
+            existing.resources.extend(resources);
+        } else {
+            track_map.insert(
+                tid.clone(),
+                CplSequence {
+                    r#type: type_name.to_string(),
+                    id: seq.id().to_string(),
+                    track_id: tid,
+                    resources,
+                },
+            );
+        }
+    }
+}
+
+/// Extract all virtual tracks from a CPL, merged across segments
+fn extract_sequences(
+    cpl: &crate::cpl::CompositionPlaylist,
+) -> (Option<String>, Vec<CplSequence>) {
+    let edit_rate = cpl
+        .edit_rate
+        .as_ref()
+        .map(|er| format!("{}/{}", er.numerator, er.denominator));
+
+    let mut track_map: HashMap<String, CplSequence> = HashMap::new();
+
+    for seg in &cpl.segment_list.segments {
+        let sl = &seg.sequence_list;
+        merge_sequences(&mut track_map, "MainImage", &sl.main_image_sequences, &edit_rate);
+        merge_sequences(&mut track_map, "MainAudio", &sl.main_audio_sequences, &edit_rate);
+        merge_sequences(&mut track_map, "Subtitles", &sl.subtitles_sequences, &edit_rate);
+        merge_sequences(
+            &mut track_map,
+            "HearingImpairedCaptions",
+            &sl.hearing_impaired_captions_sequences,
+            &edit_rate,
+        );
+        merge_sequences(
+            &mut track_map,
+            "ForcedNarrative",
+            &sl.forced_narrative_sequences,
+            &edit_rate,
+        );
+        merge_sequences(&mut track_map, "IAB", &sl.iab_sequences, &edit_rate);
+        merge_sequences(&mut track_map, "ISXD", &sl.isxd_sequences, &edit_rate);
+    }
+
+    (edit_rate, track_map.into_values().collect())
 }
 
 /// Collect all TrackFileIds referenced in a CPL across all sequence types
@@ -174,28 +292,53 @@ fn collect_track_file_ids(cpl: &crate::cpl::CompositionPlaylist) -> Vec<String> 
 /// Build a full ImfReport from a package, with optional ancestor package for supplemental IMPs
 pub fn build_report(
     package: &super::Imferno,
+    options: &super::ValidationOptions,
     ancestor: Option<&super::Imferno>,
 ) -> Result<ImfReport, String> {
-    // Package summary
-    let inspection = package.inspect();
+    // Unreferenced assets
+    let unreferenced_assets: Vec<UnreferencedAsset> = package
+        .unreferenced_assets()
+        .iter()
+        .map(|a| {
+            let path = a
+                .chunk_list
+                .chunks
+                .first()
+                .map(|c| c.path.as_str())
+                .unwrap_or("")
+                .to_string();
+            UnreferencedAsset {
+                id: a.id.to_string(),
+                path,
+            }
+        })
+        .collect();
+
+    // SCM counts
+    let scm_count = package.sidecar_composition_maps.len();
+    let sidecar_count: usize = package
+        .sidecar_composition_maps
+        .values()
+        .map(|s| s.sidecar_assets.len())
+        .sum();
+
     let pkg_summary = PackageSummary {
-        asset_map_id: inspection.asset_map_id.clone(),
-        volume_index: inspection.volume_index,
-        asset_count: inspection.asset_count,
-        cpl_count: inspection.cpl_count,
-        issue_date: inspection.asset_map_issue_date.clone(),
-        issuer: inspection.asset_map_issuer.clone(),
-        creator: inspection.asset_map_creator.clone(),
+        asset_map_id: package.asset_map.id.to_string(),
+        volume_index: package.volume_index.index,
+        asset_count: package.asset_map.asset_list.assets.len(),
+        cpl_count: package.composition_playlists.len(),
+        issue_date: package.asset_map.issue_date.clone(),
+        issuer: package.asset_map.issuer.clone(),
+        creator: package.asset_map.creator.clone(),
         pkl_count: package.packing_lists.len(),
+        scm_count,
+        sidecar_count,
+        unreferenced_assets,
     };
 
-    if package.composition_playlists.is_empty() {
-        return Err("No CPLs found in package".to_string());
-    }
-
+    // CPL reports
     let mut cpls = Vec::new();
     for cpl in package.composition_playlists.values() {
-        // Detect supplemental: find track file IDs not in this package's AssetMap
         let cpl_track_ids = collect_track_file_ids(cpl);
         let unresolved_ancestor_asset_ids: Vec<String> = cpl_track_ids
             .iter()
@@ -209,7 +352,6 @@ pub fn build_report(
             .iter()
             .any(|id| package.get_asset_path_str(id).is_none());
 
-        // Collect all markers from all segments
         let markers: Vec<CplMarker> = cpl
             .segment_list
             .segments
@@ -237,49 +379,190 @@ pub fn build_report(
             .as_ref()
             .and_then(|tc| tc.timecode_start_address.clone());
 
+        let (edit_rate, sequences) = extract_sequences(cpl);
+
         cpls.push(CplReport {
             id: cpl.id.to_string(),
             title: cpl.content_title.text.clone(),
             application_profile,
+            edit_rate,
             segment_count,
             timecode_start,
             is_supplemental,
             unresolved_ancestor_asset_ids,
             markers,
+            sequences,
         });
     }
 
     // Validation
-    let val_report = package.validate(&super::ValidationOptions::default());
-    let validation = if val_report.has_errors() || val_report.has_critical() {
-        let issues = val_report
-            .critical
-            .iter()
-            .chain(val_report.errors.iter())
-            .map(|i| ValidationIssueEntry {
-                severity: match i.severity {
-                    crate::diagnostics::Severity::Critical => "critical".to_string(),
-                    crate::diagnostics::Severity::Error => "error".to_string(),
-                    crate::diagnostics::Severity::Warning => "warning".to_string(),
-                    crate::diagnostics::Severity::Info => "info".to_string(),
-                },
-                message: i.message.clone(),
-            })
-            .collect();
-        ValidationSummary {
-            valid: false,
-            issues,
-        }
-    } else {
-        ValidationSummary {
-            valid: true,
-            issues: vec![],
-        }
-    };
+    let validation = package.validate(options);
 
     Ok(ImfReport {
         package: pkg_summary,
         cpls,
         validation,
     })
+}
+
+// ── ANSI colour helpers ──────────────────────────────────────────────────────
+
+fn c_red(s: &str, on: bool) -> String {
+    if on {
+        format!("\x1b[31m{}\x1b[0m", s)
+    } else {
+        s.to_string()
+    }
+}
+fn c_yellow(s: &str, on: bool) -> String {
+    if on {
+        format!("\x1b[33m{}\x1b[0m", s)
+    } else {
+        s.to_string()
+    }
+}
+fn c_cyan(s: &str, on: bool) -> String {
+    if on {
+        format!("\x1b[36m{}\x1b[0m", s)
+    } else {
+        s.to_string()
+    }
+}
+fn c_green(s: &str, on: bool) -> String {
+    if on {
+        format!("\x1b[32m{}\x1b[0m", s)
+    } else {
+        s.to_string()
+    }
+}
+fn c_bold(s: &str, on: bool) -> String {
+    if on {
+        format!("\x1b[1m{}\x1b[0m", s)
+    } else {
+        s.to_string()
+    }
+}
+fn c_dim(s: &str, on: bool) -> String {
+    if on {
+        format!("\x1b[2m{}\x1b[0m", s)
+    } else {
+        s.to_string()
+    }
+}
+
+// ── format_report ────────────────────────────────────────────────────────────
+
+/// Render an `ImfReport` as a human-readable, optionally ANSI-coloured string.
+pub fn format_report(report: &ImfReport, color: bool) -> String {
+    let mut out = String::new();
+    let pkg = &report.package;
+
+    // Package structure
+    let _ = writeln!(out, "  {}  VOLINDEX.xml found", c_green("ok", color));
+    let _ = writeln!(out, "  {}  ASSETMAP.xml found", c_green("ok", color));
+    let _ = writeln!(
+        out,
+        "  {}  {} assets mapped",
+        c_green("ok", color),
+        pkg.asset_count
+    );
+    let _ = writeln!(
+        out,
+        "  {}  {} CPL(s) parsed",
+        c_green("ok", color),
+        pkg.cpl_count
+    );
+
+    // SCMs
+    if pkg.scm_count > 0 {
+        let _ = writeln!(
+            out,
+            "  {}  {} SCM(s) parsed, {} sidecar asset(s) declared",
+            c_green("ok", color),
+            pkg.scm_count,
+            pkg.sidecar_count
+        );
+    }
+
+    // Unreferenced assets
+    if !pkg.unreferenced_assets.is_empty() {
+        let _ = writeln!(
+            out,
+            "  {}  {} unreferenced asset(s)",
+            c_yellow("info", color),
+            pkg.unreferenced_assets.len()
+        );
+        for asset in &pkg.unreferenced_assets {
+            let _ = writeln!(out, "        {}", c_dim(&asset.path, color));
+        }
+    }
+
+    // Validation findings
+    let all_issues: Vec<_> = report
+        .validation
+        .critical
+        .iter()
+        .chain(report.validation.errors.iter())
+        .chain(report.validation.warnings.iter())
+        .chain(report.validation.info.iter())
+        .collect();
+
+    if !all_issues.is_empty() {
+        let _ = writeln!(out, "{}", c_bold("Validation findings:", color));
+
+        for issue in &all_issues {
+            let (label, colorize): (&str, fn(&str, bool) -> String) = match issue.severity {
+                Severity::Critical => ("error", c_red),
+                Severity::Error => ("error", c_red),
+                Severity::Warning => ("warning", c_yellow),
+                Severity::Info => ("info", c_cyan),
+            };
+            let location = if let Some(ref c) = issue.location.cpl_id {
+                c_dim(&format!(" [CPL:{}]", &c[..c.len().min(8)]), color)
+            } else if let Some(ref f) = issue.location.file {
+                let fname = f.file_name().and_then(|n| n.to_str()).unwrap_or("?");
+                c_dim(&format!(" [{}]", fname), color)
+            } else {
+                String::new()
+            };
+            let _ = writeln!(
+                out,
+                "  {} {}{} {}",
+                colorize(&format!("{:<7}", label), color),
+                c_bold(&issue.code, color),
+                location,
+                issue.message,
+            );
+            if let Some(ref s) = issue.suggestion {
+                let _ = writeln!(out, "          {} {}", c_dim("→", color), c_dim(s, color));
+            }
+        }
+    }
+
+    // Summary line
+    let total_errors = report.validation.critical.len() + report.validation.errors.len();
+    let total_warnings = report.validation.warnings.len();
+    if total_errors > 0 {
+        let mut reasons = Vec::new();
+        reasons.push(format!("{} error(s)", total_errors));
+        if total_warnings > 0 {
+            reasons.push(format!("{} warning(s)", total_warnings));
+        }
+        let _ = writeln!(
+            out,
+            "{} {}",
+            c_red("failed", color),
+            c_bold(&reasons.join(", "), color)
+        );
+    } else if total_warnings > 0 {
+        let _ = writeln!(
+            out,
+            "{}",
+            c_yellow(&format!("valid  {} warning(s)", total_warnings), color)
+        );
+    } else {
+        let _ = writeln!(out, "{}", c_green("valid", color));
+    }
+
+    out
 }

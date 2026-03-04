@@ -211,89 +211,55 @@ function takeFromExternrefTable0(idx) {
     return value;
 }
 /**
- * Parse VOLINDEX.xml and return a typed VolumeIndex object
- * @param {string} xmlContent
- * @returns {VolumeIndex}
- */
-export function parseVolindexTyped(xmlContent) {
-    const ptr0 = passStringToWasm0(xmlContent, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.parseVolindexTyped(ptr0, len0);
-    if (ret[2]) {
-        throw takeFromExternrefTable0(ret[1]);
-    }
-    return takeFromExternrefTable0(ret[0]);
-}
-
-/**
- * Parse ASSETMAP.xml and return a typed AssetMap object
- * @param {string} xmlContent
- * @returns {any}
- */
-export function parseAssetmapTyped(xmlContent) {
-    const ptr0 = passStringToWasm0(xmlContent, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.parseAssetmapTyped(ptr0, len0);
-    if (ret[2]) {
-        throw takeFromExternrefTable0(ret[1]);
-    }
-    return takeFromExternrefTable0(ret[0]);
-}
-
-/**
- * Parse PKL XML and return a typed PackingList object
- * @param {string} xmlContent
- * @returns {any}
- */
-export function parsePklTyped(xmlContent) {
-    const ptr0 = passStringToWasm0(xmlContent, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.parsePklTyped(ptr0, len0);
-    if (ret[2]) {
-        throw takeFromExternrefTable0(ret[1]);
-    }
-    return takeFromExternrefTable0(ret[0]);
-}
-
-/**
- * Parse CPL XML and return a typed CompositionPlaylist object
- * @param {string} xmlContent
- * @returns {CompositionPlaylist}
- */
-export function parseCplTyped(xmlContent) {
-    const ptr0 = passStringToWasm0(xmlContent, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.parseCplTyped(ptr0, len0);
-    if (ret[2]) {
-        throw takeFromExternrefTable0(ret[1]);
-    }
-    return takeFromExternrefTable0(ret[0]);
-}
-
-/**
- * Validate a full IMF package and return both the validation report and parsed data.
+ * Build a structured report from an IMF package.
  *
- * Pass all XML files from the package as a plain JS object where each key is
- * the filename and each value is the file's text content. ASSETMAP.xml is
- * required; VOLINDEX.xml, PKL files, and CPL files are resolved automatically
- * from the AssetMap.
+ * Pass all XML files as a plain JS object where each key is the filename
+ * and each value is the file's text content.
+ *
+ * Returns an `ImfReport` containing package metadata, CPL analysis, and
+ * validation results. This is the same JSON that the CLI `export` command produces.
  *
  * Options (all optional):
- * - `coreSpec`: `"auto"` | `"v2013"` | `"v2016"` | `"v2020"` — core constraints version
- * - `app2eSpec`: `"auto"` | `"none"` | `"v2020"` | `"v2021"` | `"v2023"` — app profile version
+ * - `coreSpec`: `"auto"` | `"v2013"` | `"v2016"` | `"v2020"`
+ * - `app2eSpec`: `"auto"` | `"none"` | `"v2020"` | `"v2021"` | `"v2023"`
  * - `rules`: ESLint-style rules configuration object
- *
- * Returns `{ report, cpls, assetMap, packingLists, volumeIndex, unreferencedAssets, declaredSidecars }`
  * @param {any} files
  * @param {any} options
  * @returns {any}
  */
-export function validate(files, options) {
-    const ret = wasm.validate(files, options);
+export function buildReport(files, options) {
+    const ret = wasm.buildReport(files, options);
     if (ret[2]) {
         throw takeFromExternrefTable0(ret[1]);
     }
     return takeFromExternrefTable0(ret[0]);
+}
+
+/**
+ * Format a previously built `ImfReport` as a human-readable string.
+ *
+ * Pass the object returned by `buildReport()` (or any valid `ImfReport` JSON).
+ * Returns the same output as `imferno report` on the CLI.
+ * @param {any} report
+ * @returns {string}
+ */
+export function formatReport(report) {
+    let deferred2_0;
+    let deferred2_1;
+    try {
+        const ret = wasm.formatReport(report);
+        var ptr1 = ret[0];
+        var len1 = ret[1];
+        if (ret[3]) {
+            ptr1 = 0; len1 = 0;
+            throw takeFromExternrefTable0(ret[2]);
+        }
+        deferred2_0 = ptr1;
+        deferred2_1 = len1;
+        return getStringFromWasm0(ptr1, len1);
+    } finally {
+        wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
+    }
 }
 
 const EXPECTED_RESPONSE_TYPES = new Set(['basic', 'cors', 'default']);
@@ -338,6 +304,10 @@ function __wbg_get_imports() {
         const ret = Error(getStringFromWasm0(arg0, arg1));
         return ret;
     };
+    imports.wbg.__wbg_Number_998bea33bd87c3e0 = function(arg0) {
+        const ret = Number(arg0);
+        return ret;
+    };
     imports.wbg.__wbg_String_8f0eb39a4a4c2f66 = function(arg0, arg1) {
         const ret = String(arg1);
         const ptr1 = passStringToWasm0(ret, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
@@ -369,6 +339,10 @@ function __wbg_get_imports() {
         const ret = Reflect.get(arg0, arg1);
         return ret;
     }, arguments) };
+    imports.wbg.__wbg_getwithrefkey_1dc361bd10053bfe = function(arg0, arg1) {
+        const ret = arg0[arg1];
+        return ret;
+    };
     imports.wbg.__wbg_instanceof_ArrayBuffer_67f3012529f6a2dd = function(arg0) {
         let result;
         try {
@@ -419,7 +393,7 @@ function __wbg_get_imports() {
         const ret = arg0.length;
         return ret;
     };
-    imports.wbg.__wbg_log_bb9e5bc9ebe8ad30 = function(arg0, arg1) {
+    imports.wbg.__wbg_log_04115c32d2e6ccd8 = function(arg0, arg1) {
         console.log(getStringFromWasm0(arg0, arg1));
     };
     imports.wbg.__wbg_new0_b0a0a38c201e6df5 = function() {
@@ -450,18 +424,6 @@ function __wbg_get_imports() {
         const ret = arg0.next();
         return ret;
     }, arguments) };
-    imports.wbg.__wbg_parse_037c33ab58f9eabf = function(arg0, arg1) {
-        let deferred0_0;
-        let deferred0_1;
-        try {
-            deferred0_0 = arg0;
-            deferred0_1 = arg1;
-            const ret = JSON.parse(getStringFromWasm0(arg0, arg1));
-            return ret;
-        } finally {
-            wasm.__wbindgen_free(deferred0_0, deferred0_1, 1);
-        }
-    };
     imports.wbg.__wbg_prototypesetcall_3d4a26c1ed734349 = function(arg0, arg1, arg2) {
         Uint8Array.prototype.set.call(getArrayU8FromWasm0(arg0, arg1), arg2);
     };

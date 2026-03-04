@@ -3,21 +3,19 @@
 //! Two groups of codes live here:
 //!
 //! 1. **Package-level codes** (`St2067_2_2020`) — AssetMap / PKL / checksum checks
-//!    emitted by the `imf-parser` validator.
+//!    emitted by the package validator.
 //!
 //! 2. **Core Constraints CPL codes** (`St2067_2_2013_Core` / `St2067_2_2016_Core` /
 //!    `St2067_2_2020_Core`) — CPL structure rules (XSD, §6.1, §6.9, §6.10, §8, §10,
 //!    ST 377-4) shared across all three spec editions, emitted by the CoreConstraints
-//!    validators in `st2067-21`.  A `macro_rules!` generates the three enums from a
+//!    validators.  A `macro_rules!` generates the three enums from a
 //!    single source-of-truth variant list.  Each enum also exposes `for_code` so that
 //!    shared helper functions can produce the right `&'static str` without any runtime
 //!    string building.
 //!
-//! Also re-exports [`St429_9_2014`] from `st429-9` so downstream crates with a
-//! `st2067-2` dependency can access it without adding a direct `st429-9` dep.
+//! Also re-exports [`St429_9_2014`] from the volindex module.
 
-// Re-export St429_9_2014 so downstream crates that depend on st2067-2 can access
-// it without a direct st429-9 dependency.
+// Re-export St429_9_2014 from the volindex module for convenience.
 pub use crate::assetmap::volindex_codes::St429_9_2014;
 
 use crate::diagnostics::codes::ValidationCode;
@@ -28,7 +26,7 @@ use crate::diagnostics::{Category, Severity};
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// Validation codes defined by SMPTE ST 2067-2:2020 for package-level checks
-/// (AssetMap, PKL, file integrity).  Emitted by the `imf-parser` validator.
+/// (AssetMap, PKL, file integrity).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum St2067_2_2020 {
     /// AssetMap document is invalid or cannot be parsed.

@@ -12,7 +12,7 @@ use thiserror::Error;
 pub mod codes;
 pub mod report;
 
-pub use self::report::{build_report, ImfReport};
+pub use self::report::{build_report, format_report, ImfReport};
 pub use crate::assetmap::{Asset, AssetMap, PackingList, PklAsset, VolumeIndex};
 pub use crate::cpl::{CompositionPlaylist, Resource as CplResource};
 pub use crate::diagnostics::{
@@ -1746,35 +1746,6 @@ fn parse_ul_bytes(ul: &str) -> Option<[u8; 16]> {
     Some(bytes)
 }
 
-/// Package inspection result for programmatic use
-#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct PackageInspection {
-    pub path: PathBuf,
-    pub volume_index: u32,
-    pub asset_map_id: String,
-    pub asset_count: usize,
-    pub cpl_count: usize,
-    pub cpl_uuids: Vec<String>,
-    pub main_cpl: Option<CplSummary>,
-    pub asset_map_issuer: Option<String>,
-    pub asset_map_creator: Option<String>,
-    pub asset_map_issue_date: String,
-}
-
-#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct CplSummary {
-    pub id: String,
-    pub title: String,
-    pub kind: String,
-    pub issue_date: String,
-    pub segments: usize,
-    pub issuer: Option<String>,
-    pub creator: Option<String>,
-    pub annotation: Option<String>,
-}
-
 #[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct CplDetails {
@@ -1811,37 +1782,6 @@ pub struct TrackAnalysis {
 }
 
 impl Imferno {
-    /// Get detailed package inspection information
-    pub fn inspect(&self) -> PackageInspection {
-        let main_cpl = self.get_main_cpl().map(|cpl| CplSummary {
-            id: cpl.id.to_string(),
-            title: cpl.content_title.text.clone(),
-            kind: cpl.content_kind.to_string(),
-            issue_date: cpl.issue_date.clone(),
-            segments: cpl.segment_list.segments.len(),
-            issuer: cpl.issuer.as_ref().map(|ls| ls.text.clone()),
-            creator: cpl.creator.as_ref().map(|ls| ls.text.clone()),
-            annotation: cpl.annotation.as_ref().map(|ls| ls.text.clone()),
-        });
-
-        PackageInspection {
-            path: self.root_path.clone(),
-            volume_index: self.volume_index.index,
-            asset_map_id: self.asset_map.id.to_string(),
-            asset_count: self.asset_map.asset_list.assets.len(),
-            cpl_count: self.composition_playlists.len(),
-            cpl_uuids: self
-                .composition_playlists
-                .keys()
-                .map(|u| u.to_string())
-                .collect(),
-            main_cpl,
-            asset_map_issuer: self.asset_map.issuer.clone(),
-            asset_map_creator: self.asset_map.creator.clone(),
-            asset_map_issue_date: self.asset_map.issue_date.clone(),
-        }
-    }
-
     /// Get detailed information about a specific CPL
     pub fn get_cpl_details(&self, uuid: &str) -> Option<CplDetails> {
         let cpl = self.get_cpl_str(uuid)?;
@@ -2022,22 +1962,6 @@ impl Imferno {
         analyses
     }
 
-    /// List all CPLs with summary information
-    pub fn list_cpls(&self) -> Vec<CplSummary> {
-        self.composition_playlists
-            .values()
-            .map(|cpl| CplSummary {
-                id: cpl.id.to_string(),
-                title: cpl.content_title.text.clone(),
-                kind: cpl.content_kind.to_string(),
-                issue_date: cpl.issue_date.clone(),
-                segments: cpl.segment_list.segments.len(),
-                issuer: cpl.issuer.as_ref().map(|ls| ls.text.clone()),
-                creator: cpl.creator.as_ref().map(|ls| ls.text.clone()),
-                annotation: cpl.annotation.as_ref().map(|ls| ls.text.clone()),
-            })
-            .collect()
-    }
 }
 
 // ── Pipeline options ──────────────────────────────────────────────────────────
@@ -2094,51 +2018,6 @@ mod tests {
             }
             Err(e) => panic!("Failed to parse IMF package: {:?}", e),
         }
-    }
-
-    #[test]
-    fn test_package_inspection_api() {
-        let test_path = test_data("MERIDIAN_Netflix_Photon_161006");
-        let package =
-            Imferno::parse(read_dir(test_path).unwrap()).expect("Failed to parse package");
-
-        let inspection = package.inspect();
-
-        assert_eq!(inspection.volume_index, 1);
-        assert_eq!(inspection.asset_count, 6);
-        assert_eq!(inspection.cpl_count, 1);
-        assert_eq!(
-            inspection.asset_map_id,
-            "75864667-c65e-4aae-a5b2-fa5ea5fe31b7"
-        );
-        assert!(inspection
-            .path
-            .to_string_lossy()
-            .contains("MERIDIAN_Netflix_Photon_161006"));
-
-        assert!(inspection.main_cpl.is_some());
-        let main_cpl = inspection.main_cpl.unwrap();
-        assert_eq!(main_cpl.title, "MERIDIAN");
-        assert_eq!(main_cpl.kind, "Test");
-        assert_eq!(main_cpl.id, "0eb3d1b9-b77b-4d3f-bbe5-7c69b15dca85");
-    }
-
-    #[test]
-    fn test_list_cpls_api() {
-        let test_path = test_data("MERIDIAN_Netflix_Photon_161006");
-        let package =
-            Imferno::parse(read_dir(test_path).unwrap()).expect("Failed to parse package");
-
-        let cpls = package.list_cpls();
-
-        assert_eq!(cpls.len(), 1);
-        let cpl = &cpls[0];
-        assert_eq!(cpl.id, "0eb3d1b9-b77b-4d3f-bbe5-7c69b15dca85");
-        assert_eq!(cpl.title, "MERIDIAN");
-        assert_eq!(cpl.kind, "Test");
-        assert!(cpl.annotation.is_some());
-        assert_eq!(cpl.annotation.as_ref().unwrap(), "Meridian UHD 5994P");
-        assert_eq!(cpl.segments, 1);
     }
 
     #[test]
@@ -2302,8 +2181,7 @@ mod tests {
         let test_path = test_data("MERIDIAN_Netflix_Photon_161006_ID_MISMATCH");
 
         if let Ok(package) = Imferno::parse(read_dir(test_path).unwrap()) {
-            let inspection = package.inspect();
-            assert!(inspection.cpl_count > 0);
+            assert!(!package.composition_playlists.is_empty());
         }
     }
 
@@ -2314,9 +2192,7 @@ mod tests {
         let package = Imferno::parse(read_dir(&test_path).unwrap_or_default())
             .expect("Failed to parse package");
 
-        assert!(!package.composition_playlists.is_empty());
-        let inspection = package.inspect();
-        assert_eq!(inspection.cpl_count, 1);
+        assert_eq!(package.composition_playlists.len(), 1);
     }
 
     #[test]
@@ -2375,17 +2251,9 @@ mod tests {
         let test_path = test_data("MissingFilesAndAssetMapEntries");
 
         if let Ok(package) = Imferno::parse(read_dir(test_path).unwrap()) {
-            let cpls = package.list_cpls();
-            assert!(cpls.is_empty());
-
-            let cpl_uuids = package.list_cpl_uuids();
-            assert!(cpl_uuids.is_empty());
-
-            let main_cpl = package.get_main_cpl();
-            assert!(main_cpl.is_none());
-
-            let track_analyses = package.analyze_tracks();
-            assert!(track_analyses.is_empty());
+            assert!(package.composition_playlists.is_empty());
+            assert!(package.get_main_cpl().is_none());
+            assert!(package.analyze_tracks().is_empty());
         }
     }
 
@@ -2409,8 +2277,7 @@ mod tests {
         let test_path = test_data("WrongXmlMimeTypes");
 
         if let Ok(package) = Imferno::parse(read_dir(test_path).unwrap_or_default()) {
-            let inspection = package.inspect();
-            assert!(inspection.asset_count > 0);
+            assert!(!package.asset_map.asset_list.assets.is_empty());
         }
     }
 
@@ -2420,18 +2287,13 @@ mod tests {
         let package =
             Imferno::parse(read_dir(test_path).unwrap()).expect("Failed to parse package");
 
-        let cpls = package.list_cpls();
-        assert!(!cpls.is_empty());
+        assert!(!package.composition_playlists.is_empty());
 
-        let first_cpl = &cpls[0];
-
-        if let Some(annotation) = &first_cpl.annotation {
-            assert!(!annotation.is_empty());
-        }
-
-        let details = package.get_cpl_details(&first_cpl.id).unwrap();
-        assert_eq!(details.title, first_cpl.title);
-        assert_eq!(details.kind, first_cpl.kind);
+        let first_cpl = package.composition_playlists.values().next().unwrap();
+        let details = package
+            .get_cpl_details(&first_cpl.id.to_string())
+            .unwrap();
+        assert_eq!(details.title, first_cpl.content_title.text);
 
         for version in &details.content_versions {
             assert!(!version.is_empty());
@@ -2454,47 +2316,10 @@ mod tests {
     }
 
     #[test]
-    fn test_inspect_all_fields() {
-        let test_path = test_data("MERIDIAN_Netflix_Photon_161006");
-        let package =
-            Imferno::parse(read_dir(test_path).unwrap()).expect("Failed to parse package");
-
-        let inspection = package.inspect();
-
-        assert!(inspection.path.exists());
-        assert!(inspection.volume_index > 0);
-        assert!(!inspection.asset_map_id.is_empty());
-        assert!(!inspection.asset_map_issue_date.is_empty());
-
-        if let Some(issuer) = &inspection.asset_map_issuer {
-            assert!(!issuer.is_empty());
-        }
-
-        if let Some(creator) = &inspection.asset_map_creator {
-            assert!(!creator.is_empty());
-        }
-
-        assert!(inspection.asset_count > 0);
-        assert!(inspection.cpl_count > 0);
-    }
-
-    #[test]
     fn test_serialization() {
         let test_path = test_data("MERIDIAN_Netflix_Photon_161006");
         let package =
             Imferno::parse(read_dir(test_path).unwrap()).expect("Failed to parse package");
-
-        let inspection = package.inspect();
-        let json = serde_json::to_string(&inspection).expect("Failed to serialize inspection");
-        assert!(json.contains("volume_index"));
-        assert!(json.contains("asset_count"));
-
-        let _deserialized: crate::package::PackageInspection =
-            serde_json::from_str(&json).expect("Failed to deserialize inspection");
-
-        let cpls = package.list_cpls();
-        let json = serde_json::to_string(&cpls).expect("Failed to serialize CPLs");
-        assert!(json.contains("title"));
 
         let tracks = package.analyze_tracks();
         let json = serde_json::to_string(&tracks).expect("Failed to serialize tracks");
@@ -2516,12 +2341,8 @@ mod tests {
         for _ in 0..4 {
             let pkg = package.clone();
             let handle = thread::spawn(move || {
-                let inspection = pkg.inspect();
-                assert!(inspection.asset_count > 0);
-
-                let cpls = pkg.list_cpls();
-                assert!(!cpls.is_empty());
-
+                assert!(!pkg.asset_map.asset_list.assets.is_empty());
+                assert!(!pkg.composition_playlists.is_empty());
                 let _ = pkg.analyze_tracks();
             });
             handles.push(handle);
@@ -2617,17 +2438,9 @@ mod tests {
         );
 
         let package = result.unwrap();
-        assert_eq!(package.composition_playlists.len(), 0);
-
-        let cpls = package.list_cpls();
-        assert!(cpls.is_empty());
-
-        let inspection = package.inspect();
-        assert_eq!(inspection.cpl_count, 0);
-        assert!(inspection.main_cpl.is_none());
-
-        let tracks = package.analyze_tracks();
-        assert!(tracks.is_empty());
+        assert!(package.composition_playlists.is_empty());
+        assert!(package.get_main_cpl().is_none());
+        assert!(package.analyze_tracks().is_empty());
     }
 
     #[test]
@@ -2676,15 +2489,10 @@ mod tests {
         let package =
             Imferno::parse(read_dir(test_path).unwrap()).expect("Failed to parse package");
 
+        let cpl_count = package.composition_playlists.len();
         for _ in 0..10 {
-            let inspection = package.inspect();
-            assert!(inspection.asset_count > 0);
-
-            let cpls = package.list_cpls();
-            assert_eq!(cpls.len(), inspection.cpl_count);
-
-            let tracks = package.analyze_tracks();
-            assert_eq!(tracks.len(), inspection.cpl_count);
+            assert!(!package.asset_map.asset_list.assets.is_empty());
+            assert_eq!(package.analyze_tracks().len(), cpl_count);
         }
     }
 

@@ -1,6 +1,6 @@
 # imferno
 
-SMPTE ST 2067 IMF validator and inspector. Prebuilt native binaries for all major platforms.
+SMPTE ST 2067 IMF validator. Prebuilt native binaries for all major platforms.
 
 ## Install
 
@@ -11,7 +11,7 @@ npm install -g imferno
 Or use directly with npx:
 
 ```bash
-npx imferno validate ./my-imf-package
+npx imferno@latest validate ./my-imf-package
 ```
 
 ## Usage
@@ -20,11 +20,8 @@ npx imferno validate ./my-imf-package
 # Validate an IMF package
 imferno validate ./path/to/imf/package
 
-# Inspect package structure
-imferno inspect ./path/to/imf/package
-
 # Show detailed CPL information
-imferno cpl <uuid> ./path/to/imf/package
+imferno cpl ./path/to/imf/package
 
 # Export a full report
 imferno export ./path/to/imf/package

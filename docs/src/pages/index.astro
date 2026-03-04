@@ -5,8 +5,15 @@ import ImfPlayground from '../components/ImfPlayground';
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 ---
 
-<StarlightPage frontmatter={{ title: 'imferno', template: 'splash', hero: { tagline: 'SMPTE ST 2067 for Rust, Node.js and WASM. Parse, validate, and inspect IMF packages with native Node.js bindings and a WebAssembly target for the browser.' }, tableOfContents: false }}>
+<StarlightPage frontmatter={{ title: 'imferno', template: 'splash', hero: { tagline: '' }, tableOfContents: false }}>
   <div class="homepage">
+
+    <!-- Hero -->
+    <section class="hero-section">
+      <h1 class="hero-title">imferno</h1>
+      <p class="hero-subtitle">SMPTE ST 2067<br/>for Rust and JavaScript.</p>
+      <p class="hero-desc">Parse, validate, and inspect IMF packages with native Node.js bindings and a WebAssembly target for the browser.</p>
+    </section>
 
     <!-- Feature cards -->
     <section class="section">
@@ -277,6 +284,40 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
   .homepage .badge.done { background: var(--hp-badge-done-bg); color: var(--hp-badge-done-fg); }
   .homepage .badge.partial { background: var(--hp-badge-partial-bg); color: var(--hp-badge-partial-fg); }
   .homepage .badge.none { background: var(--hp-badge-none-bg); color: var(--hp-badge-none-fg); }
+
+  /* ── Hero ── */
+  .homepage .hero-section {
+    padding-top: 2rem;
+    padding-bottom: 3rem;
+  }
+  .homepage .hero-title {
+    font-size: clamp(3rem, 8vw, 5rem) !important;
+    font-weight: 800;
+    color: var(--sl-color-accent);
+    line-height: 1.05 !important;
+    margin: 0 0 0.25em !important;
+    letter-spacing: -0.02em;
+  }
+  .homepage .hero-subtitle {
+    font-size: clamp(1.75rem, 5vw, 3rem) !important;
+    font-weight: 700;
+    color: var(--sl-color-text);
+    line-height: 1.15 !important;
+    margin: 0 0 1rem !important;
+  }
+  .homepage .hero-desc {
+    font-size: clamp(0.95rem, 2vw, 1.15rem) !important;
+    line-height: 1.6 !important;
+    color: var(--sl-color-gray-3);
+    max-width: 640px;
+    margin: 0 !important;
+  }
+
+  /* Hide Starlight's default hero tagline since we use a custom one */
+  [data-page-title] .hero .tagline:empty,
+  .hero .tagline:empty {
+    display: none;
+  }
 
   /* Sponsor */
   .homepage .sponsor-text { font-size: 14px !important; color: var(--sl-color-gray-4); }

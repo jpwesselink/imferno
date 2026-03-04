@@ -43,23 +43,18 @@ const docsVersion = import.meta.env.DOCS_VERSION || 'latest';
     fetch(siteRoot + 'versions.json')
       .then(function (r) { return r.json(); })
       .then(function (versions) {
-        // Current version from the URL path (v1.0.0, pr-10, latest, etc.)
+        // Current version from the URL path
         var path = window.location.pathname;
-        var match = path.match(/\/imferno\/([^/]+)\//);
-        var current = match ? match[1] : 'latest';
+        var match = path.match(/\/imferno\/(v[^/]+)\//);
+        var current = match ? match[1] : null;
 
-        select.innerHTML = '';
-
-        // If current version isn't in the list (e.g. PR preview), add it first
-        var inList = versions.some(function (v) { return v.version === current; });
-        if (!inList) {
-          var prOpt = document.createElement('option');
-          prOpt.value = current;
-          prOpt.textContent = current + ' (preview)';
-          prOpt.selected = true;
-          select.appendChild(prOpt);
+        // Hide picker on non-release paths (PR previews, local dev, etc.)
+        if (!current) {
+          select.parentElement.style.display = 'none';
+          return;
         }
 
+        select.innerHTML = '';
         versions.forEach(function (v) {
           var opt = document.createElement('option');
           opt.value = v.version;

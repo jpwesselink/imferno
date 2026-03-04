@@ -78,12 +78,20 @@ jobs:
           git commit -m "docs: deploy preview for PR #${PR_NUM}"
           git push
 
-      - name: Comment on PR
-        uses: peter-evans/create-or-update-comment@v4
+      - name: Find existing comment
+        uses: peter-evans/find-comment@v3
+        id: find-comment
         with:
           issue-number: ${{ github.event.pull_request.number }}
           comment-author: 'github-actions[bot]'
           body-includes: '<!-- docs-preview-comment -->'
+
+      - name: Post or update comment
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          comment-id: ${{ steps.find-comment.outputs.comment-id }}
+          issue-number: ${{ github.event.pull_request.number }}
+          edit-mode: replace
           body: |
             <!-- docs-preview-comment -->
             **Docs preview** is ready:
@@ -116,12 +124,20 @@ jobs:
           git commit -m "docs: remove preview for PR #${PR_NUM}"
           git push
 
-      - name: Update PR comment
-        uses: peter-evans/create-or-update-comment@v4
+      - name: Find existing comment
+        uses: peter-evans/find-comment@v3
+        id: find-comment
         with:
           issue-number: ${{ github.event.pull_request.number }}
           comment-author: 'github-actions[bot]'
           body-includes: '<!-- docs-preview-comment -->'
+
+      - name: Update comment with removal notice
+        if: steps.find-comment.outputs.comment-id != ''
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          comment-id: ${{ steps.find-comment.outputs.comment-id }}
+          edit-mode: replace
           body: |
             <!-- docs-preview-comment -->
             ~~**Docs preview** is ready:~~

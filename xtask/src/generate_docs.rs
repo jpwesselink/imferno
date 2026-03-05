@@ -62,6 +62,50 @@ fn frontmatter(title: &str, description: &str) -> String {
     format!("---\ntitle: {title}\ndescription: {description}\n---\n\n")
 }
 
+/// Render a "Usage" section with import examples for Rust, Node.js, and WASM.
+///
+/// - `rust_enums`: list of `(EnumName, "module::path")` pairs
+/// - `js_keys`: list of JS property names on the `codes` object (e.g. `"ST2067_21_2023"`)
+fn usage_section(rust_enums: &[(&str, &str)], js_keys: &[&str]) -> String {
+    let mut s = String::from("## Usage\n\n");
+
+    // Rust
+    s.push_str("### Rust\n\n```rust\n");
+    if rust_enums.len() == 1 {
+        let (name, path) = rust_enums[0];
+        s.push_str(&format!("// Import from the barrel re-export\n"));
+        s.push_str(&format!("use imferno_core::codes::{name};\n\n"));
+        s.push_str(&format!("// Or from the original module\n"));
+        s.push_str(&format!("use imferno_core::{path}::{name};\n"));
+    } else {
+        s.push_str("// Import from the barrel re-export\n");
+        let names: Vec<&str> = rust_enums.iter().map(|(n, _)| *n).collect();
+        s.push_str(&format!(
+            "use imferno_core::codes::{{{}}};\n",
+            names.join(", ")
+        ));
+    }
+    s.push_str("```\n\n");
+
+    // Node.js
+    s.push_str("### Node.js\n\n```js\n");
+    s.push_str("import { codes } from '@imferno/node';\n\n");
+    for key in js_keys {
+        s.push_str(&format!("codes.{key}; // all codes in this group\n"));
+    }
+    s.push_str("```\n\n");
+
+    // WASM
+    s.push_str("### WASM\n\n```js\n");
+    s.push_str("import { codes } from '@imferno/wasm';\n\n");
+    for key in js_keys {
+        s.push_str(&format!("codes.{key}; // all codes in this group\n"));
+    }
+    s.push_str("```\n\n---\n\n");
+
+    s
+}
+
 /// Render a ValidationCode slice as a Markdown table.
 fn code_table<C: ValidationCode>(codes: &[C]) -> String {
     let mut out = String::from(
@@ -102,6 +146,10 @@ fn st429_9_page() -> String {
     s.push_str(
         "Codes emitted when validating the `VOLINDEX.xml` document per SMPTE ST 429-9:2014.\n\n",
     );
+    s.push_str(&usage_section(
+        &[("St429_9_2014", "assetmap::codes")],
+        &["ST429_9_2014"],
+    ));
     s.push_str(&section("St429\\_9\\_2014", St429_9_2014::ALL));
     s
 }
@@ -112,6 +160,10 @@ fn st377_1_page() -> String {
         "Validation codes from SMPTE ST 377-1:2011 (MXF File Format).",
     );
     s.push_str("Codes emitted when inspecting MXF essence files per SMPTE ST 377-1:2011.\n\n");
+    s.push_str(&usage_section(
+        &[("St377_1_2011", "mxf::codes")],
+        &["ST377_1_2011"],
+    ));
     s.push_str(&section("St377\\_1\\_2011", St377_1_2011::ALL));
     s
 }
@@ -129,9 +181,23 @@ fn st2067_2_page() -> String {
          checks emitted by `imferno-core`.\n\
          2. **Core Constraints CPL codes** — CPL structure rules shared across all three spec \
          editions (2013 / 2016 / 2020), emitted by the CoreConstraints validators. \
-         The only difference between editions is the year in the code prefix.\n\n\
-         ---\n\n",
+         The only difference between editions is the year in the code prefix.\n\n",
     );
+
+    s.push_str(&usage_section(
+        &[
+            ("St2067_2_2020", "assetmap::codes"),
+            ("St2067_2_2013_Core", "assetmap::codes"),
+            ("St2067_2_2016_Core", "assetmap::codes"),
+            ("St2067_2_2020_Core", "assetmap::codes"),
+        ],
+        &[
+            "ST2067_2_2020",
+            "ST2067_2_2013_Core",
+            "ST2067_2_2016_Core",
+            "ST2067_2_2020_Core",
+        ],
+    ));
 
     s.push_str(&section(
         "ST 2067-2:2020 — Package-level",
@@ -163,6 +229,14 @@ fn st2067_3_page() -> String {
          SMPTE ST 2067-3. Three editions are supported. \
          The codes are identical across editions — only the year prefix differs.\n\n",
     );
+    s.push_str(&usage_section(
+        &[
+            ("St2067_3_2013", "cpl::codes"),
+            ("St2067_3_2016", "cpl::codes"),
+            ("St2067_3_2020", "cpl::codes"),
+        ],
+        &["ST2067_3_2013", "ST2067_3_2016", "ST2067_3_2020"],
+    ));
     s.push_str(&subsection("ST 2067-3:2013", St2067_3_2013::ALL));
     s.push_str(&subsection("ST 2067-3:2016", St2067_3_2016::ALL));
     s.push_str(&subsection("ST 2067-3:2020", St2067_3_2020::ALL));
@@ -178,8 +252,16 @@ fn st2067_21_page() -> String {
     s.push_str(
         "SMPTE ST 2067-21 defines Application Profile #2E (App2E), which adds constraints \
          on top of the Core Constraints for UHD, HDR, and advanced audio. \
-         Three editions are implemented.\n\n---\n\n",
+         Three editions are implemented.\n\n",
     );
+    s.push_str(&usage_section(
+        &[
+            ("St2067_21_2020", "validation::codes"),
+            ("St2067_21_2023", "validation::codes"),
+            ("St2067_21_2025", "validation::codes"),
+        ],
+        &["ST2067_21_2020", "ST2067_21_2023", "ST2067_21_2025"],
+    ));
 
     s.push_str(&section("ST 2067-21:2020", St2067_21_2020::ALL));
     s.push_str("---\n\n");
@@ -250,6 +332,13 @@ fn st2067_201_page() -> String {
          Level 0 Plug-in per SMPTE ST 2067-201. \
          Both editions share the same 21 rules; only the year prefix differs.\n\n",
     );
+    s.push_str(&usage_section(
+        &[
+            ("St2067_201_2019", "validation::iab_codes"),
+            ("St2067_201_2021", "validation::iab_codes"),
+        ],
+        &["ST2067_201_2019", "ST2067_201_2021"],
+    ));
     s.push_str(&subsection("ST 2067-201:2019", St2067_201_2019::ALL));
     s.push_str(&subsection("ST 2067-201:2021", St2067_201_2021::ALL));
     s
@@ -265,6 +354,10 @@ fn st2067_9_page() -> String {
          SMPTE ST 2067-9:2018. The SCM associates sidecar assets (e.g. IAB audio) \
          with a CPL by UUID without modifying the CPL itself.\n\n",
     );
+    s.push_str(&usage_section(
+        &[("St2067_9_2018", "scm::codes")],
+        &["ST2067_9_2018"],
+    ));
     s.push_str(&section("St2067\\_9\\_2018", St2067_9_2018::ALL));
     s
 }
@@ -278,6 +371,10 @@ fn st2067_202_page() -> String {
         "These codes are emitted when validating the ISXD (Immersive Sound eXtensible \
          Description) Plug-in per SMPTE ST 2067-202:2022.\n\n",
     );
+    s.push_str(&usage_section(
+        &[("St2067_202_2022", "validation::isxd_codes")],
+        &["ST2067_202_2022"],
+    ));
     s.push_str(&section("St2067\\_202\\_2022", St2067_202_2022::ALL));
     s
 }
@@ -291,6 +388,10 @@ fn imferno_page() -> String {
         "These codes are emitted by imferno's package-level logic for conditions \
          that don't map to a specific SMPTE spec clause.\n\n",
     );
+    s.push_str(&usage_section(
+        &[("ImfernoCode", "package::codes")],
+        &["Imferno"],
+    ));
     s.push_str(&section("Imferno", ImfernoCode::ALL));
     s
 }

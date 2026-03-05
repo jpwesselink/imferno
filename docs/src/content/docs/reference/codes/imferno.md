@@ -5,6 +5,36 @@ description: Validation codes emitted by imferno itself (not tied to a specific 
 
 These codes are emitted by imferno's package-level logic for conditions that don't map to a specific SMPTE spec clause.
 
+## Usage
+
+### Rust
+
+```rust
+// Import from the barrel re-export
+use imferno_core::codes::ImfernoCode;
+
+// Or from the original module
+use imferno_core::package::codes::ImfernoCode;
+```
+
+### Node.js
+
+```js
+import { codes } from '@imferno/node';
+
+codes.Imferno; // all codes in this group
+```
+
+### WASM
+
+```js
+import { codes } from '@imferno/wasm';
+
+codes.Imferno; // all codes in this group
+```
+
+---
+
 ## Imferno
 
 | Code | Description | Default Severity | Category |

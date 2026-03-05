@@ -41,7 +41,7 @@ imferno validate ./my-package --rules-config rules.json
 Every validation code has a typed enum variant — no raw strings needed:
 
 ```rust
-use imferno_core::assetmap::codes::St2067_2_2020;
+use imferno_core::codes::St2067_2_2020;
 use imferno_core::diagnostics::rules::{RulesConfig, RuleSeverity};
 use imferno_core::package::{Imferno, ValidationOptions, read_dir};
 
@@ -88,17 +88,25 @@ const result = await validate(files, {
 <TabItem label="Node.js">
 
 ```javascript
-const { validatePath } = require('@imferno/node');
+const { validatePath, codes } = require('@imferno/node');
 
 const result = validatePath('./my-imp', {
     rules: {
-        'ST2067-21:2023:7.1/AppIdMismatch': 'error',
-        'IMFERNO:Package/UnreferencedAsset': 'off',
+        [codes.ST2067_21_2023.AppIdMismatch]: 'error',
+        [codes.Imferno.UnreferencedAsset]: 'off',
     },
 });
 ```
 
-Works the same with the string-based `validate` function.
+Raw strings work too:
+
+```javascript
+const result = validatePath('./my-imp', {
+    rules: {
+        'ST2067-21:2023:7.1/AppIdMismatch': 'error',
+    },
+});
+```
 
 </TabItem>
 </Tabs>
@@ -167,4 +175,4 @@ const result = validatePath('./my-imp', {
 </TabItem>
 </Tabs>
 
-See the [Validation Codes](/reference/codes/st2067-2/) reference for the full catalogue of rule codes.
+See the [Validation Codes](/guide/codes/) reference for the full catalogue of rule codes.

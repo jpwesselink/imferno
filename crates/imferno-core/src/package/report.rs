@@ -71,6 +71,16 @@ pub struct CplSequence {
     pub r#type: String,
     pub id: String,
     pub track_id: String,
+    /// Language tag (e.g. "en", "fr") from EssenceDescriptor MCA or timed text metadata
+    pub language: Option<String>,
+    /// Channel layout (e.g. "5.1", "7.1", "Object-based") for audio tracks
+    pub channels: Option<String>,
+    /// Codec description (e.g. "JPEG 2000", "PCM 24-bit", "IAB (Dolby Atmos)")
+    pub codec: Option<String>,
+    /// Resolution (e.g. "3840x2160") for video tracks
+    pub resolution: Option<String>,
+    /// Subtitle kind: "standard", "hi" (hearing impaired), "forced"
+    pub subtitle_type: Option<String>,
     pub resources: Vec<CplResource>,
 }
 
@@ -165,12 +175,34 @@ fn map_resource(r: &crate::cpl::Resource, cpl_er: &Option<String>) -> CplResourc
     }
 }
 
+/// Metadata extracted from an EssenceDescriptor for a sequence
+struct SequenceMeta {
+    language: Option<String>,
+    channels: Option<String>,
+    codec: Option<String>,
+    resolution: Option<String>,
+    subtitle_type: Option<String>,
+}
+
+impl Default for SequenceMeta {
+    fn default() -> Self {
+        Self {
+            language: None,
+            channels: None,
+            codec: None,
+            resolution: None,
+            subtitle_type: None,
+        }
+    }
+}
+
 /// Merge sequences of one type into the track map, accumulating resources by track_id
 fn merge_sequences(
     track_map: &mut HashMap<String, CplSequence>,
     type_name: &str,
     sequences: &[impl SequenceAccess],
     cpl_er: &Option<String>,
+    meta_fn: impl Fn(&crate::cpl::Resource) -> SequenceMeta,
 ) {
     for seq in sequences {
         let tid = seq.track_id().to_string();
@@ -183,16 +215,176 @@ fn merge_sequences(
         if let Some(existing) = track_map.get_mut(&tid) {
             existing.resources.extend(resources);
         } else {
+            // Get metadata from the first resource that has a SourceEncoding
+            let meta = seq
+                .resource_list()
+                .resources
+                .first()
+                .map(&meta_fn)
+                .unwrap_or_default();
             track_map.insert(
                 tid.clone(),
                 CplSequence {
                     r#type: type_name.to_string(),
                     id: seq.id().to_string(),
                     track_id: tid,
+                    language: meta.language,
+                    channels: meta.channels,
+                    codec: meta.codec,
+                    resolution: meta.resolution,
+                    subtitle_type: meta.subtitle_type,
                     resources,
                 },
             );
         }
+    }
+}
+
+/// Look up an EssenceDescriptor by the resource's SourceEncoding UUID
+fn lookup_ed<'a>(
+    r: &crate::cpl::Resource,
+    eds: &'a HashMap<crate::assetmap::ImfUuid, &'a crate::cpl::EssenceDescriptor>,
+) -> Option<&'a crate::cpl::EssenceDescriptor> {
+    r.source_encoding
+        .as_ref()
+        .and_then(|se| eds.get(se).copied())
+}
+
+fn video_meta(
+    r: &crate::cpl::Resource,
+    eds: &HashMap<crate::assetmap::ImfUuid, &crate::cpl::EssenceDescriptor>,
+) -> SequenceMeta {
+    let Some(ed) = lookup_ed(r, eds) else {
+        return SequenceMeta::default();
+    };
+    let (codec, resolution) = if let Some(cdci) = &ed.cdci_descriptor {
+        let w = cdci
+            .active_width
+            .or(cdci.display_width)
+            .or(cdci.stored_width);
+        let h = cdci
+            .active_height
+            .or(cdci.display_height)
+            .or(cdci.stored_height);
+        let res = match (w, h) {
+            (Some(w), Some(h)) => Some(format!("{w}x{h}")),
+            _ => None,
+        };
+        let c = cdci
+            .picture_compression
+            .as_ref()
+            .map(|c| c.to_string())
+            .unwrap_or_else(|| "JPEG 2000".into());
+        (Some(c), res)
+    } else if let Some(rgba) = &ed.rgba_descriptor {
+        let w = rgba.display_width.or(rgba.stored_width);
+        let h = rgba.display_height.or(rgba.stored_height);
+        let res = match (w, h) {
+            (Some(w), Some(h)) => Some(format!("{w}x{h}")),
+            _ => None,
+        };
+        let c = rgba
+            .picture_compression
+            .as_ref()
+            .map(|c| c.to_string())
+            .unwrap_or_else(|| "JPEG 2000".into());
+        (Some(c), res)
+    } else {
+        (None, None)
+    };
+    SequenceMeta {
+        codec,
+        resolution,
+        ..Default::default()
+    }
+}
+
+fn audio_meta(
+    r: &crate::cpl::Resource,
+    eds: &HashMap<crate::assetmap::ImfUuid, &crate::cpl::EssenceDescriptor>,
+) -> SequenceMeta {
+    let Some(ed) = lookup_ed(r, eds) else {
+        return SequenceMeta::default();
+    };
+    if let Some(wave) = &ed.wave_pcm_descriptor {
+        let codec = wave
+            .quantization_bits
+            .map(|b| format!("PCM {b}-bit"))
+            .unwrap_or_else(|| "PCM".into());
+        let channels = match wave.channel_count {
+            Some(1) => Some("1.0".into()),
+            Some(2) => Some("2.0".into()),
+            Some(6) => Some("5.1".into()),
+            Some(8) => Some("7.1".into()),
+            Some(n) => Some(format!("{n}ch")),
+            None => None,
+        };
+        let language = wave
+            .sub_descriptors
+            .as_ref()
+            .and_then(|sd| sd.soundfield_group_label_sub_descriptor.as_ref())
+            .and_then(|sf| sf.rfc5646_spoken_language.as_ref())
+            .map(|lt| lt.0.clone());
+        return SequenceMeta {
+            codec: Some(codec),
+            channels,
+            language,
+            ..Default::default()
+        };
+    }
+    SequenceMeta::default()
+}
+
+fn iab_meta(
+    r: &crate::cpl::Resource,
+    eds: &HashMap<crate::assetmap::ImfUuid, &crate::cpl::EssenceDescriptor>,
+) -> SequenceMeta {
+    let Some(ed) = lookup_ed(r, eds) else {
+        return SequenceMeta::default();
+    };
+    let language = ed
+        .iab_essence_descriptor
+        .as_ref()
+        .and_then(|iab| iab.sub_descriptors.as_ref())
+        .and_then(|sd| sd.iab_soundfield_label_sub_descriptor.as_ref())
+        .and_then(|sf| sf.rfc5646_spoken_language.as_ref())
+        .map(|lt| lt.0.clone());
+    SequenceMeta {
+        codec: Some("IAB (Dolby Atmos)".into()),
+        channels: Some("Object-based".into()),
+        language,
+        ..Default::default()
+    }
+}
+
+fn timed_text_meta(
+    subtitle_type: &str,
+    r: &crate::cpl::Resource,
+    eds: &HashMap<crate::assetmap::ImfUuid, &crate::cpl::EssenceDescriptor>,
+) -> SequenceMeta {
+    let Some(ed) = lookup_ed(r, eds) else {
+        return SequenceMeta {
+            subtitle_type: Some(subtitle_type.into()),
+            ..Default::default()
+        };
+    };
+    let language = ed
+        .dc_timed_text_descriptor
+        .as_ref()
+        .map(|tt| {
+            tt.rfc5646_language_tag_list
+                .iter()
+                .map(|lt| lt.as_str())
+                .filter(|s| !s.is_empty())
+                .collect::<Vec<_>>()
+                .join(",")
+        })
+        .filter(|s| !s.is_empty());
+    SequenceMeta {
+        codec: Some("IMSC1 (Timed Text)".into()),
+        language,
+        subtitle_type: Some(subtitle_type.into()),
+        ..Default::default()
     }
 }
 
@@ -203,6 +395,17 @@ fn extract_sequences(cpl: &crate::cpl::CompositionPlaylist) -> (Option<String>, 
         .as_ref()
         .map(|er| format!("{}/{}", er.numerator, er.denominator));
 
+    // Build essence descriptor lookup
+    let eds: HashMap<crate::assetmap::ImfUuid, &crate::cpl::EssenceDescriptor> =
+        if let Some(edl) = &cpl.essence_descriptor_list {
+            edl.essence_descriptors
+                .iter()
+                .map(|ed| (ed.id, ed))
+                .collect()
+        } else {
+            HashMap::new()
+        };
+
     let mut track_map: HashMap<String, CplSequence> = HashMap::new();
 
     for seg in &cpl.segment_list.segments {
@@ -212,33 +415,46 @@ fn extract_sequences(cpl: &crate::cpl::CompositionPlaylist) -> (Option<String>, 
             "MainImage",
             &sl.main_image_sequences,
             &edit_rate,
+            |r| video_meta(r, &eds),
         );
         merge_sequences(
             &mut track_map,
             "MainAudio",
             &sl.main_audio_sequences,
             &edit_rate,
+            |r| audio_meta(r, &eds),
         );
         merge_sequences(
             &mut track_map,
             "Subtitles",
             &sl.subtitles_sequences,
             &edit_rate,
+            |r| timed_text_meta("standard", r, &eds),
         );
         merge_sequences(
             &mut track_map,
             "HearingImpairedCaptions",
             &sl.hearing_impaired_captions_sequences,
             &edit_rate,
+            |r| timed_text_meta("hi", r, &eds),
         );
         merge_sequences(
             &mut track_map,
             "ForcedNarrative",
             &sl.forced_narrative_sequences,
             &edit_rate,
+            |r| timed_text_meta("forced", r, &eds),
         );
-        merge_sequences(&mut track_map, "IAB", &sl.iab_sequences, &edit_rate);
-        merge_sequences(&mut track_map, "ISXD", &sl.isxd_sequences, &edit_rate);
+        merge_sequences(&mut track_map, "IAB", &sl.iab_sequences, &edit_rate, |r| {
+            iab_meta(r, &eds)
+        });
+        merge_sequences(
+            &mut track_map,
+            "ISXD",
+            &sl.isxd_sequences,
+            &edit_rate,
+            |_| SequenceMeta::default(),
+        );
     }
 
     (edit_rate, track_map.into_values().collect())

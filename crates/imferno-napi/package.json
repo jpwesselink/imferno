@@ -19,6 +19,8 @@
   "files": [
     "index.js",
     "index.d.ts",
+    "codes.js",
+    "codes.d.ts",
     "README.md",
     "LICENSE"
   ],

@@ -10,7 +10,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 
     <!-- Hero -->
     <section class="hero-section">
-      <p class="hero-subtitle">SMPTE ST 2067<br/>for Rust and JavaScript.</p>
+      <p class="hero-subtitle">SMPTE ST-2067<br/>for Rust and JavaScript.</p>
       <p class="hero-desc">Parse, validate, and inspect IMF packages with native Node.js bindings and a WebAssembly target for the browser.</p>
     </section>
 
@@ -79,7 +79,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
     <!-- Standards coverage -->
     <section class="section">
       <h2 class="section-title">Standards coverage</h2>
-      <p class="section-subtitle">SMPTE ST 2067 implementation status.</p>
+      <p class="section-subtitle">SMPTE ST-2067 implementation status.</p>
       <div class="table-wrap">
         <table class="std-table">
           <thead>
@@ -156,9 +156,9 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 
   /* Container — kill Starlight's content gap */
   .homepage {
-    max-width: 1280px;
+    max-width: 1400px;
     margin: 0 auto;
-    padding-inline: 1.5rem;
+    padding-inline: 48px;
     --sl-content-gap-y: 0 !important;
   }
 
@@ -172,6 +172,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
     .homepage .card-grid.four { grid-template-columns: repeat(2, 1fr) !important; }
   }
   @media (max-width: 600px) {
+    .homepage { padding-inline: 24px; }
     .homepage .card-grid.four,
     .homepage .card-grid.two { grid-template-columns: 1fr !important; }
   }
@@ -259,13 +260,9 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
   .homepage .section-title { font-size: 1.5rem !important; font-weight: 700; color: var(--sl-color-text); margin-bottom: 0.5rem !important; }
   .homepage .section-subtitle { color: var(--sl-color-gray-3); font-size: 0.875rem !important; margin-bottom: 1.5rem !important; }
   .homepage .table-wrap { border-radius: 12px; overflow: hidden; border: 1px solid var(--sl-color-hairline); }
-  .homepage .std-table { width: 100%; border-collapse: collapse; font-size: 14px !important; table-layout: fixed; }
-  .homepage .std-table th:nth-child(1),
-  .homepage .std-table td:nth-child(1) { width: 30%; }
-  .homepage .std-table th:nth-child(3),
-  .homepage .std-table td:nth-child(3) { width: 140px; }
-  .homepage .std-table th { text-align: left; padding: 8px 16px !important; color: var(--sl-color-gray-3); font-weight: 500; border-bottom: 1px solid var(--sl-color-hairline); }
-  .homepage .std-table td { padding: 10px 16px !important; border-bottom: 1px solid var(--sl-color-hairline); color: var(--sl-color-text); font-size: 14px !important; }
+  .homepage .std-table { display: table !important; width: 100%; border-collapse: collapse; font-size: 16px !important; table-layout: auto; }
+  .homepage .std-table th { text-align: left; padding: 14px 24px !important; color: var(--sl-color-gray-3); font-weight: 500; border-bottom: 1px solid var(--sl-color-hairline); }
+  .homepage .std-table td { padding: 14px 24px !important; border-bottom: 1px solid var(--sl-color-hairline); color: var(--sl-color-text); font-size: 16px !important; }
   .homepage .std-table tr:last-child td { border-bottom: none; }
   .homepage .section-row {
     background: var(--hp-section-bg);
@@ -292,20 +289,29 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
   .homepage .hero-section {
     padding-top: 0;
     padding-bottom: 3rem;
+    max-width: 640px;
   }
   .homepage .hero-subtitle {
-    font-size: clamp(1.75rem, 5vw, 3rem) !important;
+    font-size: 48px !important;
     font-weight: 700;
     color: var(--sl-color-text);
-    line-height: 1.15 !important;
-    margin: 0 0 1rem !important;
+    line-height: 56px !important;
+    letter-spacing: -0.4px;
+    margin: 0 0 12px !important;
   }
   .homepage .hero-desc {
-    font-size: clamp(0.95rem, 2vw, 1.15rem) !important;
-    line-height: 1.6 !important;
+    padding-top: 12px;
+    font-size: 20px !important;
+    font-weight: 500;
+    line-height: 32px !important;
     color: var(--sl-color-gray-3);
-    max-width: 640px;
+    max-width: 576px;
     margin: 0 !important;
+  }
+  @media (max-width: 640px) {
+    .homepage .hero-section { padding-top: 1.5rem; }
+    .homepage .hero-subtitle { font-size: 32px !important; line-height: 40px !important; }
+    .homepage .hero-desc { font-size: 18px !important; line-height: 28px !important; }
   }
 
   /* Sponsor */

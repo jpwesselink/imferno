@@ -26,7 +26,7 @@ cargo install imferno
 
 ## `imferno validate`
 
-Validate an IMF package against SMPTE ST 2067.
+Validate an IMF package against SMPTE ST-2067.
 
 ```bash
 imferno validate <PATH> [OPTIONS]

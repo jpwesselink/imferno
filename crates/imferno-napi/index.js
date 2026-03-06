@@ -41,4 +41,6 @@ try {
   }
 }
 
-module.exports = nativeModule;
+const { codes } = require("./codes.js");
+
+module.exports = { ...nativeModule, codes };

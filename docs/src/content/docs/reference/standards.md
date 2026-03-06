@@ -1,6 +1,6 @@
 ---
 title: Standards Coverage
-description: Which SMPTE ST 2067 standards imferno implements and to what degree.
+description: Which SMPTE ST-2067 standards imferno implements and to what degree.
 ---
 
 | Standard | Title | Editions | Coverage |

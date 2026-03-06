@@ -13,3 +13,5 @@ export declare function parseVolindex(xml: string): any
 export declare function validate(files: Record<string, string>, options?: any | undefined | null): any
 
 export declare function validatePath(path: string, options?: any | undefined | null): any
+
+export { codes } from './codes'

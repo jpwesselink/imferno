@@ -74,16 +74,6 @@ const result = await validate(files, {
 });
 ```
 
-Raw strings still work if you prefer:
-
-```typescript
-const result = await validate(files, {
-    rules: {
-        'ST2067-2:2020:8.3/FileNotFound': 'critical',
-    },
-});
-```
-
 </TabItem>
 <TabItem label="Node.js">
 
@@ -94,16 +84,6 @@ const result = validatePath('./my-imp', {
     rules: {
         [codes.ST2067_21_2023.AppIdMismatch]: 'error',
         [codes.Imferno.UnreferencedAsset]: 'off',
-    },
-});
-```
-
-Raw strings work too:
-
-```javascript
-const result = validatePath('./my-imp', {
-    rules: {
-        'ST2067-21:2023:7.1/AppIdMismatch': 'error',
     },
 });
 ```

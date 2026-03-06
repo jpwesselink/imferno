@@ -7,7 +7,7 @@ description: What imferno is, what IMF is, and why this exists.
 
 ## What is IMF?
 
-IMF (Interoperable Master Format) is a family of SMPTE standards — ST 2067 — defining how finished audiovisual content is packaged for delivery and archive. An IMP (IMF Package) is a directory containing:
+IMF (Interoperable Master Format) is a family of SMPTE standards — ST-2067 — defining how finished audiovisual content is packaged for delivery and archive. An IMP (IMF Package) is a directory containing:
 
 - **ASSETMAP.xml** — inventory of all files and their UUIDs
 - **PKL** (Packing List) — SHA-1 hashes and sizes for integrity verification
@@ -18,7 +18,7 @@ IMF is the successor to DCP for long-form content. It supports multiple versions
 
 ## What imferno does
 
-- Parses ASSETMAP, PKL, CPL, and VOLINDEX XML per the SMPTE ST 2067 spec
+- Parses ASSETMAP, PKL, CPL, and VOLINDEX XML per the SMPTE ST-2067 spec
 - Validates structural integrity against Core Constraints and Application profiles
 - Inspects track composition, language tags, and application profiles
 - Exports structured JSON reports with full type definitions
@@ -49,4 +49,4 @@ IMF is the successor to DCP for long-form content. It supports multiple versions
 
 ## Why Rust?
 
-imferno brings SMPTE ST 2067 correctness to Rust — with zero GC pauses, a native CLI, and WASM compilation for browser tooling.
+imferno brings SMPTE ST-2067 correctness to Rust — with zero GC pauses, a native CLI, and WASM compilation for browser tooling.

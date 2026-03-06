@@ -14,7 +14,7 @@ export default defineConfig({
     integrations: [
         starlight({
             title: 'imferno',
-            description: 'SMPTE ST 2067 Interoperable Master Format for Rust',
+            description: 'SMPTE ST-2067 Interoperable Master Format for Rust',
             customCss: ['./src/styles/custom.css'],
             social: [
                 { icon: 'github', label: 'GitHub', href: 'https://github.com/jpwesselink/imferno' },

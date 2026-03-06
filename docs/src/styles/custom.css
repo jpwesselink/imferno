@@ -35,6 +35,10 @@
   --hp-badge-none-fg: #5a5a62;
 }
 
+[data-theme='dark'] {
+  --sl-color-black: #1a1a1e;
+}
+
 /* ── Accent + homepage tokens: light mode ── */
 [data-theme='light'] {
   --sl-color-accent-low: #fff7ed;
@@ -57,8 +61,9 @@
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  font-size: clamp(2.5rem, 8vw, 4.5rem) !important;
-  line-height: 1.05 !important;
+  font-size: clamp(2rem, 5vw, 3rem) !important;
+  line-height: 1.1 !important;
+  margin-top: 1.5rem !important;
 }
 
 [data-theme='light'] .hero h1[data-page-title] {
@@ -79,7 +84,7 @@
   display: none;
 }
 
-/* ── Splash page: break container out of 45rem centering ── */
+/* ── Splash page: break container out of Starlight's centering ── */
 [data-has-hero] {
   --sl-content-width: 100%;
 }
@@ -89,12 +94,41 @@
   padding-top: 0;
 }
 
+[data-has-hero] .sl-container {
+  max-width: none !important;
+  margin-inline: 0 !important;
+}
+
+[data-has-hero] .sl-container > * + * {
+  margin-top: 0 !important;
+}
+
 /* ── Align Starlight hero with .homepage content ── */
 .hero {
-  max-width: 1280px;
+  display: block !important;
+  max-width: 1400px;
   margin: 0 auto;
-  padding-inline: 1.5rem;
-  padding-bottom: 0;
+  padding: 1.5rem 48px 0 !important;
+  text-align: left;
+}
+
+@media (max-width: 600px) {
+  .hero {
+    padding: 1.5rem 24px 0 !important;
+  }
+}
+
+.hero .stack {
+  text-align: left !important;
+  gap: 0.5rem !important;
+}
+
+.hero .copy {
+  align-items: flex-start !important;
+}
+
+.hero .copy > * {
+  max-width: none !important;
 }
 
 /* ── Primary button ── */

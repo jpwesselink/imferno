@@ -1,0 +1,86 @@
+---
+title: Examples
+description: Working examples showing how to use imferno in your projects.
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+## Node.js — Validate an IMF package
+
+This example validates a local IMF package using `@imferno/node`, configures custom rule overrides with typed code constants, and prints the results.
+
+### Setup
+
+```sh
+npm install @imferno/node
+```
+
+### Code
+
+```typescript
+import { createRequire } from "node:module";
+import { resolve, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const require = createRequire(import.meta.url);
+const { validatePath, codes } = require("@imferno/node");
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const impPath = resolve(__dirname, "./my-package");
+
+const result = validatePath(impPath, {
+  rules: {
+    // Promote checksum mismatches to critical
+    [codes.ST2067_2_2020.ChecksumMismatch]: "critical",
+    // Suppress unreferenced asset warnings
+    [codes.Imferno.UnreferencedAsset]: "off",
+  },
+});
+
+console.log("Compliant:", result.report.is_compliant);
+console.log("Errors:", result.report.errors.length);
+console.log("Warnings:", result.report.warnings.length);
+console.log("Info:", result.report.info.length);
+
+for (const issue of result.report.errors) {
+  console.log(`  ${issue.code}: ${issue.message}`);
+}
+
+process.exit(result.report.is_compliant ? 0 : 1);
+```
+
+### Output
+
+```
+Compliant: true
+Errors: 0
+Warnings: 0
+Info: 2
+
+Info:
+  ST429-9:2014:7/VolindexMissing: VOLINDEX.xml is absent; single-volume package assumed
+  ST2067-2:2016:8/DigitalSignature: Digital signature validation (ST 2067-2 §8) is not currently performed
+```
+
+### What's happening
+
+1. **`validatePath(path, options?)`** reads an IMF package directory from disk, parses all XML files, verifies SHA hashes, and runs validation against every applicable SMPTE spec.
+
+2. **`codes`** gives you typed constants for all 250+ validation rules — autocomplete in your editor, no typos.
+
+3. **`result.report`** contains `is_compliant`, `errors`, `warnings`, `info`, and `critical` arrays. Each issue has a `code`, `message`, `severity`, and `location`.
+
+4. The process exits with code 1 if the package is non-compliant, making it easy to use in CI pipelines.
+
+:::tip[Run the example locally]
+The full working example is in the repository at [`examples/node/`](https://github.com/jpwesselink/imferno/tree/main/examples/node):
+
+```sh
+git clone https://github.com/jpwesselink/imferno.git
+cd imferno/examples/node
+npm install
+npm run validate
+```
+:::
+
+See the [Configuration](/guide/config/) page for all available options and the [Validation Codes](/guide/codes/) reference for the full rule catalogue.

@@ -176,24 +176,13 @@ fn map_resource(r: &crate::cpl::Resource, cpl_er: &Option<String>) -> CplResourc
 }
 
 /// Metadata extracted from an EssenceDescriptor for a sequence
+#[derive(Default)]
 struct SequenceMeta {
     language: Option<String>,
     channels: Option<String>,
     codec: Option<String>,
     resolution: Option<String>,
     subtitle_type: Option<String>,
-}
-
-impl Default for SequenceMeta {
-    fn default() -> Self {
-        Self {
-            language: None,
-            channels: None,
-            codec: None,
-            resolution: None,
-            subtitle_type: None,
-        }
-    }
 }
 
 /// Merge sequences of one type into the track map, accumulating resources by track_id

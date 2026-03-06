@@ -77,7 +77,7 @@ const result = await validate(files, {
 </TabItem>
 <TabItem label="Node.js">
 
-```javascript
+```typescript
 import { buildReportFromPath, codes } from '@imferno/node';
 
 const report = buildReportFromPath('./my-imp', {
@@ -142,10 +142,17 @@ const result = await validate(files, {
 </TabItem>
 <TabItem label="Node.js">
 
+<<<<<<< HEAD
 ```javascript
 import { buildReportFromPath } from '@imferno/node';
 
 const report = buildReportFromPath('./my-imp', {
+=======
+```typescript
+import { validatePath } from '@imferno/node';
+
+const result = validatePath('./my-imp', {
+>>>>>>> 9116b5f (feat: add ESM support to @imferno/node)
     coreSpec: 'v2020',
     app2eSpec: 'v2023',
 });

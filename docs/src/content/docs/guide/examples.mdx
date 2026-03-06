@@ -18,15 +18,10 @@ npm install @imferno/node
 ### Code
 
 ```typescript
-import { createRequire } from "node:module";
-import { resolve, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
+import { validatePath, codes } from "@imferno/node";
+import { resolve } from "node:path";
 
-const require = createRequire(import.meta.url);
-const { validatePath, codes } = require("@imferno/node");
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const impPath = resolve(__dirname, "./my-package");
+const impPath = resolve("./my-package");
 
 const result = validatePath(impPath, {
   rules: {

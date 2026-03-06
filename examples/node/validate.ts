@@ -1,16 +1,15 @@
-import { createRequire } from "node:module";
+import { validatePath, codes } from "@imferno/node";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-
-const require = createRequire(import.meta.url);
-const { validatePath, codes } = require("@imferno/node");
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const impPath = resolve(__dirname, "../../test-data/HT/IMP");
 
 const result = validatePath(impPath, {
   rules: {
+    // Promote checksum mismatches to critical
     [codes.ST2067_2_2020.ChecksumMismatch]: "critical",
+    // Suppress unreferenced asset warnings
     [codes.Imferno.UnreferencedAsset]: "off",
   },
 });

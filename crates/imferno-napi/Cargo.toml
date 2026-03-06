@@ -2,7 +2,7 @@
 name = "imferno-napi"
 version = "0.1.0"
 edition = "2021"
-description = "Native Node.js bindings for the imferno SMPTE ST 2067 IMF validator"
+description = "Native Node.js bindings for the imferno SMPTE ST-2067 IMF validator"
 license = "MIT"
 repository = "https://github.com/jpwesselink/imferno"
 publish = false

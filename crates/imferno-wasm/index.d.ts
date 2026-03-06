@@ -4,56 +4,26 @@
  * All functions automatically handle WASM initialization.
  */
 
-/** Parse ASSETMAP.xml content */
-export function parseAssetmapTyped(xmlContent: string): Promise<any>;
-
-/** Parse CPL XML content */
-export function parseCplTyped(xmlContent: string): Promise<any>;
-
-/** Parse PKL XML content */
-export function parsePklTyped(xmlContent: string): Promise<any>;
-
-/** Parse VOLINDEX.xml content */
-export function parseVolindexTyped(xmlContent: string): Promise<any>;
-
-/** Options for the validate function */
-export interface ValidateOptions {
-    /** Core constraints spec version: "auto" | "v2013" | "v2016" | "v2020" */
-    coreSpec?: "auto" | "v2013" | "v2016" | "v2020";
-    /** Application profile version: "auto" | "none" | "v2020" | "v2021" | "v2023" */
-    app2eSpec?: "auto" | "none" | "v2020" | "v2021" | "v2023";
-    /** ESLint-style rules configuration */
-    rules?: Record<string, string>;
-}
-
-/** Result returned by the validate function */
-export interface ValidateResult {
-    /** Validation report with issues, compliance status, and profile */
-    report: any;
-    /** Parsed Composition Playlists */
-    cpls: any[];
-    /** Parsed AssetMap (null if parsing failed) */
-    assetMap: any | null;
-    /** Parsed Packing Lists */
-    packingLists: any[];
-    /** Parsed Volume Index (null if parsing failed) */
-    volumeIndex: any | null;
-    /** Assets in the AssetMap with no CPL or SCM reference */
-    unreferencedAssets: { id: string; path: string }[];
-    /** Sidecar assets declared in SCMs */
-    declaredSidecars: { id: string; cplIds: string[] }[];
-}
+// Re-export all generated types from wasm-pack
+export * from './imferno_wasm.d.ts';
 
 /**
- * Validate a full IMF package and return both validation report and parsed data.
+ * Build a structured report from an IMF package.
  * @param files Object mapping filenames to XML string content
  * @param options Optional validation options (spec selection, rules)
- * @returns Validation report + parsed package data
+ * @returns Full IMF report with package info, CPLs, and validation results
  */
-export function validate(
+export function buildReport(
     files: Record<string, string>,
-    options?: ValidateOptions,
-): Promise<ValidateResult>;
+    options?: any,
+): Promise<any>;
+
+/**
+ * Format an ImfReport as a human-readable string.
+ * @param report The report returned by buildReport
+ * @returns Formatted string representation
+ */
+export function formatReport(report: any): Promise<string>;
 
 /** Get the library version */
 export function getVersion(): Promise<string>;

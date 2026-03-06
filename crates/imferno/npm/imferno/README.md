@@ -1,6 +1,6 @@
 # imferno
 
-SMPTE ST 2067 IMF validator. Prebuilt native binaries for all major platforms.
+SMPTE ST-2067 IMF validator. Prebuilt native binaries for all major platforms.
 
 ## Install
 

@@ -64,9 +64,9 @@ let report = Imferno::parse_and_validate(files, &options);
 Import the `codes` object for autocomplete and typo protection:
 
 ```typescript
-import { validate, codes } from '@imferno/wasm';
+import { buildReport, codes } from 'imferno-wasm';
 
-const result = await validate(files, {
+const report = await buildReport(files, {
     rules: {
         [codes.ST2067_2_2020.FileNotFound]: 'critical',
         [codes.ST2067_2_2020.ChecksumMismatch]: 'off',
@@ -77,10 +77,10 @@ const result = await validate(files, {
 </TabItem>
 <TabItem label="Node.js">
 
-```javascript
-const { validatePath, codes } = require('@imferno/node');
+```typescript
+import { buildReportFromPath, codes } from '@imferno/node';
 
-const result = validatePath('./my-imp', {
+const report = buildReportFromPath('./my-imp', {
     rules: {
         [codes.ST2067_21_2023.AppIdMismatch]: 'error',
         [codes.Imferno.UnreferencedAsset]: 'off',
@@ -130,7 +130,7 @@ let options = ValidationOptions {
 <TabItem label="WASM">
 
 ```typescript
-const result = await validate(files, {
+const report = await buildReport(files, {
     coreSpec: 'v2020',
     app2eSpec: 'v2023',
 });
@@ -142,8 +142,10 @@ const result = await validate(files, {
 </TabItem>
 <TabItem label="Node.js">
 
-```javascript
-const result = validatePath('./my-imp', {
+```typescript
+import { buildReportFromPath } from '@imferno/node';
+
+const report = buildReportFromPath('./my-imp', {
     coreSpec: 'v2020',
     app2eSpec: 'v2023',
 });

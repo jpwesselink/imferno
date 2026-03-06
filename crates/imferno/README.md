@@ -1,6 +1,6 @@
 # imferno
 
-SMPTE ST 2067 IMF validator. Command-line tool for parsing and validating IMF packages.
+SMPTE ST-2067 IMF validator. Command-line tool for parsing and validating IMF packages.
 
 Part of the [`imferno`](https://github.com/jpwesselink/imferno) ecosystem.
 

@@ -27,7 +27,7 @@ const report = buildReportFromPath('./my-imp');
 console.log(formatReport(report));
 
 // Check programmatically
-if (!report.validation.isCompliant) {
+if (!report.validation.is_compliant) {
   for (const err of report.validation.errors) {
     console.error(err.code, err.message);
   }
@@ -137,8 +137,8 @@ interface ImfReport {
     errors: ValidationIssue[];
     warnings: ValidationIssue[];
     info: ValidationIssue[];
-    isPlayable: boolean;
-    isCompliant: boolean;
+    is_playable: boolean;
+    is_compliant: boolean;
     profile: string;
     timestamp: string;
   };

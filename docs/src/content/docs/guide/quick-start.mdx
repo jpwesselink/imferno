@@ -1,9 +1,11 @@
 ---
 title: Getting Started
-description: Parse and validate your first IMF package.
+description: Install imferno and validate your first IMF package.
 ---
 
 import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+## Install
 
 <Tabs>
 <TabItem label="CLI">
@@ -16,52 +18,42 @@ npm install -g imferno
 cargo install imferno
 ```
 
-```sh
-# Validate an IMF package
-imferno validate /path/to/your.imp
-
-# JSON output
-imferno validate /path/to/your.imp --format json
-
-# Verify SHA-1 hashes against PKL
-imferno validate /path/to/your.imp --verify-hashes
-
-# Custom rules config
-imferno validate /path/to/your.imp --rules-config rules.json
-
-# Export a full report (JSON)
-imferno export /path/to/your.imp
-```
-
-See the [CLI Reference](/reference/cli/) for all commands and options.
-
 </TabItem>
 <TabItem label="Rust">
 
 ```toml
 [dependencies]
-imferno-core = "1.1"
+imferno-core = "2"
 ```
 
-```rust
-use imferno_core::package::{Imferno, ValidationOptions, read_dir};
+</TabItem>
+<TabItem label="Node.js">
 
-let files = read_dir("/path/to/your.imp")?;
-let report = Imferno::parse_and_validate(files, &ValidationOptions::default());
-
-if report.is_compliant {
-    println!("OK");
-} else {
-    for issue in &report.critical {
-        eprintln!("[critical] {} — {}", issue.code, issue.message);
-    }
-    for issue in &report.errors {
-        eprintln!("[error] {} — {}", issue.code, issue.message);
-    }
-}
+```bash
+npm install @imferno/node
 ```
 
-### Parse and report
+</TabItem>
+<TabItem label="WASM">
+
+```bash
+npm install imferno-wasm
+```
+
+</TabItem>
+</Tabs>
+
+## Validate
+
+<Tabs>
+<TabItem label="CLI">
+
+```sh
+imferno validate /path/to/your.imp
+```
+
+</TabItem>
+<TabItem label="Rust">
 
 ```rust
 use imferno_core::package::{Imferno, read_dir, build_report, format_report, ValidationOptions};
@@ -73,82 +65,43 @@ let report = build_report(&pkg, &ValidationOptions::default(), None).unwrap();
 print!("{}", format_report(&report, false));
 ```
 
-See the [Rust API Reference](/reference/rust/) for the full API surface.
-
-</TabItem>
-<TabItem label="WASM">
-
-```bash
-npm install @imferno/wasm
-```
-
-ESM module powered by WebAssembly. Use it in any browser or bundler.
-
-```javascript
-import { buildReport, formatReport } from '@imferno/wasm';
-
-const report = buildReport({
-    'VOLINDEX.xml': volindexXml,
-    'ASSETMAP.xml': assetmapXml,
-    'PKL_abc.xml':  pklXml,
-    'CPL_def.xml':  cplXml,
-});
-
-// Pretty-print
-console.log(formatReport(report));
-
-// Check programmatically
-if (!report.validation.isCompliant) {
-    for (const err of report.validation.errors) {
-        console.error(err.code, err.message);
-    }
-}
-```
-
-See the [WASM API Reference](/reference/wasm/) for the full API surface.
-
 </TabItem>
 <TabItem label="Node.js">
-
-```bash
-npm install @imferno/node
-```
-
-Native bindings via NAPI — filesystem access, hash verification, and native speed.
 
 ```javascript
 import { buildReportFromPath, formatReport } from '@imferno/node';
 
 const report = buildReportFromPath('./my-imp');
-
-// Pretty-print
 console.log(formatReport(report));
-
-// Check programmatically
-if (!report.validation.isCompliant) {
-    for (const err of report.validation.errors) {
-        console.error(err.code, err.message);
-    }
-}
 ```
 
-### Validate from strings
-
-Same API as `@imferno/wasm` — no filesystem access:
+</TabItem>
+<TabItem label="WASM">
 
 ```javascript
-import { buildReport, formatReport } from '@imferno/node';
+import { buildReport, formatReport } from 'imferno-wasm';
 
-const report = buildReport({
+const report = await buildReport({
     'ASSETMAP.xml': assetmapXml,
-    'PKL_abc.xml': pklXml,
-    'CPL_def.xml': cplXml,
+    'CPL_def.xml':  cplXml,
+    'PKL_abc.xml':  pklXml,
 });
 
-console.log(formatReport(report));
+console.log(await formatReport(report));
 ```
-
-See the [Node.js API Reference](/reference/node/) for the full API surface.
 
 </TabItem>
 </Tabs>
+
+## Examples
+
+Working examples with full source code are available in the repository:
+
+- **[Node.js example](https://github.com/jpwesselink/imferno/tree/main/examples/node)** — Validate an IMF package with custom rules and typed code constants.
+
+```sh
+git clone https://github.com/jpwesselink/imferno.git
+cd imferno/examples/node
+npm install
+npm run validate
+```

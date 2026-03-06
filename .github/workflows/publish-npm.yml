@@ -27,10 +27,7 @@ jobs:
         run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
 
       - name: Build WASM package
-        working-directory: crates/imferno-wasm
-        run: |
-          chmod +x build.sh
-          ./build.sh
+        run: cargo xtask build-wasm
 
       - name: Generate JSON schemas
         run: cargo xtask generate-schema

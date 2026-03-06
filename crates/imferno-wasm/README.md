@@ -1,13 +1,13 @@
-# @imferno/wasm
+# imferno-wasm
 
-SMPTE ST 2067 IMF parser and validator for JavaScript and TypeScript, powered by WebAssembly.
+SMPTE ST-2067 IMF parser and validator for JavaScript and TypeScript, powered by WebAssembly.
 
-Part of the [`imferno`](https://github.com/jpwesselink/imferno) ecosystem. See also [`@imferno/schema`](https://www.npmjs.com/package/@imferno/schema) for JSON Schema validation of imferno output.
+Part of the [`imferno`](https://github.com/jpwesselink/imferno) ecosystem.
 
 ## Install
 
 ```bash
-npm install @imferno/wasm
+npm install imferno-wasm
 ```
 
 > **Note:** For Node.js with filesystem access (path-based validation, hash verification), use [`@imferno/node`](https://www.npmjs.com/package/@imferno/node) instead.
@@ -17,35 +17,27 @@ The package ships a prebuilt `.wasm` binary — no build step required.
 ## Usage
 
 ```javascript
-import {
-    parseAssetmapTyped,
-    parseCplTyped,
-    parsePklTyped,
-    parseVolindexTyped,
-    validate,
-    codes,
-    getVersion,
-} from '@imferno/wasm';
-
-// Parse individual XML files
-const assetMap = await parseAssetmapTyped(assetmapXml);
-const cpl = await parseCplTyped(cplXml);
-const pkl = await parsePklTyped(pklXml);
-const volindex = await parseVolindexTyped(volindexXml);
+import { buildReport, formatReport, codes, getVersion } from 'imferno-wasm';
 
 // Validate a full IMF package (pass all XML files as a map)
-const result = await validate({
+const report = buildReport({
     'ASSETMAP.xml': assetmapXml,
     'PKL_abc.xml': pklXml,
     'CPL_def.xml': cplXml,
 });
-console.log(result.report.errors);
-console.log(result.report.warnings);
-console.log(result.cpls);
-console.log(result.unreferencedAssets);
+
+// Pretty-print
+console.log(formatReport(report));
+
+// Check programmatically
+if (!report.validation.is_compliant) {
+    for (const err of report.validation.errors) {
+        console.error(err.code, err.message);
+    }
+}
 
 // Validate with custom rules (typed codes give autocomplete + typo protection)
-const result2 = await validate(
+const report2 = buildReport(
     {
         'ASSETMAP.xml': assetmapXml,
         'PKL_abc.xml': pklXml,
@@ -62,17 +54,12 @@ const result2 = await validate(
 );
 ```
 
-WASM initialization is handled automatically on first call.
-
 ## API
 
 | Export | Description |
 |--------|-------------|
-| `validate(files, options?)` | Validate a full IMF package, returns report + parsed data |
-| `parseCplTyped(xml)` | Parse CPL XML |
-| `parseAssetmapTyped(xml)` | Parse ASSETMAP.xml |
-| `parsePklTyped(xml)` | Parse PKL XML |
-| `parseVolindexTyped(xml)` | Parse VOLINDEX.xml |
+| `buildReport(files, options?)` | Validate a full IMF package, returns structured report |
+| `formatReport(report)` | Pretty-print an ImfReport as a human-readable string |
 | `codes` | Typed validation code constants for use in `rules` config |
 | `getVersion()` | Get library version |
 

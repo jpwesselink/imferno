@@ -1,6 +1,6 @@
 # imferno
 
-SMPTE ST 2067 IMF parser and validator for Rust, Node.js, and the browser.
+SMPTE ST-2067 IMF parser and validator for Rust, Node.js, and the browser.
 
 ## Packages
 
@@ -16,9 +16,8 @@ SMPTE ST 2067 IMF parser and validator for Rust, Node.js, and the browser.
 | Package | Description |
 |---|---|
 | [`imferno`](https://www.npmjs.com/package/imferno) | CLI — prebuilt native binaries for all platforms |
-| [`@imferno/wasm`](https://www.npmjs.com/package/@imferno/wasm) | WebAssembly bindings for JS/TS |
+| [`imferno-wasm`](https://www.npmjs.com/package/imferno-wasm) | WebAssembly bindings for JS/TS |
 | [`@imferno/node`](https://www.npmjs.com/package/@imferno/node) | Native Node.js bindings (filesystem + hash verification) |
-| [`@imferno/schema`](https://www.npmjs.com/package/@imferno/schema) | JSON Schema definitions for all IMF types |
 
 Platform binaries (installed automatically via `imferno`):
 
@@ -38,13 +37,10 @@ Platform binaries (installed automatically via `imferno`):
 npm install -g imferno
 
 # WASM bindings (browser + Node.js)
-npm install @imferno/wasm
+npm install imferno-wasm
 
 # Native Node.js bindings (filesystem access, hash verification)
 npm install @imferno/node
-
-# JSON schemas for validating imferno output
-npm install @imferno/schema
 
 # Rust crate
 cargo add imferno-core
@@ -61,41 +57,31 @@ imferno validate ./my-imp
 # Export a full report (JSON)
 imferno export ./my-imp
 
-# Inspect package structure
-imferno inspect ./my-imp
+# Show CPL information
+imferno cpl ./my-imp
 ```
 
 ### Node.js (native bindings)
 
 ```javascript
-const { validatePath } = require('@imferno/node');
+import { buildReportFromPath, formatReport } from '@imferno/node';
 
-const { report, cpls, assetMap } = validatePath('./my-imp');
+const report = buildReportFromPath('./my-imp');
+console.log(formatReport(report));
 ```
 
 ### Browser / WASM
 
 ```javascript
-import { validate } from '@imferno/wasm';
+import { buildReport, formatReport } from 'imferno-wasm';
 
-const { report, cpls, assetMap } = await validate({
+const report = buildReport({
   'ASSETMAP.xml': assetmapXml,
   'PKL_abc.xml': pklXml,
   'CPL_def.xml': cplXml,
 });
-```
 
-### JSON Schema validation
-
-```javascript
-import Ajv from 'ajv';
-import { imfReport } from '@imferno/schema';
-
-const ajv = new Ajv();
-const validate = ajv.compile(imfReport);
-
-const data = JSON.parse(imfernoExportOutput);
-if (!validate(data)) console.error(validate.errors);
+console.log(formatReport(report));
 ```
 
 ### Rust
@@ -116,12 +102,12 @@ for issue in &report.errors {
 | Standard | Title | Status |
 |---|---|---|
 | ST 429-9 | Volume Index / Asset Map | Complete |
-| ST 2067-2 | Core Constraints & Packing List | Complete |
-| ST 2067-3 | Composition Playlist | Complete |
-| ST 2067-9 | Sidecar Composition Map | Complete |
-| ST 2067-21 | Application #2E (UHD/HDR) | Complete |
-| ST 2067-201 | IAB Level 0 Plug-in | Complete |
-| ST 2067-202 | ISXD Plug-in | Complete |
+| ST-2067-2 | Core Constraints & Packing List | Complete |
+| ST-2067-3 | Composition Playlist | Complete |
+| ST-2067-9 | Sidecar Composition Map | Complete |
+| ST-2067-21 | Application #2E (UHD/HDR) | Complete |
+| ST-2067-201 | IAB Level 0 Plug-in | Complete |
+| ST-2067-202 | ISXD Plug-in | Complete |
 | ST 377-1 | MXF File Format | Partial — header partition only |
 
 ## Development

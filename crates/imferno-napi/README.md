@@ -1,8 +1,8 @@
 # @imferno/node
 
-Native Node.js bindings for the [imferno](https://github.com/jpwesselink/imferno) SMPTE ST 2067 IMF validator, powered by [napi-rs](https://napi.rs).
+Native Node.js bindings for the [imferno](https://github.com/jpwesselink/imferno) SMPTE ST-2067 IMF validator, powered by [napi-rs](https://napi.rs).
 
-Unlike [`@imferno/wasm`](https://www.npmjs.com/package/@imferno/wasm), this package has full filesystem access — validate packages by path, verify SHA hashes against PKL, and check MXF headers.
+Unlike [`imferno-wasm`](https://www.npmjs.com/package/imferno-wasm), this package has full filesystem access — validate packages by path and check MXF headers.
 
 ## Install
 
@@ -23,25 +23,25 @@ Prebuilt binaries are provided for:
 ### Validate a package on disk
 
 ```javascript
-const { validatePath } = require('@imferno/node');
+import { buildReportFromPath, formatReport } from '@imferno/node';
 
-const { report, cpls, assetMap, packingLists, volumeIndex } = validatePath('./my-imp');
+const report = buildReportFromPath('./my-imp');
 
-console.log('Compliant:', report.is_compliant);
-console.log('Errors:', report.errors.length);
-console.log('Warnings:', report.warnings.length);
+console.log('Compliant:', report.validation.is_compliant);
+console.log(formatReport(report));
 ```
 
 ### Validate with options
 
 ```javascript
-const result = validatePath('./my-imp', {
+import { buildReportFromPath, codes } from '@imferno/node';
+
+const report = buildReportFromPath('./my-imp', {
   coreSpec: 'v2020',
   app2eSpec: 'v2023',
-  verifyHashes: true,
   rules: {
-    'ST2067-21:2023:7.1/AppIdMismatch': 'error',
-    'IMFERNO:Package/UnreferencedAsset': 'off',
+    [codes.ST2067_21_2023.AppIdMismatch]: 'error',
+    [codes.Imferno.UnreferencedAsset]: 'off',
   },
 });
 ```
@@ -49,44 +49,32 @@ const result = validatePath('./my-imp', {
 ### Validate from strings
 
 ```javascript
-const { validate } = require('@imferno/node');
+import { buildReport, formatReport } from '@imferno/node';
 
-const result = validate({
+const report = buildReport({
   'ASSETMAP.xml': assetmapXml,
   'PKL_abc.xml': pklXml,
   'CPL_def.xml': cplXml,
 });
-```
 
-### Parse individual files
-
-```javascript
-const { parseCpl, parseAssetmap, parsePkl, parseVolindex } = require('@imferno/node');
-
-const cpl = parseCpl(cplXmlString);
-const assetMap = parseAssetmap(assetmapXmlString);
-const pkl = parsePkl(pklXmlString);
-const volindex = parseVolindex(volindexXmlString);
+console.log(formatReport(report));
 ```
 
 ## API
 
 | Function | Description |
 |----------|-------------|
-| `validatePath(path, options?)` | Validate an IMF package directory on disk |
-| `validate(files, options?)` | Validate from in-memory XML strings |
-| `parseCpl(xml)` | Parse CPL XML |
-| `parseAssetmap(xml)` | Parse ASSETMAP.xml |
-| `parsePkl(xml)` | Parse PKL XML |
-| `parseVolindex(xml)` | Parse VOLINDEX.xml |
+| `buildReportFromPath(path, options?)` | Validate an IMF package directory on disk |
+| `buildReport(files, options?)` | Validate from in-memory XML strings |
+| `formatReport(report)` | Pretty-print an ImfReport as a human-readable string |
+| `codes` | Typed validation code constants for use in `rules` config |
 | `getVersion()` | Get library version |
 
 ### Options
 
 - `coreSpec`: `"auto"` | `"v2013"` | `"v2016"` | `"v2020"`
 - `app2eSpec`: `"auto"` | `"none"` | `"v2020"` | `"v2021"` | `"v2023"`
-- `verifyHashes`: `boolean` — verify SHA hashes against PKL (validatePath only)
-- `skipDiskChecks`: `boolean` — skip file manifest and MXF checks (validatePath only)
+- `skipDiskChecks`: `boolean` — skip file manifest and MXF checks (buildReportFromPath only)
 - `rules`: `Record<string, "error" | "warn" | "info" | "off">` — ESLint-style severity overrides
 
 ## License

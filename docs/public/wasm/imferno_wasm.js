@@ -393,7 +393,7 @@ function __wbg_get_imports() {
         const ret = arg0.length;
         return ret;
     };
-    imports.wbg.__wbg_log_04115c32d2e6ccd8 = function(arg0, arg1) {
+    imports.wbg.__wbg_log_be5b2b60a5a1079e = function(arg0, arg1) {
         console.log(getStringFromWasm0(arg0, arg1));
     };
     imports.wbg.__wbg_new0_b0a0a38c201e6df5 = function() {

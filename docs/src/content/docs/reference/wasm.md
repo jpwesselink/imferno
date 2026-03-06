@@ -1,13 +1,13 @@
 ---
 title: WASM API
-description: "@imferno/wasm — WebAssembly bindings for JavaScript and TypeScript."
+description: "imferno-wasm — WebAssembly bindings for JavaScript and TypeScript."
 tableOfContents: true
 ---
 
 ## Install
 
 ```bash
-npm install @imferno/wasm
+npm install imferno-wasm
 ```
 
 ESM module powered by WebAssembly. Use it in any browser or bundler.
@@ -19,9 +19,9 @@ ESM module powered by WebAssembly. Use it in any browser or bundler.
 Build a structured report from an IMF package. Pass all XML files as a filename to string map.
 
 ```typescript
-import { buildReport, formatReport } from '@imferno/wasm';
+import { buildReport, formatReport } from 'imferno-wasm';
 
-const report = buildReport({
+const report = await buildReport({
   'VOLINDEX.xml': volindexXml,
   'ASSETMAP.xml': assetmapXml,
   'PKL.xml': pklXml,
@@ -29,10 +29,10 @@ const report = buildReport({
 });
 
 // Pretty-print
-console.log(formatReport(report));
+console.log(await formatReport(report));
 
 // Check programmatically
-if (!report.validation.isCompliant) {
+if (!report.validation.is_compliant) {
   for (const err of report.validation.errors) {
     console.error(err.code, err.message);
   }
@@ -42,7 +42,7 @@ if (!report.validation.isCompliant) {
 ### Options
 
 ```typescript
-const report = buildReport(files, {
+const report = await buildReport(files, {
   coreSpec: 'v2020',
   app2eSpec: 'v2023',
   rules: {
@@ -65,10 +65,10 @@ const report = buildReport(files, {
 Pretty-print an `ImfReport` as a human-readable string. Same output as `imferno report` on the CLI.
 
 ```typescript
-import { buildReport, formatReport } from '@imferno/wasm';
+import { buildReport, formatReport } from 'imferno-wasm';
 
-const report = buildReport(files);
-console.log(formatReport(report));
+const report = await buildReport(files);
+console.log(await formatReport(report));
 ```
 
 ---
@@ -78,11 +78,11 @@ console.log(formatReport(report));
 Typed validation code constants for use in `rules` config. Provides autocomplete and typo protection.
 
 ```typescript
-import { codes } from '@imferno/wasm';
+import { codes } from 'imferno-wasm';
 
 codes.ST2067_2_2020.FileNotFound    // "ST2067-2:2020:8.3/FileNotFound"
 codes.ST2067_21_2023.FrameRate      // "ST2067-21:2023:5.2/FrameRate"
-codes.ST2067_201_2021.SoundfieldGroupLinkId  // ...
+codes.ST2067_201_2021.CodecForbidden        // "ST2067-201:2021:5.9/CodecForbidden"
 ```
 
 See [Configuration](/guide/config/) for how to use `codes` with rules.
@@ -92,7 +92,7 @@ See [Configuration](/guide/config/) for how to use `codes` with rules.
 ## `getVersion`
 
 ```typescript
-import { getVersion } from '@imferno/wasm';
+import { getVersion } from 'imferno-wasm';
 console.log(getVersion()); // "1.1.0"
 ```
 
@@ -132,8 +132,8 @@ interface ImfReport {
     errors: ValidationIssue[];
     warnings: ValidationIssue[];
     info: ValidationIssue[];
-    isPlayable: boolean;
-    isCompliant: boolean;
+    is_playable: boolean;
+    is_compliant: boolean;
     profile: string;
     timestamp: string;
   };

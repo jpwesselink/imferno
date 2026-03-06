@@ -132,7 +132,7 @@ pub struct ValidationIssue {
 }
 ```
 
-For the full list of codes see the [Validation Codes](/reference/codes/st2067-2/) reference.
+For the full list of codes see the [Validation Codes](/guide/codes/) reference.
 
 ---
 

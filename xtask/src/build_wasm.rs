@@ -1,5 +1,6 @@
 //! Builds `crates/imferno-wasm` with wasm-pack and syncs the output into
-//! `docs/public/wasm/` so the Astro site always uses the freshest build.
+//! both the crate root (for tests & index.js) and `docs/public/wasm/`
+//! so the Astro site always uses the freshest build.
 
 use std::path::Path;
 use std::process::Command;
@@ -33,7 +34,26 @@ pub fn run() {
         std::process::exit(status.code().unwrap_or(1));
     }
 
-    // ── 2. Sync pkg/ → docs/public/wasm/ ───────────────────────────────────
+    // ── 2. Copy core WASM artifacts to crate root (for tests & index.js) ──
+    let core_files = [
+        "imferno_wasm.js",
+        "imferno_wasm.d.ts",
+        "imferno_wasm_bg.wasm",
+        "imferno_wasm_bg.wasm.d.ts",
+    ];
+    println!("copying core artifacts to crate root…");
+    for name in &core_files {
+        let src = pkg_dir.join(name);
+        let dst = wasm_crate.join(name);
+        fs::copy(&src, &dst).unwrap_or_else(|e| panic!("copy {name}: {e}"));
+    }
+    println!(
+        "  copied {} files to {}",
+        core_files.len(),
+        wasm_crate.display()
+    );
+
+    // ── 3. Sync pkg/ → docs/public/wasm/ ───────────────────────────────────
     println!("syncing pkg/ → docs/public/wasm/…");
     fs::create_dir_all(&docs_wasm).expect("create docs/public/wasm");
 
@@ -43,11 +63,12 @@ pub fn run() {
         let file_name = entry.file_name();
         let name = file_name.to_string_lossy();
 
-        // Skip package metadata files that the browser doesn't need.
+        // Skip files the browser doesn't need.
         if matches!(
             name.as_ref(),
             "package.json" | "README.md" | "LICENSE" | ".gitignore"
-        ) {
+        ) || name.ends_with(".ts")
+        {
             continue;
         }
 

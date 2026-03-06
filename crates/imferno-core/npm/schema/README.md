@@ -1,6 +1,6 @@
 # @imferno/schema
 
-JSON Schema definitions for SMPTE ST 2067 (IMF) types. Use these schemas to validate the JSON output from [`imferno`](https://www.npmjs.com/package/imferno) or [`@imferno/wasm`](https://www.npmjs.com/package/@imferno/wasm).
+JSON Schema definitions for SMPTE ST-2067 (IMF) types. Use these schemas to validate the JSON output from [`imferno`](https://www.npmjs.com/package/imferno) or [`imferno-wasm`](https://www.npmjs.com/package/imferno-wasm).
 
 ## Install
 

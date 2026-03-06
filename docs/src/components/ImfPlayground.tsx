@@ -102,6 +102,14 @@ function mapReportToViewData(report: any): any {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         cpls: (report.cpls ?? []).map((cpl: any) => {
             const editRate = normalizeEditRate(cpl.editRate);
+            const seqs = cpl.sequences ?? [];
+            const norm = (s: any) => normalizeSeqType(s.type); // eslint-disable-line @typescript-eslint/no-explicit-any
+            const unique = (arr: string[]) => [...new Set(arr)];
+            const audioLangs = unique(seqs.filter((s: any) => norm(s) === 'MainAudioSequence' && s.language).map((s: any) => s.language)); // eslint-disable-line @typescript-eslint/no-explicit-any
+            const subtitleLangs = unique(seqs.filter((s: any) => norm(s) === 'SubtitlesSequence' && s.language).map((s: any) => s.language)); // eslint-disable-line @typescript-eslint/no-explicit-any
+            const fnLangs = unique(seqs.filter((s: any) => norm(s) === 'ForcedNarrativeSequence' && s.language).map((s: any) => s.language)); // eslint-disable-line @typescript-eslint/no-explicit-any
+            const videoSeq = seqs.find((s: any) => norm(s) === 'MainImageSequence'); // eslint-disable-line @typescript-eslint/no-explicit-any
+            const hasIab = seqs.some((s: any) => norm(s) === 'IABSequence'); // eslint-disable-line @typescript-eslint/no-explicit-any
             return {
                 id: cpl.id ?? '',
                 title: cpl.title ?? '',
@@ -128,19 +136,24 @@ function mapReportToViewData(report: any): any {
                         return null;
                     })() : null,
                     duration: null,
-                    audioLanguages: [],
-                    subtitleLanguages: [],
-                    forcedNarrativeLanguages: [],
-                    audioType: null,
-                    videoQuality: null,
+                    audioLanguages: audioLangs,
+                    subtitleLanguages: subtitleLangs,
+                    forcedNarrativeLanguages: fnLangs,
+                    audioType: hasIab ? 'IAB' : null,
+                    videoQuality: videoSeq?.resolution ?? null,
                     videoDynamicRange: null,
                     tracks: { VIDEO: [], AUDIO: [], SUBTITLES: [], CAPTIONS: [], FORCED_NARRATIVE: [] },
-                    sequences: (cpl.sequences ?? []).map((seq: any, i: number) => ({ // eslint-disable-line @typescript-eslint/no-explicit-any
+                    sequences: seqs.map((seq: any, i: number) => ({ // eslint-disable-line @typescript-eslint/no-explicit-any
                         type: normalizeSeqType(seq.type),
                         id: seq.id ?? '',
                         trackId: seq.trackId ?? '',
                         segmentId: null,
                         sequenceNumber: i,
+                        language: seq.language ?? null,
+                        channels: seq.channels ?? null,
+                        codec: seq.codec ?? null,
+                        resolution: seq.resolution ?? null,
+                        subtitleType: seq.subtitleType ?? null,
                         sequenceResources: (seq.resources ?? []).map((r: any) => ({ // eslint-disable-line @typescript-eslint/no-explicit-any
                             id: r.id ?? '',
                             intrinsicDuration: r.intrinsicDuration ?? 0,

@@ -41,4 +41,7 @@ if (result.report.info.length > 0) {
   }
 }
 
+console.log("\nFull report:");
+console.log(JSON.stringify(result, null, 2));
+
 process.exit(result.report.is_compliant ? 0 : 1);

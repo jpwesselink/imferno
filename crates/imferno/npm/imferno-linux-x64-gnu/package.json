@@ -2,12 +2,15 @@
   "name": "@imferno/linux-x64-gnu",
   "version": "0.1.1",
   "description": "imferno native binary for Linux x64 (glibc)",
-  "os": ["linux"],
-  "cpu": ["x64"],
-  "bin": {
-    "imferno": "imferno"
-  },
-  "files": ["imferno"],
+  "os": [
+    "linux"
+  ],
+  "cpu": [
+    "x64"
+  ],
+  "files": [
+    "imferno"
+  ],
   "publishConfig": {
     "access": "public"
   },

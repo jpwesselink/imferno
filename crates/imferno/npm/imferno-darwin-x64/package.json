@@ -2,12 +2,15 @@
   "name": "@imferno/darwin-x64",
   "version": "0.1.1",
   "description": "imferno native binary for macOS x64 (Intel)",
-  "os": ["darwin"],
-  "cpu": ["x64"],
-  "bin": {
-    "imferno": "imferno"
-  },
-  "files": ["imferno"],
+  "os": [
+    "darwin"
+  ],
+  "cpu": [
+    "x64"
+  ],
+  "files": [
+    "imferno"
+  ],
   "publishConfig": {
     "access": "public"
   },

@@ -2,12 +2,15 @@
   "name": "@imferno/win32-arm64-msvc",
   "version": "0.1.1",
   "description": "imferno native binary for Windows ARM64",
-  "os": ["win32"],
-  "cpu": ["arm64"],
-  "bin": {
-    "imferno": "imferno.exe"
-  },
-  "files": ["imferno.exe"],
+  "os": [
+    "win32"
+  ],
+  "cpu": [
+    "arm64"
+  ],
+  "files": [
+    "imferno.exe"
+  ],
   "publishConfig": {
     "access": "public"
   },

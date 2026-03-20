@@ -75,16 +75,16 @@ See the [Rust API Reference](/reference/rust/) for the full API surface.
 <TabItem label="WASM">
 
 ```typescript
-import { validate } from '@imferno/wasm';
+import { buildReport } from '@imferno/wasm';
 
-const result = await validate({
+const report = await buildReport({
     'ASSETMAP.xml': assetmapXml,
     'PKL_abc.xml': pklXml,
     'CPL_def.xml': cplXml,
 });
 
-console.log(result.report.is_compliant);
-console.log(result.report.errors);
+console.log(report.validation.is_compliant);
+console.log(report.validation.errors);
 ```
 
 See the [WASM API Reference](/reference/wasm/) for the full API surface.
@@ -95,24 +95,18 @@ See the [WASM API Reference](/reference/wasm/) for the full API surface.
 ### Validate on disk
 
 ```javascript
-const { validatePath } = require('@imferno/node');
+import { buildReportFromPath } from '@imferno/node';
 
-const result = validatePath('./my-imp');
-console.log(result.report.is_compliant);
-```
-
-### With hash verification
-
-```javascript
-const result = validatePath('./my-imp', { verifyHashes: true });
+const report = buildReportFromPath('./my-imp');
+console.log(report.validation.is_compliant);
 ```
 
 ### Validate from strings
 
 ```javascript
-const { validate } = require('@imferno/node');
+import { buildReport } from '@imferno/node';
 
-const result = validate({
+const report = buildReport({
     'ASSETMAP.xml': assetmapXml,
     'PKL_abc.xml': pklXml,
     'CPL_def.xml': cplXml,
@@ -128,4 +122,4 @@ See the [Node.js API Reference](/reference/node/) for the full API surface.
 
 Each issue carries a typed code string (e.g. `ST2067-2:2020:8.3/FileNotFound`), a human-readable message, severity, category, and optional location.
 
-See the [Validation Codes](/reference/codes/st2067-2/) reference for the full catalogue.
+See the [Validation Codes](/guide/codes/) reference for the full catalogue.

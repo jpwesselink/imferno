@@ -127,7 +127,7 @@ fn validate_iab_descriptors(
         };
 
         let ed_loc = Location::new()
-            .with_cpl(cpl.id.to_string())
+            .with_cpl(cpl.id)
             .with_path(format!("EssenceDescriptor/{}", ed.id));
 
         // §5.9: Codec item shall NOT be present.
@@ -351,12 +351,10 @@ fn validate_iab_descriptors(
         }
 
         let sf = soundfield.unwrap();
-        let sub_loc = Location::new()
-            .with_cpl(cpl.id.to_string())
-            .with_path(format!(
-                "EssenceDescriptor/{}/IABSoundfieldLabelSubDescriptor",
-                ed.id
-            ));
+        let sub_loc = Location::new().with_cpl(cpl.id).with_path(format!(
+            "EssenceDescriptor/{}/IABSoundfieldLabelSubDescriptor",
+            ed.id
+        ));
 
         // §5.9: MCATagSymbol shall be "IAB".
         match &sf.mca_tag_symbol {
@@ -499,7 +497,7 @@ fn validate_iab_sequences(
         }
 
         let seg_loc = Location::new()
-            .with_cpl(cpl.id.to_string())
+            .with_cpl(cpl.id)
             .with_path(format!("Segment/{}", segment.id));
 
         // §6.2: MainAudioSequence shall accompany IABSequence in the same segment.
@@ -521,7 +519,7 @@ fn validate_iab_sequences(
 
         for iab_seq in &sl.iab_sequences {
             let seq_loc = Location::new()
-                .with_cpl(cpl.id.to_string())
+                .with_cpl(cpl.id)
                 .with_path(format!("Segment/{}/IABSequence/{}", segment.id, iab_seq.id));
 
             // §6.2: IABSequence shall contain at least one Resource.

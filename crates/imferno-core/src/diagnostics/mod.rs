@@ -1,7 +1,8 @@
 //! IMF validation finding model and report types.
 //!
-//! Cross-cutting types used by all spec crates to return findings.
+//! Cross-cutting types used by all spec modules to return findings.
 
+use crate::assetmap::ImfUuid;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
@@ -88,7 +89,7 @@ pub struct Location {
     /// File path if applicable
     pub file: Option<PathBuf>,
     /// CPL UUID if applicable
-    pub cpl_id: Option<String>,
+    pub cpl_id: Option<ImfUuid>,
     /// Segment index (0-based)
     pub segment: Option<usize>,
     /// Sequence UUID if applicable
@@ -105,16 +106,7 @@ pub struct Location {
 
 impl Location {
     pub fn new() -> Self {
-        Self {
-            file: None,
-            cpl_id: None,
-            segment: None,
-            sequence_id: None,
-            resource_id: None,
-            timecode: None,
-            line: None,
-            path: None,
-        }
+        Self::default()
     }
 
     pub fn with_file(mut self, file: PathBuf) -> Self {
@@ -122,7 +114,7 @@ impl Location {
         self
     }
 
-    pub fn with_cpl(mut self, cpl_id: String) -> Self {
+    pub fn with_cpl(mut self, cpl_id: ImfUuid) -> Self {
         self.cpl_id = Some(cpl_id);
         self
     }
@@ -156,7 +148,8 @@ impl fmt::Display for Location {
             parts.push(format!("{}", file.display()));
         }
         if let Some(ref cpl_id) = self.cpl_id {
-            parts.push(format!("CPL:{}", &cpl_id[..8.min(cpl_id.len())]));
+            let s = cpl_id.to_string();
+            parts.push(format!("CPL:{}", &s[..8.min(s.len())]));
         }
         if let Some(segment) = self.segment {
             parts.push(format!("Segment:{}", segment + 1));
@@ -185,7 +178,7 @@ pub struct ValidationIssue {
     pub category: Category,
     /// Location where issue was found
     pub location: Location,
-    /// Error code (e.g., "SMPTE-429-7-2006-4.3.2")
+    /// Error code (e.g., "ST2067-2:2020:8.3/FileNotFound")
     pub code: String,
     /// Human-readable message
     pub message: String,
@@ -301,6 +294,11 @@ impl ValidationReport {
         }
     }
 
+    /// Merge another report's issues into this one.
+    ///
+    /// The source report's `profile` and `timestamp` are discarded;
+    /// only `self`'s values are retained. The `is_playable` and
+    /// `is_compliant` flags are combined via logical AND.
     pub fn merge(&mut self, other: ValidationReport) {
         self.critical.extend(other.critical);
         self.errors.extend(other.errors);
@@ -479,7 +477,7 @@ mod tests {
         )
         .with_location(
             Location::new()
-                .with_cpl("urn:uuid:1234-5678".to_string())
+                .with_cpl(ImfUuid::parse("urn:uuid:12345678-0000-0000-0000-000000000000").unwrap())
                 .with_segment(0),
         )
         .with_suggestion("Add EditRate element with value like '24 1' or '24000 1001'");
@@ -517,7 +515,7 @@ mod tests {
     fn test_location_formatting() {
         let location = Location::new()
             .with_file(std::path::PathBuf::from("ASSETMAP.xml"))
-            .with_cpl("urn:uuid:1234-5678".to_string())
+            .with_cpl(ImfUuid::parse("urn:uuid:12345678-0000-0000-0000-000000000000").unwrap())
             .with_segment(2)
             .with_path("/path/to/package".to_string());
 
@@ -732,5 +730,31 @@ mod tests {
         assert_eq!(issue.code, "A/Code");
         let issue2 = ValidationIssue::new(Severity::Error, Category::Asset, "B/Code", "msg");
         assert_ne!(issue.code, issue2.code);
+    }
+
+    #[test]
+    fn location_cpl_id_serde_round_trip() {
+        let uuid = ImfUuid::parse("urn:uuid:12345678-0000-0000-0000-000000000000").unwrap();
+        let loc = Location::new().with_cpl(uuid);
+        let json = serde_json::to_string(&loc).unwrap();
+        let deserialized: Location = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.cpl_id, Some(uuid));
+    }
+
+    #[test]
+    fn validation_issue_serde_round_trip() {
+        let uuid = ImfUuid::parse("urn:uuid:abcdef00-1234-5678-9abc-def012345678").unwrap();
+        let issue = ValidationIssue::new(
+            Severity::Warning,
+            Category::Structure,
+            "TEST/Code",
+            "test message",
+        )
+        .with_location(Location::new().with_cpl(uuid));
+
+        let json = serde_json::to_string(&issue).unwrap();
+        let deserialized: ValidationIssue = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.severity, Severity::Warning);
+        assert_eq!(deserialized.location.cpl_id, Some(uuid));
     }
 }

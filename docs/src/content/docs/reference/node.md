@@ -27,7 +27,7 @@ const report = buildReportFromPath('./my-imp');
 console.log(formatReport(report));
 
 // Check programmatically
-if (!report.validation.isCompliant) {
+if (!report.validation.is_compliant) {
   for (const err of report.validation.errors) {
     console.error(err.code, err.message);
   }
@@ -98,7 +98,7 @@ console.log(formatReport(report));
 
 ```javascript
 import { getVersion } from '@imferno/node';
-console.log(getVersion()); // "1.1.0"
+console.log(getVersion()); // "2.0.0"
 ```
 
 ---
@@ -125,6 +125,8 @@ interface ImfReport {
   cpls: {
     id: string;
     title: string;
+    editRate: string;
+    sequences: string[];
     applicationProfile: string | null;
     segmentCount: number;
     timecodeStart: string | null;
@@ -137,8 +139,8 @@ interface ImfReport {
     errors: ValidationIssue[];
     warnings: ValidationIssue[];
     info: ValidationIssue[];
-    isPlayable: boolean;
-    isCompliant: boolean;
+    is_playable: boolean;
+    is_compliant: boolean;
     profile: string;
     timestamp: string;
   };

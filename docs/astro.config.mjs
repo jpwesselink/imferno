@@ -14,7 +14,7 @@ export default defineConfig({
     integrations: [
         starlight({
             title: 'imferno',
-            description: 'SMPTE ST-2067 Interoperable Master Format for Rust',
+            description: 'SMPTE ST-2067 Interoperable Master Format for Rust, Node.js, and WebAssembly',
             customCss: ['./src/styles/custom.css'],
             social: [
                 { icon: 'github', label: 'GitHub', href: 'https://github.com/jpwesselink/imferno' },
@@ -26,6 +26,7 @@ export default defineConfig({
                 { label: 'Validation', slug: 'guide/validation' },
                 { label: 'Configuration', slug: 'guide/config' },
                 { label: 'Validation Codes', slug: 'guide/codes' },
+                { label: 'IMF Packages', slug: 'guide/packages' },
                 {
                     label: 'API Reference',
                     items: [
@@ -33,6 +34,7 @@ export default defineConfig({
                         { label: 'WASM', slug: 'reference/wasm' },
                         { label: 'Node.js', slug: 'reference/node' },
                         { label: 'CLI', slug: 'reference/cli' },
+                        { label: 'Standards', slug: 'reference/standards' },
                     ],
                 },
             ],

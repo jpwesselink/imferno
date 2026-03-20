@@ -78,9 +78,9 @@ const result = await validate(files, {
 <TabItem label="Node.js">
 
 ```javascript
-const { validatePath, codes } = require('@imferno/node');
+import { buildReportFromPath, codes } from '@imferno/node';
 
-const result = validatePath('./my-imp', {
+const report = buildReportFromPath('./my-imp', {
     rules: {
         [codes.ST2067_21_2023.AppIdMismatch]: 'error',
         [codes.Imferno.UnreferencedAsset]: 'off',
@@ -143,7 +143,9 @@ const result = await validate(files, {
 <TabItem label="Node.js">
 
 ```javascript
-const result = validatePath('./my-imp', {
+import { buildReportFromPath } from '@imferno/node';
+
+const report = buildReportFromPath('./my-imp', {
     coreSpec: 'v2020',
     app2eSpec: 'v2023',
 });

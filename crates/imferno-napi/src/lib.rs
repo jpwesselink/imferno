@@ -8,7 +8,9 @@ use std::path::PathBuf;
 use imferno_core::package::{
     build_report, format_report, ImfReport, Imferno, RulesConfig, ValidationOptions,
 };
-use imferno_core::validation::{AppSpecTarget, CoreSpecTarget};
+use imferno_core::validation::{
+    parse_app_spec_targets, parse_core_spec_target, AppSpecTarget, CoreSpecTarget,
+};
 use napi_derive::napi;
 
 // =============================================================================
@@ -34,6 +36,7 @@ pub fn build_report_js(
         rules: opts.rules,
         core_spec: opts.core_spec,
         app_specs: opts.app_specs,
+        // Hash verification not yet exposed via NAPI; skip disk checks for in-memory files.
         verify_hashes: None,
         skip_disk_checks: true,
     };
@@ -67,6 +70,7 @@ pub fn build_report_from_path(
         rules: opts.rules,
         core_spec: opts.core_spec,
         app_specs: opts.app_specs,
+        // Hash verification not yet exposed via NAPI options.
         verify_hashes: None,
         skip_disk_checks: opts.skip_disk_checks,
     };
@@ -124,31 +128,14 @@ fn parse_options(options: Option<&serde_json::Value>) -> napi::Result<ParsedOpti
 
     // Core spec
     let core_spec = match opts.get("coreSpec").and_then(|v| v.as_str()) {
-        None | Some("auto") => None,
-        Some("v2013") => Some(CoreSpecTarget::St2067_2_2013),
-        Some("v2016") => Some(CoreSpecTarget::St2067_2_2016),
-        Some("v2020") => Some(CoreSpecTarget::St2067_2_2020),
-        Some(other) => {
-            return Err(napi::Error::from_reason(format!(
-                "Unsupported coreSpec '{}'. Use auto|v2013|v2016|v2020",
-                other
-            )));
-        }
+        None => None,
+        Some(s) => parse_core_spec_target(s).map_err(napi::Error::from_reason)?,
     };
 
     // App2e spec
     let app_specs = match opts.get("app2eSpec").and_then(|v| v.as_str()) {
-        None | Some("auto") => None,
-        Some("none") => Some(vec![]),
-        Some("v2020") => Some(vec![AppSpecTarget::St2067_21_2020]),
-        Some("v2021") => Some(vec![AppSpecTarget::St2067_21_2021]),
-        Some("v2023") => Some(vec![AppSpecTarget::St2067_21_2023]),
-        Some(other) => {
-            return Err(napi::Error::from_reason(format!(
-                "Unsupported app2eSpec '{}'. Use auto|none|v2020|v2021|v2023",
-                other
-            )));
-        }
+        None => None,
+        Some(s) => parse_app_spec_targets(s).map_err(napi::Error::from_reason)?,
     };
 
     let skip_disk_checks = opts

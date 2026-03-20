@@ -59,7 +59,7 @@ Each sequence contains **resources** — references to ranges within MXF track f
 
 A title can have multiple CPLs sharing the same essence. A supplemental CPL adds a new version (say, a Dutch dub) without duplicating the video MXF — it just points to the same file UUID.
 
-imferno tracks supplemental relationships via the `isSupplemental` flag on `CplInfo`.
+imferno tracks supplemental relationships via the `isSupplemental` flag on `CplReport`.
 
 ## Application profiles
 

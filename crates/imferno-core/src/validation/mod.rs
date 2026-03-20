@@ -23,8 +23,9 @@
 //! - **ST 2067-2:2020** Core Constraints (`CoreConstraints2020`)
 //! - **ST 2067-2:2016** Core Constraints (`CoreConstraints2016`)
 //! - **ST 2067-2:2013** Core Constraints (`CoreConstraints2013`)
-//! - **ST 2067-21:2023** Application Profile #2E (`App2E2021`)
-//! - **ST 2067-201:2019/2021** IAB Level 0 Plug-in (`App2E2021` ruleset mapping)
+//! - **ST 2067-21:2020/2023/2025** Application Profile #2E (`App2E2021`)
+//! - **ST 2067-201:2019/2021** IAB Level 0 Plug-in (`AppIabPlugin2019`, `AppIabPlugin2021`)
+//! - **ST 2067-202:2022** ISXD Plug-in (`AppIsxdPlugin2022`)
 
 pub mod codes;
 pub mod iab;
@@ -147,6 +148,22 @@ impl CoreSpecTarget {
     }
 }
 
+impl std::str::FromStr for CoreSpecTarget {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "v2013" => Ok(Self::St2067_2_2013),
+            "v2016" => Ok(Self::St2067_2_2016),
+            "v2020" => Ok(Self::St2067_2_2020),
+            other => Err(format!(
+                "Unsupported coreSpec '{}'. Use auto|v2013|v2016|v2020",
+                other
+            )),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AppSpecTarget {
     St2067_21_2020,
@@ -161,6 +178,40 @@ impl AppSpecTarget {
             Self::St2067_21_2021 => "http://www.smpte-ra.org/ns/2067-21/2021",
             Self::St2067_21_2023 => "http://www.smpte-ra.org/ns/2067-21/2023",
         }
+    }
+}
+
+impl std::str::FromStr for AppSpecTarget {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "v2020" => Ok(Self::St2067_21_2020),
+            "v2021" => Ok(Self::St2067_21_2021),
+            "v2023" => Ok(Self::St2067_21_2023),
+            other => Err(format!(
+                "Unsupported app2eSpec '{}'. Use auto|none|v2020|v2021|v2023",
+                other
+            )),
+        }
+    }
+}
+
+/// Parse a core spec string, handling `"auto"` as `None` (auto-detect).
+pub fn parse_core_spec_target(s: &str) -> Result<Option<CoreSpecTarget>, String> {
+    match s {
+        "auto" => Ok(None),
+        other => Ok(Some(other.parse()?)),
+    }
+}
+
+/// Parse an app2e spec string, handling `"auto"` as `None` (auto-detect)
+/// and `"none"` as an empty list (skip app validation).
+pub fn parse_app_spec_targets(s: &str) -> Result<Option<Vec<AppSpecTarget>>, String> {
+    match s {
+        "auto" => Ok(None),
+        "none" => Ok(Some(vec![])),
+        other => Ok(Some(vec![other.parse()?])),
     }
 }
 
@@ -522,7 +573,7 @@ fn validate_resource_list_non_empty(
         fn check_seq<S: SequenceAccess>(
             seqs: &[S],
             track_type: &str,
-            cpl_id: &str,
+            cpl_id: crate::assetmap::ImfUuid,
             seg_idx: usize,
             code: fn(CoreConstraintsCode) -> &'static str,
             issues: &mut Vec<ValidationIssue>,
@@ -541,21 +592,17 @@ fn validate_resource_list_non_empty(
                                 seg_idx + 1,
                             ),
                         )
-                        .with_location(
-                            Location::new()
-                                .with_cpl(cpl_id.to_string())
-                                .with_segment(seg_idx),
-                        ),
+                        .with_location(Location::new().with_cpl(cpl_id).with_segment(seg_idx)),
                     );
                 }
             }
         }
 
-        let cpl_id = cpl.id.to_string();
+        let cpl_id = cpl.id;
         check_seq(
             &sl.main_image_sequences,
             "MainImageSequence",
-            &cpl_id,
+            cpl_id,
             seg_idx,
             code,
             issues,
@@ -563,7 +610,7 @@ fn validate_resource_list_non_empty(
         check_seq(
             &sl.main_audio_sequences,
             "MainAudioSequence",
-            &cpl_id,
+            cpl_id,
             seg_idx,
             code,
             issues,
@@ -571,7 +618,7 @@ fn validate_resource_list_non_empty(
         check_seq(
             &sl.subtitles_sequences,
             "SubtitlesSequence",
-            &cpl_id,
+            cpl_id,
             seg_idx,
             code,
             issues,
@@ -579,7 +626,7 @@ fn validate_resource_list_non_empty(
         check_seq(
             &sl.marker_sequences,
             "MarkerSequence",
-            &cpl_id,
+            cpl_id,
             seg_idx,
             code,
             issues,
@@ -587,7 +634,7 @@ fn validate_resource_list_non_empty(
         check_seq(
             &sl.hearing_impaired_captions_sequences,
             "HearingImpairedCaptionsSequence",
-            &cpl_id,
+            cpl_id,
             seg_idx,
             code,
             issues,
@@ -595,7 +642,7 @@ fn validate_resource_list_non_empty(
         check_seq(
             &sl.forced_narrative_sequences,
             "ForcedNarrativeSequence",
-            &cpl_id,
+            cpl_id,
             seg_idx,
             code,
             issues,
@@ -603,7 +650,7 @@ fn validate_resource_list_non_empty(
         check_seq(
             &sl.iab_sequences,
             "IABSequence",
-            &cpl_id,
+            cpl_id,
             seg_idx,
             code,
             issues,
@@ -611,7 +658,7 @@ fn validate_resource_list_non_empty(
         check_seq(
             &sl.isxd_sequences,
             "ISXDSequence",
-            &cpl_id,
+            cpl_id,
             seg_idx,
             code,
             issues,
@@ -625,7 +672,7 @@ fn validate_core_structure(
     code: fn(CoreConstraintsCode) -> &'static str,
     issues: &mut Vec<ValidationIssue>,
 ) {
-    let loc = Location::new().with_cpl(cpl.id.to_string());
+    let loc = Location::new().with_cpl(cpl.id);
 
     // ContentTitle must be non-empty
     if cpl.content_title.text.trim().is_empty() {
@@ -674,7 +721,7 @@ fn validate_core_structure(
 
     // Each Segment must have at least one sequence
     for (i, segment) in cpl.segment_list.segments.iter().enumerate() {
-        let seg_loc = Location::new().with_cpl(cpl.id.to_string()).with_segment(i);
+        let seg_loc = Location::new().with_cpl(cpl.id).with_segment(i);
 
         let sl = &segment.sequence_list;
         let has_sequences = !sl.main_image_sequences.is_empty()
@@ -896,7 +943,7 @@ fn validate_uuid_uniqueness(
     code: fn(CoreConstraintsCode) -> &'static str,
     issues: &mut Vec<ValidationIssue>,
 ) {
-    let cpl_loc = Location::new().with_cpl(cpl.id.to_string());
+    let cpl_loc = Location::new().with_cpl(cpl.id);
 
     // Segment ID uniqueness
     let mut segment_ids = HashSet::new();
@@ -1015,7 +1062,7 @@ fn validate_resource_constraints(
              issues: &mut Vec<ValidationIssue>| {
                 for (res_idx, resource) in seq.resource_list().resources.iter().enumerate() {
                     let res_loc = Location::new()
-                        .with_cpl(cpl.id.to_string())
+                        .with_cpl(cpl.id)
                         .with_segment(seg_idx)
                         .with_resource(res_idx);
 
@@ -1240,11 +1287,7 @@ fn validate_virtual_track_continuity(
                             seg_idx + 1,
                         ),
                     )
-                    .with_location(
-                        Location::new()
-                            .with_cpl(cpl.id.to_string())
-                            .with_segment(seg_idx),
-                    ),
+                    .with_location(Location::new().with_cpl(cpl.id).with_segment(seg_idx)),
                 );
             }
         }
@@ -1309,7 +1352,7 @@ fn validate_virtual_track_edit_rates(
                                 )
                                 .with_location(
                                     Location::new()
-                                        .with_cpl(cpl.id.to_string())
+                                        .with_cpl(cpl.id)
                                         .with_segment(seg_idx),
                                 ),
                             );
@@ -1376,7 +1419,7 @@ fn validate_timed_text_extended(
         };
 
         let ed_loc = Location::new()
-            .with_cpl(cpl.id.to_string())
+            .with_cpl(cpl.id)
             .with_path(format!("EssenceDescriptor/{}", ed.id));
 
         // SampleRate should be present for timed text
@@ -1398,7 +1441,7 @@ fn validate_timed_text_extended(
 
         // Validate language tags look well-formed (basic structural check)
         for tag in &tt.rfc5646_language_tag_list {
-            let s = &tag.0;
+            let s = tag.as_str();
             if s.is_empty() {
                 issues.push(
                     ValidationIssue::new(
@@ -1469,7 +1512,7 @@ fn validate_audio_mca_labels(
         };
 
         let ed_loc = Location::new()
-            .with_cpl(cpl.id.to_string())
+            .with_cpl(cpl.id)
             .with_path(format!("EssenceDescriptor/{}", ed.id));
 
         // Audio sample rate should be present
@@ -1658,9 +1701,7 @@ fn validate_segment_track_durations(cpl: &CompositionPlaylist, issues: &mut Vec<
 
     for (seg_idx, segment) in cpl.segment_list.segments.iter().enumerate() {
         let sl = &segment.sequence_list;
-        let seg_loc = Location::new()
-            .with_cpl(cpl.id.to_string())
-            .with_segment(seg_idx);
+        let seg_loc = Location::new().with_cpl(cpl.id).with_segment(seg_idx);
 
         let er = cpl.edit_rate.as_ref();
 
@@ -1755,7 +1796,7 @@ fn validate_digital_signature_notice(
                 "Digital signature validation (ST 2067-2 §8) is not currently performed; \
                  Signer/Signature XML elements are not parsed",
             )
-            .with_location(Location::new().with_cpl(cpl.id.to_string())),
+            .with_location(Location::new().with_cpl(cpl.id)),
         );
     }
 }
@@ -1849,7 +1890,7 @@ fn validate_dangling_essence_descriptors(
                         id
                     ),
                 )
-                .with_location(Location::new().with_cpl(cpl.id.to_string())),
+                .with_location(Location::new().with_cpl(cpl.id)),
             );
         }
     }
@@ -1872,7 +1913,7 @@ impl ConstraintsValidator for CoreConstraints2020 {
 
     fn validate_cpl(&self, cpl: &CompositionPlaylist) -> Vec<ValidationIssue> {
         let mut issues = Vec::new();
-        let loc = Location::new().with_cpl(cpl.id.to_string());
+        let loc = Location::new().with_cpl(cpl.id);
 
         validate_core_structure(
             cpl,
@@ -1936,7 +1977,7 @@ impl ConstraintsValidator for CoreConstraints2016 {
                     ),
                     "EssenceDescriptorList is required per ST 2067-2:2016",
                 )
-                .with_location(Location::new().with_cpl(cpl.id.to_string())),
+                .with_location(Location::new().with_cpl(cpl.id)),
             );
         }
 
@@ -2228,7 +2269,7 @@ impl App2E2021 {
         issues: &mut Vec<ValidationIssue>,
     ) {
         let loc = Location::new()
-            .with_cpl(cpl.id.to_string())
+            .with_cpl(cpl.id)
             .with_path(format!("EssenceDescriptor[{}]/RGBADescriptor", ed_id));
 
         // ── Table 8: Generic Picture Essence Descriptor ──────────────────────
@@ -2700,7 +2741,7 @@ impl App2E2021 {
         issues: &mut Vec<ValidationIssue>,
     ) {
         let loc = Location::new()
-            .with_cpl(cpl.id.to_string())
+            .with_cpl(cpl.id)
             .with_path(format!("EssenceDescriptor[{}]/CDCIDescriptor", ed_id));
 
         // ── Table 8: Generic Picture Essence Descriptor ──────────────────────
@@ -3417,7 +3458,7 @@ impl App2E2021 {
                             systems.join(", ")
                         ),
                     )
-                    .with_location(Location::new().with_cpl(cpl.id.to_string())),
+                    .with_location(Location::new().with_cpl(cpl.id)),
                 );
             }
         }
@@ -3494,7 +3535,7 @@ impl App2E2021 {
                     )
                     .with_location(
                         Location::new()
-                            .with_cpl(cpl.id.to_string())
+                            .with_cpl(cpl.id)
                             .with_segment(seg_idx),
                     ),
                 );
@@ -3564,7 +3605,7 @@ impl ConstraintsValidator for App2E2021 {
                                 app_id, APP2E_APPLICATION_IDENTIFICATION
                             ),
                         )
-                        .with_location(Location::new().with_cpl(cpl.id.to_string())),
+                        .with_location(Location::new().with_cpl(cpl.id)),
                     );
                 }
             }
@@ -3615,7 +3656,7 @@ impl ConstraintsValidator for App2E2020 {
                                 app_id, APP2E_2020_APPLICATION_IDENTIFICATION
                             ),
                         )
-                        .with_location(Location::new().with_cpl(cpl.id.to_string())),
+                        .with_location(Location::new().with_cpl(cpl.id)),
                     );
                 }
             }
@@ -3660,7 +3701,7 @@ impl App2E2021 {
                             )
                             .with_location(
                                 Location::new()
-                                    .with_cpl(cpl.id.to_string())
+                                    .with_cpl(cpl.id)
                                     .with_path(format!("EssenceDescriptor/{}", ed.id)),
                             ),
                         );
@@ -3761,7 +3802,7 @@ impl App2E2021 {
                     )
                     .with_location(
                         Location::new()
-                            .with_cpl(cpl.id.to_string())
+                            .with_cpl(cpl.id)
                             .with_path(format!("EssenceDescriptor/{}", ed.id)),
                     ),
                 );
@@ -3822,7 +3863,7 @@ impl App2E2021 {
                     )
                     .with_location(
                         Location::new()
-                            .with_cpl(cpl.id.to_string())
+                            .with_cpl(cpl.id)
                             .with_path(format!("EssenceDescriptor/{}", ed.id)),
                     ),
                 );
@@ -3863,7 +3904,7 @@ impl App2E2021 {
                         )
                         .with_location(
                             Location::new()
-                                .with_cpl(cpl.id.to_string())
+                                .with_cpl(cpl.id)
                                 .with_path(format!("EssenceDescriptor/{}", ed.id)),
                         ),
                     );
@@ -3889,7 +3930,7 @@ impl App2E2021 {
 
         for ed in &edl.essence_descriptors {
             let ed_loc = Location::new()
-                .with_cpl(cpl.id.to_string())
+                .with_cpl(cpl.id)
                 .with_path(format!("EssenceDescriptor/{}", ed.id));
 
             // Image descriptor required fields
@@ -4059,7 +4100,7 @@ impl App2E2021 {
                         )
                         .with_location(
                             Location::new()
-                                .with_cpl(cpl.id.to_string())
+                                .with_cpl(cpl.id)
                                 .with_path(format!("EssenceDescriptor/{}", ed.id)),
                         )
                         .with_suggestion("Set FrameLayout to FullFrame (00h)"),
@@ -4069,25 +4110,14 @@ impl App2E2021 {
         }
     }
 
-    /// ST 2067-21 §7.3 homogeneity applies *within* a virtual track: all resources
-    /// in one virtual track must reference equivalent essence descriptors (same
-    /// SourceEncoding). It does NOT require all audio virtual tracks in the CPL
-    /// to have the same channel count — a CPL with separate 5.1 and stereo tracks
-    /// is completely valid and normal.
-    ///
-    /// The previous implementation compared channel counts across *all*
-    /// WAVEPCMDescriptors in the EssenceDescriptorList, which produced false
-    /// positives for every multi-track CPL. That check is removed.
-    ///
-    /// True per-virtual-track descriptor homogeneity is enforced by the
-    /// `6.9/Homogeneity` SourceEncoding check in CoreConstraints.
+    /// Intentionally empty — per-virtual-track descriptor homogeneity is
+    /// enforced by CoreConstraints `6.9/Homogeneity` SourceEncoding checks.
     #[allow(clippy::ptr_arg)]
     fn validate_audio_channel_homogeneity(
         &self,
         _cpl: &CompositionPlaylist,
         _issues: &mut Vec<ValidationIssue>,
     ) {
-        // Intentionally empty — see doc comment above.
     }
 
     /// ST 2067-21 §5.6: HearingImpairedCaptions and ForcedNarrative sequences
@@ -4130,7 +4160,7 @@ impl App2E2021 {
                                     )
                                     .with_location(
                                         Location::new()
-                                            .with_cpl(cpl.id.to_string())
+                                            .with_cpl(cpl.id)
                                             .with_segment(seg_idx)
                                             .with_resource(res_idx),
                                     ),
@@ -4161,7 +4191,7 @@ impl App2E2021 {
                                     )
                                     .with_location(
                                         Location::new()
-                                            .with_cpl(cpl.id.to_string())
+                                            .with_cpl(cpl.id)
                                             .with_segment(seg_idx)
                                             .with_resource(res_idx),
                                     ),
@@ -4193,7 +4223,7 @@ impl App2E2021 {
                         St2067_21_2023::ApplicationIdentification.code(),
                         "ApplicationIdentification is required for App2E compositions",
                     )
-                    .with_location(Location::new().with_cpl(cpl.id.to_string())),
+                    .with_location(Location::new().with_cpl(cpl.id)),
                 );
             }
         }
@@ -4215,7 +4245,7 @@ impl App2E2021 {
                                         rating_idx, locale_idx
                                     ),
                                 )
-                                .with_location(Location::new().with_cpl(cpl.id.to_string())),
+                                .with_location(Location::new().with_cpl(cpl.id)),
                             );
                         } else if !is_valid_any_uri(&rating.agency) {
                             // XSD: Agency is xs:anyURI — no ASCII whitespace allowed
@@ -4230,7 +4260,7 @@ impl App2E2021 {
                                         rating_idx, locale_idx, rating.agency,
                                     ),
                                 )
-                                .with_location(Location::new().with_cpl(cpl.id.to_string())),
+                                .with_location(Location::new().with_cpl(cpl.id)),
                             );
                         }
                     }
@@ -4249,13 +4279,13 @@ impl App2E2021 {
             None => return,
         };
 
-        let cpl_loc = Location::new().with_cpl(cpl.id.to_string());
+        let cpl_loc = Location::new().with_cpl(cpl.id);
 
         for (i, locale) in locale_list.locales.iter().enumerate() {
             // Validate language tags
             if let Some(ref ll) = locale.language_list {
                 for tag in &ll.languages {
-                    let s = &tag.0;
+                    let s = tag.as_str();
                     if s.is_empty() {
                         issues.push(
                             ValidationIssue::new(
@@ -4312,6 +4342,94 @@ impl App2E2021 {
 // ═════════════════════════════════════════════════════════════════════════════
 // Tests
 // ═════════════════════════════════════════════════════════════════════════════
+
+// ── FromStr / parse helper tests ─────────────────────────────────────────────
+
+#[cfg(test)]
+mod spec_target_tests {
+    use super::*;
+
+    #[test]
+    fn core_spec_target_from_str_valid() {
+        assert_eq!(
+            "v2013".parse::<CoreSpecTarget>().unwrap(),
+            CoreSpecTarget::St2067_2_2013
+        );
+        assert_eq!(
+            "v2016".parse::<CoreSpecTarget>().unwrap(),
+            CoreSpecTarget::St2067_2_2016
+        );
+        assert_eq!(
+            "v2020".parse::<CoreSpecTarget>().unwrap(),
+            CoreSpecTarget::St2067_2_2020
+        );
+    }
+
+    #[test]
+    fn core_spec_target_from_str_invalid() {
+        assert!("v2099".parse::<CoreSpecTarget>().is_err());
+        assert!("auto".parse::<CoreSpecTarget>().is_err());
+        assert!("".parse::<CoreSpecTarget>().is_err());
+    }
+
+    #[test]
+    fn app_spec_target_from_str_valid() {
+        assert_eq!(
+            "v2020".parse::<AppSpecTarget>().unwrap(),
+            AppSpecTarget::St2067_21_2020
+        );
+        assert_eq!(
+            "v2021".parse::<AppSpecTarget>().unwrap(),
+            AppSpecTarget::St2067_21_2021
+        );
+        assert_eq!(
+            "v2023".parse::<AppSpecTarget>().unwrap(),
+            AppSpecTarget::St2067_21_2023
+        );
+    }
+
+    #[test]
+    fn app_spec_target_from_str_invalid() {
+        assert!("none".parse::<AppSpecTarget>().is_err());
+        assert!("garbage".parse::<AppSpecTarget>().is_err());
+    }
+
+    #[test]
+    fn parse_core_spec_target_auto() {
+        assert_eq!(parse_core_spec_target("auto").unwrap(), None);
+    }
+
+    #[test]
+    fn parse_core_spec_target_specific() {
+        assert_eq!(
+            parse_core_spec_target("v2020").unwrap(),
+            Some(CoreSpecTarget::St2067_2_2020),
+        );
+    }
+
+    #[test]
+    fn parse_app_spec_targets_auto() {
+        assert_eq!(parse_app_spec_targets("auto").unwrap(), None);
+    }
+
+    #[test]
+    fn parse_app_spec_targets_none() {
+        assert_eq!(parse_app_spec_targets("none").unwrap(), Some(vec![]));
+    }
+
+    #[test]
+    fn parse_app_spec_targets_specific() {
+        assert_eq!(
+            parse_app_spec_targets("v2023").unwrap(),
+            Some(vec![AppSpecTarget::St2067_21_2023]),
+        );
+    }
+
+    #[test]
+    fn parse_app_spec_targets_invalid() {
+        assert!(parse_app_spec_targets("garbage").is_err());
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -4377,7 +4495,7 @@ mod tests {
             content_originator: None,
             content_title: LanguageString {
                 text: "Test".to_string(),
-                language: Some(LanguageTag("en".to_string())),
+                language: Some(LanguageTag::new("en")),
             },
             content_kind: ContentKindElement::from(ContentKind::Feature),
             content_version_list: None,
@@ -5989,12 +6107,6 @@ mod tests {
         );
     }
 
-    // ────────────────────────────────────────────────────────────────────────
-    // Removed: fabricated "Table 3" image characteristics tests.
-    // ST 2067-21:2023 has no combined resolution+colorimetry+frame-rate table.
-    // Individual field constraints (Tables 8-14, §6.2.2-6.2.4) are tested above.
-    // ────────────────────────────────────────────────────────────────────────
-
     // ════════════════════════════════════════════════════════════════════════
     // Core constraints tests — resource & timeline validation (ST 2067-2)
     // ════════════════════════════════════════════════════════════════════════
@@ -6405,7 +6517,7 @@ mod tests {
         cpl.locale_list = Some(crate::cpl::LocaleList {
             locales: vec![crate::cpl::Locale {
                 language_list: Some(crate::cpl::LanguageList {
-                    languages: vec![crate::cpl::LanguageTag("123invalid".to_string())],
+                    languages: vec![crate::cpl::LanguageTag::new("123invalid")],
                 }),
                 region_list: None,
                 content_maturity_rating_list: None,
@@ -6428,8 +6540,8 @@ mod tests {
             locales: vec![crate::cpl::Locale {
                 language_list: Some(crate::cpl::LanguageList {
                     languages: vec![
-                        crate::cpl::LanguageTag("nl".to_string()),
-                        crate::cpl::LanguageTag("en".to_string()),
+                        crate::cpl::LanguageTag::new("nl"),
+                        crate::cpl::LanguageTag::new("en"),
                     ],
                 }),
                 region_list: Some(crate::cpl::RegionList {
@@ -8032,7 +8144,7 @@ mod tests {
                 id: "urn:uuid:00000000-0000-0000-0000-000000000099".to_string(),
                 label_text: Some(LanguageString {
                     text: "Version 1".to_string(),
-                    language: Some(LanguageTag("en".to_string())),
+                    language: Some(LanguageTag::new("en")),
                 }),
             }],
         });
@@ -8651,7 +8763,7 @@ mod tests {
                     linked_track_id: None,
                     sample_rate: None,
                     namespace_uri: Some("http://www.w3.org/ns/ttml".to_string()),
-                    rfc5646_language_tag_list: vec![LanguageTag("en".to_string())],
+                    rfc5646_language_tag_list: vec![LanguageTag::new("en")],
                 }),
                 isxd_data_essence_descriptor: None,
             }],
@@ -8850,7 +8962,7 @@ mod tests {
         cpl.locale_list = Some(LocaleList {
             locales: vec![Locale {
                 language_list: Some(LanguageList {
-                    languages: vec![LanguageTag("en".to_string()), LanguageTag("fr".to_string())],
+                    languages: vec![LanguageTag::new("en"), LanguageTag::new("fr")],
                 }),
                 content_maturity_rating_list: None,
                 region_list: Some(RegionList {
@@ -8908,7 +9020,7 @@ mod tests {
         cpl.locale_list = Some(LocaleList {
             locales: vec![Locale {
                 language_list: Some(LanguageList {
-                    languages: vec![LanguageTag("".to_string())],
+                    languages: vec![LanguageTag::new("")],
                 }),
                 region_list: None,
                 content_maturity_rating_list: None,
@@ -8943,7 +9055,7 @@ mod tests {
                     linked_track_id: None,
                     sample_rate: None, // Missing!
                     namespace_uri: Some("http://www.w3.org/ns/ttml".to_string()),
-                    rfc5646_language_tag_list: vec![LanguageTag("en".to_string())],
+                    rfc5646_language_tag_list: vec![LanguageTag::new("en")],
                 }),
                 isxd_data_essence_descriptor: None,
             }],
@@ -8975,7 +9087,7 @@ mod tests {
                     linked_track_id: None,
                     sample_rate: Some(EditRate::new(24, 1)),
                     namespace_uri: Some("http://www.w3.org/ns/ttml".to_string()),
-                    rfc5646_language_tag_list: vec![LanguageTag("en".to_string())],
+                    rfc5646_language_tag_list: vec![LanguageTag::new("en")],
                 }),
                 isxd_data_essence_descriptor: None,
             }],
@@ -9007,7 +9119,7 @@ mod tests {
                     linked_track_id: None,
                     sample_rate: Some(EditRate::new(24, 1)),
                     namespace_uri: Some("http://www.w3.org/ns/ttml".to_string()),
-                    rfc5646_language_tag_list: vec![LanguageTag("".to_string())],
+                    rfc5646_language_tag_list: vec![LanguageTag::new("")],
                 }),
                 isxd_data_essence_descriptor: None,
             }],

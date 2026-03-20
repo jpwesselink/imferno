@@ -165,34 +165,32 @@ fn map_resource(r: &crate::cpl::Resource, cpl_er: &Option<String>) -> CplResourc
     }
 }
 
-/// Merge sequences of one type into the track map, accumulating resources by track_id
-fn merge_sequences(
+/// Merge a single trait-object sequence into the track map
+fn merge_sequences_dyn(
     track_map: &mut HashMap<String, CplSequence>,
     type_name: &str,
-    sequences: &[impl SequenceAccess],
+    seq: &dyn SequenceAccess,
     cpl_er: &Option<String>,
 ) {
-    for seq in sequences {
-        let tid = seq.track_id().to_string();
-        let resources: Vec<CplResource> = seq
-            .resource_list()
-            .resources
-            .iter()
-            .map(|r| map_resource(r, cpl_er))
-            .collect();
-        if let Some(existing) = track_map.get_mut(&tid) {
-            existing.resources.extend(resources);
-        } else {
-            track_map.insert(
-                tid.clone(),
-                CplSequence {
-                    r#type: type_name.to_string(),
-                    id: seq.id().to_string(),
-                    track_id: tid,
-                    resources,
-                },
-            );
-        }
+    let tid = seq.track_id().to_string();
+    let resources: Vec<CplResource> = seq
+        .resource_list()
+        .resources
+        .iter()
+        .map(|r| map_resource(r, cpl_er))
+        .collect();
+    if let Some(existing) = track_map.get_mut(&tid) {
+        existing.resources.extend(resources);
+    } else {
+        track_map.insert(
+            tid.clone(),
+            CplSequence {
+                r#type: type_name.to_string(),
+                id: seq.id().to_string(),
+                track_id: tid,
+                resources,
+            },
+        );
     }
 }
 
@@ -206,39 +204,9 @@ fn extract_sequences(cpl: &crate::cpl::CompositionPlaylist) -> (Option<String>, 
     let mut track_map: HashMap<String, CplSequence> = HashMap::new();
 
     for seg in &cpl.segment_list.segments {
-        let sl = &seg.sequence_list;
-        merge_sequences(
-            &mut track_map,
-            "MainImage",
-            &sl.main_image_sequences,
-            &edit_rate,
-        );
-        merge_sequences(
-            &mut track_map,
-            "MainAudio",
-            &sl.main_audio_sequences,
-            &edit_rate,
-        );
-        merge_sequences(
-            &mut track_map,
-            "Subtitles",
-            &sl.subtitles_sequences,
-            &edit_rate,
-        );
-        merge_sequences(
-            &mut track_map,
-            "HearingImpairedCaptions",
-            &sl.hearing_impaired_captions_sequences,
-            &edit_rate,
-        );
-        merge_sequences(
-            &mut track_map,
-            "ForcedNarrative",
-            &sl.forced_narrative_sequences,
-            &edit_rate,
-        );
-        merge_sequences(&mut track_map, "IAB", &sl.iab_sequences, &edit_rate);
-        merge_sequences(&mut track_map, "ISXD", &sl.isxd_sequences, &edit_rate);
+        for (seq, type_name) in seg.sequence_list.all_sequences_typed() {
+            merge_sequences_dyn(&mut track_map, type_name, seq, &edit_rate);
+        }
     }
 
     (edit_rate, track_map.into_values().collect())
@@ -248,51 +216,8 @@ fn extract_sequences(cpl: &crate::cpl::CompositionPlaylist) -> (Option<String>, 
 fn collect_track_file_ids(cpl: &crate::cpl::CompositionPlaylist) -> Vec<String> {
     let mut ids = Vec::new();
     for seg in &cpl.segment_list.segments {
-        let sl = &seg.sequence_list;
-        for seq in &sl.main_image_sequences {
-            for r in &seq.resource_list.resources {
-                if let Some(ref id) = r.track_file_id {
-                    ids.push(id.to_string());
-                }
-            }
-        }
-        for seq in &sl.main_audio_sequences {
-            for r in &seq.resource_list.resources {
-                if let Some(ref id) = r.track_file_id {
-                    ids.push(id.to_string());
-                }
-            }
-        }
-        for seq in &sl.iab_sequences {
-            for r in &seq.resource_list.resources {
-                if let Some(ref id) = r.track_file_id {
-                    ids.push(id.to_string());
-                }
-            }
-        }
-        for seq in &sl.isxd_sequences {
-            for r in &seq.resource_list.resources {
-                if let Some(ref id) = r.track_file_id {
-                    ids.push(id.to_string());
-                }
-            }
-        }
-        for seq in &sl.subtitles_sequences {
-            for r in &seq.resource_list.resources {
-                if let Some(ref id) = r.track_file_id {
-                    ids.push(id.to_string());
-                }
-            }
-        }
-        for seq in &sl.hearing_impaired_captions_sequences {
-            for r in &seq.resource_list.resources {
-                if let Some(ref id) = r.track_file_id {
-                    ids.push(id.to_string());
-                }
-            }
-        }
-        for seq in &sl.forced_narrative_sequences {
-            for r in &seq.resource_list.resources {
+        for seq in seg.sequence_list.all_sequences() {
+            for r in &seq.resource_list().resources {
                 if let Some(ref id) = r.track_file_id {
                     ids.push(id.to_string());
                 }
@@ -420,47 +345,31 @@ pub fn build_report(
 
 // ── ANSI colour helpers ──────────────────────────────────────────────────────
 
-fn c_red(s: &str, on: bool) -> String {
-    if on {
-        format!("\x1b[31m{}\x1b[0m", s)
+fn ansi(code: &str, text: &str, enabled: bool) -> String {
+    if enabled {
+        format!("\x1b[{}m{}\x1b[0m", code, text)
     } else {
-        s.to_string()
+        text.to_string()
     }
+}
+
+fn c_red(s: &str, on: bool) -> String {
+    ansi("31", s, on)
 }
 fn c_yellow(s: &str, on: bool) -> String {
-    if on {
-        format!("\x1b[33m{}\x1b[0m", s)
-    } else {
-        s.to_string()
-    }
+    ansi("33", s, on)
 }
 fn c_cyan(s: &str, on: bool) -> String {
-    if on {
-        format!("\x1b[36m{}\x1b[0m", s)
-    } else {
-        s.to_string()
-    }
+    ansi("36", s, on)
 }
 fn c_green(s: &str, on: bool) -> String {
-    if on {
-        format!("\x1b[32m{}\x1b[0m", s)
-    } else {
-        s.to_string()
-    }
+    ansi("32", s, on)
 }
 fn c_bold(s: &str, on: bool) -> String {
-    if on {
-        format!("\x1b[1m{}\x1b[0m", s)
-    } else {
-        s.to_string()
-    }
+    ansi("1", s, on)
 }
 fn c_dim(s: &str, on: bool) -> String {
-    if on {
-        format!("\x1b[2m{}\x1b[0m", s)
-    } else {
-        s.to_string()
-    }
+    ansi("2", s, on)
 }
 
 // ── format_report ────────────────────────────────────────────────────────────
@@ -531,7 +440,8 @@ pub fn format_report(report: &ImfReport, color: bool) -> String {
                 Severity::Info => ("info", c_cyan),
             };
             let location = if let Some(ref c) = issue.location.cpl_id {
-                c_dim(&format!(" [CPL:{}]", &c[..c.len().min(8)]), color)
+                let s = c.to_string();
+                c_dim(&format!(" [CPL:{}]", &s[..s.len().min(8)]), color)
             } else if let Some(ref f) = issue.location.file {
                 let fname = f.file_name().and_then(|n| n.to_str()).unwrap_or("?");
                 c_dim(&format!(" [{}]", fname), color)

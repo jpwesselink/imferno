@@ -8,7 +8,7 @@ description: Which SMPTE ST-2067 standards imferno implements and to what degree
 | ST 429-9 | Volume Index / Asset Map | 2014 | Complete |
 | ST 2067-2 | Core Constraints and Packing List | 2013 / 2016 / 2020 | Complete |
 | ST 2067-3 | Composition Playlist | 2013 / 2016 / 2020 | Complete |
-| ST 2067-21 | Application #2E (UHD/HDR) | 2020 / 2023 | Complete |
+| ST 2067-21 | Application #2E (UHD/HDR) | 2020 / 2023 / 2025 | Complete |
 | ST 2067-201 | IAB Level 0 Plug-in | 2019 / 2021 | Complete |
 | ST 377-1 | MXF File Format | 2011 | Partial — header partition only; no KLV traversal or essence decoding |
 | ST 2067-9 | Sidecar Composition Map | 2018 | Complete |

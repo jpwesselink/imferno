@@ -351,12 +351,10 @@ fn validate_iab_descriptors(
         }
 
         let sf = soundfield.unwrap();
-        let sub_loc = Location::new()
-            .with_cpl(cpl.id)
-            .with_path(format!(
-                "EssenceDescriptor/{}/IABSoundfieldLabelSubDescriptor",
-                ed.id
-            ));
+        let sub_loc = Location::new().with_cpl(cpl.id).with_path(format!(
+            "EssenceDescriptor/{}/IABSoundfieldLabelSubDescriptor",
+            ed.id
+        ));
 
         // §5.9: MCATagSymbol shall be "IAB".
         match &sf.mca_tag_symbol {

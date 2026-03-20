@@ -890,35 +890,33 @@ impl Imferno {
                             original_file_name: asset.original_file_name.clone(),
                         });
                     }
-                    Some(abs_path) => {
-                        match std::fs::metadata(abs_path) {
-                            Err(e) => {
-                                if e.kind() == std::io::ErrorKind::NotFound {
-                                    errors.push(FileValidationError::Missing {
-                                        uuid: uuid_str,
-                                        path: abs_path.clone(),
-                                    });
-                                } else {
-                                    errors.push(FileValidationError::Io {
-                                        uuid: uuid_str,
-                                        path: abs_path.clone(),
-                                        message: format!("Cannot access file: {}", e),
-                                    });
-                                }
-                            }
-                            Ok(meta) => {
-                                let actual = meta.len();
-                                if actual != asset.size {
-                                    errors.push(FileValidationError::SizeMismatch {
-                                        uuid: uuid_str,
-                                        path: abs_path.clone(),
-                                        expected: asset.size,
-                                        actual,
-                                    });
-                                }
+                    Some(abs_path) => match std::fs::metadata(abs_path) {
+                        Err(e) => {
+                            if e.kind() == std::io::ErrorKind::NotFound {
+                                errors.push(FileValidationError::Missing {
+                                    uuid: uuid_str,
+                                    path: abs_path.clone(),
+                                });
+                            } else {
+                                errors.push(FileValidationError::Io {
+                                    uuid: uuid_str,
+                                    path: abs_path.clone(),
+                                    message: format!("Cannot access file: {}", e),
+                                });
                             }
                         }
-                    }
+                        Ok(meta) => {
+                            let actual = meta.len();
+                            if actual != asset.size {
+                                errors.push(FileValidationError::SizeMismatch {
+                                    uuid: uuid_str,
+                                    path: abs_path.clone(),
+                                    expected: asset.size,
+                                    actual,
+                                });
+                            }
+                        }
+                    },
                 }
             }
         }
@@ -1591,8 +1589,8 @@ impl Imferno {
                             .or(cpl_er)
                             .cloned()
                             .unwrap_or(EditRate::new(1, 1));
-                        total_num = total_num
-                            .saturating_add(dur.saturating_mul(er.denominator as u64));
+                        total_num =
+                            total_num.saturating_add(dur.saturating_mul(er.denominator as u64));
                         rate_den = er.numerator as u64;
                     }
                     if rate_den > 0 {
@@ -1623,11 +1621,7 @@ impl Imferno {
                                     seg_idx, durations[0].0, first_dur, track_id, dur,
                                 ),
                             )
-                            .with_location(
-                                Location::new()
-                                    .with_cpl(cpl_id)
-                                    .with_segment(seg_idx),
-                            ),
+                            .with_location(Location::new().with_cpl(cpl_id).with_segment(seg_idx)),
                         );
                         break; // One error per segment is sufficient
                     }
@@ -3376,8 +3370,10 @@ mod tests {
 
         let package = Imferno::parse(files).expect("parse should succeed even with bad PKL");
         assert!(
-            package.parse_issues.iter().any(|i| i.code
-                == codes::ImfernoCode::PklParseError.code()),
+            package
+                .parse_issues
+                .iter()
+                .any(|i| i.code == codes::ImfernoCode::PklParseError.code()),
             "expected PklParseError issue, got: {:?}",
             package.parse_issues,
         );
@@ -3395,15 +3391,14 @@ mod tests {
                 </Asset>"#,
             ),
         );
-        files.insert(
-            "MYSTERY.xml".to_string(),
-            "<SomethingElse/>".to_string(),
-        );
+        files.insert("MYSTERY.xml".to_string(), "<SomethingElse/>".to_string());
 
         let package = Imferno::parse(files).expect("parse should succeed");
         assert!(
-            package.parse_issues.iter().any(|i| i.code
-                == codes::ImfernoCode::XmlAssetParseError.code()),
+            package
+                .parse_issues
+                .iter()
+                .any(|i| i.code == codes::ImfernoCode::XmlAssetParseError.code()),
             "expected XmlAssetParseError issue, got: {:?}",
             package.parse_issues,
         );

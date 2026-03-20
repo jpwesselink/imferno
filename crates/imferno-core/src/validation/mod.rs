@@ -592,11 +592,7 @@ fn validate_resource_list_non_empty(
                                 seg_idx + 1,
                             ),
                         )
-                        .with_location(
-                            Location::new()
-                                .with_cpl(cpl_id)
-                                .with_segment(seg_idx),
-                        ),
+                        .with_location(Location::new().with_cpl(cpl_id).with_segment(seg_idx)),
                     );
                 }
             }
@@ -1291,11 +1287,7 @@ fn validate_virtual_track_continuity(
                             seg_idx + 1,
                         ),
                     )
-                    .with_location(
-                        Location::new()
-                            .with_cpl(cpl.id)
-                            .with_segment(seg_idx),
-                    ),
+                    .with_location(Location::new().with_cpl(cpl.id).with_segment(seg_idx)),
                 );
             }
         }
@@ -1709,9 +1701,7 @@ fn validate_segment_track_durations(cpl: &CompositionPlaylist, issues: &mut Vec<
 
     for (seg_idx, segment) in cpl.segment_list.segments.iter().enumerate() {
         let sl = &segment.sequence_list;
-        let seg_loc = Location::new()
-            .with_cpl(cpl.id)
-            .with_segment(seg_idx);
+        let seg_loc = Location::new().with_cpl(cpl.id).with_segment(seg_idx);
 
         let er = cpl.edit_rate.as_ref();
 
@@ -4361,9 +4351,18 @@ mod spec_target_tests {
 
     #[test]
     fn core_spec_target_from_str_valid() {
-        assert_eq!("v2013".parse::<CoreSpecTarget>().unwrap(), CoreSpecTarget::St2067_2_2013);
-        assert_eq!("v2016".parse::<CoreSpecTarget>().unwrap(), CoreSpecTarget::St2067_2_2016);
-        assert_eq!("v2020".parse::<CoreSpecTarget>().unwrap(), CoreSpecTarget::St2067_2_2020);
+        assert_eq!(
+            "v2013".parse::<CoreSpecTarget>().unwrap(),
+            CoreSpecTarget::St2067_2_2013
+        );
+        assert_eq!(
+            "v2016".parse::<CoreSpecTarget>().unwrap(),
+            CoreSpecTarget::St2067_2_2016
+        );
+        assert_eq!(
+            "v2020".parse::<CoreSpecTarget>().unwrap(),
+            CoreSpecTarget::St2067_2_2020
+        );
     }
 
     #[test]
@@ -4375,9 +4374,18 @@ mod spec_target_tests {
 
     #[test]
     fn app_spec_target_from_str_valid() {
-        assert_eq!("v2020".parse::<AppSpecTarget>().unwrap(), AppSpecTarget::St2067_21_2020);
-        assert_eq!("v2021".parse::<AppSpecTarget>().unwrap(), AppSpecTarget::St2067_21_2021);
-        assert_eq!("v2023".parse::<AppSpecTarget>().unwrap(), AppSpecTarget::St2067_21_2023);
+        assert_eq!(
+            "v2020".parse::<AppSpecTarget>().unwrap(),
+            AppSpecTarget::St2067_21_2020
+        );
+        assert_eq!(
+            "v2021".parse::<AppSpecTarget>().unwrap(),
+            AppSpecTarget::St2067_21_2021
+        );
+        assert_eq!(
+            "v2023".parse::<AppSpecTarget>().unwrap(),
+            AppSpecTarget::St2067_21_2023
+        );
     }
 
     #[test]

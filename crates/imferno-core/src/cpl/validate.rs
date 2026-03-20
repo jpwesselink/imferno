@@ -23,8 +23,7 @@ use crate::diagnostics::{Category, Location, Severity, ValidationIssue};
 
 use crate::cpl::codes::St2067_3Code;
 use crate::cpl::{
-    CompositionPlaylist, ContentKind, CplNamespace, MarkerLabel,
-    CONTENT_KIND_DEFAULT_SCOPE,
+    CompositionPlaylist, ContentKind, CplNamespace, MarkerLabel, CONTENT_KIND_DEFAULT_SCOPE,
 };
 
 // ─── Code dispatch helper ─────────────────────────────────────────────────────
@@ -300,11 +299,7 @@ fn validate_track_id_uniqueness(
                             seg = seg_idx + 1,
                         ),
                     )
-                    .with_location(
-                        Location::new()
-                            .with_cpl(cpl_id)
-                            .with_segment(seg_idx),
-                    ),
+                    .with_location(Location::new().with_cpl(cpl_id).with_segment(seg_idx)),
                 );
             }
         }
@@ -535,11 +530,7 @@ fn validate_sequence_duration_integer_edit_units(
                             seg = seg_idx + 1,
                         ),
                     )
-                    .with_location(
-                        Location::new()
-                            .with_cpl(cpl_id)
-                            .with_segment(seg_idx),
-                    ),
+                    .with_location(Location::new().with_cpl(cpl_id).with_segment(seg_idx)),
                 );
             }
         }

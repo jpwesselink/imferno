@@ -77,10 +77,7 @@ fn meridian_parses_all_fields() {
         .expect("missing SoundfieldGroupLabelSubDescriptor");
     assert_eq!(sf.mca_tag_symbol, Some(McaTagSymbol::Sg51));
     assert_eq!(sf.mca_tag_name.as_deref(), Some("5.1"));
-    assert_eq!(
-        sf.rfc5646_spoken_language,
-        Some(LanguageTag::new("en"))
-    );
+    assert_eq!(sf.rfc5646_spoken_language, Some(LanguageTag::new("en")));
 
     // Timeline
     let segment = &cpl.segment_list.segments[0];
@@ -170,10 +167,7 @@ fn iab_cpl_parses_all_descriptors() {
         .as_ref()
         .and_then(|sd| sd.soundfield_group_label_sub_descriptor.as_ref())
         .expect("missing SoundfieldGroupLabelSubDescriptor");
-    assert_eq!(
-        sf.rfc5646_spoken_language,
-        Some(LanguageTag::new("en"))
-    );
+    assert_eq!(sf.rfc5646_spoken_language, Some(LanguageTag::new("en")));
 
     // IAB (Atmos)
     let iab = edl.essence_descriptors[2]
@@ -187,10 +181,7 @@ fn iab_cpl_parses_all_descriptors() {
         .and_then(|sd| sd.iab_soundfield_label_sub_descriptor.as_ref())
         .expect("missing IABSoundfieldLabelSubDescriptor");
     assert_eq!(iab_sf.mca_tag_symbol, Some(McaTagSymbol::Iab));
-    assert_eq!(
-        iab_sf.rfc5646_spoken_language,
-        Some(LanguageTag::new("en"))
-    );
+    assert_eq!(iab_sf.rfc5646_spoken_language, Some(LanguageTag::new("en")));
 
     // Sequences
     let segment = &cpl.segment_list.segments[0];

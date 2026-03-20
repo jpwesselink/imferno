@@ -353,12 +353,24 @@ fn ansi(code: &str, text: &str, enabled: bool) -> String {
     }
 }
 
-fn c_red(s: &str, on: bool) -> String { ansi("31", s, on) }
-fn c_yellow(s: &str, on: bool) -> String { ansi("33", s, on) }
-fn c_cyan(s: &str, on: bool) -> String { ansi("36", s, on) }
-fn c_green(s: &str, on: bool) -> String { ansi("32", s, on) }
-fn c_bold(s: &str, on: bool) -> String { ansi("1", s, on) }
-fn c_dim(s: &str, on: bool) -> String { ansi("2", s, on) }
+fn c_red(s: &str, on: bool) -> String {
+    ansi("31", s, on)
+}
+fn c_yellow(s: &str, on: bool) -> String {
+    ansi("33", s, on)
+}
+fn c_cyan(s: &str, on: bool) -> String {
+    ansi("36", s, on)
+}
+fn c_green(s: &str, on: bool) -> String {
+    ansi("32", s, on)
+}
+fn c_bold(s: &str, on: bool) -> String {
+    ansi("1", s, on)
+}
+fn c_dim(s: &str, on: bool) -> String {
+    ansi("2", s, on)
+}
 
 // ── format_report ────────────────────────────────────────────────────────────
 

@@ -446,10 +446,8 @@ fn extract_signature_method_algorithm(signature_xml: &str) -> Option<String> {
 fn extract_reference_entries(signature_xml: &str) -> Result<Vec<SignatureReferenceEntry>, String> {
     use std::sync::LazyLock;
     static REFERENCE_RE: LazyLock<regex::Regex> = LazyLock::new(|| {
-        regex::Regex::new(
-            r#"(?s)<(?:(?:\w+):)?Reference\b([^>]*)>(.*?)</(?:(?:\w+):)?Reference>"#,
-        )
-        .unwrap()
+        regex::Regex::new(r#"(?s)<(?:(?:\w+):)?Reference\b([^>]*)>(.*?)</(?:(?:\w+):)?Reference>"#)
+            .unwrap()
     });
     static URI_RE: LazyLock<regex::Regex> =
         LazyLock::new(|| regex::Regex::new(r#"\bURI\s*=\s*\"([^\"]*)\""#).unwrap());
@@ -502,10 +500,8 @@ fn extract_reference_entries(signature_xml: &str) -> Result<Vec<SignatureReferen
 fn strip_first_signature_element(xml: &str) -> Option<String> {
     use std::sync::LazyLock;
     static RE: LazyLock<regex::Regex> = LazyLock::new(|| {
-        regex::Regex::new(
-            r#"(?s)<(?:(?:\w+):)?Signature\b[^>]*>.*?</(?:(?:\w+):)?Signature\s*>"#,
-        )
-        .unwrap()
+        regex::Regex::new(r#"(?s)<(?:(?:\w+):)?Signature\b[^>]*>.*?</(?:(?:\w+):)?Signature\s*>"#)
+            .unwrap()
     });
     let m = RE.find(xml)?;
     let mut out = String::with_capacity(xml.len() - (m.end() - m.start()));
@@ -3563,18 +3559,48 @@ mod tests {
 
     fn make_seq_list_with_all_types() -> SequenceList {
         let uuid = || ImfUuid::parse("urn:uuid:00000000-0000-0000-0000-000000000001").unwrap();
-        let rl = || ResourceList {
-            resources: vec![],
-        };
+        let rl = || ResourceList { resources: vec![] };
         SequenceList {
-            marker_sequences: vec![MarkerSequence { id: uuid(), track_id: uuid(), resource_list: rl() }],
-            main_image_sequences: vec![MainImageSequence { id: uuid(), track_id: uuid(), resource_list: rl() }],
-            main_audio_sequences: vec![MainAudioSequence { id: uuid(), track_id: uuid(), resource_list: rl() }],
-            subtitles_sequences: vec![SubtitlesSequence { id: uuid(), track_id: uuid(), resource_list: rl() }],
-            hearing_impaired_captions_sequences: vec![HearingImpairedCaptionsSequence { id: uuid(), track_id: uuid(), resource_list: rl() }],
-            forced_narrative_sequences: vec![ForcedNarrativeSequence { id: uuid(), track_id: uuid(), resource_list: rl() }],
-            iab_sequences: vec![IABSequence { id: uuid(), track_id: uuid(), resource_list: rl() }],
-            isxd_sequences: vec![ISXDSequence { id: uuid(), track_id: uuid(), resource_list: rl() }],
+            marker_sequences: vec![MarkerSequence {
+                id: uuid(),
+                track_id: uuid(),
+                resource_list: rl(),
+            }],
+            main_image_sequences: vec![MainImageSequence {
+                id: uuid(),
+                track_id: uuid(),
+                resource_list: rl(),
+            }],
+            main_audio_sequences: vec![MainAudioSequence {
+                id: uuid(),
+                track_id: uuid(),
+                resource_list: rl(),
+            }],
+            subtitles_sequences: vec![SubtitlesSequence {
+                id: uuid(),
+                track_id: uuid(),
+                resource_list: rl(),
+            }],
+            hearing_impaired_captions_sequences: vec![HearingImpairedCaptionsSequence {
+                id: uuid(),
+                track_id: uuid(),
+                resource_list: rl(),
+            }],
+            forced_narrative_sequences: vec![ForcedNarrativeSequence {
+                id: uuid(),
+                track_id: uuid(),
+                resource_list: rl(),
+            }],
+            iab_sequences: vec![IABSequence {
+                id: uuid(),
+                track_id: uuid(),
+                resource_list: rl(),
+            }],
+            isxd_sequences: vec![ISXDSequence {
+                id: uuid(),
+                track_id: uuid(),
+                resource_list: rl(),
+            }],
         }
     }
 

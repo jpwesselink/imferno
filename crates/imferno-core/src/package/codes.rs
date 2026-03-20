@@ -43,6 +43,8 @@ pub enum ImfernoCode {
     ReadDirError,
     /// Could not read a directory entry while scanning for unlisted essences.
     DirEntryError,
+    /// An asset chunk path attempts to escape the package root directory.
+    PathTraversal,
 }
 
 impl ValidationCode for ImfernoCode {
@@ -56,6 +58,7 @@ impl ValidationCode for ImfernoCode {
             Self::XmlReadError => "IMFERNO:Package/XmlReadError",
             Self::ReadDirError => "IMFERNO:Package/ReadDirError",
             Self::DirEntryError => "IMFERNO:Package/DirEntryError",
+            Self::PathTraversal => "IMFERNO:Package/PathTraversal",
         }
     }
 
@@ -77,6 +80,8 @@ impl ValidationCode for ImfernoCode {
                 "Could not scan the package directory.",
             Self::DirEntryError =>
                 "Could not read a directory entry while scanning for unlisted essences.",
+            Self::PathTraversal =>
+                "An asset chunk path attempts to escape the package root directory (path traversal).",
         }
     }
 
@@ -90,6 +95,7 @@ impl ValidationCode for ImfernoCode {
             Self::XmlReadError => Severity::Warning,
             Self::ReadDirError => Severity::Info,
             Self::DirEntryError => Severity::Info,
+            Self::PathTraversal => Severity::Error,
         }
     }
 
@@ -108,6 +114,7 @@ impl ImfernoCode {
         Self::XmlReadError,
         Self::ReadDirError,
         Self::DirEntryError,
+        Self::PathTraversal,
     ];
 }
 

@@ -297,6 +297,35 @@ pub struct Imferno {
     pub asset_paths: HashMap<ImfUuid, PathBuf>,
 }
 
+/// Resolve an asset chunk path against the package root, rejecting path traversal.
+///
+/// Returns `None` if the path is absolute or contains `..` components that
+/// would escape the package root. This prevents a malicious AssetMap from
+/// causing file reads outside the intended directory.
+fn sanitize_asset_path(root: &Path, chunk_path: &str) -> Option<PathBuf> {
+    let rel = Path::new(chunk_path);
+    // Reject absolute paths outright
+    if rel.is_absolute() {
+        return None;
+    }
+    // Check lexical components for parent-dir traversal
+    for component in rel.components() {
+        if component == std::path::Component::ParentDir {
+            return None;
+        }
+    }
+    let joined = root.join(rel);
+    // If the file exists, verify the canonical path is still under root
+    if let Ok(canonical) = joined.canonicalize() {
+        if canonical.starts_with(root) {
+            return Some(canonical);
+        }
+        return None; // symlink escape
+    }
+    // File doesn't exist yet — lexical check above is sufficient
+    Some(joined)
+}
+
 /// Read all files from a directory into a `HashMap<String, String>`.
 ///
 /// XML files are read as strings. Binary files (e.g. MXF) that fail UTF-8
@@ -486,23 +515,39 @@ impl Imferno {
         let asset_map = crate::assetmap::parse_assetmap(assetmap_xml)?;
 
         // Asset UUID → path mapping.
-        // When root_path is known (native disk load), build absolute paths.
-        // Otherwise keep relative paths (WASM / in-memory use).
+        // When root_path is known (native disk load), build absolute paths
+        // with path traversal protection. Otherwise keep relative paths (WASM).
         let mut asset_paths: HashMap<ImfUuid, PathBuf> = HashMap::new();
+        let mut parse_issues: Vec<ValidationIssue> = Vec::new();
         for asset in &asset_map.asset_list.assets {
             for chunk in &asset.chunk_list.chunks {
                 let path = if root_path.as_os_str().is_empty() {
-                    PathBuf::from(&chunk.path)
+                    // WASM / in-memory: no filesystem, keep relative path as-is
+                    Some(PathBuf::from(&chunk.path))
                 } else {
-                    root_path.join(&chunk.path)
+                    sanitize_asset_path(&root_path, &chunk.path)
                 };
-                asset_paths.insert(asset.id, path);
+                match path {
+                    Some(p) => {
+                        asset_paths.insert(asset.id, p);
+                    }
+                    None => {
+                        parse_issues.push(ValidationIssue::new(
+                            Severity::Error,
+                            Category::Structure,
+                            codes::ImfernoCode::PathTraversal,
+                            format!(
+                                "Asset '{}' chunk path '{}' escapes the package root directory",
+                                asset.id, chunk.path,
+                            ),
+                        ));
+                    }
+                }
             }
         }
 
         // Parse PKLs
         let mut packing_lists = HashMap::new();
-        let mut parse_issues: Vec<ValidationIssue> = Vec::new();
         for asset in &asset_map.asset_list.assets {
             if asset.packing_list == Some(true) {
                 for chunk in &asset.chunk_list.chunks {
@@ -845,19 +890,18 @@ impl Imferno {
                             original_file_name: asset.original_file_name.clone(),
                         });
                     }
-                    Some(rel_path) => {
-                        let abs_path = self.root_path.join(rel_path);
-                        match std::fs::metadata(&abs_path) {
+                    Some(abs_path) => {
+                        match std::fs::metadata(abs_path) {
                             Err(e) => {
                                 if e.kind() == std::io::ErrorKind::NotFound {
                                     errors.push(FileValidationError::Missing {
                                         uuid: uuid_str,
-                                        path: abs_path,
+                                        path: abs_path.clone(),
                                     });
                                 } else {
                                     errors.push(FileValidationError::Io {
                                         uuid: uuid_str,
-                                        path: abs_path,
+                                        path: abs_path.clone(),
                                         message: format!("Cannot access file: {}", e),
                                     });
                                 }
@@ -867,7 +911,7 @@ impl Imferno {
                                 if actual != asset.size {
                                     errors.push(FileValidationError::SizeMismatch {
                                         uuid: uuid_str,
-                                        path: abs_path,
+                                        path: abs_path.clone(),
                                         expected: asset.size,
                                         actual,
                                     });
@@ -906,16 +950,15 @@ impl Imferno {
                 if errored_uuids.contains(&uuid_str) {
                     continue;
                 }
-                let Some(rel_path) = path_map.get(&asset.id) else {
+                let Some(abs_path) = path_map.get(&asset.id) else {
                     continue;
                 };
-                let abs_path = self.root_path.join(rel_path);
 
-                match std::fs::read(&abs_path) {
+                match std::fs::read(abs_path) {
                     Err(e) => {
                         errors.push(FileValidationError::Io {
                             uuid: uuid_str,
-                            path: abs_path,
+                            path: abs_path.clone(),
                             message: e.to_string(),
                         });
                     }
@@ -941,7 +984,7 @@ impl Imferno {
                         if actual_b64 != expected_b64 {
                             errors.push(FileValidationError::HashMismatch {
                                 uuid: uuid_str,
-                                path: abs_path,
+                                path: abs_path.clone(),
                                 expected: expected_b64,
                                 actual: actual_b64,
                             });
@@ -995,12 +1038,22 @@ impl Imferno {
         errors
     }
 
-    /// Build a map from asset UUID to relative file path.
-    fn build_asset_path_map(&self) -> HashMap<ImfUuid, String> {
+    /// Build a map from asset UUID to sanitized relative file path.
+    ///
+    /// Paths that would escape the package root (path traversal) are excluded.
+    fn build_asset_path_map(&self) -> HashMap<ImfUuid, PathBuf> {
         let mut map = HashMap::new();
+        let has_root = !self.root_path.as_os_str().is_empty();
         for asset in &self.asset_map.asset_list.assets {
             if let Some(chunk) = asset.chunk_list.chunks.first() {
-                map.insert(asset.id, chunk.path.clone());
+                if has_root {
+                    if let Some(safe_path) = sanitize_asset_path(&self.root_path, &chunk.path) {
+                        map.insert(asset.id, safe_path);
+                    }
+                    // Traversal paths silently excluded — already reported at parse time
+                } else {
+                    map.insert(asset.id, PathBuf::from(&chunk.path));
+                }
             }
         }
         map
@@ -1538,7 +1591,8 @@ impl Imferno {
                             .or(cpl_er)
                             .cloned()
                             .unwrap_or(EditRate::new(1, 1));
-                        total_num += dur * (er.denominator as u64);
+                        total_num = total_num
+                            .saturating_add(dur.saturating_mul(er.denominator as u64));
                         rate_den = er.numerator as u64;
                     }
                     if rate_den > 0 {

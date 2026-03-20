@@ -4353,6 +4353,76 @@ impl App2E2021 {
 // Tests
 // ═════════════════════════════════════════════════════════════════════════════
 
+// ── FromStr / parse helper tests ─────────────────────────────────────────────
+
+#[cfg(test)]
+mod spec_target_tests {
+    use super::*;
+
+    #[test]
+    fn core_spec_target_from_str_valid() {
+        assert_eq!("v2013".parse::<CoreSpecTarget>().unwrap(), CoreSpecTarget::St2067_2_2013);
+        assert_eq!("v2016".parse::<CoreSpecTarget>().unwrap(), CoreSpecTarget::St2067_2_2016);
+        assert_eq!("v2020".parse::<CoreSpecTarget>().unwrap(), CoreSpecTarget::St2067_2_2020);
+    }
+
+    #[test]
+    fn core_spec_target_from_str_invalid() {
+        assert!("v2099".parse::<CoreSpecTarget>().is_err());
+        assert!("auto".parse::<CoreSpecTarget>().is_err());
+        assert!("".parse::<CoreSpecTarget>().is_err());
+    }
+
+    #[test]
+    fn app_spec_target_from_str_valid() {
+        assert_eq!("v2020".parse::<AppSpecTarget>().unwrap(), AppSpecTarget::St2067_21_2020);
+        assert_eq!("v2021".parse::<AppSpecTarget>().unwrap(), AppSpecTarget::St2067_21_2021);
+        assert_eq!("v2023".parse::<AppSpecTarget>().unwrap(), AppSpecTarget::St2067_21_2023);
+    }
+
+    #[test]
+    fn app_spec_target_from_str_invalid() {
+        assert!("none".parse::<AppSpecTarget>().is_err());
+        assert!("garbage".parse::<AppSpecTarget>().is_err());
+    }
+
+    #[test]
+    fn parse_core_spec_target_auto() {
+        assert_eq!(parse_core_spec_target("auto").unwrap(), None);
+    }
+
+    #[test]
+    fn parse_core_spec_target_specific() {
+        assert_eq!(
+            parse_core_spec_target("v2020").unwrap(),
+            Some(CoreSpecTarget::St2067_2_2020),
+        );
+    }
+
+    #[test]
+    fn parse_app_spec_targets_auto() {
+        assert_eq!(parse_app_spec_targets("auto").unwrap(), None);
+    }
+
+    #[test]
+    fn parse_app_spec_targets_none() {
+        assert_eq!(parse_app_spec_targets("none").unwrap(), Some(vec![]));
+    }
+
+    #[test]
+    fn parse_app_spec_targets_specific() {
+        assert_eq!(
+            parse_app_spec_targets("v2023").unwrap(),
+            Some(vec![AppSpecTarget::St2067_21_2023]),
+        );
+    }
+
+    #[test]
+    fn parse_app_spec_targets_invalid() {
+        assert!(parse_app_spec_targets("garbage").is_err());
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

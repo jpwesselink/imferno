@@ -731,4 +731,30 @@ mod tests {
         let issue2 = ValidationIssue::new(Severity::Error, Category::Asset, "B/Code", "msg");
         assert_ne!(issue.code, issue2.code);
     }
+
+    #[test]
+    fn location_cpl_id_serde_round_trip() {
+        let uuid = ImfUuid::parse("urn:uuid:12345678-0000-0000-0000-000000000000").unwrap();
+        let loc = Location::new().with_cpl(uuid);
+        let json = serde_json::to_string(&loc).unwrap();
+        let deserialized: Location = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.cpl_id, Some(uuid));
+    }
+
+    #[test]
+    fn validation_issue_serde_round_trip() {
+        let uuid = ImfUuid::parse("urn:uuid:abcdef00-1234-5678-9abc-def012345678").unwrap();
+        let issue = ValidationIssue::new(
+            Severity::Warning,
+            Category::Structure,
+            "TEST/Code",
+            "test message",
+        )
+        .with_location(Location::new().with_cpl(uuid));
+
+        let json = serde_json::to_string(&issue).unwrap();
+        let deserialized: ValidationIssue = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.severity, Severity::Warning);
+        assert_eq!(deserialized.location.cpl_id, Some(uuid));
+    }
 }

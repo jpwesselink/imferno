@@ -140,3 +140,35 @@ impl ValidationReport {
         self
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn rules_config_accessors() {
+        let mut rules = RulesConfig::default();
+        assert!(rules.is_empty());
+        assert_eq!(rules.len(), 0);
+
+        rules.set(
+            crate::assetmap::codes::St2067_2_2020::FileNotFound,
+            RuleSeverity::Critical,
+        );
+        assert!(!rules.is_empty());
+        assert_eq!(rules.len(), 1);
+        assert_eq!(rules.iter().count(), 1);
+    }
+
+    #[test]
+    fn rules_config_serde_round_trip() {
+        let mut rules = RulesConfig::default();
+        rules.set(
+            crate::assetmap::codes::St2067_2_2020::FileNotFound,
+            RuleSeverity::Off,
+        );
+        let json = serde_json::to_string(&rules).unwrap();
+        let deserialized: RulesConfig = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.len(), 1);
+    }
+}

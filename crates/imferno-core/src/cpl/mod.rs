@@ -3559,6 +3559,68 @@ pub fn format_framerate(edit_rate: &EditRate) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::assetmap::ImfUuid;
+
+    fn make_seq_list_with_all_types() -> SequenceList {
+        let uuid = || ImfUuid::parse("urn:uuid:00000000-0000-0000-0000-000000000001").unwrap();
+        let rl = || ResourceList {
+            resources: vec![],
+        };
+        SequenceList {
+            marker_sequences: vec![MarkerSequence { id: uuid(), track_id: uuid(), resource_list: rl() }],
+            main_image_sequences: vec![MainImageSequence { id: uuid(), track_id: uuid(), resource_list: rl() }],
+            main_audio_sequences: vec![MainAudioSequence { id: uuid(), track_id: uuid(), resource_list: rl() }],
+            subtitles_sequences: vec![SubtitlesSequence { id: uuid(), track_id: uuid(), resource_list: rl() }],
+            hearing_impaired_captions_sequences: vec![HearingImpairedCaptionsSequence { id: uuid(), track_id: uuid(), resource_list: rl() }],
+            forced_narrative_sequences: vec![ForcedNarrativeSequence { id: uuid(), track_id: uuid(), resource_list: rl() }],
+            iab_sequences: vec![IABSequence { id: uuid(), track_id: uuid(), resource_list: rl() }],
+            isxd_sequences: vec![ISXDSequence { id: uuid(), track_id: uuid(), resource_list: rl() }],
+        }
+    }
+
+    #[test]
+    fn all_sequences_excludes_markers() {
+        let sl = make_seq_list_with_all_types();
+        // 7 non-marker sequence types, 1 of each
+        assert_eq!(sl.all_sequences().len(), 7);
+    }
+
+    #[test]
+    fn all_sequences_typed_returns_type_names() {
+        let sl = make_seq_list_with_all_types();
+        let typed = sl.all_sequences_typed();
+        assert_eq!(typed.len(), 7);
+        let names: Vec<&str> = typed.iter().map(|(_, n)| *n).collect();
+        assert!(names.contains(&"MainImage"));
+        assert!(names.contains(&"MainAudio"));
+        assert!(names.contains(&"Subtitles"));
+        assert!(names.contains(&"HearingImpairedCaptions"));
+        assert!(names.contains(&"ForcedNarrative"));
+        assert!(names.contains(&"IAB"));
+        assert!(names.contains(&"ISXD"));
+    }
+
+    #[test]
+    fn all_sequences_empty_list() {
+        let sl = SequenceList {
+            marker_sequences: vec![],
+            main_image_sequences: vec![],
+            main_audio_sequences: vec![],
+            subtitles_sequences: vec![],
+            hearing_impaired_captions_sequences: vec![],
+            forced_narrative_sequences: vec![],
+            iab_sequences: vec![],
+            isxd_sequences: vec![],
+        };
+        assert!(sl.all_sequences().is_empty());
+        assert!(sl.all_sequences_typed().is_empty());
+    }
+
+    #[test]
+    fn try_extract_cpl_track_codecs_invalid_xml() {
+        let result = try_extract_cpl_track_codecs_from_xml("<not-a-cpl/>");
+        assert!(result.is_err());
+    }
 
     struct AcceptAllSignatureVerifier;
     impl XmlSignatureVerifier for AcceptAllSignatureVerifier {

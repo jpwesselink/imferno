@@ -40,7 +40,7 @@ See the [CLI Reference](/reference/cli/) for all commands and options.
 
 ```toml
 [dependencies]
-imferno-core = "1.1"
+imferno-core = "2.0"
 ```
 
 ```rust
@@ -87,7 +87,7 @@ ESM module powered by WebAssembly. Use it in any browser or bundler.
 ```javascript
 import { buildReport, formatReport } from '@imferno/wasm';
 
-const report = buildReport({
+const report = await buildReport({
     'VOLINDEX.xml': volindexXml,
     'ASSETMAP.xml': assetmapXml,
     'PKL_abc.xml':  pklXml,
@@ -98,7 +98,7 @@ const report = buildReport({
 console.log(formatReport(report));
 
 // Check programmatically
-if (!report.validation.isCompliant) {
+if (!report.validation.is_compliant) {
     for (const err of report.validation.errors) {
         console.error(err.code, err.message);
     }
@@ -125,7 +125,7 @@ const report = buildReportFromPath('./my-imp');
 console.log(formatReport(report));
 
 // Check programmatically
-if (!report.validation.isCompliant) {
+if (!report.validation.is_compliant) {
     for (const err of report.validation.errors) {
         console.error(err.code, err.message);
     }

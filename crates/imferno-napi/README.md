@@ -2,7 +2,7 @@
 
 Native Node.js bindings for the [imferno](https://github.com/jpwesselink/imferno) SMPTE ST 2067 IMF validator, powered by [napi-rs](https://napi.rs).
 
-Unlike [`@imferno/wasm`](https://www.npmjs.com/package/@imferno/wasm), this package has full filesystem access — validate packages by path, verify SHA hashes against PKL, and check MXF headers.
+Unlike [`@imferno/wasm`](https://www.npmjs.com/package/@imferno/wasm), this package has full filesystem access — validate packages by path and check MXF headers directly from disk.
 
 ## Install
 
@@ -22,72 +22,125 @@ Prebuilt binaries are provided for:
 
 ### Validate a package on disk
 
-```javascript
-const { validatePath } = require('@imferno/node');
+```js
+import { buildReportFromPath } from "@imferno/node";
 
-const { report, cpls, assetMap, packingLists, volumeIndex } = validatePath('./my-imp');
+const report = buildReportFromPath("./my-imp");
 
-console.log('Compliant:', report.is_compliant);
-console.log('Errors:', report.errors.length);
-console.log('Warnings:', report.warnings.length);
+console.log("Compliant:", report.validation.isCompliant);
+console.log("Errors:", report.validation.errors.length);
+console.log("Warnings:", report.validation.warnings.length);
+console.log("CPLs:", report.package.cplCount);
 ```
 
 ### Validate with options
 
-```javascript
-const result = validatePath('./my-imp', {
-  coreSpec: 'v2020',
-  app2eSpec: 'v2023',
-  verifyHashes: true,
+```js
+import { buildReportFromPath } from "@imferno/node";
+
+const report = buildReportFromPath("./my-imp", {
+  coreSpec: "v2020",
+  app2eSpec: "v2023",
+  skipDiskChecks: true,
   rules: {
-    'ST2067-21:2023:7.1/AppIdMismatch': 'error',
-    'IMFERNO:Package/UnreferencedAsset': 'off',
+    "ST2067-21:2023:7.1/AppIdMismatch": "error",
+    "IMFERNO:Package/UnreferencedAsset": "off",
   },
 });
 ```
 
-### Validate from strings
+### Validate from in-memory strings
 
-```javascript
-const { validate } = require('@imferno/node');
+```js
+import { buildReport } from "@imferno/node";
 
-const result = validate({
-  'ASSETMAP.xml': assetmapXml,
-  'PKL_abc.xml': pklXml,
-  'CPL_def.xml': cplXml,
+const report = buildReport({
+  "ASSETMAP.xml": assetmapXml,
+  "PKL_abc.xml": pklXml,
+  "CPL_def.xml": cplXml,
 });
 ```
 
-### Parse individual files
+### Pretty-print a report
 
-```javascript
-const { parseCpl, parseAssetmap, parsePkl, parseVolindex } = require('@imferno/node');
+```js
+import { buildReportFromPath, formatReport } from "@imferno/node";
 
-const cpl = parseCpl(cplXmlString);
-const assetMap = parseAssetmap(assetmapXmlString);
-const pkl = parsePkl(pklXmlString);
-const volindex = parseVolindex(volindexXmlString);
+const report = buildReportFromPath("./my-imp");
+console.log(formatReport(report));
+```
+
+### Get the library version
+
+```js
+import { getVersion } from "@imferno/node";
+
+console.log(getVersion()); // e.g. "2.0.0"
 ```
 
 ## API
 
 | Function | Description |
 |----------|-------------|
-| `validatePath(path, options?)` | Validate an IMF package directory on disk |
-| `validate(files, options?)` | Validate from in-memory XML strings |
-| `parseCpl(xml)` | Parse CPL XML |
-| `parseAssetmap(xml)` | Parse ASSETMAP.xml |
-| `parsePkl(xml)` | Parse PKL XML |
-| `parseVolindex(xml)` | Parse VOLINDEX.xml |
-| `getVersion()` | Get library version |
+| `buildReport(files, options?)` | Validate from in-memory XML strings |
+| `buildReportFromPath(path, options?)` | Validate an IMF package directory on disk |
+| `formatReport(report)` | Pretty-print an `ImfReport` as a human-readable string |
+| `getVersion()` | Get the library version |
 
 ### Options
 
-- `coreSpec`: `"auto"` | `"v2013"` | `"v2016"` | `"v2020"`
-- `app2eSpec`: `"auto"` | `"none"` | `"v2020"` | `"v2021"` | `"v2023"`
-- `verifyHashes`: `boolean` — verify SHA hashes against PKL (validatePath only)
-- `skipDiskChecks`: `boolean` — skip file manifest and MXF checks (validatePath only)
-- `rules`: `Record<string, "error" | "warn" | "info" | "off">` — ESLint-style severity overrides
+| Option | Type | Description |
+|--------|------|-------------|
+| `coreSpec` | `"auto" \| "v2013" \| "v2016" \| "v2020"` | Core constraints spec version |
+| `app2eSpec` | `"auto" \| "none" \| "v2020" \| "v2021" \| "v2023"` | Application spec version |
+| `skipDiskChecks` | `boolean` | Skip file manifest and MXF checks (`buildReportFromPath` only) |
+| `rules` | `Record<string, "error" \| "warn" \| "info" \| "off">` | ESLint-style per-rule severity overrides |
+
+> **Note:** Hash verification (`verifyHashes`) is not currently exposed via NAPI.
+
+### ImfReport shape
+
+The returned object has this top-level structure (all keys are camelCase):
+
+```json
+{
+  "package": {
+    "assetMapId": "...",
+    "volumeIndex": 1,
+    "assetCount": 12,
+    "cplCount": 1,
+    "pklCount": 1,
+    "issueDate": "2024-01-15T12:00:00Z",
+    "issuer": "...",
+    "creator": "...",
+    "scmCount": 0,
+    "sidecarCount": 0,
+    "unreferencedAssets": []
+  },
+  "cpls": [
+    {
+      "id": "urn:uuid:...",
+      "title": "My Composition",
+      "applicationProfile": "App2E_2021",
+      "editRate": "24000/1001",
+      "segmentCount": 1,
+      "isSupplemental": false,
+      "sequences": [],
+      "markers": []
+    }
+  ],
+  "validation": {
+    "isCompliant": true,
+    "isPlayable": true,
+    "profile": "SMPTE",
+    "critical": [],
+    "errors": [],
+    "warnings": [],
+    "info": [],
+    "timestamp": "2024-01-15T12:00:00Z"
+  }
+}
+```
 
 ## License
 

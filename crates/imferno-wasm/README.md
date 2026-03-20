@@ -12,40 +12,44 @@ npm install @imferno/wasm
 
 > **Note:** For Node.js with filesystem access (path-based validation, hash verification), use [`@imferno/node`](https://www.npmjs.com/package/@imferno/node) instead.
 
-The package ships a prebuilt `.wasm` binary — no build step required.
+The package ships a prebuilt `.wasm` binary -- no build step required.
 
 ## Usage
 
 ```javascript
-import {
-    parseAssetmapTyped,
-    parseCplTyped,
-    parsePklTyped,
-    parseVolindexTyped,
-    validate,
-    codes,
-    getVersion,
-} from '@imferno/wasm';
-
-// Parse individual XML files
-const assetMap = await parseAssetmapTyped(assetmapXml);
-const cpl = await parseCplTyped(cplXml);
-const pkl = await parsePklTyped(pklXml);
-const volindex = await parseVolindexTyped(volindexXml);
+import { buildReport, formatReport, codes, getVersion } from '@imferno/wasm';
 
 // Validate a full IMF package (pass all XML files as a map)
-const result = await validate({
+const report = await buildReport({
     'ASSETMAP.xml': assetmapXml,
     'PKL_abc.xml': pklXml,
     'CPL_def.xml': cplXml,
 });
-console.log(result.report.errors);
-console.log(result.report.warnings);
-console.log(result.cpls);
-console.log(result.unreferencedAssets);
 
-// Validate with custom rules (typed codes give autocomplete + typo protection)
-const result2 = await validate(
+// Pretty-print the report
+console.log(await formatReport(report));
+
+// Check compliance programmatically
+if (!report.validation.is_compliant) {
+    for (const err of report.validation.errors) {
+        console.error(err.code, err.message);
+    }
+}
+
+// Inspect package metadata
+console.log('CPL count:', report.package.cplCount);
+console.log('CPLs:', report.cpls);
+
+// Get library version
+console.log(await getVersion());
+```
+
+### Validate with options
+
+```javascript
+import { buildReport, codes } from '@imferno/wasm';
+
+const report = await buildReport(
     {
         'ASSETMAP.xml': assetmapXml,
         'PKL_abc.xml': pklXml,
@@ -68,18 +72,56 @@ WASM initialization is handled automatically on first call.
 
 | Export | Description |
 |--------|-------------|
-| `validate(files, options?)` | Validate a full IMF package, returns report + parsed data |
-| `parseCplTyped(xml)` | Parse CPL XML |
-| `parseAssetmapTyped(xml)` | Parse ASSETMAP.xml |
-| `parsePklTyped(xml)` | Parse PKL XML |
-| `parseVolindexTyped(xml)` | Parse VOLINDEX.xml |
+| `buildReport(files, options?)` | Parse and validate an IMF package, returns an `ImfReport` |
+| `formatReport(report)` | Render an `ImfReport` as a human-readable string |
 | `codes` | Typed validation code constants for use in `rules` config |
 | `getVersion()` | Get library version |
 
-### Spec selection values
+All exports are **async** (WASM must be initialized before use).
 
-- `coreSpec`: `"auto"` | `"v2013"` | `"v2016"` | `"v2020"`
-- `app2eSpec`: `"auto"` | `"none"` | `"v2020"` | `"v2021"` | `"v2023"`
+### ImfReport shape
+
+```json
+{
+    "package": {
+        "assetMapId": "...",
+        "cplCount": 1,
+        "pklCount": 1,
+        "assetCount": 5,
+        "unreferencedAssets": []
+    },
+    "cpls": [
+        {
+            "id": "...",
+            "title": "...",
+            "applicationProfile": "App2E_2023",
+            "editRate": "24000/1001",
+            "segmentCount": 1,
+            "isSupplemental": false,
+            "sequences": [],
+            "markers": []
+        }
+    ],
+    "validation": {
+        "is_compliant": true,
+        "is_playable": true,
+        "critical": [],
+        "errors": [],
+        "warnings": [],
+        "info": []
+    }
+}
+```
+
+### Options
+
+| Field | Values | Default |
+|-------|--------|---------|
+| `coreSpec` | `"auto"`, `"v2013"`, `"v2016"`, `"v2020"` | auto-detect |
+| `app2eSpec` | `"auto"`, `"none"`, `"v2020"`, `"v2021"`, `"v2023"` | auto-detect |
+| `rules` | ESLint-style rules object (`{ [code]: severity }`) | all enabled |
+
+Rule severities: `"critical"`, `"error"`, `"warning"`, `"info"`, `"off"`.
 
 ## License
 

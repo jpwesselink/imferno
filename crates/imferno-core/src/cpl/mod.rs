@@ -582,48 +582,42 @@ mod de_helpers {
         }
     }
 
-    pub fn de_optional_color_primaries<'de, D: Deserializer<'de>>(
-        d: D,
-    ) -> Result<Option<ColorPrimaries>, D::Error> {
+    /// Shared helper: deserialize an optional string, trim, and apply a converter if non-empty.
+    fn de_optional_ul_type<'de, D, T, F>(d: D, from_ul: F) -> Result<Option<T>, D::Error>
+    where
+        D: Deserializer<'de>,
+        F: FnOnce(&str) -> T,
+    {
         let s = String::deserialize(d)?;
         Ok(if s.trim().is_empty() {
             None
         } else {
-            Some(ColorPrimaries::from_ul(s.trim()))
+            Some(from_ul(s.trim()))
         })
+    }
+
+    pub fn de_optional_color_primaries<'de, D: Deserializer<'de>>(
+        d: D,
+    ) -> Result<Option<ColorPrimaries>, D::Error> {
+        de_optional_ul_type(d, ColorPrimaries::from_ul)
     }
 
     pub fn de_optional_transfer_characteristic<'de, D: Deserializer<'de>>(
         d: D,
     ) -> Result<Option<TransferCharacteristic>, D::Error> {
-        let s = String::deserialize(d)?;
-        Ok(if s.trim().is_empty() {
-            None
-        } else {
-            Some(TransferCharacteristic::from_ul(s.trim()))
-        })
+        de_optional_ul_type(d, TransferCharacteristic::from_ul)
     }
 
     pub fn de_optional_video_codec<'de, D: Deserializer<'de>>(
         d: D,
     ) -> Result<Option<VideoCodec>, D::Error> {
-        let s = String::deserialize(d)?;
-        Ok(if s.trim().is_empty() {
-            None
-        } else {
-            Some(VideoCodec::from_ul(s.trim()))
-        })
+        de_optional_ul_type(d, VideoCodec::from_ul)
     }
 
     pub fn de_optional_coding_equations<'de, D: Deserializer<'de>>(
         d: D,
     ) -> Result<Option<CodingEquations>, D::Error> {
-        let s = String::deserialize(d)?;
-        Ok(if s.trim().is_empty() {
-            None
-        } else {
-            Some(CodingEquations::from_ul(s.trim()))
-        })
+        de_optional_ul_type(d, CodingEquations::from_ul)
     }
 
     pub fn de_optional_mca_tag_symbol<'de, D: Deserializer<'de>>(

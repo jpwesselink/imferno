@@ -84,7 +84,7 @@ fn validate_content_kind_vocabulary(
                      advertisement, episode, short, commercial, psa)",
                 ),
             )
-            .with_location(Location::new().with_cpl(cpl.id.to_string())),
+            .with_location(Location::new().with_cpl(cpl.id)),
         );
     }
 }
@@ -97,8 +97,8 @@ fn validate_source_encoding_refs(
     code: fn(St2067_3Code) -> &'static str,
     issues: &mut Vec<ValidationIssue>,
 ) {
-    let cpl_id = cpl.id.to_string();
-    let loc = Location::new().with_cpl(cpl_id.clone());
+    let cpl_id = cpl.id;
+    let loc = Location::new().with_cpl(cpl_id);
 
     let ed_ids: HashSet<String> = cpl
         .essence_descriptor_list
@@ -123,7 +123,7 @@ fn validate_source_encoding_refs(
                 if let Some(ref se) = resource.source_encoding {
                     let se_str = se.to_string();
                     let res_loc = Location::new()
-                        .with_cpl(cpl_id.clone())
+                        .with_cpl(cpl_id)
                         .with_segment(seg_idx)
                         .with_resource(res_idx);
 
@@ -183,7 +183,7 @@ fn validate_content_versions(
     code: fn(St2067_3Code) -> &'static str,
     issues: &mut Vec<ValidationIssue>,
 ) {
-    let loc = Location::new().with_cpl(cpl.id.to_string());
+    let loc = Location::new().with_cpl(cpl.id);
 
     let cvl = match &cpl.content_version_list {
         Some(cvl) => cvl,
@@ -237,7 +237,7 @@ fn validate_locale_language_tags(
     code: fn(St2067_3Code) -> &'static str,
     issues: &mut Vec<ValidationIssue>,
 ) {
-    let loc = Location::new().with_cpl(cpl.id.to_string());
+    let loc = Location::new().with_cpl(cpl.id);
 
     let ll = match &cpl.locale_list {
         Some(ll) => ll,
@@ -275,7 +275,7 @@ fn validate_track_id_uniqueness(
     code: fn(St2067_3Code) -> &'static str,
     issues: &mut Vec<ValidationIssue>,
 ) {
-    let cpl_id = cpl.id.to_string();
+    let cpl_id = cpl.id;
 
     for (seg_idx, segment) in cpl.segment_list.segments.iter().enumerate() {
         let sl = &segment.sequence_list;
@@ -302,7 +302,7 @@ fn validate_track_id_uniqueness(
                     )
                     .with_location(
                         Location::new()
-                            .with_cpl(cpl_id.clone())
+                            .with_cpl(cpl_id)
                             .with_segment(seg_idx),
                     ),
                 );
@@ -319,7 +319,7 @@ fn validate_marker_offsets(
     code: fn(St2067_3Code) -> &'static str,
     issues: &mut Vec<ValidationIssue>,
 ) {
-    let cpl_id = cpl.id.to_string();
+    let cpl_id = cpl.id;
 
     for (seg_idx, segment) in cpl.segment_list.segments.iter().enumerate() {
         for seq in &segment.sequence_list.marker_sequences {
@@ -342,7 +342,7 @@ fn validate_marker_offsets(
                             )
                             .with_location(
                                 Location::new()
-                                    .with_cpl(cpl_id.clone())
+                                    .with_cpl(cpl_id)
                                     .with_segment(seg_idx)
                                     .with_resource(res_idx),
                             ),
@@ -367,7 +367,7 @@ fn validate_marker_labels(
     code: fn(St2067_3Code) -> &'static str,
     issues: &mut Vec<ValidationIssue>,
 ) {
-    let cpl_id = cpl.id.to_string();
+    let cpl_id = cpl.id;
 
     for (seg_idx, segment) in cpl.segment_list.segments.iter().enumerate() {
         for seq in &segment.sequence_list.marker_sequences {
@@ -388,7 +388,7 @@ fn validate_marker_labels(
                                 )
                                 .with_location(
                                     Location::new()
-                                        .with_cpl(cpl_id.clone())
+                                        .with_cpl(cpl_id)
                                         .with_segment(seg_idx)
                                         .with_resource(res_idx),
                                 ),
@@ -408,7 +408,7 @@ fn validate_marker_labels(
                                 )
                                 .with_location(
                                     Location::new()
-                                        .with_cpl(cpl_id.clone())
+                                        .with_cpl(cpl_id)
                                         .with_segment(seg_idx)
                                         .with_resource(res_idx),
                                 ),
@@ -429,7 +429,7 @@ fn validate_content_version_uniqueness(
     code: fn(St2067_3Code) -> &'static str,
     issues: &mut Vec<ValidationIssue>,
 ) {
-    let loc = Location::new().with_cpl(cpl.id.to_string());
+    let loc = Location::new().with_cpl(cpl.id);
     let cvl = match &cpl.content_version_list {
         Some(cvl) => cvl,
         None => return,
@@ -479,7 +479,7 @@ fn validate_sequence_duration_integer_edit_units(
         None => return,
     };
 
-    let cpl_id = cpl.id.to_string();
+    let cpl_id = cpl.id;
 
     for (seg_idx, segment) in cpl.segment_list.segments.iter().enumerate() {
         let sl = &segment.sequence_list;
@@ -537,7 +537,7 @@ fn validate_sequence_duration_integer_edit_units(
                     )
                     .with_location(
                         Location::new()
-                            .with_cpl(cpl_id.clone())
+                            .with_cpl(cpl_id)
                             .with_segment(seg_idx),
                     ),
                 );

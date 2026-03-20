@@ -428,7 +428,8 @@ pub fn format_report(report: &ImfReport, color: bool) -> String {
                 Severity::Info => ("info", c_cyan),
             };
             let location = if let Some(ref c) = issue.location.cpl_id {
-                c_dim(&format!(" [CPL:{}]", &c[..c.len().min(8)]), color)
+                let s = c.to_string();
+                c_dim(&format!(" [CPL:{}]", &s[..s.len().min(8)]), color)
             } else if let Some(ref f) = issue.location.file {
                 let fname = f.file_name().and_then(|n| n.to_str()).unwrap_or("?");
                 c_dim(&format!(" [{}]", fname), color)

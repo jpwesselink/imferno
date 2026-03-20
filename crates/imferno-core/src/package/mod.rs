@@ -921,7 +921,7 @@ impl Imferno {
                     }
                     Ok(bytes) => {
                         // Compute digest using the algorithm declared in the PKL.
-                        let actual_b64 = match asset.hash.algorithm {
+                        let actual_b64 = match asset.hash.algorithm() {
                             crate::assetmap::HashAlgorithm::Sha1 => {
                                 let digest = sha1::Sha1::digest(&bytes);
                                 base64::Engine::encode(
@@ -1516,78 +1516,38 @@ impl Imferno {
     /// Time = effective_duration / edit_rate.
     #[allow(dead_code)]
     fn validate_segment_durations(&self, report: &mut ValidationReport) {
-        use crate::cpl::SequenceAccess;
+        for cpl in self.composition_playlists.values() {
+            let cpl_id = cpl.id;
+            let cpl_er = cpl.edit_rate.as_ref();
 
-        /// Returns (track_id, duration_numerator, duration_denominator) for each
-        /// sequence, where time = num/den seconds.
-        fn track_durations<S: SequenceAccess>(
-            sequences: &[S],
-            cpl_edit_rate: Option<&EditRate>,
-        ) -> Vec<(String, u64, u64)> {
-            sequences
-                .iter()
-                .map(|seq| {
+            for (seg_idx, segment) in cpl.segment_list.segments.iter().enumerate() {
+                let mut durations: Vec<(String, f64)> = Vec::new();
+
+                for seq in segment.sequence_list.all_sequences() {
                     let resources = &seq.resource_list().resources;
                     let mut total_num: u64 = 0;
-                    let mut rate_den: u64 = 1; // denominator (edit rate numerator)
-
+                    let mut rate_den: u64 = 1;
                     for r in resources {
                         let ep = r.entry_point.unwrap_or(0);
                         let dur = r
                             .source_duration
                             .unwrap_or(r.intrinsic_duration.saturating_sub(ep));
-
-                        // Resolve edit rate: resource > CPL > default (1/1)
                         let er = r
                             .edit_rate
                             .as_ref()
-                            .or(cpl_edit_rate)
+                            .or(cpl_er)
                             .cloned()
                             .unwrap_or(EditRate::new(1, 1));
-
-                        // Time = dur * (den / num) seconds
-                        // To avoid floats: accumulate as rational (dur * den, num)
-                        // For simplicity we compare dur * rate.denominator / rate.numerator
-                        // which requires a common rate across resources in a sequence.
-                        // Per spec, resources in a sequence share the same edit rate.
                         total_num += dur * (er.denominator as u64);
                         rate_den = er.numerator as u64;
                     }
-
-                    (seq.track_id().to_string(), total_num, rate_den)
-                })
-                .collect()
-        }
-
-        for cpl in self.composition_playlists.values() {
-            let cpl_id = cpl.id.to_string();
-            let cpl_er = cpl.edit_rate.as_ref();
-
-            for (seg_idx, segment) in cpl.segment_list.segments.iter().enumerate() {
-                let seq_list = &segment.sequence_list;
-                let mut durations: Vec<(String, f64)> = Vec::new();
-
-                fn add_durations<S: SequenceAccess>(
-                    sequences: &[S],
-                    cpl_edit_rate: Option<&EditRate>,
-                    out: &mut Vec<(String, f64)>,
-                ) {
-                    for (tid, num, den) in track_durations(sequences, cpl_edit_rate) {
-                        if den > 0 {
-                            out.push((tid, num as f64 / den as f64));
-                        }
+                    if rate_den > 0 {
+                        durations.push((
+                            seq.track_id().to_string(),
+                            total_num as f64 / rate_den as f64,
+                        ));
                     }
                 }
-
-                add_durations(&seq_list.main_image_sequences, cpl_er, &mut durations);
-                add_durations(&seq_list.main_audio_sequences, cpl_er, &mut durations);
-                add_durations(&seq_list.subtitles_sequences, cpl_er, &mut durations);
-                add_durations(
-                    &seq_list.hearing_impaired_captions_sequences,
-                    cpl_er,
-                    &mut durations,
-                );
-                add_durations(&seq_list.forced_narrative_sequences, cpl_er, &mut durations);
 
                 if durations.is_empty() {
                     continue;
@@ -1611,7 +1571,7 @@ impl Imferno {
                             )
                             .with_location(
                                 Location::new()
-                                    .with_cpl(cpl_id.clone())
+                                    .with_cpl(cpl_id)
                                     .with_segment(seg_idx),
                             ),
                         );
@@ -1632,8 +1592,6 @@ impl Imferno {
         cpl: &crate::cpl::CompositionPlaylist,
         report: &mut ValidationReport,
     ) {
-        use crate::cpl::SequenceAccess;
-
         if self.asset_map.asset_list.assets.is_empty() {
             report.add(
                 ValidationIssue::new(
@@ -1642,7 +1600,7 @@ impl Imferno {
                     codes::St2067_2_2020::AssetMap,
                     "AssetMap contains no assets",
                 )
-                .with_location(Location::new().with_cpl(cpl.id.to_string())),
+                .with_location(Location::new().with_cpl(cpl.id)),
             );
             return;
         }
@@ -1655,19 +1613,14 @@ impl Imferno {
             .map(|a| a.id)
             .collect();
 
-        fn check_sequences<S: SequenceAccess>(
-            sequences: &[S],
-            track_type: &str,
-            cpl_id: &str,
-            seg_idx: usize,
-            assetmap_ids: &std::collections::HashSet<ImfUuid>,
-            issues: &mut Vec<ValidationIssue>,
-        ) {
-            for seq in sequences {
+        let cpl_id = cpl.id;
+
+        for (seg_idx, segment) in cpl.segment_list.segments.iter().enumerate() {
+            for (seq, track_type) in segment.sequence_list.all_sequences_typed() {
                 for (res_idx, resource) in seq.resource_list().resources.iter().enumerate() {
                     if let Some(ref track_file_id) = resource.track_file_id {
                         if !assetmap_ids.contains(track_file_id) {
-                            issues.push(
+                            report.add(
                                 ValidationIssue::new(
                                     Severity::Error,
                                     Category::Reference,
@@ -1679,7 +1632,7 @@ impl Imferno {
                                 )
                                 .with_location(
                                     Location::new()
-                                        .with_cpl(cpl_id.to_string())
+                                        .with_cpl(cpl_id)
                                         .with_segment(seg_idx)
                                         .with_resource(res_idx),
                                 )
@@ -1689,74 +1642,6 @@ impl Imferno {
                     }
                 }
             }
-        }
-
-        let cpl_id = cpl.id.to_string();
-        let mut issues = Vec::new();
-
-        for (seg_idx, segment) in cpl.segment_list.segments.iter().enumerate() {
-            let seq_list = &segment.sequence_list;
-
-            check_sequences(
-                &seq_list.main_image_sequences,
-                "MainImageSequence",
-                &cpl_id,
-                seg_idx,
-                &assetmap_ids,
-                &mut issues,
-            );
-            check_sequences(
-                &seq_list.main_audio_sequences,
-                "MainAudioSequence",
-                &cpl_id,
-                seg_idx,
-                &assetmap_ids,
-                &mut issues,
-            );
-            check_sequences(
-                &seq_list.subtitles_sequences,
-                "SubtitlesSequence",
-                &cpl_id,
-                seg_idx,
-                &assetmap_ids,
-                &mut issues,
-            );
-            check_sequences(
-                &seq_list.hearing_impaired_captions_sequences,
-                "HearingImpairedCaptionsSequence",
-                &cpl_id,
-                seg_idx,
-                &assetmap_ids,
-                &mut issues,
-            );
-            check_sequences(
-                &seq_list.forced_narrative_sequences,
-                "ForcedNarrativeSequence",
-                &cpl_id,
-                seg_idx,
-                &assetmap_ids,
-                &mut issues,
-            );
-            check_sequences(
-                &seq_list.iab_sequences,
-                "IABSequence",
-                &cpl_id,
-                seg_idx,
-                &assetmap_ids,
-                &mut issues,
-            );
-            check_sequences(
-                &seq_list.isxd_sequences,
-                "ISXDSequence",
-                &cpl_id,
-                seg_idx,
-                &assetmap_ids,
-                &mut issues,
-            );
-        }
-
-        for issue in issues {
-            report.add(issue);
         }
     }
 }

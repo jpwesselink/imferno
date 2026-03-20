@@ -148,6 +148,22 @@ impl CoreSpecTarget {
     }
 }
 
+impl std::str::FromStr for CoreSpecTarget {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "v2013" => Ok(Self::St2067_2_2013),
+            "v2016" => Ok(Self::St2067_2_2016),
+            "v2020" => Ok(Self::St2067_2_2020),
+            other => Err(format!(
+                "Unsupported coreSpec '{}'. Use auto|v2013|v2016|v2020",
+                other
+            )),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AppSpecTarget {
     St2067_21_2020,
@@ -162,6 +178,40 @@ impl AppSpecTarget {
             Self::St2067_21_2021 => "http://www.smpte-ra.org/ns/2067-21/2021",
             Self::St2067_21_2023 => "http://www.smpte-ra.org/ns/2067-21/2023",
         }
+    }
+}
+
+impl std::str::FromStr for AppSpecTarget {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "v2020" => Ok(Self::St2067_21_2020),
+            "v2021" => Ok(Self::St2067_21_2021),
+            "v2023" => Ok(Self::St2067_21_2023),
+            other => Err(format!(
+                "Unsupported app2eSpec '{}'. Use auto|none|v2020|v2021|v2023",
+                other
+            )),
+        }
+    }
+}
+
+/// Parse a core spec string, handling `"auto"` as `None` (auto-detect).
+pub fn parse_core_spec_target(s: &str) -> Result<Option<CoreSpecTarget>, String> {
+    match s {
+        "auto" => Ok(None),
+        other => Ok(Some(other.parse()?)),
+    }
+}
+
+/// Parse an app2e spec string, handling `"auto"` as `None` (auto-detect)
+/// and `"none"` as an empty list (skip app validation).
+pub fn parse_app_spec_targets(s: &str) -> Result<Option<Vec<AppSpecTarget>>, String> {
+    match s {
+        "auto" => Ok(None),
+        "none" => Ok(Some(vec![])),
+        other => Ok(Some(vec![other.parse()?])),
     }
 }
 
@@ -523,7 +573,7 @@ fn validate_resource_list_non_empty(
         fn check_seq<S: SequenceAccess>(
             seqs: &[S],
             track_type: &str,
-            cpl_id: &str,
+            cpl_id: crate::assetmap::ImfUuid,
             seg_idx: usize,
             code: fn(CoreConstraintsCode) -> &'static str,
             issues: &mut Vec<ValidationIssue>,
@@ -544,7 +594,7 @@ fn validate_resource_list_non_empty(
                         )
                         .with_location(
                             Location::new()
-                                .with_cpl(cpl_id.to_string())
+                                .with_cpl(cpl_id)
                                 .with_segment(seg_idx),
                         ),
                     );
@@ -552,11 +602,11 @@ fn validate_resource_list_non_empty(
             }
         }
 
-        let cpl_id = cpl.id.to_string();
+        let cpl_id = cpl.id;
         check_seq(
             &sl.main_image_sequences,
             "MainImageSequence",
-            &cpl_id,
+            cpl_id,
             seg_idx,
             code,
             issues,
@@ -564,7 +614,7 @@ fn validate_resource_list_non_empty(
         check_seq(
             &sl.main_audio_sequences,
             "MainAudioSequence",
-            &cpl_id,
+            cpl_id,
             seg_idx,
             code,
             issues,
@@ -572,7 +622,7 @@ fn validate_resource_list_non_empty(
         check_seq(
             &sl.subtitles_sequences,
             "SubtitlesSequence",
-            &cpl_id,
+            cpl_id,
             seg_idx,
             code,
             issues,
@@ -580,7 +630,7 @@ fn validate_resource_list_non_empty(
         check_seq(
             &sl.marker_sequences,
             "MarkerSequence",
-            &cpl_id,
+            cpl_id,
             seg_idx,
             code,
             issues,
@@ -588,7 +638,7 @@ fn validate_resource_list_non_empty(
         check_seq(
             &sl.hearing_impaired_captions_sequences,
             "HearingImpairedCaptionsSequence",
-            &cpl_id,
+            cpl_id,
             seg_idx,
             code,
             issues,
@@ -596,7 +646,7 @@ fn validate_resource_list_non_empty(
         check_seq(
             &sl.forced_narrative_sequences,
             "ForcedNarrativeSequence",
-            &cpl_id,
+            cpl_id,
             seg_idx,
             code,
             issues,
@@ -604,7 +654,7 @@ fn validate_resource_list_non_empty(
         check_seq(
             &sl.iab_sequences,
             "IABSequence",
-            &cpl_id,
+            cpl_id,
             seg_idx,
             code,
             issues,
@@ -612,7 +662,7 @@ fn validate_resource_list_non_empty(
         check_seq(
             &sl.isxd_sequences,
             "ISXDSequence",
-            &cpl_id,
+            cpl_id,
             seg_idx,
             code,
             issues,
@@ -626,7 +676,7 @@ fn validate_core_structure(
     code: fn(CoreConstraintsCode) -> &'static str,
     issues: &mut Vec<ValidationIssue>,
 ) {
-    let loc = Location::new().with_cpl(cpl.id.to_string());
+    let loc = Location::new().with_cpl(cpl.id);
 
     // ContentTitle must be non-empty
     if cpl.content_title.text.trim().is_empty() {
@@ -675,7 +725,7 @@ fn validate_core_structure(
 
     // Each Segment must have at least one sequence
     for (i, segment) in cpl.segment_list.segments.iter().enumerate() {
-        let seg_loc = Location::new().with_cpl(cpl.id.to_string()).with_segment(i);
+        let seg_loc = Location::new().with_cpl(cpl.id).with_segment(i);
 
         let sl = &segment.sequence_list;
         let has_sequences = !sl.main_image_sequences.is_empty()
@@ -897,7 +947,7 @@ fn validate_uuid_uniqueness(
     code: fn(CoreConstraintsCode) -> &'static str,
     issues: &mut Vec<ValidationIssue>,
 ) {
-    let cpl_loc = Location::new().with_cpl(cpl.id.to_string());
+    let cpl_loc = Location::new().with_cpl(cpl.id);
 
     // Segment ID uniqueness
     let mut segment_ids = HashSet::new();
@@ -1016,7 +1066,7 @@ fn validate_resource_constraints(
              issues: &mut Vec<ValidationIssue>| {
                 for (res_idx, resource) in seq.resource_list().resources.iter().enumerate() {
                     let res_loc = Location::new()
-                        .with_cpl(cpl.id.to_string())
+                        .with_cpl(cpl.id)
                         .with_segment(seg_idx)
                         .with_resource(res_idx);
 
@@ -1243,7 +1293,7 @@ fn validate_virtual_track_continuity(
                     )
                     .with_location(
                         Location::new()
-                            .with_cpl(cpl.id.to_string())
+                            .with_cpl(cpl.id)
                             .with_segment(seg_idx),
                     ),
                 );
@@ -1310,7 +1360,7 @@ fn validate_virtual_track_edit_rates(
                                 )
                                 .with_location(
                                     Location::new()
-                                        .with_cpl(cpl.id.to_string())
+                                        .with_cpl(cpl.id)
                                         .with_segment(seg_idx),
                                 ),
                             );
@@ -1377,7 +1427,7 @@ fn validate_timed_text_extended(
         };
 
         let ed_loc = Location::new()
-            .with_cpl(cpl.id.to_string())
+            .with_cpl(cpl.id)
             .with_path(format!("EssenceDescriptor/{}", ed.id));
 
         // SampleRate should be present for timed text
@@ -1470,7 +1520,7 @@ fn validate_audio_mca_labels(
         };
 
         let ed_loc = Location::new()
-            .with_cpl(cpl.id.to_string())
+            .with_cpl(cpl.id)
             .with_path(format!("EssenceDescriptor/{}", ed.id));
 
         // Audio sample rate should be present
@@ -1660,7 +1710,7 @@ fn validate_segment_track_durations(cpl: &CompositionPlaylist, issues: &mut Vec<
     for (seg_idx, segment) in cpl.segment_list.segments.iter().enumerate() {
         let sl = &segment.sequence_list;
         let seg_loc = Location::new()
-            .with_cpl(cpl.id.to_string())
+            .with_cpl(cpl.id)
             .with_segment(seg_idx);
 
         let er = cpl.edit_rate.as_ref();
@@ -1756,7 +1806,7 @@ fn validate_digital_signature_notice(
                 "Digital signature validation (ST 2067-2 §8) is not currently performed; \
                  Signer/Signature XML elements are not parsed",
             )
-            .with_location(Location::new().with_cpl(cpl.id.to_string())),
+            .with_location(Location::new().with_cpl(cpl.id)),
         );
     }
 }
@@ -1850,7 +1900,7 @@ fn validate_dangling_essence_descriptors(
                         id
                     ),
                 )
-                .with_location(Location::new().with_cpl(cpl.id.to_string())),
+                .with_location(Location::new().with_cpl(cpl.id)),
             );
         }
     }
@@ -1873,7 +1923,7 @@ impl ConstraintsValidator for CoreConstraints2020 {
 
     fn validate_cpl(&self, cpl: &CompositionPlaylist) -> Vec<ValidationIssue> {
         let mut issues = Vec::new();
-        let loc = Location::new().with_cpl(cpl.id.to_string());
+        let loc = Location::new().with_cpl(cpl.id);
 
         validate_core_structure(
             cpl,
@@ -1937,7 +1987,7 @@ impl ConstraintsValidator for CoreConstraints2016 {
                     ),
                     "EssenceDescriptorList is required per ST 2067-2:2016",
                 )
-                .with_location(Location::new().with_cpl(cpl.id.to_string())),
+                .with_location(Location::new().with_cpl(cpl.id)),
             );
         }
 
@@ -2229,7 +2279,7 @@ impl App2E2021 {
         issues: &mut Vec<ValidationIssue>,
     ) {
         let loc = Location::new()
-            .with_cpl(cpl.id.to_string())
+            .with_cpl(cpl.id)
             .with_path(format!("EssenceDescriptor[{}]/RGBADescriptor", ed_id));
 
         // ── Table 8: Generic Picture Essence Descriptor ──────────────────────
@@ -2701,7 +2751,7 @@ impl App2E2021 {
         issues: &mut Vec<ValidationIssue>,
     ) {
         let loc = Location::new()
-            .with_cpl(cpl.id.to_string())
+            .with_cpl(cpl.id)
             .with_path(format!("EssenceDescriptor[{}]/CDCIDescriptor", ed_id));
 
         // ── Table 8: Generic Picture Essence Descriptor ──────────────────────
@@ -3418,7 +3468,7 @@ impl App2E2021 {
                             systems.join(", ")
                         ),
                     )
-                    .with_location(Location::new().with_cpl(cpl.id.to_string())),
+                    .with_location(Location::new().with_cpl(cpl.id)),
                 );
             }
         }
@@ -3495,7 +3545,7 @@ impl App2E2021 {
                     )
                     .with_location(
                         Location::new()
-                            .with_cpl(cpl.id.to_string())
+                            .with_cpl(cpl.id)
                             .with_segment(seg_idx),
                     ),
                 );
@@ -3565,7 +3615,7 @@ impl ConstraintsValidator for App2E2021 {
                                 app_id, APP2E_APPLICATION_IDENTIFICATION
                             ),
                         )
-                        .with_location(Location::new().with_cpl(cpl.id.to_string())),
+                        .with_location(Location::new().with_cpl(cpl.id)),
                     );
                 }
             }
@@ -3616,7 +3666,7 @@ impl ConstraintsValidator for App2E2020 {
                                 app_id, APP2E_2020_APPLICATION_IDENTIFICATION
                             ),
                         )
-                        .with_location(Location::new().with_cpl(cpl.id.to_string())),
+                        .with_location(Location::new().with_cpl(cpl.id)),
                     );
                 }
             }
@@ -3661,7 +3711,7 @@ impl App2E2021 {
                             )
                             .with_location(
                                 Location::new()
-                                    .with_cpl(cpl.id.to_string())
+                                    .with_cpl(cpl.id)
                                     .with_path(format!("EssenceDescriptor/{}", ed.id)),
                             ),
                         );
@@ -3762,7 +3812,7 @@ impl App2E2021 {
                     )
                     .with_location(
                         Location::new()
-                            .with_cpl(cpl.id.to_string())
+                            .with_cpl(cpl.id)
                             .with_path(format!("EssenceDescriptor/{}", ed.id)),
                     ),
                 );
@@ -3823,7 +3873,7 @@ impl App2E2021 {
                     )
                     .with_location(
                         Location::new()
-                            .with_cpl(cpl.id.to_string())
+                            .with_cpl(cpl.id)
                             .with_path(format!("EssenceDescriptor/{}", ed.id)),
                     ),
                 );
@@ -3864,7 +3914,7 @@ impl App2E2021 {
                         )
                         .with_location(
                             Location::new()
-                                .with_cpl(cpl.id.to_string())
+                                .with_cpl(cpl.id)
                                 .with_path(format!("EssenceDescriptor/{}", ed.id)),
                         ),
                     );
@@ -3890,7 +3940,7 @@ impl App2E2021 {
 
         for ed in &edl.essence_descriptors {
             let ed_loc = Location::new()
-                .with_cpl(cpl.id.to_string())
+                .with_cpl(cpl.id)
                 .with_path(format!("EssenceDescriptor/{}", ed.id));
 
             // Image descriptor required fields
@@ -4060,7 +4110,7 @@ impl App2E2021 {
                         )
                         .with_location(
                             Location::new()
-                                .with_cpl(cpl.id.to_string())
+                                .with_cpl(cpl.id)
                                 .with_path(format!("EssenceDescriptor/{}", ed.id)),
                         )
                         .with_suggestion("Set FrameLayout to FullFrame (00h)"),
@@ -4120,7 +4170,7 @@ impl App2E2021 {
                                     )
                                     .with_location(
                                         Location::new()
-                                            .with_cpl(cpl.id.to_string())
+                                            .with_cpl(cpl.id)
                                             .with_segment(seg_idx)
                                             .with_resource(res_idx),
                                     ),
@@ -4151,7 +4201,7 @@ impl App2E2021 {
                                     )
                                     .with_location(
                                         Location::new()
-                                            .with_cpl(cpl.id.to_string())
+                                            .with_cpl(cpl.id)
                                             .with_segment(seg_idx)
                                             .with_resource(res_idx),
                                     ),
@@ -4183,7 +4233,7 @@ impl App2E2021 {
                         St2067_21_2023::ApplicationIdentification.code(),
                         "ApplicationIdentification is required for App2E compositions",
                     )
-                    .with_location(Location::new().with_cpl(cpl.id.to_string())),
+                    .with_location(Location::new().with_cpl(cpl.id)),
                 );
             }
         }
@@ -4205,7 +4255,7 @@ impl App2E2021 {
                                         rating_idx, locale_idx
                                     ),
                                 )
-                                .with_location(Location::new().with_cpl(cpl.id.to_string())),
+                                .with_location(Location::new().with_cpl(cpl.id)),
                             );
                         } else if !is_valid_any_uri(&rating.agency) {
                             // XSD: Agency is xs:anyURI — no ASCII whitespace allowed
@@ -4220,7 +4270,7 @@ impl App2E2021 {
                                         rating_idx, locale_idx, rating.agency,
                                     ),
                                 )
-                                .with_location(Location::new().with_cpl(cpl.id.to_string())),
+                                .with_location(Location::new().with_cpl(cpl.id)),
                             );
                         }
                     }
@@ -4239,7 +4289,7 @@ impl App2E2021 {
             None => return,
         };
 
-        let cpl_loc = Location::new().with_cpl(cpl.id.to_string());
+        let cpl_loc = Location::new().with_cpl(cpl.id);
 
         for (i, locale) in locale_list.locales.iter().enumerate() {
             // Validate language tags

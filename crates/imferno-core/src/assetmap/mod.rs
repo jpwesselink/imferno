@@ -208,8 +208,8 @@ impl schemars::JsonSchema for ImfUuid {
 #[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AssetHash {
-    pub algorithm: HashAlgorithm,
-    pub bytes: Vec<u8>,
+    algorithm: HashAlgorithm,
+    bytes: Vec<u8>,
 }
 
 /// The hash algorithm used for a PKL asset digest.
@@ -260,6 +260,16 @@ impl std::fmt::Display for HashAlgorithm {
 }
 
 impl AssetHash {
+    /// Return the hash algorithm (SHA-1 or SHA-256).
+    pub fn algorithm(&self) -> HashAlgorithm {
+        self.algorithm
+    }
+
+    /// Return the raw digest bytes.
+    pub fn bytes(&self) -> &[u8] {
+        &self.bytes
+    }
+
     /// Decode a base64-encoded SHA-1 digest as found in PKL `<Hash>` elements.
     ///
     /// Per SMPTE ST 2067-2 §9, SHA-1 produces a 20-byte digest.

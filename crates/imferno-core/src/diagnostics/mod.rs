@@ -2,6 +2,7 @@
 //!
 //! Cross-cutting types used by all spec modules to return findings.
 
+use crate::assetmap::ImfUuid;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
@@ -88,7 +89,7 @@ pub struct Location {
     /// File path if applicable
     pub file: Option<PathBuf>,
     /// CPL UUID if applicable
-    pub cpl_id: Option<String>,
+    pub cpl_id: Option<ImfUuid>,
     /// Segment index (0-based)
     pub segment: Option<usize>,
     /// Sequence UUID if applicable
@@ -113,7 +114,7 @@ impl Location {
         self
     }
 
-    pub fn with_cpl(mut self, cpl_id: String) -> Self {
+    pub fn with_cpl(mut self, cpl_id: ImfUuid) -> Self {
         self.cpl_id = Some(cpl_id);
         self
     }
@@ -147,7 +148,8 @@ impl fmt::Display for Location {
             parts.push(format!("{}", file.display()));
         }
         if let Some(ref cpl_id) = self.cpl_id {
-            parts.push(format!("CPL:{}", &cpl_id[..8.min(cpl_id.len())]));
+            let s = cpl_id.to_string();
+            parts.push(format!("CPL:{}", &s[..8.min(s.len())]));
         }
         if let Some(segment) = self.segment {
             parts.push(format!("Segment:{}", segment + 1));
@@ -475,7 +477,7 @@ mod tests {
         )
         .with_location(
             Location::new()
-                .with_cpl("urn:uuid:1234-5678".to_string())
+                .with_cpl(ImfUuid::parse("urn:uuid:12345678-0000-0000-0000-000000000000").unwrap())
                 .with_segment(0),
         )
         .with_suggestion("Add EditRate element with value like '24 1' or '24000 1001'");
@@ -513,7 +515,7 @@ mod tests {
     fn test_location_formatting() {
         let location = Location::new()
             .with_file(std::path::PathBuf::from("ASSETMAP.xml"))
-            .with_cpl("urn:uuid:1234-5678".to_string())
+            .with_cpl(ImfUuid::parse("urn:uuid:12345678-0000-0000-0000-000000000000").unwrap())
             .with_segment(2)
             .with_path("/path/to/package".to_string());
 

@@ -6,8 +6,6 @@
 //!
 //! - [`build_report`] — parse and validate an IMF package from in-memory files.
 //! - [`format_report`] — render an [`ImfReport`] as a human-readable string.
-//!
-//! Individual parsers (`parseCplTyped`, `parseAssetmapTyped`, etc.) were removed in v2.
 
 use imferno_core::package::{
     build_report, format_report, ImfReport, Imferno, RulesConfig, ValidationOptions,

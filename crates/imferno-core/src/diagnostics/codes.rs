@@ -2,12 +2,12 @@
 //!
 //! This module defines the [`ValidationCode`] trait that every per-spec enum implements.
 //!
-//! Codes live in the crate that owns their spec:
-//! - [`st429_9::codes`]   — SMPTE ST 429-9 (VOLINDEX / AssetMap)
-//! - [`st2067_2::codes`]  — SMPTE ST 2067-2 (PKL / package-level)
-//! - [`st2067_3::codes`]  — SMPTE ST 2067-3 (Composition Playlist)
-//! - [`st2067_21::codes`] — SMPTE ST 2067-21 (Application Profile #2E)
-//! - [`imf_parser::codes`]  — re-exports of the above plus ST 377-1
+//! Codes live in their spec's module:
+//! - [`crate::assetmap::volindex_codes`] — SMPTE ST 429-9 (VOLINDEX)
+//! - [`crate::assetmap::codes`]          — SMPTE ST 2067-2 (AssetMap / PKL)
+//! - [`crate::cpl::codes`]               — SMPTE ST 2067-3 (CPL)
+//! - [`crate::validation::codes`]        — SMPTE ST 2067-21 (App2E)
+//! - [`crate::mxf::codes`]               — SMPTE ST 377-1 (MXF)
 
 use super::{Category, Severity};
 

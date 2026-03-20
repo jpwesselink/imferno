@@ -23,7 +23,7 @@ use crate::diagnostics::{Category, Location, Severity, ValidationIssue};
 
 use crate::cpl::codes::St2067_3Code;
 use crate::cpl::{
-    CompositionPlaylist, ContentKind, CplNamespace, MarkerLabel, SequenceAccess,
+    CompositionPlaylist, ContentKind, CplNamespace, MarkerLabel,
     CONTENT_KIND_DEFAULT_SCOPE,
 };
 
@@ -116,36 +116,7 @@ fn validate_source_encoding_refs(
     for (seg_idx, segment) in cpl.segment_list.segments.iter().enumerate() {
         let sl = &segment.sequence_list;
 
-        let all_seqs: Vec<(&dyn SequenceAccess, &str)> = sl
-            .main_image_sequences
-            .iter()
-            .map(|s| (s as &dyn SequenceAccess, "MainImageSequence"))
-            .chain(
-                sl.main_audio_sequences
-                    .iter()
-                    .map(|s| (s as &dyn SequenceAccess, "MainAudioSequence")),
-            )
-            .chain(
-                sl.subtitles_sequences
-                    .iter()
-                    .map(|s| (s as &dyn SequenceAccess, "SubtitlesSequence")),
-            )
-            .chain(
-                sl.hearing_impaired_captions_sequences
-                    .iter()
-                    .map(|s| (s as &dyn SequenceAccess, "HearingImpairedCaptionsSequence")),
-            )
-            .chain(
-                sl.forced_narrative_sequences
-                    .iter()
-                    .map(|s| (s as &dyn SequenceAccess, "ForcedNarrativeSequence")),
-            )
-            .chain(
-                sl.iab_sequences
-                    .iter()
-                    .map(|s| (s as &dyn SequenceAccess, "IABSequence")),
-            )
-            .collect();
+        let all_seqs = sl.all_sequences_typed();
 
         for (seq, track_type) in all_seqs {
             for (res_idx, resource) in seq.resource_list().resources.iter().enumerate() {
@@ -276,7 +247,7 @@ fn validate_locale_language_tags(
     for (i, locale) in ll.locales.iter().enumerate() {
         if let Some(ref lang_list) = locale.language_list {
             for tag in &lang_list.languages {
-                let s = &tag.0;
+                let s = tag.as_str();
                 if s.is_empty() || !s.chars().next().unwrap_or(' ').is_ascii_alphabetic() {
                     issues.push(
                         ValidationIssue::new(
@@ -310,41 +281,11 @@ fn validate_track_id_uniqueness(
         let sl = &segment.sequence_list;
         let mut seen: HashSet<String> = HashSet::new();
 
-        let all_seqs: Vec<(&dyn SequenceAccess, &str)> = sl
-            .main_image_sequences
-            .iter()
-            .map(|s| (s as &dyn SequenceAccess, "MainImageSequence"))
-            .chain(
-                sl.main_audio_sequences
-                    .iter()
-                    .map(|s| (s as &dyn SequenceAccess, "MainAudioSequence")),
-            )
-            .chain(
-                sl.subtitles_sequences
-                    .iter()
-                    .map(|s| (s as &dyn SequenceAccess, "SubtitlesSequence")),
-            )
-            .chain(
-                sl.hearing_impaired_captions_sequences
-                    .iter()
-                    .map(|s| (s as &dyn SequenceAccess, "HearingImpairedCaptionsSequence")),
-            )
-            .chain(
-                sl.forced_narrative_sequences
-                    .iter()
-                    .map(|s| (s as &dyn SequenceAccess, "ForcedNarrativeSequence")),
-            )
-            .chain(
-                sl.iab_sequences
-                    .iter()
-                    .map(|s| (s as &dyn SequenceAccess, "IABSequence")),
-            )
-            .chain(
-                sl.marker_sequences
-                    .iter()
-                    .map(|s| (s as &dyn SequenceAccess, "MarkerSequence")),
-            )
-            .collect();
+        // Include marker sequences for track ID uniqueness check
+        let mut all_seqs = sl.all_sequences_typed();
+        for s in &sl.marker_sequences {
+            all_seqs.push((s, "MarkerSequence"));
+        }
 
         for (seq, track_type) in all_seqs {
             let id = seq.track_id().to_string();
@@ -543,36 +484,7 @@ fn validate_sequence_duration_integer_edit_units(
     for (seg_idx, segment) in cpl.segment_list.segments.iter().enumerate() {
         let sl = &segment.sequence_list;
 
-        let all_seqs: Vec<(&dyn SequenceAccess, &str)> = sl
-            .main_image_sequences
-            .iter()
-            .map(|s| (s as &dyn SequenceAccess, "MainImageSequence"))
-            .chain(
-                sl.main_audio_sequences
-                    .iter()
-                    .map(|s| (s as &dyn SequenceAccess, "MainAudioSequence")),
-            )
-            .chain(
-                sl.subtitles_sequences
-                    .iter()
-                    .map(|s| (s as &dyn SequenceAccess, "SubtitlesSequence")),
-            )
-            .chain(
-                sl.hearing_impaired_captions_sequences
-                    .iter()
-                    .map(|s| (s as &dyn SequenceAccess, "HearingImpairedCaptionsSequence")),
-            )
-            .chain(
-                sl.forced_narrative_sequences
-                    .iter()
-                    .map(|s| (s as &dyn SequenceAccess, "ForcedNarrativeSequence")),
-            )
-            .chain(
-                sl.iab_sequences
-                    .iter()
-                    .map(|s| (s as &dyn SequenceAccess, "IABSequence")),
-            )
-            .collect();
+        let all_seqs = sl.all_sequences_typed();
 
         for (seq, track_type) in all_seqs {
             let mut sum_num: u64 = 0;

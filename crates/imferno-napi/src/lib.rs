@@ -34,6 +34,7 @@ pub fn build_report_js(
         rules: opts.rules,
         core_spec: opts.core_spec,
         app_specs: opts.app_specs,
+        // Hash verification not yet exposed via NAPI; skip disk checks for in-memory files.
         verify_hashes: None,
         skip_disk_checks: true,
     };
@@ -67,6 +68,7 @@ pub fn build_report_from_path(
         rules: opts.rules,
         core_spec: opts.core_spec,
         app_specs: opts.app_specs,
+        // Hash verification not yet exposed via NAPI options.
         verify_hashes: None,
         skip_disk_checks: opts.skip_disk_checks,
     };

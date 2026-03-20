@@ -7,7 +7,7 @@
 //! Per the spec, VOLINDEX is optional. If absent, the pipeline assumes a
 //! single-volume package.
 
-// codes live in assetmap/codes.rs
+// codes live in assetmap/volindex_codes.rs (re-exported from assetmap/codes.rs)
 
 use serde::Deserialize;
 

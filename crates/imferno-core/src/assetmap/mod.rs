@@ -1,11 +1,11 @@
 //! SMPTE ST 2067-2 Core Constraints — AssetMap, PKL, and foundational IMF types.
 //!
-//! This crate covers:
+//! This module covers:
 //! - Foundational primitives: [`ImfUuid`], [`SmpteUl`], [`ImfTypeError`]
 //! - PKL types: [`AssetHash`], [`HashAlgorithm`], [`MimeType`]
 //! - Namespace detection: [`AssetMapNamespace`], [`PklNamespace`], [`CoreConstraintsNamespace`]
 //! - Document parsers: [`parse_assetmap`], [`parse_pkl`], [`parse_opl`]
-//! - Re-exports from [`st429_9`]: [`VolumeIndex`], [`parse_volindex`]
+//! - Re-exports from [`volindex`]: [`VolumeIndex`], [`parse_volindex`]
 
 pub mod codes;
 pub mod volindex;
@@ -204,7 +204,7 @@ impl schemars::JsonSchema for ImfUuid {
 
 /// A decoded asset hash from a Packing List, per SMPTE ST 2067-2 §9.
 ///
-/// PKL files carry base64-encoded SHA-1 digests for each tracked asset.
+/// PKL files carry base64-encoded SHA-1 or SHA-256 digests for each tracked asset.
 #[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AssetHash {
@@ -532,10 +532,12 @@ impl std::fmt::Display for CoreConstraintsNamespace {
 /// Searches for the first `xmlns="..."` (non-prefixed) declaration. This is used
 /// by parsers to detect which spec version a document conforms to.
 pub fn detect_root_namespace(xml: &str) -> Option<String> {
+    use std::sync::LazyLock;
     // Match xmlns="..." but NOT xmlns:prefix="..."
     // We look for xmlns= preceded by whitespace (not by a colon)
-    let re = regex::Regex::new(r#"(?:^|[\s<])xmlns="([^"]*)""#).unwrap();
-    re.captures(xml).map(|cap| cap[1].to_string())
+    static RE_XMLNS: LazyLock<regex::Regex> =
+        LazyLock::new(|| regex::Regex::new(r#"(?:^|[\s<])xmlns="([^"]*)""#).unwrap());
+    RE_XMLNS.captures(xml).map(|cap| cap[1].to_string())
 }
 
 // ─── Parse error ──────────────────────────────────────────────────────────────
@@ -688,7 +690,7 @@ mod raw {
 
 // ─── Public domain types ───────────────────────────────────────────────────────
 
-// VolumeIndex lives in st429-9 and is re-exported at the top of this file.
+// VolumeIndex lives in the volindex submodule and is re-exported at the top of this file.
 
 /// ASSETMAP.xml — maps UUIDs to physical file paths (ST 429-9 §6).
 #[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
@@ -984,7 +986,7 @@ impl PklAsset {
 
 // ─── Parse functions ──────────────────────────────────────────────────────────
 
-// parse_volindex is re-exported from st429-9 at the top of this file.
+// parse_volindex is re-exported from the volindex module at the top of this file.
 
 /// Parse ASSETMAP.xml (ST 429-9 §6).
 ///

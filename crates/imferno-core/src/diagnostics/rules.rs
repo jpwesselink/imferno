@@ -44,7 +44,7 @@ pub enum RuleSeverity {
 /// An empty map (the default) is a no-op.
 #[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct RulesConfig(pub HashMap<String, RuleSeverity>);
+pub struct RulesConfig(HashMap<String, RuleSeverity>);
 
 impl RulesConfig {
     /// Set the severity for a typed validation code.
@@ -58,6 +58,21 @@ impl RulesConfig {
     /// ```
     pub fn set(&mut self, code: impl ValidationCode, severity: RuleSeverity) {
         self.0.insert(code.code().to_string(), severity);
+    }
+
+    /// Returns `true` if no overrides are configured.
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    /// Number of configured overrides.
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    /// Iterate over configured overrides.
+    pub fn iter(&self) -> impl Iterator<Item = (&String, &RuleSeverity)> {
+        self.0.iter()
     }
 }
 
@@ -75,7 +90,7 @@ impl ValidationReport {
     ///
     /// An empty [`RulesConfig`] is a no-op (fast path, no allocation).
     pub fn apply_rules(mut self, rules: &RulesConfig) -> Self {
-        if rules.0.is_empty() {
+        if rules.is_empty() {
             return self;
         }
 
@@ -89,7 +104,6 @@ impl ValidationReport {
 
         for mut issue in all {
             let override_sev = rules
-                .0
                 .iter()
                 .find(|(k, _)| rule_matches(&issue.code, k))
                 .map(|(_, v)| v);

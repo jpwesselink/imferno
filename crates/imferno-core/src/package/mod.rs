@@ -271,6 +271,9 @@ pub struct Imferno {
     /// Load-time VOLINDEX diagnostics (ST 429-9), emitted before all other checks.
     pub volindex_issues: Vec<ValidationIssue>,
 
+    /// Load-time parse diagnostics (PKL/CPL/OPL/SCM failures), emitted during validation.
+    pub(crate) parse_issues: Vec<ValidationIssue>,
+
     /// Asset map (ASSETMAP.xml)
     pub asset_map: AssetMap,
 
@@ -280,8 +283,9 @@ pub struct Imferno {
     /// Parsed CPL files mapped by UUID
     pub composition_playlists: HashMap<ImfUuid, CompositionPlaylist>,
 
-    /// Raw CPL XML content mapped by UUID (needed for enhanced analysis)
-    pub cpl_xml_content: HashMap<ImfUuid, String>,
+    /// Raw CPL XML content mapped by UUID (retained for future signature verification).
+    #[allow(dead_code)]
+    pub(crate) cpl_xml_content: HashMap<ImfUuid, String>,
 
     /// Parsed Output Profile Lists mapped by UUID
     pub output_profile_lists: HashMap<ImfUuid, crate::assetmap::OutputProfileList>,
@@ -321,8 +325,15 @@ pub fn read_dir(path: impl AsRef<Path>) -> Result<HashMap<String, String>> {
             continue;
         }
         let abs_path = p.to_string_lossy().into_owned();
-        if let Ok(content) = std::fs::read_to_string(&p) {
-            files.insert(abs_path, content);
+        match std::fs::read_to_string(&p) {
+            Ok(content) => {
+                files.insert(abs_path, content);
+            }
+            Err(e) => {
+                // read_dir is a filesystem helper with no ValidationReport context;
+                // log to stderr so callers have some visibility into read failures.
+                eprintln!("Warning: failed to read XML file {}: {}", abs_path, e);
+            }
         }
     }
     Ok(files)
@@ -349,7 +360,7 @@ impl Imferno {
                 report.add(ValidationIssue::new(
                     Severity::Critical,
                     Category::Structure,
-                    "IMF/ParseError",
+                    codes::ImfernoCode::ParseError,
                     format!("Failed to parse IMF package: {e}"),
                 ));
                 return report.apply_rules(&options.rules);
@@ -448,12 +459,12 @@ impl Imferno {
         let volume_index = match find("VOLINDEX.xml") {
             Some(xml) => match crate::assetmap::parse_volindex(xml) {
                 Ok(vi) => vi,
-                Err(_) => {
+                Err(e) => {
                     volindex_issues.push(ValidationIssue::new(
                         Severity::Error,
                         Category::Structure,
                         codes::St429_9_2014::MalformedXml,
-                        "VOLINDEX.xml is not well-formed XML",
+                        format!("VOLINDEX.xml is not well-formed XML: {e}"),
                     ));
                     VolumeIndex { index: 1 }
                 }
@@ -491,6 +502,7 @@ impl Imferno {
 
         // Parse PKLs
         let mut packing_lists = HashMap::new();
+        let mut parse_issues: Vec<ValidationIssue> = Vec::new();
         for asset in &asset_map.asset_list.assets {
             if asset.packing_list == Some(true) {
                 for chunk in &asset.chunk_list.chunks {
@@ -504,7 +516,12 @@ impl Imferno {
                                 packing_lists.insert(asset.id, pkl);
                             }
                             Err(e) => {
-                                eprintln!("from_file_map: PKL {} parse error: {:?}", basename, e)
+                                parse_issues.push(ValidationIssue::new(
+                                    Severity::Error,
+                                    Category::Structure,
+                                    codes::ImfernoCode::PklParseError,
+                                    format!("PKL '{}' parse error: {}", basename, e),
+                                ));
                             }
                         }
                     }
@@ -555,11 +572,21 @@ impl Imferno {
                             cpl_xml_content.insert(asset.id, xml.to_string());
                             composition_playlists.insert(asset.id, cpl);
                         }
-                        Err(_) => {
+                        Err(cpl_err) => {
                             if let Ok(opl) = crate::assetmap::parse_opl(xml) {
                                 output_profile_lists.insert(asset.id, opl);
                             } else if let Ok(scm) = crate::scm::parse_scm(xml) {
                                 sidecar_composition_maps.insert(asset.id, scm);
+                            } else {
+                                parse_issues.push(ValidationIssue::new(
+                                    Severity::Warning,
+                                    Category::Structure,
+                                    codes::ImfernoCode::XmlAssetParseError,
+                                    format!(
+                                        "XML asset '{}' ({}) could not be parsed as CPL, OPL, or SCM: {}",
+                                        basename, asset.id, cpl_err,
+                                    ),
+                                ));
                             }
                         }
                     }
@@ -571,6 +598,7 @@ impl Imferno {
             root_path,
             volume_index,
             volindex_issues,
+            parse_issues,
             asset_map,
             packing_lists,
             composition_playlists,
@@ -625,7 +653,6 @@ impl Imferno {
     /// These are typically sidecar essences (e.g. Dolby Atmos MXF) delivered
     /// without an accompanying SCM document.
     pub fn unreferenced_assets(&self) -> Vec<&crate::assetmap::Asset> {
-        use crate::cpl::SequenceAccess;
         use std::collections::HashSet;
 
         // UUIDs of all document assets we have parsed
@@ -644,30 +671,9 @@ impl Imferno {
             .values()
             .flat_map(|cpl| cpl.segment_list.segments.iter())
             .flat_map(|seg| {
-                let sl = &seg.sequence_list;
-                let mut v: Vec<&dyn SequenceAccess> = Vec::new();
-                for s in &sl.main_image_sequences {
-                    v.push(s);
-                }
-                for s in &sl.main_audio_sequences {
-                    v.push(s);
-                }
-                for s in &sl.subtitles_sequences {
-                    v.push(s);
-                }
-                for s in &sl.hearing_impaired_captions_sequences {
-                    v.push(s);
-                }
-                for s in &sl.forced_narrative_sequences {
-                    v.push(s);
-                }
-                for s in &sl.iab_sequences {
-                    v.push(s);
-                }
-                for s in &sl.isxd_sequences {
-                    v.push(s);
-                }
-                v.into_iter()
+                seg.sequence_list
+                    .all_sequences()
+                    .into_iter()
                     .flat_map(|seq| {
                         seq.resource_list()
                             .resources
@@ -750,10 +756,33 @@ impl Imferno {
 
         let entries = match std::fs::read_dir(&self.root_path) {
             Ok(e) => e,
-            Err(_) => return,
+            Err(e) => {
+                report.add(ValidationIssue::new(
+                    Severity::Info,
+                    Category::Structure,
+                    codes::ImfernoCode::ReadDirError,
+                    format!(
+                        "Could not scan package directory for unlisted essences: {}",
+                        e,
+                    ),
+                ));
+                return;
+            }
         };
 
-        for entry in entries.flatten() {
+        for entry in entries {
+            let entry = match entry {
+                Ok(e) => e,
+                Err(e) => {
+                    report.add(ValidationIssue::new(
+                        Severity::Info,
+                        Category::Structure,
+                        codes::ImfernoCode::DirEntryError,
+                        format!("Could not read directory entry: {}", e),
+                    ));
+                    continue;
+                }
+            };
             let path = entry.path();
             let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
             if !ext.eq_ignore_ascii_case("mxf") {
@@ -778,8 +807,10 @@ impl Imferno {
     }
 
     /// Check package structure, returning an error if any critical or error issues are found.
+    ///
+    /// Not currently wired into the public API; retained for potential future use.
     #[allow(dead_code)]
-    fn validate_structure(&self) -> Result<()> {
+    pub(crate) fn validate_structure(&self) -> Result<()> {
         // Run the comprehensive package structure validation and convert to Result
         let report = self.validate_package_structure();
         if report.has_critical() || report.has_errors() {
@@ -817,11 +848,19 @@ impl Imferno {
                     Some(rel_path) => {
                         let abs_path = self.root_path.join(rel_path);
                         match std::fs::metadata(&abs_path) {
-                            Err(_) => {
-                                errors.push(FileValidationError::Missing {
-                                    uuid: uuid_str,
-                                    path: abs_path,
-                                });
+                            Err(e) => {
+                                if e.kind() == std::io::ErrorKind::NotFound {
+                                    errors.push(FileValidationError::Missing {
+                                        uuid: uuid_str,
+                                        path: abs_path,
+                                    });
+                                } else {
+                                    errors.push(FileValidationError::Io {
+                                        uuid: uuid_str,
+                                        path: abs_path,
+                                        message: format!("Cannot access file: {}", e),
+                                    });
+                                }
                             }
                             Ok(meta) => {
                                 let actual = meta.len();
@@ -1007,6 +1046,11 @@ impl Imferno {
             report.add(issue.clone());
         }
 
+        // Parse-time diagnostics (PKL/CPL/OPL/SCM failures)
+        for issue in &self.parse_issues {
+            report.add(issue.clone());
+        }
+
         // PKL structural constraints (ST 2067-2 §7/9)
         for issue in self
             .validate_pkl_constraints()
@@ -1083,6 +1127,11 @@ impl Imferno {
             report.add(issue.clone());
         }
 
+        // Parse-time diagnostics (PKL/CPL/OPL/SCM failures)
+        for issue in &self.parse_issues {
+            report.add(issue.clone());
+        }
+
         // PKL structural constraints
         for issue in self
             .validate_pkl_constraints()
@@ -1124,7 +1173,6 @@ impl Imferno {
     ///
     /// Enforces normative requirements from §5, §7.2.3, §7.2.4, §7.2.5, §7.3.1, §7.3.1.1.
     fn validate_scm_references(&self, report: &mut ValidationReport) {
-        use crate::cpl::SequenceAccess;
         use std::collections::HashSet;
 
         let asset_ids: HashSet<_> = self
@@ -1141,33 +1189,9 @@ impl Imferno {
             .values()
             .flat_map(|cpl| cpl.segment_list.segments.iter())
             .flat_map(|seg| {
-                let sl = &seg.sequence_list;
-                let seqs: Vec<&dyn SequenceAccess> = {
-                    let mut v: Vec<&dyn SequenceAccess> = Vec::new();
-                    for s in &sl.main_image_sequences {
-                        v.push(s);
-                    }
-                    for s in &sl.main_audio_sequences {
-                        v.push(s);
-                    }
-                    for s in &sl.subtitles_sequences {
-                        v.push(s);
-                    }
-                    for s in &sl.hearing_impaired_captions_sequences {
-                        v.push(s);
-                    }
-                    for s in &sl.forced_narrative_sequences {
-                        v.push(s);
-                    }
-                    for s in &sl.iab_sequences {
-                        v.push(s);
-                    }
-                    for s in &sl.isxd_sequences {
-                        v.push(s);
-                    }
-                    v
-                };
-                seqs.into_iter()
+                seg.sequence_list
+                    .all_sequences()
+                    .into_iter()
                     .flat_map(|seq| {
                         seq.resource_list()
                             .resources

@@ -79,7 +79,7 @@ fn meridian_parses_all_fields() {
     assert_eq!(sf.mca_tag_name.as_deref(), Some("5.1"));
     assert_eq!(
         sf.rfc5646_spoken_language,
-        Some(LanguageTag("en".to_string()))
+        Some(LanguageTag::new("en"))
     );
 
     // Timeline
@@ -116,7 +116,7 @@ fn meridian_parses_all_fields() {
         .language_list
         .as_ref()
         .expect("missing LanguageList");
-    assert_eq!(lang_list.languages, vec![LanguageTag("en".to_string())]);
+    assert_eq!(lang_list.languages, vec![LanguageTag::new("en")]);
     let region_list = ll.locales[0]
         .region_list
         .as_ref()
@@ -172,7 +172,7 @@ fn iab_cpl_parses_all_descriptors() {
         .expect("missing SoundfieldGroupLabelSubDescriptor");
     assert_eq!(
         sf.rfc5646_spoken_language,
-        Some(LanguageTag("en".to_string()))
+        Some(LanguageTag::new("en"))
     );
 
     // IAB (Atmos)
@@ -189,7 +189,7 @@ fn iab_cpl_parses_all_descriptors() {
     assert_eq!(iab_sf.mca_tag_symbol, Some(McaTagSymbol::Iab));
     assert_eq!(
         iab_sf.rfc5646_spoken_language,
-        Some(LanguageTag("en".to_string()))
+        Some(LanguageTag::new("en"))
     );
 
     // Sequences
@@ -238,7 +238,7 @@ fn plugfest_cpl_parses_cdci_and_timed_text() {
     assert_eq!(sf_51.mca_tag_symbol, Some(McaTagSymbol::Sg51));
     assert_eq!(
         sf_51.rfc5646_spoken_language,
-        Some(LanguageTag("en-US".to_string()))
+        Some(LanguageTag::new("en-US"))
     );
 
     // Stereo audio

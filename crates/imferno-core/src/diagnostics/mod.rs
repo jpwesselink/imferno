@@ -1,6 +1,6 @@
 //! IMF validation finding model and report types.
 //!
-//! Cross-cutting types used by all spec crates to return findings.
+//! Cross-cutting types used by all spec modules to return findings.
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -105,16 +105,7 @@ pub struct Location {
 
 impl Location {
     pub fn new() -> Self {
-        Self {
-            file: None,
-            cpl_id: None,
-            segment: None,
-            sequence_id: None,
-            resource_id: None,
-            timecode: None,
-            line: None,
-            path: None,
-        }
+        Self::default()
     }
 
     pub fn with_file(mut self, file: PathBuf) -> Self {
@@ -185,7 +176,7 @@ pub struct ValidationIssue {
     pub category: Category,
     /// Location where issue was found
     pub location: Location,
-    /// Error code (e.g., "SMPTE-429-7-2006-4.3.2")
+    /// Error code (e.g., "ST2067-2:2020:8.3/FileNotFound")
     pub code: String,
     /// Human-readable message
     pub message: String,
@@ -301,6 +292,11 @@ impl ValidationReport {
         }
     }
 
+    /// Merge another report's issues into this one.
+    ///
+    /// The source report's `profile` and `timestamp` are discarded;
+    /// only `self`'s values are retained. The `is_playable` and
+    /// `is_compliant` flags are combined via logical AND.
     pub fn merge(&mut self, other: ValidationReport) {
         self.critical.extend(other.critical);
         self.errors.extend(other.errors);

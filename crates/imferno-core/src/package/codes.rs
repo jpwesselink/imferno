@@ -31,6 +31,18 @@ pub enum ImfernoCode {
     /// chunk in any AssetMap entry.  The file is completely outside the
     /// package manifest and will be ignored by any conforming IMF reader.
     UnlistedEssence,
+    /// IMF package failed to parse (top-level structural failure).
+    ParseError,
+    /// A PKL referenced by the AssetMap could not be parsed.
+    PklParseError,
+    /// An XML asset could not be parsed as CPL, OPL, or SCM.
+    XmlAssetParseError,
+    /// An XML file could not be read from disk.
+    XmlReadError,
+    /// Could not scan the package directory.
+    ReadDirError,
+    /// Could not read a directory entry while scanning for unlisted essences.
+    DirEntryError,
 }
 
 impl ValidationCode for ImfernoCode {
@@ -38,6 +50,12 @@ impl ValidationCode for ImfernoCode {
         match self {
             Self::UnreferencedAsset => "IMFERNO:Package/UnreferencedAsset",
             Self::UnlistedEssence => "IMFERNO:Package/UnlistedEssence",
+            Self::ParseError => "IMFERNO:Package/ParseError",
+            Self::PklParseError => "IMFERNO:Package/PklParseError",
+            Self::XmlAssetParseError => "IMFERNO:Package/XmlAssetParseError",
+            Self::XmlReadError => "IMFERNO:Package/XmlReadError",
+            Self::ReadDirError => "IMFERNO:Package/ReadDirError",
+            Self::DirEntryError => "IMFERNO:Package/DirEntryError",
         }
     }
 
@@ -47,6 +65,18 @@ impl ValidationCode for ImfernoCode {
                 "Asset is present in the AssetMap but not referenced by any CPL Virtual Track and has no SCM declaration. Likely a sidecar essence without an SCM.",
             Self::UnlistedEssence =>
                 "MXF file is present in the package directory but not listed in the AssetMap. The file is invisible to any conforming IMF reader.",
+            Self::ParseError =>
+                "IMF package failed to parse due to a structural error.",
+            Self::PklParseError =>
+                "A Packing List referenced by the AssetMap could not be parsed.",
+            Self::XmlAssetParseError =>
+                "An XML asset could not be parsed as CPL, OPL, or SCM.",
+            Self::XmlReadError =>
+                "An XML file could not be read from disk.",
+            Self::ReadDirError =>
+                "Could not scan the package directory.",
+            Self::DirEntryError =>
+                "Could not read a directory entry while scanning for unlisted essences.",
         }
     }
 
@@ -54,6 +84,12 @@ impl ValidationCode for ImfernoCode {
         match self {
             Self::UnreferencedAsset => Severity::Info,
             Self::UnlistedEssence => Severity::Warning,
+            Self::ParseError => Severity::Critical,
+            Self::PklParseError => Severity::Error,
+            Self::XmlAssetParseError => Severity::Warning,
+            Self::XmlReadError => Severity::Warning,
+            Self::ReadDirError => Severity::Info,
+            Self::DirEntryError => Severity::Info,
         }
     }
 
@@ -63,7 +99,16 @@ impl ValidationCode for ImfernoCode {
 }
 
 impl ImfernoCode {
-    pub const ALL: &'static [Self] = &[Self::UnreferencedAsset, Self::UnlistedEssence];
+    pub const ALL: &'static [Self] = &[
+        Self::UnreferencedAsset,
+        Self::UnlistedEssence,
+        Self::ParseError,
+        Self::PklParseError,
+        Self::XmlAssetParseError,
+        Self::XmlReadError,
+        Self::ReadDirError,
+        Self::DirEntryError,
+    ];
 }
 
 impl From<ImfernoCode> for String {

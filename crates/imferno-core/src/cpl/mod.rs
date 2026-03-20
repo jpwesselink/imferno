@@ -432,30 +432,42 @@ struct SignatureReferenceEntry {
 }
 
 fn extract_signature_method_algorithm(signature_xml: &str) -> Option<String> {
-    let re = regex::Regex::new(
-        r#"<(?:(?:\w+):)?SignatureMethod\b[^>]*\bAlgorithm\s*=\s*\"([^\"]+)\"[^>]*/?>"#,
-    )
-    .ok()?;
-    re.captures(signature_xml)
+    use std::sync::LazyLock;
+    static RE: LazyLock<regex::Regex> = LazyLock::new(|| {
+        regex::Regex::new(
+            r#"<(?:(?:\w+):)?SignatureMethod\b[^>]*\bAlgorithm\s*=\s*\"([^\"]+)\"[^>]*/?>"#,
+        )
+        .unwrap()
+    });
+    RE.captures(signature_xml)
         .and_then(|c| c.get(1).map(|m| m.as_str().trim().to_string()))
 }
 
 fn extract_reference_entries(signature_xml: &str) -> Result<Vec<SignatureReferenceEntry>, String> {
-    let reference_re =
-        regex::Regex::new(r#"(?s)<(?:(?:\w+):)?Reference\b([^>]*)>(.*?)</(?:(?:\w+):)?Reference>"#)
-            .map_err(|e| e.to_string())?;
-    let uri_re = regex::Regex::new(r#"\bURI\s*=\s*\"([^\"]*)\""#).map_err(|e| e.to_string())?;
-    let digest_method_re = regex::Regex::new(
-        r#"<(?:(?:\w+):)?DigestMethod\b[^>]*\bAlgorithm\s*=\s*\"([^\"]+)\"[^>]*/?>"#,
-    )
-    .map_err(|e| e.to_string())?;
-    let digest_value_re = regex::Regex::new(
-        r#"(?s)<(?:(?:\w+):)?DigestValue\b[^>]*>(.*?)</(?:(?:\w+):)?DigestValue>"#,
-    )
-    .map_err(|e| e.to_string())?;
+    use std::sync::LazyLock;
+    static REFERENCE_RE: LazyLock<regex::Regex> = LazyLock::new(|| {
+        regex::Regex::new(
+            r#"(?s)<(?:(?:\w+):)?Reference\b([^>]*)>(.*?)</(?:(?:\w+):)?Reference>"#,
+        )
+        .unwrap()
+    });
+    static URI_RE: LazyLock<regex::Regex> =
+        LazyLock::new(|| regex::Regex::new(r#"\bURI\s*=\s*\"([^\"]*)\""#).unwrap());
+    static DIGEST_METHOD_RE: LazyLock<regex::Regex> = LazyLock::new(|| {
+        regex::Regex::new(
+            r#"<(?:(?:\w+):)?DigestMethod\b[^>]*\bAlgorithm\s*=\s*\"([^\"]+)\"[^>]*/?>"#,
+        )
+        .unwrap()
+    });
+    static DIGEST_VALUE_RE: LazyLock<regex::Regex> = LazyLock::new(|| {
+        regex::Regex::new(
+            r#"(?s)<(?:(?:\w+):)?DigestValue\b[^>]*>(.*?)</(?:(?:\w+):)?DigestValue>"#,
+        )
+        .unwrap()
+    });
 
     let mut out = Vec::new();
-    for captures in reference_re.captures_iter(signature_xml) {
+    for captures in REFERENCE_RE.captures_iter(signature_xml) {
         let attrs = captures
             .get(1)
             .map(|m| m.as_str())
@@ -465,14 +477,14 @@ fn extract_reference_entries(signature_xml: &str) -> Result<Vec<SignatureReferen
             .map(|m| m.as_str())
             .ok_or_else(|| "internal parse error while reading Reference body".to_string())?;
 
-        let uri = uri_re
+        let uri = URI_RE
             .captures(attrs)
             .and_then(|c| c.get(1).map(|m| m.as_str().to_string()));
-        let digest_method_algorithm = digest_method_re
+        let digest_method_algorithm = DIGEST_METHOD_RE
             .captures(inner)
             .and_then(|c| c.get(1).map(|m| m.as_str().trim().to_string()))
             .ok_or_else(|| "Reference missing DigestMethod/@Algorithm".to_string())?;
-        let digest_value = digest_value_re
+        let digest_value = DIGEST_VALUE_RE
             .captures(inner)
             .and_then(|c| c.get(1).map(|m| collapse_xml_text(m.as_str())))
             .ok_or_else(|| "Reference missing DigestValue".to_string())?;
@@ -488,10 +500,14 @@ fn extract_reference_entries(signature_xml: &str) -> Result<Vec<SignatureReferen
 }
 
 fn strip_first_signature_element(xml: &str) -> Option<String> {
-    let re =
-        regex::Regex::new(r#"(?s)<(?:(?:\w+):)?Signature\b[^>]*>.*?</(?:(?:\w+):)?Signature\s*>"#)
-            .ok()?;
-    let m = re.find(xml)?;
+    use std::sync::LazyLock;
+    static RE: LazyLock<regex::Regex> = LazyLock::new(|| {
+        regex::Regex::new(
+            r#"(?s)<(?:(?:\w+):)?Signature\b[^>]*>.*?</(?:(?:\w+):)?Signature\s*>"#,
+        )
+        .unwrap()
+    });
+    let m = RE.find(xml)?;
     let mut out = String::with_capacity(xml.len() - (m.end() - m.start()));
     out.push_str(&xml[..m.start()]);
     out.push_str(&xml[m.end()..]);
@@ -499,11 +515,15 @@ fn strip_first_signature_element(xml: &str) -> Option<String> {
 }
 
 fn normalize_xml_for_digest(xml: &str) -> String {
+    use std::sync::LazyLock;
+    static DECL_RE: LazyLock<regex::Regex> =
+        LazyLock::new(|| regex::Regex::new(r#"(?s)^\s*<\?xml[^>]*\?>"#).unwrap());
+    static INTER_TAG_WS_RE: LazyLock<regex::Regex> =
+        LazyLock::new(|| regex::Regex::new(r#">\s+<"#).unwrap());
+
     let no_decl = xml.strip_prefix("\u{FEFF}").unwrap_or(xml).trim();
-    let decl_re = regex::Regex::new(r#"(?s)^\s*<\?xml[^>]*\?>"#).unwrap();
-    let without_decl = decl_re.replace(no_decl, "").to_string();
-    let inter_tag_ws_re = regex::Regex::new(r#">\s+<"#).unwrap();
-    inter_tag_ws_re
+    let without_decl = DECL_RE.replace(no_decl, "").to_string();
+    INTER_TAG_WS_RE
         .replace_all(without_decl.trim(), "><")
         .to_string()
 }
@@ -514,7 +534,8 @@ fn extract_first_element(xml: &str, local_name: &str) -> Option<String> {
         r#"(?s)<(?:(?:\w+):)?{name}\b[^>]*>.*?</(?:(?:\w+):)?{name}\s*>"#,
         name = escaped
     );
-    let re = regex::Regex::new(&pattern).ok()?;
+    // Dynamic pattern from local_name — cannot use LazyLock
+    let re = regex::Regex::new(&pattern).expect("valid regex pattern");
     re.find(xml).map(|m| m.as_str().to_string())
 }
 
@@ -524,7 +545,8 @@ fn extract_first_element_text(xml: &str, local_name: &str) -> Option<String> {
         r#"(?s)<(?:(?:\w+):)?{name}\b[^>]*>(.*?)</(?:(?:\w+):)?{name}\s*>"#,
         name = escaped
     );
-    let re = regex::Regex::new(&pattern).ok()?;
+    // Dynamic pattern from local_name — cannot use LazyLock
+    let re = regex::Regex::new(&pattern).expect("valid regex pattern");
     re.captures(xml)
         .and_then(|c| c.get(1).map(|m| m.as_str().to_string()))
 }
@@ -1029,12 +1051,15 @@ impl schemars::JsonSchema for MarkerLabelElement {
 ///
 /// This is the same approach used by the TypeScript mapper (fast-xml-parser namespace stripping).
 pub fn strip_xml_namespaces(xml: &str) -> String {
+    use std::sync::LazyLock;
     // Strip namespace prefixes from element names: <ns:Element → <Element, </ns:Element → </Element
-    let tag_prefix_re = regex::Regex::new(r"<(/?)(\w+):(\w)").unwrap();
-    let result = tag_prefix_re.replace_all(xml, "<$1$3");
+    static TAG_PREFIX_RE: LazyLock<regex::Regex> =
+        LazyLock::new(|| regex::Regex::new(r"<(/?)(\w+):(\w)").unwrap());
+    let result = TAG_PREFIX_RE.replace_all(xml, "<$1$3");
     // Strip xmlns:prefix="..." attribute declarations
-    let xmlns_prefix_re = regex::Regex::new(r#"\s+xmlns:\w+="[^"]*""#).unwrap();
-    xmlns_prefix_re.replace_all(&result, "").to_string()
+    static XMLNS_PREFIX_RE: LazyLock<regex::Regex> =
+        LazyLock::new(|| regex::Regex::new(r#"\s+xmlns:\w+="[^"]*""#).unwrap());
+    XMLNS_PREFIX_RE.replace_all(&result, "").to_string()
 }
 
 // =============================================================================
@@ -1112,7 +1137,7 @@ impl<'de> Deserialize<'de> for LanguageString {
                             let raw: String = map.next_value()?;
                             let trimmed = raw.trim();
                             if !trimmed.is_empty() {
-                                language = Some(LanguageTag(trimmed.to_string()));
+                                language = Some(LanguageTag::new(trimmed));
                             }
                         }
                         _ => {
@@ -2579,6 +2604,62 @@ pub struct SequenceList {
     pub isxd_sequences: Vec<ISXDSequence>,
 }
 
+impl SequenceList {
+    /// Return all non-marker sequences as trait objects.
+    pub fn all_sequences(&self) -> Vec<&dyn SequenceAccess> {
+        let mut v: Vec<&dyn SequenceAccess> = Vec::new();
+        for s in &self.main_image_sequences {
+            v.push(s);
+        }
+        for s in &self.main_audio_sequences {
+            v.push(s);
+        }
+        for s in &self.subtitles_sequences {
+            v.push(s);
+        }
+        for s in &self.hearing_impaired_captions_sequences {
+            v.push(s);
+        }
+        for s in &self.forced_narrative_sequences {
+            v.push(s);
+        }
+        for s in &self.iab_sequences {
+            v.push(s);
+        }
+        for s in &self.isxd_sequences {
+            v.push(s);
+        }
+        v
+    }
+
+    /// Return all non-marker sequences paired with their type name.
+    pub fn all_sequences_typed(&self) -> Vec<(&dyn SequenceAccess, &'static str)> {
+        let mut v: Vec<(&dyn SequenceAccess, &'static str)> = Vec::new();
+        for s in &self.main_image_sequences {
+            v.push((s, "MainImage"));
+        }
+        for s in &self.main_audio_sequences {
+            v.push((s, "MainAudio"));
+        }
+        for s in &self.subtitles_sequences {
+            v.push((s, "Subtitles"));
+        }
+        for s in &self.hearing_impaired_captions_sequences {
+            v.push((s, "HearingImpairedCaptions"));
+        }
+        for s in &self.forced_narrative_sequences {
+            v.push((s, "ForcedNarrative"));
+        }
+        for s in &self.iab_sequences {
+            v.push((s, "IAB"));
+        }
+        for s in &self.isxd_sequences {
+            v.push((s, "ISXD"));
+        }
+        v
+    }
+}
+
 // All sequence types share the same structure: Id, TrackId, ResourceList
 /// Trait for accessing common sequence fields
 pub trait SequenceAccess {
@@ -3128,7 +3209,7 @@ pub fn extract_cpl_languages(cpl: &CompositionPlaylist) -> Vec<LanguageTag> {
 
     let add_lang = |languages: &mut Vec<LanguageTag>, lang_opt: &Option<LanguageTag>| {
         if let Some(lang) = lang_opt {
-            if !lang.0.is_empty() && !languages.contains(lang) {
+            if !lang.as_str().is_empty() && !languages.contains(lang) {
                 languages.push(lang.clone());
             }
         }
@@ -3165,7 +3246,7 @@ pub fn extract_cpl_languages(cpl: &CompositionPlaylist) -> Vec<LanguageTag> {
         for locale in &locale_list.locales {
             if let Some(language_list) = &locale.language_list {
                 for lang in &language_list.languages {
-                    if !lang.0.is_empty() && !languages.contains(lang) {
+                    if !lang.as_str().is_empty() && !languages.contains(lang) {
                         languages.push(lang.clone());
                     }
                 }
@@ -3195,7 +3276,7 @@ pub fn extract_cpl_languages(cpl: &CompositionPlaylist) -> Vec<LanguageTag> {
             // Timed text language from DCTimedTextDescriptor
             if let Some(tt) = &ed.dc_timed_text_descriptor {
                 for lang in &tt.rfc5646_language_tag_list {
-                    if !lang.0.is_empty() && !languages.contains(lang) {
+                    if !lang.as_str().is_empty() && !languages.contains(lang) {
                         languages.push(lang.clone());
                     }
                 }
@@ -3203,18 +3284,25 @@ pub fn extract_cpl_languages(cpl: &CompositionPlaylist) -> Vec<LanguageTag> {
         }
     }
 
-    languages.sort_by(|a, b| a.0.cmp(&b.0));
+    languages.sort_by(|a, b| a.as_str().cmp(b.as_str()));
     languages.dedup();
     languages
 }
 
-/// Extract track-level codec information from CPL XML content (legacy)
+/// Extract track-level codec information from CPL XML, returning an error on parse failure.
+pub fn try_extract_cpl_track_codecs_from_xml(
+    xml_content: &str,
+) -> Result<Vec<TrackInfo>, CplParseError> {
+    let cpl = parse_cpl(xml_content)?;
+    Ok(extract_tracks_from_cpl(&cpl, xml_content))
+}
+
+/// Extract track-level codec information from CPL XML content.
+///
+/// Returns an empty `Vec` if the CPL fails to parse. Prefer
+/// [`try_extract_cpl_track_codecs_from_xml`] to distinguish parse failure from empty tracks.
 pub fn extract_cpl_track_codecs_from_xml(xml_content: &str) -> Vec<TrackInfo> {
-    // Legacy: parse via CPL and extract from proper descriptors
-    if let Ok(cpl) = parse_cpl(xml_content) {
-        return extract_tracks_from_cpl(&cpl, xml_content);
-    }
-    Vec::new()
+    try_extract_cpl_track_codecs_from_xml(xml_content).unwrap_or_default()
 }
 
 /// Extract track info from a properly parsed CPL (replaces regex-based extraction)
@@ -3298,7 +3386,7 @@ fn extract_tracks_from_cpl(cpl: &CompositionPlaylist, _raw_xml: &str) -> Vec<Tra
                             .and_then(|iab| iab.sub_descriptors.as_ref())
                             .and_then(|sd| sd.iab_soundfield_label_sub_descriptor.as_ref())
                             .and_then(|sf| sf.rfc5646_spoken_language.as_ref())
-                            .map(|lt| lt.0.clone());
+                            .map(|lt| lt.as_str().to_string());
                         tracks.push(TrackInfo {
                             track_id: seq.track_id.to_string(),
                             track_type: "audio".to_string(),
@@ -3410,7 +3498,7 @@ fn extract_audio_info_from_descriptor(
             .as_ref()
             .and_then(|sd| sd.soundfield_group_label_sub_descriptor.as_ref())
             .and_then(|sf| sf.rfc5646_spoken_language.as_ref())
-            .map(|lt| lt.0.clone());
+            .map(|lt| lt.as_str().to_string());
         return (codec, channels, format_details, language);
     }
     ("Unknown".to_string(), None, None, None)

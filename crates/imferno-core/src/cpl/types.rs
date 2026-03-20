@@ -1,7 +1,4 @@
 //! CPL-domain types for SMPTE ST 2067-3.
-//!
-//! These types were previously defined in `imf-types` and are migrated here as
-//! their canonical home, since they are defined by SMPTE ST 2067-3.
 
 use crate::assetmap::{ImfTypeError, SmpteUl};
 use serde::{Deserialize, Serialize};
@@ -36,6 +33,7 @@ pub struct EditRate {
 
 impl EditRate {
     pub const fn new(numerator: u32, denominator: u32) -> Self {
+        debug_assert!(denominator != 0, "EditRate denominator must not be zero");
         Self {
             numerator,
             denominator,
@@ -95,9 +93,14 @@ impl std::fmt::Display for EditRate {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "wasm", derive(Tsify), tsify(into_wasm_abi, from_wasm_abi))]
-pub struct LanguageTag(pub String);
+pub struct LanguageTag(String);
 
 impl LanguageTag {
+    /// Construct a `LanguageTag` from a known-valid tag string (no validation).
+    pub fn new(tag: impl Into<String>) -> Self {
+        Self(tag.into())
+    }
+
     pub fn parse(s: &str) -> Result<Self, ImfTypeError> {
         let trimmed = s.trim();
         if trimmed.is_empty() {
@@ -108,6 +111,10 @@ impl LanguageTag {
 
     pub fn as_str(&self) -> &str {
         &self.0
+    }
+
+    pub fn into_inner(self) -> String {
+        self.0
     }
 }
 

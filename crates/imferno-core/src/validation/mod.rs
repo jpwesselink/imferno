@@ -23,8 +23,9 @@
 //! - **ST 2067-2:2020** Core Constraints (`CoreConstraints2020`)
 //! - **ST 2067-2:2016** Core Constraints (`CoreConstraints2016`)
 //! - **ST 2067-2:2013** Core Constraints (`CoreConstraints2013`)
-//! - **ST 2067-21:2023** Application Profile #2E (`App2E2021`)
-//! - **ST 2067-201:2019/2021** IAB Level 0 Plug-in (`App2E2021` ruleset mapping)
+//! - **ST 2067-21:2020/2023/2025** Application Profile #2E (`App2E2021`)
+//! - **ST 2067-201:2019/2021** IAB Level 0 Plug-in (`AppIabPlugin2019`, `AppIabPlugin2021`)
+//! - **ST 2067-202:2022** ISXD Plug-in (`AppIsxdPlugin2022`)
 
 pub mod codes;
 pub mod iab;
@@ -1398,7 +1399,7 @@ fn validate_timed_text_extended(
 
         // Validate language tags look well-formed (basic structural check)
         for tag in &tt.rfc5646_language_tag_list {
-            let s = &tag.0;
+            let s = tag.as_str();
             if s.is_empty() {
                 issues.push(
                     ValidationIssue::new(
@@ -4069,25 +4070,14 @@ impl App2E2021 {
         }
     }
 
-    /// ST 2067-21 §7.3 homogeneity applies *within* a virtual track: all resources
-    /// in one virtual track must reference equivalent essence descriptors (same
-    /// SourceEncoding). It does NOT require all audio virtual tracks in the CPL
-    /// to have the same channel count — a CPL with separate 5.1 and stereo tracks
-    /// is completely valid and normal.
-    ///
-    /// The previous implementation compared channel counts across *all*
-    /// WAVEPCMDescriptors in the EssenceDescriptorList, which produced false
-    /// positives for every multi-track CPL. That check is removed.
-    ///
-    /// True per-virtual-track descriptor homogeneity is enforced by the
-    /// `6.9/Homogeneity` SourceEncoding check in CoreConstraints.
+    /// Intentionally empty — per-virtual-track descriptor homogeneity is
+    /// enforced by CoreConstraints `6.9/Homogeneity` SourceEncoding checks.
     #[allow(clippy::ptr_arg)]
     fn validate_audio_channel_homogeneity(
         &self,
         _cpl: &CompositionPlaylist,
         _issues: &mut Vec<ValidationIssue>,
     ) {
-        // Intentionally empty — see doc comment above.
     }
 
     /// ST 2067-21 §5.6: HearingImpairedCaptions and ForcedNarrative sequences
@@ -4255,7 +4245,7 @@ impl App2E2021 {
             // Validate language tags
             if let Some(ref ll) = locale.language_list {
                 for tag in &ll.languages {
-                    let s = &tag.0;
+                    let s = tag.as_str();
                     if s.is_empty() {
                         issues.push(
                             ValidationIssue::new(
@@ -4377,7 +4367,7 @@ mod tests {
             content_originator: None,
             content_title: LanguageString {
                 text: "Test".to_string(),
-                language: Some(LanguageTag("en".to_string())),
+                language: Some(LanguageTag::new("en")),
             },
             content_kind: ContentKindElement::from(ContentKind::Feature),
             content_version_list: None,
@@ -5989,12 +5979,6 @@ mod tests {
         );
     }
 
-    // ────────────────────────────────────────────────────────────────────────
-    // Removed: fabricated "Table 3" image characteristics tests.
-    // ST 2067-21:2023 has no combined resolution+colorimetry+frame-rate table.
-    // Individual field constraints (Tables 8-14, §6.2.2-6.2.4) are tested above.
-    // ────────────────────────────────────────────────────────────────────────
-
     // ════════════════════════════════════════════════════════════════════════
     // Core constraints tests — resource & timeline validation (ST 2067-2)
     // ════════════════════════════════════════════════════════════════════════
@@ -6405,7 +6389,7 @@ mod tests {
         cpl.locale_list = Some(crate::cpl::LocaleList {
             locales: vec![crate::cpl::Locale {
                 language_list: Some(crate::cpl::LanguageList {
-                    languages: vec![crate::cpl::LanguageTag("123invalid".to_string())],
+                    languages: vec![crate::cpl::LanguageTag::new("123invalid")],
                 }),
                 region_list: None,
                 content_maturity_rating_list: None,
@@ -6428,8 +6412,8 @@ mod tests {
             locales: vec![crate::cpl::Locale {
                 language_list: Some(crate::cpl::LanguageList {
                     languages: vec![
-                        crate::cpl::LanguageTag("nl".to_string()),
-                        crate::cpl::LanguageTag("en".to_string()),
+                        crate::cpl::LanguageTag::new("nl"),
+                        crate::cpl::LanguageTag::new("en"),
                     ],
                 }),
                 region_list: Some(crate::cpl::RegionList {
@@ -8032,7 +8016,7 @@ mod tests {
                 id: "urn:uuid:00000000-0000-0000-0000-000000000099".to_string(),
                 label_text: Some(LanguageString {
                     text: "Version 1".to_string(),
-                    language: Some(LanguageTag("en".to_string())),
+                    language: Some(LanguageTag::new("en")),
                 }),
             }],
         });
@@ -8651,7 +8635,7 @@ mod tests {
                     linked_track_id: None,
                     sample_rate: None,
                     namespace_uri: Some("http://www.w3.org/ns/ttml".to_string()),
-                    rfc5646_language_tag_list: vec![LanguageTag("en".to_string())],
+                    rfc5646_language_tag_list: vec![LanguageTag::new("en")],
                 }),
                 isxd_data_essence_descriptor: None,
             }],
@@ -8850,7 +8834,7 @@ mod tests {
         cpl.locale_list = Some(LocaleList {
             locales: vec![Locale {
                 language_list: Some(LanguageList {
-                    languages: vec![LanguageTag("en".to_string()), LanguageTag("fr".to_string())],
+                    languages: vec![LanguageTag::new("en"), LanguageTag::new("fr")],
                 }),
                 content_maturity_rating_list: None,
                 region_list: Some(RegionList {
@@ -8908,7 +8892,7 @@ mod tests {
         cpl.locale_list = Some(LocaleList {
             locales: vec![Locale {
                 language_list: Some(LanguageList {
-                    languages: vec![LanguageTag("".to_string())],
+                    languages: vec![LanguageTag::new("")],
                 }),
                 region_list: None,
                 content_maturity_rating_list: None,
@@ -8943,7 +8927,7 @@ mod tests {
                     linked_track_id: None,
                     sample_rate: None, // Missing!
                     namespace_uri: Some("http://www.w3.org/ns/ttml".to_string()),
-                    rfc5646_language_tag_list: vec![LanguageTag("en".to_string())],
+                    rfc5646_language_tag_list: vec![LanguageTag::new("en")],
                 }),
                 isxd_data_essence_descriptor: None,
             }],
@@ -8975,7 +8959,7 @@ mod tests {
                     linked_track_id: None,
                     sample_rate: Some(EditRate::new(24, 1)),
                     namespace_uri: Some("http://www.w3.org/ns/ttml".to_string()),
-                    rfc5646_language_tag_list: vec![LanguageTag("en".to_string())],
+                    rfc5646_language_tag_list: vec![LanguageTag::new("en")],
                 }),
                 isxd_data_essence_descriptor: None,
             }],
@@ -9007,7 +8991,7 @@ mod tests {
                     linked_track_id: None,
                     sample_rate: Some(EditRate::new(24, 1)),
                     namespace_uri: Some("http://www.w3.org/ns/ttml".to_string()),
-                    rfc5646_language_tag_list: vec![LanguageTag("".to_string())],
+                    rfc5646_language_tag_list: vec![LanguageTag::new("")],
                 }),
                 isxd_data_essence_descriptor: None,
             }],

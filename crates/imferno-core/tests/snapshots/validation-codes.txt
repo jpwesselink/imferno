@@ -1,6 +1,12 @@
 IMF:General/IoError
+IMFERNO:Package/DirEntryError
+IMFERNO:Package/ParseError
+IMFERNO:Package/PklParseError
+IMFERNO:Package/ReadDirError
 IMFERNO:Package/UnlistedEssence
 IMFERNO:Package/UnreferencedAsset
+IMFERNO:Package/XmlAssetParseError
+IMFERNO:Package/XmlReadError
 ST2067-201:2019:5.3/ContainerFormatMissing
 ST2067-201:2019:5.3/EssenceContainerInvalid
 ST2067-201:2019:5.9/AudioSamplingRateInvalid

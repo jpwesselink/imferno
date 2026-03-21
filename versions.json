@@ -34,10 +34,5 @@
     }
   ],
   "beta": null,
-  "prs": [
-    {
-      "label": "#22 feat/beta-releases",
-      "path": "/pr-22/"
-    }
-  ]
+  "prs": []
 }

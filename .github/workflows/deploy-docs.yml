@@ -8,6 +8,10 @@ on:
   release:
     types: [published]
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to deploy (e.g. "v2.0.0" for stable, "beta" for beta). Leave empty for beta.'
+        required: false
 
 permissions:
   contents: write
@@ -61,6 +65,7 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_HEAD_REF: ${{ github.head_ref }}
           RELEASE_TAG: ${{ github.event.release.tag_name }}
+          DISPATCH_VERSION: ${{ inputs.version }}
         run: |
           CARGO_VERSION=$(grep '^version' crates/imferno-core/Cargo.toml | head -1 | sed 's/.*"\(.*\)"/\1/')
           if [ "$EVENT_NAME" = "pull_request" ]; then
@@ -76,6 +81,12 @@ jobs:
             echo "type=stable" >> "$GITHUB_OUTPUT"
             echo "version=${RELEASE_VERSION}" >> "$GITHUB_OUTPUT"
             echo "docs_version=v${RELEASE_VERSION}" >> "$GITHUB_OUTPUT"
+          elif [ "$EVENT_NAME" = "workflow_dispatch" ] && [ -n "$DISPATCH_VERSION" ] && [ "$DISPATCH_VERSION" != "beta" ]; then
+            echo "subdir=${DISPATCH_VERSION}" >> "$GITHUB_OUTPUT"
+            echo "label=${DISPATCH_VERSION}" >> "$GITHUB_OUTPUT"
+            echo "type=stable" >> "$GITHUB_OUTPUT"
+            echo "version=${DISPATCH_VERSION#v}" >> "$GITHUB_OUTPUT"
+            echo "docs_version=${DISPATCH_VERSION}" >> "$GITHUB_OUTPUT"
           else
             echo "subdir=beta" >> "$GITHUB_OUTPUT"
             echo "label=beta (${CARGO_VERSION})" >> "$GITHUB_OUTPUT"

@@ -37,5 +37,10 @@
     "label": "beta (2.0.0)",
     "path": "/beta/"
   },
-  "prs": []
+  "prs": [
+    {
+      "label": "#25 feat/version-picker",
+      "path": "/pr-25/"
+    }
+  ]
 }

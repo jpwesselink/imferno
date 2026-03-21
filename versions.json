@@ -37,10 +37,5 @@
     "label": "beta (2.0.0)",
     "path": "/beta/"
   },
-  "prs": [
-    {
-      "label": "#27 fix/docs-manual-deploy",
-      "path": "/pr-27/"
-    }
-  ]
+  "prs": []
 }

@@ -176,7 +176,7 @@ jobs:
             if [ -f "$dir/imferno-node.*.node" ] 2>/dev/null || ls "$dir"/*.node 1>/dev/null 2>&1; then
               echo "Publishing $dir..."
               cd "$dir"
-              npm publish --tag ${{ needs.resolve-version.outputs.npm-tag }} || echo "Warning: failed to publish $dir"
+              npm publish --access public --tag ${{ needs.resolve-version.outputs.npm-tag }} || echo "Warning: failed to publish $dir"
               cd ../..
             else
               echo "Skipping $dir (no .node binary)"
@@ -187,6 +187,6 @@ jobs:
 
       - name: Publish meta-package
         working-directory: ${{ env.NAPI_DIR }}
-        run: npm publish --tag ${{ needs.resolve-version.outputs.npm-tag }}
+        run: npm publish --access public --tag ${{ needs.resolve-version.outputs.npm-tag }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

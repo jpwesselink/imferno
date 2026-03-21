@@ -120,7 +120,7 @@ jobs:
       - name: Publish platform package
         if: github.event_name != 'pull_request'
         working-directory: crates/imferno/npm/${{ matrix.npm_pkg }}
-        run: npm publish --tag ${{ needs.resolve-version.outputs.npm-tag }}
+        run: npm publish --access public --tag ${{ needs.resolve-version.outputs.npm-tag }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
@@ -157,6 +157,6 @@ jobs:
 
       - name: Publish meta-package
         working-directory: crates/imferno/npm/imferno
-        run: npm publish --tag ${{ needs.resolve-version.outputs.npm-tag }}
+        run: npm publish --access public --tag ${{ needs.resolve-version.outputs.npm-tag }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

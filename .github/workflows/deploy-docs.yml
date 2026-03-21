@@ -122,10 +122,22 @@ jobs:
 
           node -e "
             const fs = require('fs');
-            const v = JSON.parse(fs.readFileSync('versions.json', 'utf8'));
+            let v = JSON.parse(fs.readFileSync('versions.json', 'utf8'));
             const type = process.env.DEPLOY_TYPE;
             const subdir = process.env.DEPLOY_SUBDIR;
             const label = process.env.DEPLOY_LABEL;
+
+            // Migrate old array format to new object format
+            if (Array.isArray(v)) {
+              v = {
+                stable: v.map(e => ({ version: e.version, path: '/' + e.version + '/' })),
+                beta: null,
+                prs: [],
+              };
+            }
+            // Ensure all fields exist
+            if (!v.stable) v.stable = [];
+            if (!v.prs) v.prs = [];
 
             if (type === 'stable') {
               const entry = { version: label, path: '/' + subdir + '/' };

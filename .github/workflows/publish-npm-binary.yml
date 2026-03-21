@@ -118,6 +118,7 @@ jobs:
           npm version --no-git-tag-version --allow-same-version "$VERSION"
 
       - name: Publish platform package
+        if: github.event_name != 'pull_request'
         working-directory: crates/imferno/npm/${{ matrix.npm_pkg }}
         run: npm publish --tag ${{ needs.resolve-version.outputs.npm-tag }}
         env:
@@ -126,7 +127,7 @@ jobs:
   publish-meta:
     name: Publish meta-package
     needs: [resolve-version, build]
-    if: ${{ always() && needs.build.result != 'cancelled' }}
+    if: ${{ always() && needs.build.result != 'cancelled' && github.event_name != 'pull_request' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

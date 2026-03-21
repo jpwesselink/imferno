@@ -100,6 +100,7 @@ jobs:
           npm version --no-git-tag-version --allow-same-version "$RESOLVED_VERSION"
 
       - name: Publish to NPM
+        if: github.event_name != 'pull_request'
         working-directory: crates/imferno-wasm
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

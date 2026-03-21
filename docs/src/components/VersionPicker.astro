@@ -30,6 +30,10 @@ const docsVersion = import.meta.env.DOCS_VERSION || 'latest';
   #version-select:hover {
     border-color: var(--sl-color-accent, #f97316);
   }
+  #version-select option {
+    background: var(--sl-color-gray-6, #2a2a30);
+    color: var(--sl-color-white, #dfdfd6);
+  }
 </style>
 
 <script is:inline>
@@ -37,31 +41,54 @@ const docsVersion = import.meta.env.DOCS_VERSION || 'latest';
     var select = document.getElementById('version-select');
     if (!select) return;
 
-    // Resolve the base path to find versions.json at the site root
     var siteRoot = '/imferno/';
+
+    function addOption(value, label, isCurrent) {
+      var opt = document.createElement('option');
+      opt.value = value;
+      opt.textContent = label;
+      if (isCurrent) opt.selected = true;
+      select.appendChild(opt);
+    }
 
     fetch(siteRoot + 'versions.json')
       .then(function (r) { return r.json(); })
-      .then(function (versions) {
-        // Current version from the URL path
+      .then(function (data) {
         var path = window.location.pathname;
-        var match = path.match(/\/imferno\/(v[^/]+)\//);
+        var match = path.match(/\/imferno\/([^/]+)\//);
         var current = match ? match[1] : null;
 
-        // Hide picker on non-release paths (PR previews, local dev, etc.)
         if (!current) {
           select.parentElement.style.display = 'none';
           return;
         }
 
-        select.innerHTML = '';
-        versions.forEach(function (v) {
-          var opt = document.createElement('option');
-          opt.value = v.version;
-          opt.textContent = v.version + (v.latest ? ' (latest)' : '');
-          if (v.version === current) opt.selected = true;
-          select.appendChild(opt);
-        });
+        // Clear the placeholder option
+        while (select.firstChild) select.removeChild(select.firstChild);
+
+        // Handle both old array format and new object format
+        if (Array.isArray(data)) {
+          data.forEach(function (v) {
+            addOption(v.version, v.version + (v.latest ? ' (latest)' : ''), v.version === current);
+          });
+        } else {
+          // Beta
+          if (data.beta) {
+            addOption('beta', data.beta.label, current === 'beta');
+          }
+
+          // Stable releases
+          (data.stable || []).forEach(function (v, i) {
+            var ver = v.version || v.path.replace(/\//g, '');
+            addOption(ver, ver + (i === 0 ? ' (latest)' : ''), ver === current);
+          });
+
+          // PR previews
+          (data.prs || []).forEach(function (p) {
+            var dir = p.path.replace(/\//g, '');
+            addOption(dir, p.label, dir === current);
+          });
+        }
 
         select.addEventListener('change', function () {
           var target = select.value;
@@ -71,7 +98,6 @@ const docsVersion = import.meta.env.DOCS_VERSION || 'latest';
         });
       })
       .catch(function () {
-        // versions.json not available — hide picker
         select.parentElement.style.display = 'none';
       });
   })();

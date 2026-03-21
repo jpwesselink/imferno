@@ -2,12 +2,60 @@ name: Publish @imferno/schema to NPM
 
 on:
   push:
-    tags:
-      - 'imferno-core-v*'
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize]
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish (e.g. 2.0.0)'
+        required: true
 
 jobs:
+  resolve-version:
+    if: >-
+      github.event_name != 'release' ||
+      startsWith(github.event.release.tag_name, 'imferno-core-v')
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      npm-tag: ${{ steps.version.outputs.npm-tag }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Determine version
+        id: version
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          HEAD_REF: ${{ github.head_ref }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          DISPATCH_VERSION: ${{ inputs.version }}
+        run: |
+          CARGO_VERSION=$(grep '^version' crates/imferno-core/Cargo.toml | head -1 | sed 's/.*"\(.*\)"/\1/')
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            BRANCH_SLUG=$(echo "$HEAD_REF" | sed 's/[^a-zA-Z0-9.-]/-/g')
+            SHORT_SHA=$(echo "$PR_HEAD_SHA" | cut -c1-7)
+            echo "version=${CARGO_VERSION}-${BRANCH_SLUG}.${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+            echo "npm-tag=${BRANCH_SLUG}" >> "$GITHUB_OUTPUT"
+          elif [ "$EVENT_NAME" = "release" ]; then
+            RELEASE_VERSION=$(echo "$RELEASE_TAG" | sed 's/^.*-v//')
+            echo "version=${RELEASE_VERSION}" >> "$GITHUB_OUTPUT"
+            echo "npm-tag=latest" >> "$GITHUB_OUTPUT"
+          elif [ "$EVENT_NAME" = "push" ]; then
+            echo "version=${CARGO_VERSION}-beta.${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+            echo "npm-tag=beta" >> "$GITHUB_OUTPUT"
+          elif [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            echo "version=${DISPATCH_VERSION}" >> "$GITHUB_OUTPUT"
+            echo "npm-tag=latest" >> "$GITHUB_OUTPUT"
+          fi
+
   publish:
     name: Generate and publish JSON schemas
+    needs: resolve-version
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -34,15 +82,17 @@ jobs:
           ls -la schemas/
           test -f schemas/imf-report.json
 
-      - name: Update package version from git tag
+      - name: Update package version
         working-directory: crates/imferno-core/npm/schema
+        env:
+          RESOLVED_VERSION: ${{ needs.resolve-version.outputs.version }}
         run: |
-          VERSION=${GITHUB_REF#refs/tags/imferno-core-v}
-          echo "Setting npm version to: $VERSION"
-          npm version --no-git-tag-version --allow-same-version "$VERSION"
+          echo "Setting npm version to: $RESOLVED_VERSION"
+          npm version --no-git-tag-version --allow-same-version "$RESOLVED_VERSION"
 
       - name: Publish to NPM
         working-directory: crates/imferno-core/npm/schema
-        run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_TAG: ${{ needs.resolve-version.outputs.npm-tag }}
+        run: npm publish --tag "$NPM_TAG"

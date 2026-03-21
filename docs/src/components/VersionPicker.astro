@@ -83,11 +83,7 @@ const docsVersion = import.meta.env.DOCS_VERSION || 'latest';
             addOption(ver, ver + (i === 0 ? ' (latest)' : ''), ver === current);
           });
 
-          // PR previews
-          (data.prs || []).forEach(function (p) {
-            var dir = p.path.replace(/\//g, '');
-            addOption(dir, p.label, dir === current);
-          });
+          // PR previews are excluded from the version picker
         }
 
         select.addEventListener('change', function () {

@@ -2,12 +2,15 @@
   "name": "@imferno/darwin-arm64",
   "version": "0.1.1",
   "description": "imferno native binary for macOS ARM64 (Apple Silicon)",
-  "os": ["darwin"],
-  "cpu": ["arm64"],
-  "bin": {
-    "imferno": "imferno"
-  },
-  "files": ["imferno"],
+  "os": [
+    "darwin"
+  ],
+  "cpu": [
+    "arm64"
+  ],
+  "files": [
+    "imferno"
+  ],
   "publishConfig": {
     "access": "public"
   },

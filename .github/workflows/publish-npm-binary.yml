@@ -2,11 +2,53 @@ name: Publish Native Binaries to NPM
 
 on:
   push:
-    tags: ['imferno-v*']
+    branches: [main]
+  pull_request:
+    branches: [main]
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish (e.g. 1.0.0)'
+        required: true
+        type: string
 
 jobs:
+  resolve-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      npm-tag: ${{ steps.version.outputs.npm-tag }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Determine version
+        id: version
+        shell: bash
+        run: |
+          CARGO_VERSION=$(grep '^version' crates/imferno-core/Cargo.toml | head -1 | sed 's/.*"\(.*\)"/\1/')
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BRANCH_SLUG=$(echo "${{ github.head_ref }}" | sed 's/[^a-zA-Z0-9.-]/-/g')
+            SHORT_SHA=$(echo "${{ github.event.pull_request.head.sha }}" | cut -c1-7)
+            echo "version=${CARGO_VERSION}-${BRANCH_SLUG}.${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+            echo "npm-tag=${BRANCH_SLUG}" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event_name }}" = "release" ]; then
+            RELEASE_VERSION=$(echo "${{ github.event.release.tag_name }}" | sed 's/^.*-v//')
+            echo "version=${RELEASE_VERSION}" >> "$GITHUB_OUTPUT"
+            echo "npm-tag=latest" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event_name }}" = "push" ]; then
+            echo "version=${CARGO_VERSION}-beta.${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+            echo "npm-tag=beta" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "version=${{ inputs.version }}" >> "$GITHUB_OUTPUT"
+            echo "npm-tag=latest" >> "$GITHUB_OUTPUT"
+          fi
+
   build:
     name: Build ${{ matrix.npm_pkg }}
+    needs: resolve-version
+    if: ${{ github.event_name != 'release' || startsWith(github.event.release.tag_name, 'imferno-v') }}
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
@@ -68,23 +110,24 @@ jobs:
           node-version: '20'
           registry-url: 'https://registry.npmjs.org'
 
-      - name: Set npm version from tag
+      - name: Set npm version
         working-directory: crates/imferno/npm/${{ matrix.npm_pkg }}
         shell: bash
         run: |
-          VERSION=${GITHUB_REF#refs/tags/imferno-v}
+          VERSION="${{ needs.resolve-version.outputs.version }}"
           npm version --no-git-tag-version --allow-same-version "$VERSION"
 
       - name: Publish platform package
+        if: github.event_name != 'pull_request'
         working-directory: crates/imferno/npm/${{ matrix.npm_pkg }}
-        run: npm publish
+        run: npm publish --tag ${{ needs.resolve-version.outputs.npm-tag }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   publish-meta:
     name: Publish meta-package
-    needs: build
-    if: ${{ always() && needs.build.result != 'cancelled' }}
+    needs: [resolve-version, build]
+    if: ${{ always() && needs.build.result != 'cancelled' && github.event_name != 'pull_request' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -95,11 +138,11 @@ jobs:
           node-version: '20'
           registry-url: 'https://registry.npmjs.org'
 
-      - name: Set version from tag
+      - name: Set version
         working-directory: crates/imferno/npm/imferno
         shell: bash
         run: |
-          VERSION=${GITHUB_REF#refs/tags/imferno-v}
+          VERSION="${{ needs.resolve-version.outputs.version }}"
           node -e "
             const pkg = require('./package.json');
             pkg.version = '$VERSION';
@@ -114,6 +157,6 @@ jobs:
 
       - name: Publish meta-package
         working-directory: crates/imferno/npm/imferno
-        run: npm publish
+        run: npm publish --tag ${{ needs.resolve-version.outputs.npm-tag }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

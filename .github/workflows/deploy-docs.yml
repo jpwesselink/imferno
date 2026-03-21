@@ -1,38 +1,31 @@
-name: Deploy Docs to GitHub Pages
+name: Deploy Docs
 
 on:
   push:
-    tags: ['v*', 'imferno-core-v*']
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize, closed]
+  release:
+    types: [published]
   workflow_dispatch:
-    inputs:
-      version:
-        description: 'Version tag to build docs for (e.g. v1.0.0). Leave empty to build "latest" from HEAD.'
-        required: false
 
 permissions:
   contents: write
+  pull-requests: write
+
+concurrency:
+  group: docs-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
 
 jobs:
   deploy:
+    if: github.event.action != 'closed' && (github.event_name != 'release' || startsWith(github.event.release.tag_name, 'v') || startsWith(github.event.release.tag_name, 'imferno-core-v'))
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      # Determine which version string to use
-      - name: Resolve version
-        id: version
-        run: |
-          if [[ "${{ github.event_name }}" == "push" ]]; then
-            TAG="${GITHUB_REF#refs/tags/}"
-            # Normalize crate-prefixed tags: imferno-core-v1.1.0 → v1.1.0
-            VERSION="${TAG#imferno-core-}"
-          elif [[ -n "${{ github.event.inputs.version }}" ]]; then
-            VERSION="${{ github.event.inputs.version }}"
-          else
-            VERSION="latest"
-          fi
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "Building docs for version: $VERSION"
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
@@ -61,90 +54,191 @@ jobs:
         working-directory: docs
         run: pnpm install
 
+      - name: Determine deploy target
+        id: target
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD_REF: ${{ github.head_ref }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          CARGO_VERSION=$(grep '^version' crates/imferno-core/Cargo.toml | head -1 | sed 's/.*"\(.*\)"/\1/')
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            echo "subdir=pr-${PR_NUMBER}" >> "$GITHUB_OUTPUT"
+            echo "label=#${PR_NUMBER} ${PR_HEAD_REF}" >> "$GITHUB_OUTPUT"
+            echo "type=pr" >> "$GITHUB_OUTPUT"
+            echo "docs_version=pr-${PR_NUMBER}" >> "$GITHUB_OUTPUT"
+          elif [ "$EVENT_NAME" = "release" ]; then
+            # Normalize crate-prefixed tags: imferno-core-v1.1.0 -> v1.1.0
+            RELEASE_VERSION=$(echo "$RELEASE_TAG" | sed 's/^imferno-core-//' | sed 's/^v//')
+            echo "subdir=v${RELEASE_VERSION}" >> "$GITHUB_OUTPUT"
+            echo "label=v${RELEASE_VERSION}" >> "$GITHUB_OUTPUT"
+            echo "type=stable" >> "$GITHUB_OUTPUT"
+            echo "version=${RELEASE_VERSION}" >> "$GITHUB_OUTPUT"
+            echo "docs_version=v${RELEASE_VERSION}" >> "$GITHUB_OUTPUT"
+          else
+            echo "subdir=beta" >> "$GITHUB_OUTPUT"
+            echo "label=beta (${CARGO_VERSION})" >> "$GITHUB_OUTPUT"
+            echo "type=beta" >> "$GITHUB_OUTPUT"
+            echo "docs_version=beta" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Build WASM and generate docs
         run: cargo xtask build-docs
 
       - name: Build Astro site
         working-directory: docs
         env:
-          DOCS_VERSION: ${{ steps.version.outputs.version }}
+          DOCS_VERSION: ${{ steps.target.outputs.docs_version }}
         run: pnpm run build
 
-      # --- Deploy to gh-pages branch ---
-      - name: Prepare gh-pages worktree
+      - name: Deploy to gh-pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./docs/dist
+          destination_dir: ${{ steps.target.outputs.subdir }}
+          keep_files: true
+
+      - name: Update versions.json
+        env:
+          DEPLOY_TYPE: ${{ steps.target.outputs.type }}
+          DEPLOY_SUBDIR: ${{ steps.target.outputs.subdir }}
+          DEPLOY_LABEL: ${{ steps.target.outputs.label }}
         run: |
-          REMOTE_URL="https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
-          git clone --depth 1 --branch gh-pages "$REMOTE_URL" gh-pages 2>/dev/null || {
-            mkdir gh-pages
-            cd gh-pages
-            git init
-            git checkout --orphan gh-pages
-            git remote add origin "$REMOTE_URL"
-          }
-
-      - name: Copy versioned docs
-        run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          rm -rf "gh-pages/$VERSION"
-          cp -r docs/dist "gh-pages/$VERSION"
-
-      - name: Generate root redirect and version index
-        run: |
-          VERSION="${{ steps.version.outputs.version }}"
-
-          # Collect all version directories (sorted newest first)
-          cd gh-pages
-          VERSIONS=$(ls -d v*/ 2>/dev/null | sed 's|/$||' | sort -rV || true)
-
-          # The latest tagged version (skip "latest" directory)
-          LATEST=$(echo "$VERSIONS" | head -n1)
-          if [ -z "$LATEST" ]; then
-            LATEST="$VERSION"
+          git fetch origin gh-pages || true
+          if git rev-parse --verify origin/gh-pages >/dev/null 2>&1; then
+            git worktree add gh-pages-wt origin/gh-pages
+          else
+            git worktree add --orphan gh-pages-wt
           fi
 
-          # Root index.html — redirect to latest release
-          cat > index.html <<REDIRECT
+          # Init versions.json if missing
+          if [ ! -f gh-pages-wt/versions.json ]; then
+            echo '{"stable":[],"beta":null,"prs":[]}' > gh-pages-wt/versions.json
+          fi
+
+          cd gh-pages-wt
+
+          node -e "
+            const fs = require('fs');
+            let v = JSON.parse(fs.readFileSync('versions.json', 'utf8'));
+            const type = process.env.DEPLOY_TYPE;
+            const subdir = process.env.DEPLOY_SUBDIR;
+            const label = process.env.DEPLOY_LABEL;
+
+            // Migrate old array format to new object format
+            if (Array.isArray(v)) {
+              v = {
+                stable: v.map(e => ({ version: e.version, path: '/' + e.version + '/' })),
+                beta: null,
+                prs: [],
+              };
+            }
+            // Ensure all fields exist
+            if (!v.stable) v.stable = [];
+            if (!v.prs) v.prs = [];
+
+            if (type === 'stable') {
+              const entry = { version: label, path: '/' + subdir + '/' };
+              v.stable = v.stable.filter(s => s.version !== label);
+              v.stable.unshift(entry);
+              v.latest = '/' + subdir + '/';
+            } else if (type === 'beta') {
+              v.beta = { label: label, path: '/' + subdir + '/' };
+            } else if (type === 'pr') {
+              const entry = { label: label, path: '/' + subdir + '/' };
+              v.prs = v.prs.filter(p => p.path !== '/' + subdir + '/');
+              v.prs.push(entry);
+            }
+
+            fs.writeFileSync('versions.json', JSON.stringify(v, null, 2) + '\n');
+          "
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add versions.json
+          git diff --cached --quiet || git commit -m "docs: update versions.json"
+          git push origin HEAD:gh-pages
+
+      - name: Update root redirect
+        if: steps.target.outputs.type == 'stable' || steps.target.outputs.type == 'beta'
+        env:
+          DEPLOY_TYPE: ${{ steps.target.outputs.type }}
+          DEPLOY_SUBDIR: ${{ steps.target.outputs.subdir }}
+        run: |
+          cd gh-pages-wt
+          # Always update on stable; on beta, only if no index.html exists yet
+          if [ "$DEPLOY_TYPE" = "stable" ] || [ ! -f index.html ]; then
+            cat > index.html << REDIRECT
           <!DOCTYPE html>
           <html lang="en">
           <head>
             <meta charset="utf-8">
-            <meta http-equiv="refresh" content="0; url=/imferno/$LATEST/">
-            <link rel="canonical" href="https://jpwesselink.github.io/imferno/$LATEST/">
-            <title>Redirecting to imferno $LATEST docs</title>
+            <meta http-equiv="refresh" content="0; url=/imferno/${DEPLOY_SUBDIR}/">
+            <link rel="canonical" href="https://jpwesselink.github.io/imferno/${DEPLOY_SUBDIR}/">
+            <title>Redirecting to imferno docs</title>
           </head>
           <body>
-            <p>Redirecting to <a href="/imferno/$LATEST/">imferno $LATEST</a>…</p>
+            <p>Redirecting to <a href="/imferno/${DEPLOY_SUBDIR}/">imferno ${DEPLOY_SUBDIR}</a>...</p>
           </body>
           </html>
           REDIRECT
+            touch .nojekyll
+            git add index.html .nojekyll
+            git diff --cached --quiet || git commit -m "docs: update root redirect to ${DEPLOY_SUBDIR}"
+            git push origin HEAD:gh-pages
+          fi
 
-          # .nojekyll so GitHub serves _astro/ directories
-          touch .nojekyll
+      - name: Comment PR with docs link
+        if: github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: docs-preview
+          message: |
+            <!-- docs-preview-comment -->
+            **Docs preview** is ready:
+            https://jpwesselink.github.io/imferno/pr-${{ github.event.pull_request.number }}/
 
-          # versions.json — machine-readable list for a future version picker
-          echo "[" > versions.json
-          FIRST=true
-          for V in $VERSIONS; do
-            if [ "$FIRST" = true ]; then
-              FIRST=false
-            else
-              echo "," >> versions.json
-            fi
-            if [ "$V" = "$LATEST" ]; then
-              printf '  {"version":"%s","latest":true}' "$V" >> versions.json
-            else
-              printf '  {"version":"%s"}' "$V" >> versions.json
-            fi
-          done
-          echo "" >> versions.json
-          echo "]" >> versions.json
+            _Updated for commit ${{ github.event.pull_request.head.sha }}_
 
-      - name: Commit and push
-        working-directory: gh-pages
+  cleanup:
+    if: github.event_name == 'pull_request' && github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+
+      - name: Remove PR docs and update versions.json
+        env:
+          PR_NUM: ${{ github.event.pull_request.number }}
         run: |
+          rm -rf "pr-${PR_NUM}"
+
+          if [ -f versions.json ]; then
+            node -e "
+              const fs = require('fs');
+              const prNum = process.env.PR_NUM;
+              const v = JSON.parse(fs.readFileSync('versions.json', 'utf8'));
+              v.prs = v.prs.filter(p => p.path !== '/pr-' + prNum + '/');
+              fs.writeFileSync('versions.json', JSON.stringify(v, null, 2) + '\n');
+            "
+          fi
+
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -A
-          git diff --cached --quiet && echo "No changes" && exit 0
-          git commit -m "docs: deploy ${{ steps.version.outputs.version }}"
-          git push -u origin gh-pages
+          git diff --cached --quiet || git commit -m "docs: remove pr-${PR_NUM} preview"
+          git push
+
+      - name: Update PR comment with removal notice
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: docs-preview
+          message: |
+            <!-- docs-preview-comment -->
+            ~~**Docs preview** is ready:~~
+            ~~https://jpwesselink.github.io/imferno/pr-${{ github.event.pull_request.number }}/~~
+
+            _Preview removed -- PR closed._

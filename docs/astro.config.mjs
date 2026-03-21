@@ -27,6 +27,7 @@ export default defineConfig({
                 { label: 'Configuration', slug: 'guide/config' },
                 { label: 'Validation Codes', slug: 'guide/codes' },
                 { label: 'IMF Packages', slug: 'guide/packages' },
+                { label: 'Examples', slug: 'guide/examples' },
                 {
                     label: 'API Reference',
                     items: [

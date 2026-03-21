@@ -1,11 +1,11 @@
-import { validatePath, codes } from "@imferno/node";
+import { buildReportFromPath, formatReport, codes } from "@imferno/node";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const impPath = resolve(__dirname, "../../test-data/HT/IMP");
 
-const result = validatePath(impPath, {
+const report = buildReportFromPath(impPath, {
   rules: {
     // Promote checksum mismatches to critical
     [codes.ST2067_2_2020.ChecksumMismatch]: "critical",
@@ -14,33 +14,26 @@ const result = validatePath(impPath, {
   },
 });
 
-console.log("Compliant:", result.report.is_compliant);
-console.log("Errors:", result.report.errors.length);
-console.log("Warnings:", result.report.warnings.length);
-console.log("Info:", result.report.info.length);
+console.log("Compliant:", report.validation.is_compliant);
+console.log("Errors:", report.validation.errors.length);
+console.log("Warnings:", report.validation.warnings.length);
+console.log("Info:", report.validation.info.length);
 
-if (result.report.errors.length > 0) {
+if (report.validation.errors.length > 0) {
   console.log("\nErrors:");
-  for (const issue of result.report.errors) {
+  for (const issue of report.validation.errors) {
     console.log(`  ${issue.code}: ${issue.message}`);
   }
 }
 
-if (result.report.warnings.length > 0) {
+if (report.validation.warnings.length > 0) {
   console.log("\nWarnings:");
-  for (const issue of result.report.warnings) {
+  for (const issue of report.validation.warnings) {
     console.log(`  ${issue.code}: ${issue.message}`);
   }
 }
 
-if (result.report.info.length > 0) {
-  console.log("\nInfo:");
-  for (const issue of result.report.info) {
-    console.log(`  ${issue.code}: ${issue.message}`);
-  }
-}
+console.log("\nFormatted report:");
+console.log(formatReport(report));
 
-console.log("\nFull report:");
-console.log(JSON.stringify(result, null, 2));
-
-process.exit(result.report.is_compliant ? 0 : 1);
+process.exit(report.validation.is_compliant ? 0 : 1);

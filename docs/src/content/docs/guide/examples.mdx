@@ -18,12 +18,12 @@ npm install @imferno/node
 ### Code
 
 ```typescript
-import { validatePath, codes } from "@imferno/node";
+import { buildReportFromPath, formatReport, codes } from "@imferno/node";
 import { resolve } from "node:path";
 
 const impPath = resolve("./my-package");
 
-const result = validatePath(impPath, {
+const report = buildReportFromPath(impPath, {
   rules: {
     // Promote checksum mismatches to critical
     [codes.ST2067_2_2020.ChecksumMismatch]: "critical",
@@ -32,40 +32,31 @@ const result = validatePath(impPath, {
   },
 });
 
-console.log("Compliant:", result.report.is_compliant);
-console.log("Errors:", result.report.errors.length);
-console.log("Warnings:", result.report.warnings.length);
-console.log("Info:", result.report.info.length);
+console.log("Compliant:", report.validation.is_compliant);
+console.log("Errors:", report.validation.errors.length);
+console.log("Warnings:", report.validation.warnings.length);
 
-for (const issue of result.report.errors) {
+for (const issue of report.validation.errors) {
   console.log(`  ${issue.code}: ${issue.message}`);
 }
 
-process.exit(result.report.is_compliant ? 0 : 1);
-```
+// Pretty-print the full report
+console.log(formatReport(report));
 
-### Output
-
-```
-Compliant: true
-Errors: 0
-Warnings: 0
-Info: 2
-
-Info:
-  ST429-9:2014:7/VolindexMissing: VOLINDEX.xml is absent; single-volume package assumed
-  ST2067-2:2016:8/DigitalSignature: Digital signature validation (ST 2067-2 §8) is not currently performed; Signer/Signature XML elements are not parsed
+process.exit(report.validation.is_compliant ? 0 : 1);
 ```
 
 ### What's happening
 
-1. **`validatePath(path, options?)`** reads an IMF package directory from disk, parses all XML files, verifies SHA hashes, and runs validation against every applicable SMPTE spec.
+1. **`buildReportFromPath(path, options?)`** reads an IMF package directory from disk, parses all XML files, and runs validation against every applicable SMPTE spec.
 
 2. **`codes`** gives you typed constants for all 250+ validation rules — autocomplete in your editor, no typos.
 
-3. **`result.report`** contains `is_compliant`, `errors`, `warnings`, `info`, and `critical` arrays. Each issue has a `code`, `message`, `severity`, and `location`.
+3. **`report.validation`** contains `is_compliant`, `errors`, `warnings`, `info`, and `critical` arrays. Each issue has a `code`, `message`, `severity`, and `location`.
 
-4. The process exits with code 1 if the package is non-compliant, making it easy to use in CI pipelines.
+4. **`formatReport(report)`** renders the report as a human-readable string, the same output as `imferno report` on the CLI.
+
+5. The process exits with code 1 if the package is non-compliant, making it easy to use in CI pipelines.
 
 :::tip[Run the example locally]
 The full working example is in the repository at [`examples/node/`](https://github.com/jpwesselink/imferno/tree/main/examples/node):

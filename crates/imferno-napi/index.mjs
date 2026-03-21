@@ -46,12 +46,9 @@ try {
 
 export const {
   getVersion,
-  parseAssetmap,
-  parseCpl,
-  parsePkl,
-  parseVolindex,
-  validate,
-  validatePath,
+  buildReport,
+  buildReportFromPath,
+  formatReport,
 } = nativeModule;
 
 export { codes } from "./codes.mjs";

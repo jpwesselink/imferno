@@ -37,10 +37,5 @@
     "label": "beta (2.0.0)",
     "path": "/beta/"
   },
-  "prs": [
-    {
-      "label": "#26 fix/version-picker-no-prs",
-      "path": "/pr-26/"
-    }
-  ]
+  "prs": []
 }

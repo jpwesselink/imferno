@@ -37,10 +37,5 @@
     "label": "beta (2.0.0)",
     "path": "/beta/"
   },
-  "prs": [
-    {
-      "label": "#23 fix/beta-publish-issues",
-      "path": "/pr-23/"
-    }
-  ]
+  "prs": []
 }

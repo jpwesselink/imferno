@@ -33,6 +33,9 @@
       "path": "/v1.0.0/"
     }
   ],
-  "beta": null,
+  "beta": {
+    "label": "beta (2.0.0)",
+    "path": "/beta/"
+  },
   "prs": []
 }

@@ -92,7 +92,7 @@ const SequenceTimeline = ({sequences,maxDuration,tracks,editRate}: any) => {
                 <div className="h-full rounded relative flex" style={{width:`${fillPct}%`}}>
                   {seq.sequenceResources.map((res: any,ri: number)=>{const td=seq.sequenceResources.reduce((s: number,r: any)=>s+toSeconds(r.sourceDuration,r.editRate||editRate),0),rs=toSeconds(res.sourceDuration,res.editRate||editRate),pct=td>0?(rs/td)*100:100;
                     return <div key={ri} className="h-full relative flex items-center" style={{width:`${Math.max(pct,6)}%`,minWidth:"20px",background:c.fillBg,borderLeft:ri===0?`2.5px solid ${c.fill}`:`1px solid ${c.fill}40`}}>
-                      <span className="text-[9px] font-semibold px-1.5 truncate" style={{color:c.fill}}>{seq.sequenceResources.length>1?`R${ri+1}`:""}</span>
+                      <span className="text-[9px] font-semibold px-1.5 truncate" style={{color:c.fill}}>{`R${ri+1}`}</span>
                     </div>;
                   })}
                 </div>

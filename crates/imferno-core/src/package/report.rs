@@ -3,7 +3,8 @@
 //! Combines package metadata, validation, and structural analysis into one structure.
 //! Also provides `format_report()` for pretty-printing to a terminal.
 
-use crate::cpl::SequenceAccess;
+use crate::assetmap::ImfUuid;
+use crate::cpl::{EssenceDescriptor, SequenceAccess};
 use crate::diagnostics::{Severity, ValidationReport};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -71,6 +72,8 @@ pub struct CplSequence {
     pub r#type: String,
     pub id: String,
     pub track_id: String,
+    /// RFC 5646 language tag extracted from the essence descriptor (e.g. "en", "fr")
+    pub language: Option<String>,
     pub resources: Vec<CplResource>,
 }
 
@@ -165,12 +168,74 @@ fn map_resource(r: &crate::cpl::Resource, cpl_er: &Option<String>) -> CplResourc
     }
 }
 
+/// Extract the language from an `EssenceDescriptor` by checking audio, timed-text, and IAB sub-descriptors.
+fn language_from_descriptor(ed: &EssenceDescriptor) -> Option<String> {
+    // Audio: WAVEPCMDescriptor → soundfield_group_label_sub_descriptor → rfc5646_spoken_language
+    if let Some(wave) = &ed.wave_pcm_descriptor {
+        if let Some(subs) = &wave.sub_descriptors {
+            if let Some(sf) = &subs.soundfield_group_label_sub_descriptor {
+                if let Some(lang) = &sf.rfc5646_spoken_language {
+                    let s = lang.as_str();
+                    if !s.is_empty() {
+                        return Some(s.to_string());
+                    }
+                }
+            }
+        }
+    }
+    // IAB: IABEssenceDescriptor → iab_soundfield_label_sub_descriptor → rfc5646_spoken_language
+    if let Some(iab) = &ed.iab_essence_descriptor {
+        if let Some(subs) = &iab.sub_descriptors {
+            if let Some(sf) = &subs.iab_soundfield_label_sub_descriptor {
+                if let Some(lang) = &sf.rfc5646_spoken_language {
+                    let s = lang.as_str();
+                    if !s.is_empty() {
+                        return Some(s.to_string());
+                    }
+                }
+            }
+        }
+    }
+    // Timed text: DCTimedTextDescriptor → rfc5646_language_tag_list
+    if let Some(tt) = &ed.dc_timed_text_descriptor {
+        let langs: Vec<&str> = tt
+            .rfc5646_language_tag_list
+            .iter()
+            .map(|lt| lt.as_str())
+            .filter(|s| !s.is_empty())
+            .collect();
+        if !langs.is_empty() {
+            return Some(langs.join(","));
+        }
+    }
+    None
+}
+
+/// Look up the language for a sequence by finding the first resource's `source_encoding`
+/// and resolving it against the essence descriptor list.
+fn language_for_sequence(
+    seq: &dyn SequenceAccess,
+    descriptors: &HashMap<ImfUuid, &EssenceDescriptor>,
+) -> Option<String> {
+    for resource in &seq.resource_list().resources {
+        if let Some(source_encoding) = &resource.source_encoding {
+            if let Some(ed) = descriptors.get(source_encoding) {
+                if let Some(lang) = language_from_descriptor(ed) {
+                    return Some(lang);
+                }
+            }
+        }
+    }
+    None
+}
+
 /// Merge a single trait-object sequence into the track map
 fn merge_sequences_dyn(
     track_map: &mut HashMap<String, CplSequence>,
     type_name: &str,
     seq: &dyn SequenceAccess,
     cpl_er: &Option<String>,
+    descriptors: &HashMap<ImfUuid, &EssenceDescriptor>,
 ) {
     let tid = seq.track_id().to_string();
     let resources: Vec<CplResource> = seq
@@ -182,12 +247,14 @@ fn merge_sequences_dyn(
     if let Some(existing) = track_map.get_mut(&tid) {
         existing.resources.extend(resources);
     } else {
+        let language = language_for_sequence(seq, descriptors);
         track_map.insert(
             tid.clone(),
             CplSequence {
                 r#type: type_name.to_string(),
                 id: seq.id().to_string(),
                 track_id: tid,
+                language,
                 resources,
             },
         );
@@ -201,11 +268,22 @@ fn extract_sequences(cpl: &crate::cpl::CompositionPlaylist) -> (Option<String>, 
         .as_ref()
         .map(|er| format!("{}/{}", er.numerator, er.denominator));
 
+    // Build essence descriptor lookup by ID for language resolution
+    let descriptors: HashMap<ImfUuid, &EssenceDescriptor> =
+        if let Some(edl) = &cpl.essence_descriptor_list {
+            edl.essence_descriptors
+                .iter()
+                .map(|ed| (ed.id, ed))
+                .collect()
+        } else {
+            HashMap::new()
+        };
+
     let mut track_map: HashMap<String, CplSequence> = HashMap::new();
 
     for seg in &cpl.segment_list.segments {
         for (seq, type_name) in seg.sequence_list.all_sequences_typed() {
-            merge_sequences_dyn(&mut track_map, type_name, seq, &edit_rate);
+            merge_sequences_dyn(&mut track_map, type_name, seq, &edit_rate, &descriptors);
         }
     }
 
@@ -416,6 +494,34 @@ pub fn format_report(report: &ImfReport, color: bool) -> String {
         );
         for asset in &pkg.unreferenced_assets {
             let _ = writeln!(out, "        {}", c_dim(&asset.path, color));
+        }
+    }
+
+    // Timeline / virtual tracks per CPL
+    for cpl in &report.cpls {
+        if !cpl.sequences.is_empty() {
+            let _ = writeln!(
+                out,
+                "{}",
+                c_bold(
+                    &format!("Timeline [CPL:{}]:", &cpl.id[..cpl.id.len().min(8)]),
+                    color,
+                )
+            );
+            for seq in &cpl.sequences {
+                let label = match seq.language.as_deref() {
+                    Some(lang) => format!("{} ({})", seq.r#type, lang),
+                    None => seq.r#type.clone(),
+                };
+                let resource_count = seq.resources.len();
+                let _ = writeln!(
+                    out,
+                    "  {}  {} — {} resource(s)",
+                    c_cyan("track", color),
+                    c_bold(&label, color),
+                    resource_count,
+                );
+            }
         }
     }
 

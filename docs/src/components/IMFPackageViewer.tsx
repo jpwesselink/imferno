@@ -21,6 +21,11 @@ const audioTypeLabel = (t: string) => ({DOLBY_ATMOS:"Dolby Atmos",DOLBY_DIGITAL_
 const contentKindLabel = (t: string) => ({PRM:"Primary",VI:"Visually Impaired",HI:"Hearing Impaired",CM:"Commentary"} as any)[t]||t;
 const dynRangeLabel = (t: string) => ({SDR:"SDR",HDR10:"HDR10",HDR_DOLBY_VISION:"Dolby Vision",HLG:"HLG"} as any)[t]||t;
 const truncUuid = (u: string) => u ? u.substring(0,8)+"\u2026" : "\u2014";
+const CopyUuid = ({value}: {value: string | null | undefined}) => {
+  if(!value) return <span>{"\u2014"}</span>;
+  const copy = () => { navigator.clipboard.writeText(value).catch(()=>{}); };
+  return <span onClick={copy} title={value} className="cursor-pointer hover:text-orange-400 transition-colors">{truncUuid(value)}</span>;
+};
 const framesToTC = (frames: number | null | undefined, er: string) => { if(frames==null||!er)return"\u2014"; const p=er.trim().split(/\s+/),n=+p[0],d=p[1]?+p[1]:1; if(!n||!d)return String(frames); const fps=n/d,ts=frames/fps; return `${String(Math.floor(ts/3600)).padStart(2,"0")}:${String(Math.floor((ts%3600)/60)).padStart(2,"0")}:${String(Math.floor(ts%60)).padStart(2,"0")}:${String(Math.round((ts-Math.floor(ts))*fps)).padStart(2,"0")}`; };
 const samplesToTC = (samples: number | null | undefined, er: string) => { if(samples==null||!er)return"\u2014"; const p=er.trim().split(/\s+/),n=+p[0],d=p[1]?+p[1]:1; if(!n||!d)return String(samples); const ts=samples/(n/d); return `${String(Math.floor(ts/3600)).padStart(2,"0")}:${String(Math.floor((ts%3600)/60)).padStart(2,"0")}:${String(Math.floor(ts%60)).padStart(2,"0")}.${String(Math.round((ts-Math.floor(ts))*1000)).padStart(3,"0")}`; };
 const durationToTC = (count: number | null | undefined, er: string) => { if(count==null||!er)return"\u2014"; return +er.trim().split(/\s+/)[0]>=8000?samplesToTC(count,er):framesToTC(count,er); };
@@ -91,10 +96,10 @@ const SequenceTimeline = ({sequences,maxDuration,tracks,editRate}: any) => {
                       <tr className="border-b border-zinc-100 last:border-0 hover:bg-zinc-50/50">
                         <td className="px-2.5 py-1 font-mono text-zinc-400"><span className="px-1.5 py-px rounded text-[10px] font-semibold" style={{background:c.fillBg,color:c.fill}}>R{ri+1}</span></td>
                         <td className="px-2.5 py-1 font-mono">{durationToTC(res._offset,rr)}</td>
-                        <td className="px-2.5 py-1 font-mono text-zinc-400">{truncUuid(res.trackFileId)}</td>
+                        <td className="px-2.5 py-1 font-mono text-zinc-400"><CopyUuid value={res.trackFileId}/></td>
                         <td className="px-2.5 py-1 font-mono">{durationToTC(res.sourceDuration,rr)}{res.intrinsicDuration!=null&&res.sourceDuration!==res.intrinsicDuration&&<span className="text-zinc-400 text-[10px]"> / {durationToTC(res.intrinsicDuration,rr)}</span>}</td>
                         <td className="px-2.5 py-1 font-mono text-zinc-400">{res.entryPoint!=null?durationToTC(res.entryPoint,rr):"\u2014"}</td>
-                        <td className="px-2.5 py-1 font-mono text-[10px] text-zinc-400">{res.sourceEncoding?truncUuid(res.sourceEncoding):"\u2014"}</td>
+                        <td className="px-2.5 py-1 font-mono text-[10px] text-zinc-400"><CopyUuid value={res.sourceEncoding}/></td>
                       </tr>
                     </React.Fragment>);})}
                 </tbody></table>
@@ -123,8 +128,8 @@ const TrackTable = ({tracks}: any) => {
             <td className="px-3 py-1.5 text-zinc-500">{t._cat==="AUDIO"?contentKindLabel(t.audioContentKind):"\u2014"}</td>
             <td className="px-3 py-1.5">{t.language?<span className="inline-flex items-center gap-1"><I.Globe/>{t.language.toUpperCase()}</span>:"\u2014"}</td>
             <td className="px-3 py-1.5 font-mono text-[11px] text-zinc-500">{t.fragmentDuration||"\u2014"}</td>
-            <td className="px-3 py-1.5 font-mono text-[11px] text-zinc-400">{truncUuid(t.trackIdentifier)}</td>
-            <td className="px-3 py-1.5 font-mono text-[11px] text-zinc-400">{t.sequenceTrackId?truncUuid(t.sequenceTrackId):"\u2014"}</td>
+            <td className="px-3 py-1.5 font-mono text-[11px] text-zinc-400"><CopyUuid value={t.trackIdentifier}/></td>
+            <td className="px-3 py-1.5 font-mono text-[11px] text-zinc-400"><CopyUuid value={t.sequenceTrackId}/></td>
           </tr>))}</tbody>
       </table>
     </div>

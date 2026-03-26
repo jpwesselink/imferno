@@ -37,11 +37,6 @@
     "label": "beta (2.0.0)",
     "path": "/beta/"
   },
-  "prs": [
-    {
-      "label": "#28 feat/sequence-language-info",
-      "path": "/pr-28/"
-    }
-  ],
+  "prs": [],
   "latest": "/v2.0.0/"
 }

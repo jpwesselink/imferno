@@ -15,6 +15,7 @@ const I = {
 };
 
 const seqTypeLabel = (t: string) => ({MainImageSequence:"Video",MainAudioSequence:"Audio",SubtitlesSequence:"Subtitles",HearingImpairedCaptionsSequence:"HI Captions",ForcedNarrativeSequence:"Forced Narrative",IABSequence:"IAB Audio"} as any)[t]||t;
+const seqTypeSortOrder: Record<string, number> = {MainImageSequence:0,MainAudioSequence:1,IABSequence:2,SubtitlesSequence:3,ForcedNarrativeSequence:4,HearingImpairedCaptionsSequence:5};
 const seqTypeColor = (type: string) => ({MainImageSequence:{fill:"#3b82f6",fillBg:"rgba(59,130,246,0.12)"},MainAudioSequence:{fill:"#a855f7",fillBg:"rgba(168,85,247,0.1)"},SubtitlesSequence:{fill:"#22c55e",fillBg:"rgba(34,197,94,0.1)"},ForcedNarrativeSequence:{fill:"#f97316",fillBg:"rgba(249,115,22,0.1)"},HearingImpairedCaptionsSequence:{fill:"#eab308",fillBg:"rgba(234,179,8,0.1)"},IABSequence:{fill:"#ec4899",fillBg:"rgba(236,72,153,0.1)"}} as any)[type]||{fill:"#94a3b8",fillBg:"rgba(148,163,184,0.1)"};
 const audioTypeLabel = (t: string) => ({DOLBY_ATMOS:"Dolby Atmos",DOLBY_DIGITAL_PLUS:"DD+",DOLBY_DIGITAL:"DD",STEREO:"Stereo"} as any)[t]||t;
 const contentKindLabel = (t: string) => ({PRM:"Primary",VI:"Visually Impaired",HI:"Hearing Impaired",CM:"Commentary"} as any)[t]||t;
@@ -53,9 +54,13 @@ const SequenceTimeline = ({sequences,maxDuration,tracks,editRate}: any) => {
   const toggle = (id: any) => setExpanded(p=>{const n=new Set(p);n.has(id)?n.delete(id):n.add(id);return n;});
   const resourceRows = (seq: any) => { let o=0; return seq.sequenceResources.map((r: any)=>{const row={...r,_offset:o};o+=r.sourceDuration||0;return row;}); };
 
+  const sorted = useMemo(() => [...sequences].sort((a: any, b: any) =>
+    (seqTypeSortOrder[a.type] ?? 99) - (seqTypeSortOrder[b.type] ?? 99)
+  ), [sequences]);
+
   return (
     <div className="flex flex-col gap-0.5">
-      {sequences.map((seq: any,i: number) => {
+      {sorted.map((seq: any,i: number) => {
         const c=seqTypeColor(seq.type), totalSec=seq.sequenceResources.reduce((s: number,r: any)=>s+toSeconds(r.sourceDuration,r.editRate||editRate),0);
         const fillPct=maxDuration>0?Math.max((totalSec/maxDuration)*100,2):100, isOpen=expanded.has(seq.id||i), seqId=seq.id||i;
         return (

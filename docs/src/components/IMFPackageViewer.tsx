@@ -30,7 +30,14 @@ const CopyUuid = ({value}: {value: string | null | undefined}) => {
       setTimeout(() => setCopied(false), 1500);
     }).catch(()=>{});
   };
-  return <span onClick={copy} title={copied ? "Copied!" : value} className="cursor-pointer hover:text-orange-400 transition-colors">{truncUuid(value)}</span>;
+  return (
+    <span onClick={copy} className="relative cursor-pointer hover:text-orange-400 transition-colors group">
+      {truncUuid(value)}
+      <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 -top-8 px-2 py-1 rounded text-[10px] font-medium whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity bg-zinc-800 text-zinc-100 shadow-lg z-50">
+        {copied ? "\u2705 Copied!" : value}
+      </span>
+    </span>
+  );
 };
 const framesToTC = (frames: number | null | undefined, er: string) => { if(frames==null||!er)return"\u2014"; const p=er.trim().split(/\s+/),n=+p[0],d=p[1]?+p[1]:1; if(!n||!d)return String(frames); const fps=n/d,ts=frames/fps; return `${String(Math.floor(ts/3600)).padStart(2,"0")}:${String(Math.floor((ts%3600)/60)).padStart(2,"0")}:${String(Math.floor(ts%60)).padStart(2,"0")}:${String(Math.round((ts-Math.floor(ts))*fps)).padStart(2,"0")}`; };
 const samplesToTC = (samples: number | null | undefined, er: string) => { if(samples==null||!er)return"\u2014"; const p=er.trim().split(/\s+/),n=+p[0],d=p[1]?+p[1]:1; if(!n||!d)return String(samples); const ts=samples/(n/d); return `${String(Math.floor(ts/3600)).padStart(2,"0")}:${String(Math.floor((ts%3600)/60)).padStart(2,"0")}:${String(Math.floor(ts%60)).padStart(2,"0")}.${String(Math.round((ts-Math.floor(ts))*1000)).padStart(3,"0")}`; };

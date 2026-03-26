@@ -38,7 +38,7 @@ const SequenceTimeline = ({sequences,maxDuration,tracks,editRate}: any) => {
     for(const t of(tracks?.AUDIO||[])) if(t.sequenceNumber!=null){ if(t.mcaTagName&&!mca[t.sequenceNumber])mca[t.sequenceNumber]=t.mcaTagName; if(t.audioContentKind&&!kind[t.sequenceNumber])kind[t.sequenceNumber]=t.audioContentKind; }
     return{lang,mca,kind};
   },[tracks]);
-  const buildLabel = (seq: any) => { const p=[seqTypeLabel(seq.type)],l=seqMeta.lang[seq.sequenceNumber],m=seqMeta.mca[seq.sequenceNumber],k=seqMeta.kind[seq.sequenceNumber]; if(l)p.push(l); if(m)p.push(m); if(k&&k!=="PRM")p.push(contentKindLabel(k)); return p.join(" \u00b7 "); };
+  const buildLabel = (seq: any) => { const p=[seqTypeLabel(seq.type)],l=seqMeta.lang[seq.sequenceNumber]||(seq.language?seq.language.toUpperCase():null),m=seqMeta.mca[seq.sequenceNumber],k=seqMeta.kind[seq.sequenceNumber]; if(l)p.push(l); if(m)p.push(m); if(k&&k!=="PRM")p.push(contentKindLabel(k)); return p.join(" \u00b7 "); };
   const toggle = (id: any) => setExpanded(p=>{const n=new Set(p);n.has(id)?n.delete(id):n.add(id);return n;});
   const resourceRows = (seq: any) => { let o=0; return seq.sequenceResources.map((r: any)=>{const row={...r,_offset:o};o+=r.sourceDuration||0;return row;}); };
 

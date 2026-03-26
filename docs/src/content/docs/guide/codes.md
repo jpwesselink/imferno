@@ -402,11 +402,11 @@ Codes emitted by imferno's package-level logic for conditions that don't map to 
 |------|-------------|-----------------|----------|
 | `IMFERNO:Package/UnreferencedAsset` | Asset is present in the AssetMap but not referenced by any CPL Virtual Track and has no SCM declaration. Likely a sidecar essence without an SCM. | INFO | Structure |
 | `IMFERNO:Package/UnlistedEssence` | MXF file is present in the package directory but not listed in the AssetMap. The file is invisible to any conforming IMF reader. | WARNING | Structure |
-| `IMFERNO:Package/ParseError` | IMF package failed to parse due to a structural error. | Critical | Structure |
-| `IMFERNO:Package/PklParseError` | A Packing List referenced by the AssetMap could not be parsed. | Error | Structure |
-| `IMFERNO:Package/XmlAssetParseError` | An XML asset could not be parsed as CPL, OPL, or SCM. | Warning | Structure |
-| `IMFERNO:Package/XmlReadError` | An XML file could not be read from disk. | Warning | Structure |
-| `IMFERNO:Package/ReadDirError` | Could not scan the package directory. | Info | Structure |
-| `IMFERNO:Package/DirEntryError` | Could not read a directory entry while scanning. | Info | Structure |
-| `IMFERNO:Package/PathTraversal` | An asset chunk path attempts to escape the package root directory. | Error | Structure |
+| `IMFERNO:Package/ParseError` | IMF package failed to parse due to a structural error. | CRITICAL | Structure |
+| `IMFERNO:Package/PklParseError` | A Packing List referenced by the AssetMap could not be parsed. | ERROR | Structure |
+| `IMFERNO:Package/XmlAssetParseError` | An XML asset could not be parsed as CPL, OPL, or SCM. | WARNING | Structure |
+| `IMFERNO:Package/XmlReadError` | An XML file could not be read from disk. | WARNING | Structure |
+| `IMFERNO:Package/ReadDirError` | Could not scan the package directory. | INFO | Structure |
+| `IMFERNO:Package/DirEntryError` | Could not read a directory entry while scanning for unlisted essences. | INFO | Structure |
+| `IMFERNO:Package/PathTraversal` | An asset chunk path attempts to escape the package root directory (path traversal). | ERROR | Structure |
 

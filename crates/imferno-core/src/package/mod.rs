@@ -3420,4 +3420,37 @@ mod tests {
             "valid package should have no path traversal issues",
         );
     }
+
+    #[test]
+    fn sequence_language_extracted_from_descriptors() {
+        let test_path = test_data("MERIDIAN_Netflix_Photon_161006");
+        let files = read_dir(test_path).unwrap();
+        let package = Imferno::parse(files).unwrap();
+        let report =
+            crate::package::report::build_report(&package, &ValidationOptions::default(), None)
+                .unwrap();
+        for cpl in &report.cpls {
+            let audio_seqs: Vec<_> = cpl
+                .sequences
+                .iter()
+                .filter(|s| s.r#type == "MainAudio")
+                .collect();
+            assert!(
+                !audio_seqs.is_empty(),
+                "should have at least one audio sequence"
+            );
+            for seq in &audio_seqs {
+                eprintln!(
+                    "Audio seq {} language: {:?}",
+                    seq.track_id, seq.language
+                );
+                assert_eq!(
+                    seq.language.as_deref(),
+                    Some("en"),
+                    "MERIDIAN audio should have language 'en', got {:?}",
+                    seq.language,
+                );
+            }
+        }
+    }
 }

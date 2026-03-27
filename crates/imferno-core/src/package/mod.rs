@@ -367,7 +367,7 @@ pub struct Imferno {
 }
 
 fn serialize_path<S: serde::Serializer>(
-    path: &PathBuf,
+    path: &Path,
     s: S,
 ) -> std::result::Result<S::Ok, S::Error> {
     s.serialize_str(&path.to_string_lossy())

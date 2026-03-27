@@ -366,10 +366,7 @@ pub struct Imferno {
     pub asset_paths: HashMap<ImfUuid, PathBuf>,
 }
 
-fn serialize_path<S: serde::Serializer>(
-    path: &Path,
-    s: S,
-) -> std::result::Result<S::Ok, S::Error> {
+fn serialize_path<S: serde::Serializer>(path: &Path, s: S) -> std::result::Result<S::Ok, S::Error> {
     s.serialize_str(&path.to_string_lossy())
 }
 

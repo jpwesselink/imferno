@@ -53,3 +53,24 @@ export declare function parsePackage(files: Record<string, string>): any
  * @returns The full parsed Imferno package object.
  */
 export declare function parsePackageFromPath(path: string): any
+
+/**
+ * Parse and validate an IMF package from in-memory XML strings.
+ *
+ * This is the recommended entry point. Returns the full parsed package
+ * plus all validation findings.
+ *
+ * @param files - A map of filename to XML content
+ * @param options - Optional validation options
+ * @returns `{ package, validation }` — full Imferno struct + ValidationReport
+ */
+export declare function validate(files: Record<string, string>, options?: any | undefined | null): any
+
+/**
+ * Parse and validate an IMF package directory on disk.
+ *
+ * @param path - Path to the IMP directory
+ * @param options - Optional validation options
+ * @returns `{ package, validation }` — full Imferno struct + ValidationReport
+ */
+export declare function validatePath(path: string, options?: any | undefined | null): any

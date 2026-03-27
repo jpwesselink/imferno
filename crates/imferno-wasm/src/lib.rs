@@ -8,7 +8,8 @@
 //! - [`format_report`] — render an [`ImfReport`] as a human-readable string.
 
 use imferno_core::package::{
-    build_report, format_report, ImfReport, Imferno, RulesConfig, ValidationOptions,
+    build_report, format_report, validate as validate_package, ImfReport, Imferno, RulesConfig,
+    ValidationOptions,
 };
 use imferno_core::validation::{
     parse_app_spec_targets, parse_core_spec_target, AppSpecTarget, CoreSpecTarget,
@@ -116,6 +117,37 @@ pub fn parse_package_js(
         .map_err(|e| JsValue::from_str(&format!("Failed to parse IMF package: {}", e)))?;
 
     to_js_value(&package)
+}
+
+// =============================================================================
+// VALIDATE — parse + validate, returns { package, validation }
+// =============================================================================
+
+/// Parse and validate an IMF package in one call.
+///
+/// Returns `{ package, validation }` where `package` is the full `Imferno`
+/// struct and `validation` is the `ValidationReport` with all findings.
+///
+/// This is the recommended entry point.
+#[wasm_bindgen(js_name = "validate")]
+pub fn validate_js(
+    #[wasm_bindgen(js_name = "files")] files_js: JsValue,
+    #[wasm_bindgen(js_name = "options")] options_js: JsValue,
+) -> Result<JsValue, JsValue> {
+    let files: std::collections::HashMap<String, String> = serde_wasm_bindgen::from_value(files_js)
+        .map_err(|e| JsValue::from_str(&format!("Invalid files argument: {}", e)))?;
+
+    let (rules, core_spec, app_specs) = parse_options(&options_js)?;
+
+    let options = ValidationOptions {
+        rules,
+        core_spec,
+        app_specs,
+        ..Default::default()
+    };
+
+    let result = validate_package(files, &options);
+    to_js_value(&result)
 }
 
 // =============================================================================

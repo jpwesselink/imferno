@@ -42,10 +42,16 @@ export async function formatReport(report) {
     return wasm.formatReport(report);
 }
 
-// Parse an IMF package, returning the full Imferno struct
+// Parse an IMF package, returning the full Imferno struct (no validation)
 export async function parsePackage(files) {
     await ensureInit();
     return wasm.parsePackage(files);
+}
+
+// Parse + validate — returns { package, validation }
+export async function validate(files, options) {
+    await ensureInit();
+    return wasm.validate(files, options);
 }
 
 // Utility

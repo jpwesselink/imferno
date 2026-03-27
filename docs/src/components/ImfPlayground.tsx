@@ -399,9 +399,8 @@ export default function ImfPlayground() {
         const mod = getWasmModule();
         if (!mod || Object.keys(xmlMapRef.current).length === 0) return;
         try {
-            const pkg = mod.parsePackage(xmlMapRef.current);
-            const report = mod.buildReport(xmlMapRef.current, { rules: rulesConfig });
-            setPackageData(mapToViewData(pkg, report));
+            const result = mod.validate(xmlMapRef.current, { rules: rulesConfig });
+            setPackageData(mapToViewData(result.package, { validation: result.validation }));
             setParseError(null);
         } catch (e) {
             console.error('[imf] re-validate error:', e);
@@ -438,11 +437,10 @@ export default function ImfPlayground() {
         const mod = getWasmModule();
         if (mod && Object.keys(xmlMap).length > 0) {
             try {
-                const pkg = mod.parsePackage(xmlMap);
-                const report = mod.buildReport(xmlMap, { rules: rulesConfigRef.current });
-                setPackageData(mapToViewData(pkg, report));
+                const result = mod.validate(xmlMap, { rules: rulesConfigRef.current });
+                setPackageData(mapToViewData(result.package, { validation: result.validation }));
             } catch (e) {
-                console.error('[imf] parsePackage/buildReport error:', e);
+                console.error('[imf] validate error:', e);
                 setParseError(String(e));
             }
         }

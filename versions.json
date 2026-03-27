@@ -37,6 +37,11 @@
     "label": "beta (2.0.0)",
     "path": "/beta/"
   },
-  "prs": [],
+  "prs": [
+    {
+      "label": "#31 feat/rspress-docs",
+      "path": "/pr-31/"
+    }
+  ],
   "latest": "/v2.0.0/"
 }

@@ -181,29 +181,6 @@ function debugString(val) {
     // TODO we could test for more things here, like `Set`s and `Map`s.
     return className;
 }
-/**
- * Initialize the WASM module
- */
-export function init() {
-    wasm.init();
-}
-
-/**
- * Get library version
- * @returns {string}
- */
-export function getVersion() {
-    let deferred1_0;
-    let deferred1_1;
-    try {
-        const ret = wasm.getVersion();
-        deferred1_0 = ret[0];
-        deferred1_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
-    } finally {
-        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
-    }
-}
 
 function takeFromExternrefTable0(idx) {
     const value = wasm.__wbindgen_export_4.get(idx);
@@ -260,6 +237,30 @@ export function formatReport(report) {
     } finally {
         wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
     }
+}
+
+/**
+ * Get library version
+ * @returns {string}
+ */
+export function getVersion() {
+    let deferred1_0;
+    let deferred1_1;
+    try {
+        const ret = wasm.getVersion();
+        deferred1_0 = ret[0];
+        deferred1_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+    }
+}
+
+/**
+ * Initialize the WASM module
+ */
+export function init() {
+    wasm.init();
 }
 
 const EXPECTED_RESPONSE_TYPES = new Set(['basic', 'cors', 'default']);
@@ -393,7 +394,7 @@ function __wbg_get_imports() {
         const ret = arg0.length;
         return ret;
     };
-    imports.wbg.__wbg_log_04115c32d2e6ccd8 = function(arg0, arg1) {
+    imports.wbg.__wbg_log_be5b2b60a5a1079e = function(arg0, arg1) {
         console.log(getStringFromWasm0(arg0, arg1));
     };
     imports.wbg.__wbg_new0_b0a0a38c201e6df5 = function() {

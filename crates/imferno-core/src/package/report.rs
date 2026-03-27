@@ -74,6 +74,10 @@ pub struct CplSequence {
     pub track_id: String,
     /// RFC 5646 language tag extracted from the essence descriptor (e.g. "en", "fr")
     pub language: Option<String>,
+    /// Audio channel count (e.g. 2, 6, 8) — only for audio sequences
+    pub channel_count: Option<u32>,
+    /// MCA soundfield label (e.g. "5.1", "7.1", "Atmos") — only for audio sequences
+    pub soundfield: Option<String>,
     pub resources: Vec<CplResource>,
 }
 
@@ -211,20 +215,41 @@ fn language_from_descriptor(ed: &EssenceDescriptor) -> Option<String> {
     None
 }
 
-/// Look up the language for a sequence by finding the first resource's `source_encoding`
-/// and resolving it against the essence descriptor list.
-fn language_for_sequence(
-    seq: &dyn SequenceAccess,
-    descriptors: &HashMap<ImfUuid, &EssenceDescriptor>,
-) -> Option<String> {
-    for resource in &seq.resource_list().resources {
-        if let Some(source_encoding) = &resource.source_encoding {
-            if let Some(ed) = descriptors.get(source_encoding) {
-                if let Some(lang) = language_from_descriptor(ed) {
-                    return Some(lang);
+/// Extract the audio channel count from an essence descriptor.
+fn channel_count_from_descriptor(ed: &EssenceDescriptor) -> Option<u32> {
+    if let Some(wave) = &ed.wave_pcm_descriptor {
+        return wave.channel_count;
+    }
+    if let Some(iab) = &ed.iab_essence_descriptor {
+        return iab.channel_count;
+    }
+    None
+}
+
+/// Extract the soundfield label (e.g. "5.1", "7.1", "Atmos") from an essence descriptor.
+fn soundfield_from_descriptor(ed: &EssenceDescriptor) -> Option<String> {
+    if let Some(wave) = &ed.wave_pcm_descriptor {
+        if let Some(subs) = &wave.sub_descriptors {
+            if let Some(sf) = &subs.soundfield_group_label_sub_descriptor {
+                if let Some(mca) = &sf.mca_tag_symbol {
+                    return Some(mca.to_string());
+                }
+                if let Some(name) = &sf.mca_tag_name {
+                    return Some(name.clone());
                 }
             }
         }
+    }
+    if let Some(iab) = &ed.iab_essence_descriptor {
+        if let Some(subs) = &iab.sub_descriptors {
+            if let Some(sf) = &subs.iab_soundfield_label_sub_descriptor {
+                if let Some(mca) = &sf.mca_tag_symbol {
+                    return Some(mca.to_string());
+                }
+            }
+        }
+        // IAB without a label is Dolby Atmos
+        return Some("Atmos".to_string());
     }
     None
 }
@@ -247,7 +272,16 @@ fn merge_sequences_dyn(
     if let Some(existing) = track_map.get_mut(&tid) {
         existing.resources.extend(resources);
     } else {
-        let language = language_for_sequence(seq, descriptors);
+        // Resolve metadata from essence descriptor
+        let ed = seq
+            .resource_list()
+            .resources
+            .first()
+            .and_then(|r| r.source_encoding.as_ref())
+            .and_then(|se| descriptors.get(se).copied());
+        let language = ed.and_then(language_from_descriptor);
+        let channel_count = ed.and_then(channel_count_from_descriptor);
+        let soundfield = ed.and_then(soundfield_from_descriptor);
         track_map.insert(
             tid.clone(),
             CplSequence {
@@ -255,6 +289,8 @@ fn merge_sequences_dyn(
                 id: seq.id().to_string(),
                 track_id: tid,
                 language,
+                channel_count,
+                soundfield,
                 resources,
             },
         );

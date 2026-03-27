@@ -336,5 +336,12 @@ export const codes = {
   Imferno: {
     UnreferencedAsset: "IMFERNO:Package/UnreferencedAsset",
     UnlistedEssence: "IMFERNO:Package/UnlistedEssence",
+    ParseError: "IMFERNO:Package/ParseError",
+    PklParseError: "IMFERNO:Package/PklParseError",
+    XmlAssetParseError: "IMFERNO:Package/XmlAssetParseError",
+    XmlReadError: "IMFERNO:Package/XmlReadError",
+    ReadDirError: "IMFERNO:Package/ReadDirError",
+    DirEntryError: "IMFERNO:Package/DirEntryError",
+    PathTraversal: "IMFERNO:Package/PathTraversal",
   }
 };

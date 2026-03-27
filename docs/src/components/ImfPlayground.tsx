@@ -139,6 +139,9 @@ function mapReportToViewData(report: any): any {
                         type: normalizeSeqType(seq.type),
                         id: seq.id ?? '',
                         trackId: seq.trackId ?? '',
+                        language: seq.language ?? null,
+                        channelCount: seq.channelCount ?? null,
+                        soundfield: seq.soundfield ?? null,
                         segmentId: null,
                         sequenceNumber: i,
                         sequenceResources: (seq.resources ?? []).map((r: any) => ({ // eslint-disable-line @typescript-eslint/no-explicit-any

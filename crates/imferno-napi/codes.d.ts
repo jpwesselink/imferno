@@ -336,5 +336,12 @@ export declare const codes: {
   readonly Imferno: {
     readonly UnreferencedAsset: "IMFERNO:Package/UnreferencedAsset";
     readonly UnlistedEssence: "IMFERNO:Package/UnlistedEssence";
+    readonly ParseError: "IMFERNO:Package/ParseError";
+    readonly PklParseError: "IMFERNO:Package/PklParseError";
+    readonly XmlAssetParseError: "IMFERNO:Package/XmlAssetParseError";
+    readonly XmlReadError: "IMFERNO:Package/XmlReadError";
+    readonly ReadDirError: "IMFERNO:Package/ReadDirError";
+    readonly DirEntryError: "IMFERNO:Package/DirEntryError";
+    readonly PathTraversal: "IMFERNO:Package/PathTraversal";
   }
 };

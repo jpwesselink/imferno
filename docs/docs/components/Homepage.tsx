@@ -14,19 +14,23 @@ const rawBase = typeof import.meta !== 'undefined' ? (import.meta as any).env?.B
 const base = rawBase.endsWith('/') ? rawBase : rawBase + '/';
 
 export default function Homepage() {
-  // Load WASM module on mount
+  // Load WASM module on mount (browser only — skip during SSR)
   useEffect(() => {
-    if (typeof window === 'undefined' || window.__imfWasm) return;
-    (async () => {
+    if (typeof window === 'undefined' || typeof document === 'undefined') return;
+    if (window.__imfWasm) return;
+    const script = document.createElement('script');
+    script.type = 'module';
+    script.textContent = `
       try {
-        const mod = await import(/* @vite-ignore */ `${base}wasm/imferno_wasm.js`);
+        const mod = await import('${base}wasm/imferno_wasm.js');
         await mod.default();
         window.__imfWasm = mod;
       } catch (e) {
         window.__imfWasmError = String(e);
       }
       window.dispatchEvent(new CustomEvent('imf-wasm-ready'));
-    })();
+    `;
+    document.head.appendChild(script);
   }, []);
 
   return (

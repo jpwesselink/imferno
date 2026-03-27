@@ -31,3 +31,25 @@ export declare function buildReportFromPath(path: string, options?: any | undefi
  * @returns A formatted plain-text report string.
  */
 export declare function formatReport(report: any): string
+
+/**
+ * Parse an IMF package from in-memory XML strings, returning the full parsed package.
+ *
+ * Unlike `buildReport` which returns a validation summary, this returns the
+ * complete `Imferno` struct with all essence descriptors, locales, content versions, etc.
+ *
+ * @param files - A map of filename to XML content (e.g. `{ "ASSETMAP.xml": "..." }`)
+ * @returns The full parsed Imferno package object.
+ */
+export declare function parsePackage(files: Record<string, string>): any
+
+/**
+ * Parse an IMF package directory on disk, returning the full parsed package.
+ *
+ * Unlike `buildReportFromPath` which returns a validation summary, this returns the
+ * complete `Imferno` struct with all essence descriptors, locales, content versions, etc.
+ *
+ * @param path - Path to the IMP directory
+ * @returns The full parsed Imferno package object.
+ */
+export declare function parsePackageFromPath(path: string): any

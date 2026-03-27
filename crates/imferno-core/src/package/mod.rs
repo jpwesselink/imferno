@@ -259,19 +259,26 @@ impl From<&FileValidationError> for ValidationIssue {
     }
 }
 
-/// High-level IMF package representation
-#[derive(Debug)]
+/// High-level IMF package representation.
+///
+/// This is the full parsed package — all CPLs, PKLs, AssetMap, SCMs, and
+/// cross-references. Serializable to JSON for WASM/NAPI consumers.
+#[derive(Debug, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Imferno {
     /// Package root directory
+    #[serde(serialize_with = "serialize_path")]
     pub root_path: PathBuf,
 
     /// Volume index (VOLINDEX.xml)
     pub volume_index: VolumeIndex,
 
     /// Load-time VOLINDEX diagnostics (ST 429-9), emitted before all other checks.
+    #[serde(skip)]
     pub volindex_issues: Vec<ValidationIssue>,
 
     /// Load-time parse diagnostics (PKL/CPL/OPL/SCM failures), emitted during validation.
+    #[serde(skip)]
     pub(crate) parse_issues: Vec<ValidationIssue>,
 
     /// Asset map (ASSETMAP.xml)
@@ -284,6 +291,7 @@ pub struct Imferno {
     pub composition_playlists: HashMap<ImfUuid, CompositionPlaylist>,
 
     /// Raw CPL XML content mapped by UUID (retained for future signature verification).
+    #[serde(skip)]
     #[allow(dead_code)]
     pub(crate) cpl_xml_content: HashMap<ImfUuid, String>,
 
@@ -294,7 +302,27 @@ pub struct Imferno {
     pub sidecar_composition_maps: HashMap<ImfUuid, crate::scm::SidecarCompositionMap>,
 
     /// Asset UUID to file path mapping
+    #[serde(serialize_with = "serialize_path_map")]
     pub asset_paths: HashMap<ImfUuid, PathBuf>,
+}
+
+fn serialize_path<S: serde::Serializer>(
+    path: &PathBuf,
+    s: S,
+) -> std::result::Result<S::Ok, S::Error> {
+    s.serialize_str(&path.to_string_lossy())
+}
+
+fn serialize_path_map<S: serde::Serializer>(
+    map: &HashMap<ImfUuid, PathBuf>,
+    s: S,
+) -> std::result::Result<S::Ok, S::Error> {
+    use serde::ser::SerializeMap;
+    let mut m = s.serialize_map(Some(map.len()))?;
+    for (k, v) in map {
+        m.serialize_entry(k, &v.to_string_lossy().into_owned())?;
+    }
+    m.end()
 }
 
 /// Resolve an asset chunk path against the package root, rejecting path traversal.

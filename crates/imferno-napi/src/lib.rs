@@ -98,6 +98,38 @@ pub fn format_report_js(report: serde_json::Value) -> napi::Result<String> {
 }
 
 // =============================================================================
+// Parse package — full serialized Imferno struct
+// =============================================================================
+
+/// Parse an IMF package from in-memory files, returning the full parsed package.
+#[napi(js_name = "parsePackage")]
+pub fn parse_package(
+    files: HashMap<String, String>,
+) -> napi::Result<serde_json::Value> {
+    let package = Imferno::parse(files)
+        .map_err(|e| napi::Error::from_reason(format!("Failed to parse IMF package: {}", e)))?;
+
+    serde_json::to_value(&package)
+        .map_err(|e| napi::Error::from_reason(format!("Serialization error: {}", e)))
+}
+
+/// Parse an IMF package from a directory path, returning the full parsed package.
+#[napi(js_name = "parsePackageFromPath")]
+pub fn parse_package_from_path(
+    path: String,
+) -> napi::Result<serde_json::Value> {
+    let pkg_path = PathBuf::from(&path);
+    let files = imferno_core::package::read_dir(&pkg_path)
+        .map_err(|e| napi::Error::from_reason(format!("Failed to read directory: {}", e)))?;
+
+    let package = Imferno::parse(files)
+        .map_err(|e| napi::Error::from_reason(format!("Failed to parse IMF package: {}", e)))?;
+
+    serde_json::to_value(&package)
+        .map_err(|e| napi::Error::from_reason(format!("Serialization error: {}", e)))
+}
+
+// =============================================================================
 // Internal helpers
 // =============================================================================
 

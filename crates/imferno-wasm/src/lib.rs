@@ -98,6 +98,27 @@ pub fn format_report_js(
 }
 
 // =============================================================================
+// PARSE PACKAGE — full serialized Imferno struct
+// =============================================================================
+
+/// Parse an IMF package from in-memory files, returning the full parsed package.
+///
+/// Unlike `buildReport` which returns a summary, this returns the complete
+/// `Imferno` struct with all essence descriptors, locales, content versions, etc.
+#[wasm_bindgen(js_name = "parsePackage")]
+pub fn parse_package_js(
+    #[wasm_bindgen(js_name = "files")] files_js: JsValue,
+) -> Result<JsValue, JsValue> {
+    let files: std::collections::HashMap<String, String> = serde_wasm_bindgen::from_value(files_js)
+        .map_err(|e| JsValue::from_str(&format!("Invalid files argument: {}", e)))?;
+
+    let package = Imferno::parse(files)
+        .map_err(|e| JsValue::from_str(&format!("Failed to parse IMF package: {}", e)))?;
+
+    to_js_value(&package)
+}
+
+// =============================================================================
 // Internal helpers
 // =============================================================================
 

@@ -1,0 +1,9 @@
+[
+  { "type": "file", "name": "index", "label": "Introduction" },
+  { "type": "file", "name": "quick-start", "label": "Getting Started" },
+  { "type": "file", "name": "validation", "label": "Validation" },
+  { "type": "file", "name": "config", "label": "Configuration" },
+  { "type": "file", "name": "codes", "label": "Validation Codes" },
+  { "type": "file", "name": "packages", "label": "IMF Packages" },
+  { "type": "file", "name": "examples", "label": "Examples" }
+]

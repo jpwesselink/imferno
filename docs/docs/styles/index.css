@@ -1,0 +1,61 @@
+:root {
+  --rp-c-brand: #f97316;
+  --rp-c-brand-light: #fb923c;
+  --rp-c-brand-lighter: #fdba74;
+  --rp-c-brand-dark: #ea580c;
+  --rp-c-brand-darker: #c2410c;
+  --rp-c-brand-tint: rgba(249, 115, 22, 0.16);
+}
+
+:where(html:not(.rp-dark)) {
+  --rp-home-hero-title-color: #f97316;
+  --rp-home-hero-title-bg: #c2410c;
+  --rp-home-background-bg: #fff;
+  --rp-home-feature-bg: #f9f9f9;
+}
+
+:where(html.rp-dark) {
+  --rp-home-hero-title-color: #f97316;
+  --rp-home-hero-title-bg: #c2410c;
+  --rp-home-background-bg: #121212;
+  --rp-home-feature-bg: #1a1a1a;
+}
+
+/* Version switcher banner */
+.version-banner {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: #1a1a1a;
+  border-top: 1px solid #333;
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+}
+
+html:not(.rp-dark) .version-banner {
+  background: #f5f5f5;
+  border-top: 1px solid #ddd;
+}
+
+.version-banner a {
+  color: var(--rp-c-brand);
+  text-decoration: none;
+}
+
+.version-banner a:hover {
+  text-decoration: underline;
+}
+
+.version-banner .separator {
+  color: #666;
+}
+
+.version-banner .label {
+  font-weight: 600;
+  margin-right: 4px;
+}

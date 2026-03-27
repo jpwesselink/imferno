@@ -1,0 +1,145 @@
+---
+title: Getting Started
+description: Parse and validate your first IMF package.
+---
+
+### CLI
+
+```bash
+# Install via npm (prebuilt binaries for all platforms)
+npm install -g imferno
+
+# Or via Cargo
+cargo install imferno
+```
+
+```sh
+# Validate an IMF package
+imferno validate /path/to/your.imp
+
+# JSON output
+imferno validate /path/to/your.imp --format json
+
+# Verify SHA-1 hashes against PKL
+imferno validate /path/to/your.imp --verify-hashes
+
+# Custom rules config
+imferno validate /path/to/your.imp --rules-config rules.json
+
+# Export a full report (JSON)
+imferno export /path/to/your.imp
+```
+
+See the [CLI Reference](/reference/cli/) for all commands and options.
+
+### Rust
+
+```toml
+[dependencies]
+imferno-core = "2.0"
+```
+
+```rust
+use imferno_core::package::{Imferno, ValidationOptions, read_dir};
+
+let files = read_dir("/path/to/your.imp")?;
+let report = Imferno::parse_and_validate(files, &ValidationOptions::default());
+
+if report.is_compliant {
+    println!("OK");
+} else {
+    for issue in &report.critical {
+        eprintln!("[critical] {} — {}", issue.code, issue.message);
+    }
+    for issue in &report.errors {
+        eprintln!("[error] {} — {}", issue.code, issue.message);
+    }
+}
+```
+
+#### Parse and report
+
+```rust
+use imferno_core::package::{Imferno, read_dir, build_report, format_report, ValidationOptions};
+
+let files = read_dir("/path/to/your.imp")?;
+let pkg = Imferno::parse(files)?;
+let report = build_report(&pkg, &ValidationOptions::default(), None).unwrap();
+
+print!("{}", format_report(&report, false));
+```
+
+See the [Rust API Reference](/reference/rust/) for the full API surface.
+
+### WASM
+
+```bash
+npm install @imferno/wasm
+```
+
+ESM module powered by WebAssembly. Use it in any browser or bundler.
+
+```javascript
+import { buildReport, formatReport } from '@imferno/wasm';
+
+const report = await buildReport({
+    'VOLINDEX.xml': volindexXml,
+    'ASSETMAP.xml': assetmapXml,
+    'PKL_abc.xml':  pklXml,
+    'CPL_def.xml':  cplXml,
+});
+
+// Pretty-print
+console.log(formatReport(report));
+
+// Check programmatically
+if (!report.validation.is_compliant) {
+    for (const err of report.validation.errors) {
+        console.error(err.code, err.message);
+    }
+}
+```
+
+See the [WASM API Reference](/reference/wasm/) for the full API surface.
+
+### Node.js
+
+```bash
+npm install @imferno/node
+```
+
+Native bindings via NAPI — filesystem access, hash verification, and native speed.
+
+```javascript
+import { buildReportFromPath, formatReport } from '@imferno/node';
+
+const report = buildReportFromPath('./my-imp');
+
+// Pretty-print
+console.log(formatReport(report));
+
+// Check programmatically
+if (!report.validation.is_compliant) {
+    for (const err of report.validation.errors) {
+        console.error(err.code, err.message);
+    }
+}
+```
+
+#### Validate from strings
+
+Same API as `@imferno/wasm` — no filesystem access:
+
+```javascript
+import { buildReport, formatReport } from '@imferno/node';
+
+const report = buildReport({
+    'ASSETMAP.xml': assetmapXml,
+    'PKL_abc.xml': pklXml,
+    'CPL_def.xml': cplXml,
+});
+
+console.log(formatReport(report));
+```
+
+See the [Node.js API Reference](/reference/node/) for the full API surface.

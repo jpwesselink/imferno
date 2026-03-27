@@ -42,21 +42,14 @@ jobs:
       - name: Install wasm-pack
         run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: latest
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: pnpm
-          cache-dependency-path: docs/pnpm-lock.yaml
 
       - name: Install docs dependencies
         working-directory: docs
-        run: pnpm install
+        run: npm install
 
       - name: Determine deploy target
         id: target
@@ -97,17 +90,17 @@ jobs:
       - name: Build WASM and generate docs
         run: cargo xtask build-docs
 
-      - name: Build Astro site
+      - name: Build Rspress site
         working-directory: docs
         env:
           DOCS_VERSION: ${{ steps.target.outputs.docs_version }}
-        run: pnpm run build
+        run: npx rspress build
 
       - name: Deploy to gh-pages
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./docs/dist
+          publish_dir: ./docs/doc_build
           destination_dir: ${{ steps.target.outputs.subdir }}
           keep_files: true
 

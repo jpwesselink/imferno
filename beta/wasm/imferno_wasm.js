@@ -76,6 +76,41 @@ export function init() {
     wasm.init();
 }
 
+/**
+ * Parse an IMF package from in-memory files, returning the full parsed package.
+ *
+ * Unlike `buildReport` which returns a summary, this returns the complete
+ * `Imferno` struct with all essence descriptors, locales, content versions, etc.
+ * @param {any} files
+ * @returns {any}
+ */
+export function parsePackage(files) {
+    const ret = wasm.parsePackage(files);
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return takeFromExternrefTable0(ret[0]);
+}
+
+/**
+ * Parse and validate an IMF package in one call.
+ *
+ * Returns `{ package, validation }` where `package` is the full `Imferno`
+ * struct and `validation` is the `ValidationReport` with all findings.
+ *
+ * This is the recommended entry point.
+ * @param {any} files
+ * @param {any} options
+ * @returns {any}
+ */
+export function validate(files, options) {
+    const ret = wasm.validate(files, options);
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return takeFromExternrefTable0(ret[0]);
+}
+
 function __wbg_get_imports() {
     const import0 = {
         __proto__: null,

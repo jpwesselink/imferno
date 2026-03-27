@@ -3440,10 +3440,7 @@ mod tests {
                 "should have at least one audio sequence"
             );
             for seq in &audio_seqs {
-                eprintln!(
-                    "Audio seq {} language: {:?}",
-                    seq.track_id, seq.language
-                );
+                eprintln!("Audio seq {} language: {:?}", seq.track_id, seq.language);
                 assert_eq!(
                     seq.language.as_deref(),
                     Some("en"),

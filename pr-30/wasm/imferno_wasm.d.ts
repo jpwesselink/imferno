@@ -513,6 +513,16 @@ export function init(): void;
  */
 export function parsePackage(files: any): any;
 
+/**
+ * Parse and validate an IMF package in one call.
+ *
+ * Returns `{ package, validation }` where `package` is the full `Imferno`
+ * struct and `validation` is the `ValidationReport` with all findings.
+ *
+ * This is the recommended entry point.
+ */
+export function validate(files: any, options: any): any;
+
 export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembly.Module;
 
 export interface InitOutput {
@@ -522,6 +532,7 @@ export interface InitOutput {
     readonly getVersion: () => [number, number];
     readonly init: () => void;
     readonly parsePackage: (a: any) => [number, number, number];
+    readonly validate: (a: any, b: any) => [number, number, number];
     readonly __wbindgen_malloc: (a: number, b: number) => number;
     readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
     readonly __wbindgen_exn_store: (a: number) => void;

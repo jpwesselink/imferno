@@ -9,8 +9,8 @@ declare global {
   }
 }
 
-// Rspress exposes the base path; fall back to /imferno/
-const base = (typeof globalThis !== 'undefined' && (globalThis as any).__RSPRESS_BASE__) || '/imferno/';
+// Use Vite's base URL (set by Rspress from rspress.config.ts base)
+const base = typeof import.meta !== 'undefined' ? (import.meta as any).env?.BASE_URL || '/imferno/' : '/imferno/';
 
 export default function Homepage() {
   // Load WASM module on mount
@@ -33,7 +33,7 @@ export default function Homepage() {
       {/* Hero */}
       <section className="hero-section">
         <h1 className="hero-title">imferno</h1>
-        <p className="hero-subtitle">SMPTE ST-2067<br />for Rust and JavaScript.</p>
+        <p className="hero-subtitle"><a href="https://www.smpte.org/standards/st2067" className="hero-link">SMPTE ST-2067</a><br />for Rust and JavaScript.</p>
         <p className="hero-desc">
           Parse, validate, and inspect IMF packages with native Node.js bindings
           and a WebAssembly target for the browser.

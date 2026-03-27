@@ -98,9 +98,8 @@ export default function Homepage() {
         </div>
       </section>
 
-      {/* Try it in your browser */}
+      {/* IMF Playground */}
       <section className="section">
-        <h2 className="section-title">Try it in your browser</h2>
         <ImfPlayground />
       </section>
 

@@ -9,8 +9,9 @@ declare global {
   }
 }
 
-// Use Vite's base URL (set by Rspress from rspress.config.ts base)
-const base = typeof import.meta !== 'undefined' ? (import.meta as any).env?.BASE_URL || '/imferno/' : '/imferno/';
+// Use Vite's base URL (set by Rspress from rspress.config.ts base), ensure trailing slash
+const rawBase = typeof import.meta !== 'undefined' ? (import.meta as any).env?.BASE_URL || '/imferno/' : '/imferno/';
+const base = rawBase.endsWith('/') ? rawBase : rawBase + '/';
 
 export default function Homepage() {
   // Load WASM module on mount
@@ -43,19 +44,19 @@ export default function Homepage() {
       {/* Feature cards */}
       <section className="section">
         <div className="card-grid four">
-          <a className="feat-card" href={"./reference/standards"}>
+          <a className="feat-card" href={`${base}reference/standards`}>
             <h3>IMF core + applications</h3>
             <p>Parse AssetMaps, PKLs, and CPLs per SMPTE ST 2067-2, ST 2067-3, and Application profiles including ST 2067-21 and ST 2067-201.</p>
           </a>
-          <a className="feat-card" href={"./guide/config"}>
+          <a className="feat-card" href={`${base}guide/config`}>
             <h3>Flexible strictness</h3>
             <p>250+ validation rules across 8 SMPTE standards. Tune each rule individually: set any code to <code className="icode">off</code>, <code className="icode">info</code>, <code className="icode">warn</code>, <code className="icode">error</code>, or <code className="icode">critical</code> to match your workflow.</p>
           </a>
-          <a className="feat-card" href={"./guide/quick-start"}>
+          <a className="feat-card" href={`${base}guide/quick-start`}>
             <h3>Rust, Node.js &amp; WASM</h3>
             <p>Use the native Rust library or CLI directly, <code className="icode">@imferno/node</code> bindings for server-side pipelines, or the WebAssembly build for the browser.</p>
           </a>
-          <a className="feat-card" href={"./guide/validation"}>
+          <a className="feat-card" href={`${base}guide/validation`}>
             <h3>IMF reference corpus</h3>
             <p>Tested against the Netflix Photon MERIDIAN reference corpus. ST 2067-2, ST 2067-3, ST 2067-21, and ST 2067-201 fully covered.</p>
           </a>
@@ -65,14 +66,14 @@ export default function Homepage() {
       {/* Get started */}
       <section className="section">
         <div className="card-grid two">
-          <a className="get-started-card" href={"./reference/cli"}>
+          <a className="get-started-card" href={`${base}reference/cli`}>
             <div className="gs-header"><span className="gs-icon">$</span><span className="gs-label">npx</span></div>
             <p className="gs-desc">No global install needed. Run the latest version directly.</p>
             <div className="codeblock">
               <code>npx imferno@latest validate ./my-package</code>
             </div>
           </a>
-          <a className="get-started-card" href={"./reference/rust"}>
+          <a className="get-started-card" href={`${base}reference/rust`}>
             <div className="gs-header"><span className="gs-icon">🦀</span><span className="gs-label">Rust</span></div>
             <p className="gs-desc">Install the native Rust binary. Offline, no runtime.</p>
             <div className="codeblock">
@@ -80,14 +81,14 @@ export default function Homepage() {
               <code className="dim">imferno validate ./my-package</code>
             </div>
           </a>
-          <a className="get-started-card" href={"./reference/node"}>
+          <a className="get-started-card" href={`${base}reference/node`}>
             <div className="gs-header"><span className="gs-icon">📦</span><span className="gs-label">Node.js</span></div>
             <p className="gs-desc">Native bindings for server-side pipelines and automation.</p>
             <div className="codeblock">
               <code>npm install @imferno/node</code>
             </div>
           </a>
-          <a className="get-started-card" href={"./reference/wasm"}>
+          <a className="get-started-card" href={`${base}reference/wasm`}>
             <div className="gs-header"><span className="gs-icon">🌐</span><span className="gs-label">WASM</span></div>
             <p className="gs-desc">ESM module powered by WebAssembly. Use it in any browser or bundler.</p>
             <div className="codeblock">

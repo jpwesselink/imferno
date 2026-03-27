@@ -49,6 +49,10 @@ export const {
   buildReport,
   buildReportFromPath,
   formatReport,
+  parsePackage,
+  parsePackageFromPath,
+  validate,
+  validatePath,
 } = nativeModule;
 
 export { codes } from "./codes.mjs";

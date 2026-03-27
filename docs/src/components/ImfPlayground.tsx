@@ -60,23 +60,10 @@ function makeUid() {
     return Math.random().toString(36).slice(2);
 }
 
-/** Convert edit rate from "N/D" (Rust) to "N D" (component expects whitespace-split) */
-function normalizeEditRate(er: string | null | undefined): string | null {
-    if (!er) return null;
-    return er.replace('/', ' ');
-}
-
-/** Convert Rust sequence type to component sequence type (add "Sequence" suffix) */
-function normalizeSeqType(type: string): string {
-    if (type.endsWith('Sequence')) return type;
-    return type + 'Sequence';
-}
-
-// ─── map buildReport → IMFPackageViewer data ─────────────────────────────────
+// ─── map parsePackage + buildReport → IMFPackageViewer data ───────────────────
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function mapReportToViewData(report: any): any {
-    const pkg = report.package;
+function mapToViewData(pkg: any, report: any): any {
     const v = report.validation;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -87,36 +74,193 @@ function mapReportToViewData(report: any): any {
         ...(v.info ?? []),
     ];
 
-    const hasCritical = (v.critical?.length ?? 0) > 0;
-    const hasErrors = (v.errors?.length ?? 0) > 0;
-    const valid = !hasCritical && !hasErrors;
+    const valid = !(v.critical?.length > 0) && !(v.errors?.length > 0);
+
+    // Build essence descriptor lookup per CPL (id → descriptor)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    function buildDescriptorMap(cpl: any): Record<string, any> {
+        const map: Record<string, any> = {}; // eslint-disable-line @typescript-eslint/no-explicit-any
+        for (const ed of cpl.EssenceDescriptorList?.EssenceDescriptor ?? cpl.essenceDescriptorList?.essenceDescriptors ?? []) {
+            const id = ed.Id ?? ed.id;
+            if (id) map[id] = ed;
+        }
+        return map;
+    }
+
+    // Extract language from an essence descriptor
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    function langFromDescriptor(ed: any): string | null {
+        // Audio: WAVEPCMDescriptor → SubDescriptors → SoundfieldGroupLabelSubDescriptor
+        const wave = ed.WAVEPCMDescriptor ?? ed.wavePcmDescriptor;
+        const sf = wave?.SubDescriptors?.SoundfieldGroupLabelSubDescriptor ?? wave?.subDescriptors?.soundfieldGroupLabelSubDescriptor;
+        const lang = sf?.RFC5646SpokenLanguage ?? sf?.rfc5646SpokenLanguage;
+        if (lang) return typeof lang === 'string' ? lang : lang.toString();
+        // Timed text
+        const tt = ed.DCTimedTextDescriptor ?? ed.dcTimedTextDescriptor;
+        const ttLangs = tt?.RFC5646LanguageTagList ?? tt?.rfc5646LanguageTagList;
+        if (Array.isArray(ttLangs) && ttLangs.length > 0) return ttLangs[0].toString();
+        // IAB
+        const iab = ed.IABEssenceDescriptor ?? ed.iabEssenceDescriptor;
+        const iabSf = iab?.SubDescriptors?.IABSoundfieldLabelSubDescriptor ?? iab?.subDescriptors?.iabSoundfieldLabelSubDescriptor;
+        const iabLang = iabSf?.RFC5646SpokenLanguage ?? iabSf?.rfc5646SpokenLanguage;
+        if (iabLang) return iabLang.toString();
+        return null;
+    }
+
+    // Extract channel count from descriptor
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    function channelsFromDescriptor(ed: any): number | null {
+        const wave = ed.WAVEPCMDescriptor ?? ed.wavePcmDescriptor;
+        if (wave?.ChannelCount ?? wave?.channelCount) return Number(wave.ChannelCount ?? wave.channelCount);
+        const iab = ed.IABEssenceDescriptor ?? ed.iabEssenceDescriptor;
+        if (iab?.ChannelCount ?? iab?.channelCount) return Number(iab.ChannelCount ?? iab.channelCount);
+        return null;
+    }
+
+    // Extract soundfield from descriptor
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    function soundfieldFromDescriptor(ed: any): string | null {
+        const wave = ed.WAVEPCMDescriptor ?? ed.wavePcmDescriptor;
+        const sf = wave?.SubDescriptors?.SoundfieldGroupLabelSubDescriptor ?? wave?.subDescriptors?.soundfieldGroupLabelSubDescriptor;
+        const mca = sf?.MCATagSymbol ?? sf?.mcaTagSymbol;
+        if (mca) return mca.toString();
+        const name = sf?.MCATagName ?? sf?.mcaTagName;
+        if (name) return name;
+        const iab = ed.IABEssenceDescriptor ?? ed.iabEssenceDescriptor;
+        if (iab) return 'Atmos';
+        return null;
+    }
+
+    // Map the full Imferno CPLs
+    const cplEntries = Object.entries(pkg.compositionPlaylists ?? {});
 
     return {
         package: {
-            assetMapId: pkg.assetMapId ?? '',
-            volumeIndex: pkg.volumeIndex ?? 1,
-            assetCount: pkg.assetCount ?? 0,
-            cplCount: pkg.cplCount ?? 0,
-            pklCount: pkg.pklCount ?? 0,
+            assetMapId: pkg.assetMap?.id ?? '',
+            volumeIndex: pkg.volumeIndex?.index ?? 1,
+            assetCount: pkg.assetMap?.assetList?.assets?.length ?? 0,
+            cplCount: cplEntries.length,
+            pklCount: Object.keys(pkg.packingLists ?? {}).length,
         },
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        cpls: (report.cpls ?? []).map((cpl: any) => {
-            const editRate = normalizeEditRate(cpl.editRate);
+        cpls: cplEntries.map(([_uuid, cpl]: [string, any]) => {
+            const er = cpl.EditRate ?? cpl.editRate;
+            const editRate = er ? `${er.numerator ?? er.Numerator} ${er.denominator ?? er.Denominator}` : null;
+            const descriptors = buildDescriptorMap(cpl);
+            const contentTitle = cpl.ContentTitle?.text ?? cpl.contentTitle?.text ?? cpl.ContentTitle ?? cpl.contentTitle ?? '';
+            const contentKind = cpl.ContentKind ?? cpl.contentKind ?? null;
+            const segments = cpl.SegmentList?.Segment ?? cpl.segmentList?.segments ?? [];
+
+            // Flatten sequences across all segments in CPL physical order
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const sequences: any[] = [];
+            const seqTypeMap: Record<string, string> = {
+                MainImageSequence: 'MainImageSequence',
+                MainAudioSequence: 'MainAudioSequence',
+                SubtitlesSequence: 'SubtitlesSequence',
+                HearingImpairedCaptionsSequence: 'HearingImpairedCaptionsSequence',
+                ForcedNarrativeSequence: 'ForcedNarrativeSequence',
+                IABSequence: 'IABSequence',
+                ISXDSequence: 'ISXDSequence',
+                // camelCase variants (serde output)
+                mainImageSequences: 'MainImageSequence',
+                mainAudioSequences: 'MainAudioSequence',
+                subtitlesSequences: 'SubtitlesSequence',
+                hearingImpairedCaptionsSequences: 'HearingImpairedCaptionsSequence',
+                forcedNarrativeSequences: 'ForcedNarrativeSequence',
+                iabSequences: 'IABSequence',
+                isxdSequences: 'ISXDSequence',
+            };
+
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            for (const seg of segments) {
+                const sl = seg.SequenceList ?? seg.sequenceList ?? {};
+                for (const [key, seqType] of Object.entries(seqTypeMap)) {
+                    const seqArr = sl[key];
+                    if (!Array.isArray(seqArr)) continue;
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    for (const seq of seqArr) {
+                        const trackId = seq.TrackId ?? seq.trackId ?? '';
+                        const seId = (seq.ResourceList?.Resource ?? seq.resourceList?.resources ?? [])[0]?.SourceEncoding ?? (seq.ResourceList?.Resource ?? seq.resourceList?.resources ?? [])[0]?.sourceEncoding;
+                        const ed = seId ? descriptors[seId] : null;
+
+                        // Check if we already have this track (merge resources across segments)
+                        const existing = sequences.find((s: any) => s.trackId === trackId); // eslint-disable-line @typescript-eslint/no-explicit-any
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        const resources = (seq.ResourceList?.Resource ?? seq.resourceList?.resources ?? []).map((r: any) => ({
+                            id: r.Id ?? r.id ?? '',
+                            intrinsicDuration: r.IntrinsicDuration ?? r.intrinsicDuration ?? 0,
+                            sourceDuration: r.SourceDuration ?? r.sourceDuration ?? r.IntrinsicDuration ?? r.intrinsicDuration ?? 0,
+                            sourceEncoding: r.SourceEncoding ?? r.sourceEncoding ?? null,
+                            trackFileId: r.TrackFileId ?? r.trackFileId ?? null,
+                            editRate: (() => {
+                                const re = r.EditRate ?? r.editRate;
+                                if (re) return `${re.numerator ?? re.Numerator} ${re.denominator ?? re.Denominator}`;
+                                return editRate;
+                            })(),
+                            entryPoint: r.EntryPoint ?? r.entryPoint ?? null,
+                        }));
+
+                        if (existing) {
+                            existing.sequenceResources.push(...resources);
+                        } else {
+                            sequences.push({
+                                type: seqType,
+                                id: seq.Id ?? seq.id ?? '',
+                                trackId,
+                                language: ed ? langFromDescriptor(ed) : null,
+                                channelCount: ed ? channelsFromDescriptor(ed) : null,
+                                soundfield: ed ? soundfieldFromDescriptor(ed) : null,
+                                segmentId: null,
+                                sequenceNumber: sequences.length,
+                                sequenceResources: resources,
+                            });
+                        }
+                    }
+                }
+            }
+
+            // Extract markers
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const markers: any[] = [];
+            for (const seg of segments) {
+                const sl = seg.SequenceList ?? seg.sequenceList ?? {};
+                for (const ms of sl.MarkerSequence ?? sl.markerSequences ?? []) {
+                    for (const r of ms.ResourceList?.Resource ?? ms.resourceList?.resources ?? []) {
+                        for (const m of r.MarkerList ?? r.markerList ?? []) {
+                            const label = m.Label?.value ?? m.label?.value ?? m.Label ?? m.label ?? '';
+                            markers.push({
+                                label: typeof label === 'string' ? label : String(label),
+                                offset: m.Offset ?? m.offset ?? null,
+                                scope: m.Label?.scope ?? m.label?.scope ?? null,
+                            });
+                        }
+                    }
+                }
+            }
+
             return {
-                id: cpl.id ?? '',
-                title: cpl.title ?? '',
-                applicationProfile: cpl.applicationProfile ?? null,
-                segmentCount: cpl.segmentCount ?? 0,
-                timecodeStart: cpl.timecodeStart ?? null,
-                isSupplemental: cpl.isSupplemental ?? false,
-                markers: (cpl.markers ?? []).map((m: any) => ({ // eslint-disable-line @typescript-eslint/no-explicit-any
-                    label: m.label ?? '',
-                    offset: m.offset ?? null,
-                    scope: m.annotation ?? null,
-                })),
+                id: cpl.Id ?? cpl.id ?? '',
+                title: typeof contentTitle === 'string' ? contentTitle : String(contentTitle),
+                applicationProfile: (() => {
+                    for (const ext of cpl.ExtensionProperties?.extensionProperties ?? cpl.extensionProperties?.extensionProperties ?? []) {
+                        const appId = ext.ApplicationIdentification ?? ext.applicationIdentification;
+                        if (Array.isArray(appId) && appId.length > 0) return appId[0];
+                        if (typeof appId === 'string') return appId;
+                    }
+                    return null;
+                })(),
+                segmentCount: segments.length,
+                timecodeStart: (() => {
+                    const tc = cpl.CompositionTimecode ?? cpl.compositionTimecode;
+                    if (!tc) return null;
+                    return tc.TimecodeStartAddress ?? tc.timecodeStartAddress ?? null;
+                })(),
+                isSupplemental: false,
+                markers,
                 sourceAsset: {
-                    contentKind: null,
-                    contentTitle: cpl.title ?? null,
+                    contentKind: typeof contentKind === 'string' ? contentKind : contentKind?.value ?? null,
+                    contentTitle: typeof contentTitle === 'string' ? contentTitle : String(contentTitle),
                     territory: null,
                     editRate,
                     frameRate: editRate ? (() => {
@@ -128,32 +272,14 @@ function mapReportToViewData(report: any): any {
                         return null;
                     })() : null,
                     duration: null,
-                    audioLanguages: [],
-                    subtitleLanguages: [],
-                    forcedNarrativeLanguages: [],
+                    audioLanguages: [...new Set(sequences.filter(s => s.type === 'MainAudioSequence' && s.language).map(s => s.language))],
+                    subtitleLanguages: [...new Set(sequences.filter(s => s.type === 'SubtitlesSequence' && s.language).map(s => s.language))],
+                    forcedNarrativeLanguages: [...new Set(sequences.filter(s => s.type === 'ForcedNarrativeSequence' && s.language).map(s => s.language))],
                     audioType: null,
                     videoQuality: null,
                     videoDynamicRange: null,
                     tracks: { VIDEO: [], AUDIO: [], SUBTITLES: [], CAPTIONS: [], FORCED_NARRATIVE: [] },
-                    sequences: (cpl.sequences ?? []).map((seq: any, i: number) => ({ // eslint-disable-line @typescript-eslint/no-explicit-any
-                        type: normalizeSeqType(seq.type),
-                        id: seq.id ?? '',
-                        trackId: seq.trackId ?? '',
-                        language: seq.language ?? null,
-                        channelCount: seq.channelCount ?? null,
-                        soundfield: seq.soundfield ?? null,
-                        segmentId: null,
-                        sequenceNumber: i,
-                        sequenceResources: (seq.resources ?? []).map((r: any) => ({ // eslint-disable-line @typescript-eslint/no-explicit-any
-                            id: r.id ?? '',
-                            intrinsicDuration: r.intrinsicDuration ?? 0,
-                            sourceDuration: r.sourceDuration ?? r.intrinsicDuration ?? 0,
-                            sourceEncoding: r.sourceEncoding ?? null,
-                            trackFileId: r.trackFileId ?? null,
-                            editRate: normalizeEditRate(r.editRate) ?? editRate,
-                            entryPoint: r.entryPoint ?? null,
-                        })),
-                    })),
+                    sequences,
                 },
             };
         }),
@@ -273,8 +399,8 @@ export default function ImfPlayground() {
         const mod = getWasmModule();
         if (!mod || Object.keys(xmlMapRef.current).length === 0) return;
         try {
-            const report = mod.buildReport(xmlMapRef.current, { rules: rulesConfig });
-            setPackageData(mapReportToViewData(report));
+            const result = mod.validate(xmlMapRef.current, { rules: rulesConfig });
+            setPackageData(mapToViewData(result.package, { validation: result.validation }));
             setParseError(null);
         } catch (e) {
             console.error('[imf] re-validate error:', e);
@@ -311,10 +437,10 @@ export default function ImfPlayground() {
         const mod = getWasmModule();
         if (mod && Object.keys(xmlMap).length > 0) {
             try {
-                const report = mod.buildReport(xmlMap, { rules: rulesConfigRef.current });
-                setPackageData(mapReportToViewData(report));
+                const result = mod.validate(xmlMap, { rules: rulesConfigRef.current });
+                setPackageData(mapToViewData(result.package, { validation: result.validation }));
             } catch (e) {
-                console.error('[imf] buildReport error:', e);
+                console.error('[imf] validate error:', e);
                 setParseError(String(e));
             }
         }

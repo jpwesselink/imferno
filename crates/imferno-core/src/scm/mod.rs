@@ -76,7 +76,7 @@ mod raw {
 // ── Domain types ─────────────────────────────────────────────────────────────
 
 /// A parsed Sidecar Composition Map document (ST 2067-9:2018).
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
 pub struct SidecarCompositionMap {
     /// UUID of this SCM document.
     pub id: ImfUuid,
@@ -93,7 +93,7 @@ pub struct SidecarCompositionMap {
 }
 
 /// A single sidecar asset association within an SCM document.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
 pub struct SidecarAsset {
     /// UUID of the sidecar asset (must be present in the package AssetMap).
     pub id: ImfUuid,

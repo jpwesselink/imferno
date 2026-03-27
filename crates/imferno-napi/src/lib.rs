@@ -6,7 +6,8 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 use imferno_core::package::{
-    build_report, format_report, ImfReport, Imferno, RulesConfig, ValidationOptions,
+    build_report, format_report, validate as validate_package, ImfReport, Imferno, RulesConfig,
+    ValidationOptions,
 };
 use imferno_core::validation::{
     parse_app_spec_targets, parse_core_spec_target, AppSpecTarget, CoreSpecTarget,
@@ -95,6 +96,87 @@ pub fn format_report_js(report: serde_json::Value) -> napi::Result<String> {
         .map_err(|e| napi::Error::from_reason(format!("Invalid ImfReport JSON: {}", e)))?;
 
     Ok(format_report(&imf_report, false))
+}
+
+// =============================================================================
+// Parse package — full serialized Imferno struct
+// =============================================================================
+
+/// Parse an IMF package from in-memory files, returning the full parsed package.
+#[napi(js_name = "parsePackage")]
+pub fn parse_package(files: HashMap<String, String>) -> napi::Result<serde_json::Value> {
+    let package = Imferno::parse(files)
+        .map_err(|e| napi::Error::from_reason(format!("Failed to parse IMF package: {}", e)))?;
+
+    serde_json::to_value(&package)
+        .map_err(|e| napi::Error::from_reason(format!("Serialization error: {}", e)))
+}
+
+/// Parse an IMF package from a directory path, returning the full parsed package.
+#[napi(js_name = "parsePackageFromPath")]
+pub fn parse_package_from_path(path: String) -> napi::Result<serde_json::Value> {
+    let pkg_path = PathBuf::from(&path);
+    let files = imferno_core::package::read_dir(&pkg_path)
+        .map_err(|e| napi::Error::from_reason(format!("Failed to read directory: {}", e)))?;
+
+    let package = Imferno::parse(files)
+        .map_err(|e| napi::Error::from_reason(format!("Failed to parse IMF package: {}", e)))?;
+
+    serde_json::to_value(&package)
+        .map_err(|e| napi::Error::from_reason(format!("Serialization error: {}", e)))
+}
+
+// =============================================================================
+// VALIDATE — parse + validate, returns { package, validation }
+// =============================================================================
+
+/// Parse and validate an IMF package from in-memory files.
+///
+/// Returns `{ package, validation }` — the full parsed package and all findings.
+#[napi(js_name = "validate")]
+pub fn validate_js(
+    files: HashMap<String, String>,
+    options: Option<serde_json::Value>,
+) -> napi::Result<serde_json::Value> {
+    let opts = parse_options(options.as_ref())?;
+    let validation_options = ValidationOptions {
+        rules: opts.rules,
+        core_spec: opts.core_spec,
+        app_specs: opts.app_specs,
+        verify_hashes: None,
+        skip_disk_checks: true,
+    };
+
+    let result = validate_package(files, &validation_options);
+    serde_json::to_value(&result)
+        .map_err(|e| napi::Error::from_reason(format!("Serialization error: {}", e)))
+}
+
+/// Parse and validate an IMF package from a directory path.
+///
+/// Returns `{ package, validation }` — the full parsed package and all findings.
+#[napi(js_name = "validatePath")]
+pub fn validate_path_js(
+    path: String,
+    options: Option<serde_json::Value>,
+) -> napi::Result<serde_json::Value> {
+    let opts = parse_options(options.as_ref())?;
+    let pkg_path = PathBuf::from(&path);
+    let files = imferno_core::package::read_dir(&pkg_path)
+        .map_err(|e| napi::Error::from_reason(format!("Failed to read directory: {}", e)))?;
+
+    let validation_options = ValidationOptions {
+        rules: opts.rules,
+        core_spec: opts.core_spec,
+        app_specs: opts.app_specs,
+        // Hash verification not yet exposed via NAPI options.
+        verify_hashes: None,
+        skip_disk_checks: opts.skip_disk_checks,
+    };
+
+    let result = validate_package(files, &validation_options);
+    serde_json::to_value(&result)
+        .map_err(|e| napi::Error::from_reason(format!("Serialization error: {}", e)))
 }
 
 // =============================================================================

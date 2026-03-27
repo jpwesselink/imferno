@@ -24,6 +24,66 @@ pub use crate::diagnostics::{
     Category, Location, Severity, ValidationIssue, ValidationProfile, ValidationReport,
 };
 
+/// Result of parsing and validating an IMF package.
+///
+/// This is the primary return type — contains the full parsed package
+/// and all validation findings.
+#[derive(Debug, serde::Serialize)]
+pub struct ValidationResult {
+    /// The fully parsed IMF package.
+    pub package: Imferno,
+    /// Validation findings (spec violations, warnings, info).
+    pub validation: ValidationReport,
+}
+
+/// Parse and validate an IMF package in one call.
+///
+/// This is the recommended entry point. Returns the full parsed package
+/// plus all validation findings.
+///
+/// ```no_run
+/// use imferno_core::package::{validate, read_dir, ValidationOptions};
+///
+/// let files = read_dir("./my-imp").unwrap();
+/// let result = validate(files, &ValidationOptions::default());
+/// println!("Compliant: {}", result.validation.is_compliant);
+/// for cpl in result.package.composition_playlists.values() {
+///     println!("CPL: {}", cpl.content_title.text);
+/// }
+/// ```
+pub fn validate(
+    files: std::collections::HashMap<String, String>,
+    options: &ValidationOptions,
+) -> ValidationResult {
+    match Imferno::parse(files) {
+        Ok(package) => {
+            let validation = package.validate(options);
+            ValidationResult {
+                package,
+                validation,
+            }
+        }
+        Err(e) => {
+            let mut validation = ValidationReport::new(ValidationProfile::SMPTE);
+            validation.add(ValidationIssue::new(
+                Severity::Critical,
+                Category::Structure,
+                codes::ImfernoCode::ParseError,
+                format!("Failed to parse IMF package: {e}"),
+            ));
+            // Return a minimal Imferno with what we could parse
+            // For now, this is unreachable in practice since parse only fails
+            // on missing ASSETMAP — but we handle it gracefully.
+            let validation = validation.apply_rules(&options.rules);
+            // Re-parse won't work since files are consumed. Use parse_and_validate fallback.
+            ValidationResult {
+                package: Imferno::empty(),
+                validation,
+            }
+        }
+    }
+}
+
 #[derive(Error, Debug)]
 pub enum ImfError {
     #[error("IO error: {0}")]
@@ -259,19 +319,26 @@ impl From<&FileValidationError> for ValidationIssue {
     }
 }
 
-/// High-level IMF package representation
-#[derive(Debug)]
+/// High-level IMF package representation.
+///
+/// This is the full parsed package — all CPLs, PKLs, AssetMap, SCMs, and
+/// cross-references. Serializable to JSON for WASM/NAPI consumers.
+#[derive(Debug, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Imferno {
     /// Package root directory
+    #[serde(serialize_with = "serialize_path")]
     pub root_path: PathBuf,
 
     /// Volume index (VOLINDEX.xml)
     pub volume_index: VolumeIndex,
 
     /// Load-time VOLINDEX diagnostics (ST 429-9), emitted before all other checks.
+    #[serde(skip)]
     pub volindex_issues: Vec<ValidationIssue>,
 
     /// Load-time parse diagnostics (PKL/CPL/OPL/SCM failures), emitted during validation.
+    #[serde(skip)]
     pub(crate) parse_issues: Vec<ValidationIssue>,
 
     /// Asset map (ASSETMAP.xml)
@@ -284,6 +351,7 @@ pub struct Imferno {
     pub composition_playlists: HashMap<ImfUuid, CompositionPlaylist>,
 
     /// Raw CPL XML content mapped by UUID (retained for future signature verification).
+    #[serde(skip)]
     #[allow(dead_code)]
     pub(crate) cpl_xml_content: HashMap<ImfUuid, String>,
 
@@ -294,7 +362,24 @@ pub struct Imferno {
     pub sidecar_composition_maps: HashMap<ImfUuid, crate::scm::SidecarCompositionMap>,
 
     /// Asset UUID to file path mapping
+    #[serde(serialize_with = "serialize_path_map")]
     pub asset_paths: HashMap<ImfUuid, PathBuf>,
+}
+
+fn serialize_path<S: serde::Serializer>(path: &Path, s: S) -> std::result::Result<S::Ok, S::Error> {
+    s.serialize_str(&path.to_string_lossy())
+}
+
+fn serialize_path_map<S: serde::Serializer>(
+    map: &HashMap<ImfUuid, PathBuf>,
+    s: S,
+) -> std::result::Result<S::Ok, S::Error> {
+    use serde::ser::SerializeMap;
+    let mut m = s.serialize_map(Some(map.len()))?;
+    for (k, v) in map {
+        m.serialize_entry(k, &v.to_string_lossy().into_owned())?;
+    }
+    m.end()
 }
 
 /// Resolve an asset chunk path against the package root, rejecting path traversal.
@@ -369,10 +454,29 @@ pub fn read_dir(path: impl AsRef<Path>) -> Result<HashMap<String, String>> {
 }
 
 impl Imferno {
+    /// Create an empty Imferno (used when parse fails but we still need a struct).
+    fn empty() -> Self {
+        Self {
+            root_path: PathBuf::new(),
+            volume_index: VolumeIndex { index: 1 },
+            volindex_issues: Vec::new(),
+            parse_issues: Vec::new(),
+            asset_map: crate::assetmap::parse_assetmap(
+                r#"<AssetMap xmlns="http://www.smpte-ra.org/schemas/429-9/2007/AM"><Id>urn:uuid:00000000-0000-0000-0000-000000000000</Id><VolumeCount>1</VolumeCount><IssueDate>1970-01-01T00:00:00+00:00</IssueDate><Issuer/><AssetList/></AssetMap>"#,
+            ).unwrap_or_else(|_| unreachable!()),
+            packing_lists: HashMap::new(),
+            composition_playlists: HashMap::new(),
+            cpl_xml_content: HashMap::new(),
+            output_profile_lists: HashMap::new(),
+            sidecar_composition_maps: HashMap::new(),
+            asset_paths: HashMap::new(),
+        }
+    }
+
     /// Parse an IMF package from an in-memory filename→XML string map (public API).
     ///
-    /// This is the primary constructor. Pass the result of `read_dir()` on a
-    /// native target, or a JS-provided file map on WASM.
+    /// This is the parse-only entry point. For parse + validate, use
+    /// [`validate()`] instead.
     pub fn parse(files: HashMap<String, String>) -> Result<Self> {
         Self::from_file_map(&files)
     }

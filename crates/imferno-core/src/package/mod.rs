@@ -1039,17 +1039,15 @@ impl Imferno {
     /// fast size-only check. Returns a list of `FileValidationError` describing
     /// hash mismatches (missing / size issues are also reported).
     pub fn validate_file_hashes(&self) -> Vec<FileValidationError> {
-        self.validate_file_hashes_with_progress(|_, _, _| {})
+        self.validate_file_hashes_with_progress(|_, _, _, _, _| {})
     }
 
-    /// Like `validate_file_hashes` but calls `on_progress(current, total, filename)`
-    /// before each file is hashed.
+    /// Like `validate_file_hashes` but calls `on_progress(current, total, filename, bytes_done, bytes_total)`
+    /// during hashing. Updates both per-file and within-file progress.
     pub fn validate_file_hashes_with_progress(
         &self,
-        mut on_progress: impl FnMut(usize, usize, &str),
+        mut on_progress: impl FnMut(usize, usize, &str, u64, u64),
     ) -> Vec<FileValidationError> {
-        use sha1::Digest as _;
-
         let mut errors = self.validate_file_manifest();
         let errored_uuids: std::collections::HashSet<String> =
             errors.iter().map(|e| e.uuid().to_string()).collect();
@@ -1076,9 +1074,10 @@ impl Imferno {
                 };
 
                 let filename = abs_path.file_name().and_then(|n| n.to_str()).unwrap_or("?");
-                on_progress(current, total, filename);
+                let file_size = std::fs::metadata(abs_path).map(|m| m.len()).unwrap_or(0);
+                on_progress(current, total, filename, 0, file_size);
 
-                match std::fs::read(abs_path) {
+                match std::fs::File::open(abs_path) {
                     Err(e) => {
                         errors.push(FileValidationError::Io {
                             uuid: uuid_str,
@@ -1086,32 +1085,83 @@ impl Imferno {
                             message: e.to_string(),
                         });
                     }
-                    Ok(bytes) => {
-                        // Compute digest using the algorithm declared in the PKL.
+                    Ok(file) => {
+                        use std::io::Read;
+                        let mut reader = std::io::BufReader::with_capacity(1024 * 1024, file);
+                        let mut bytes_done: u64 = 0;
+                        let mut had_error = false;
                         let actual_b64 = match asset.hash.algorithm() {
                             crate::assetmap::HashAlgorithm::Sha1 => {
-                                let digest = sha1::Sha1::digest(&bytes);
+                                use sha1::Digest;
+                                let mut hasher = sha1::Sha1::new();
+                                let mut buf = [0u8; 1024 * 1024];
+                                loop {
+                                    match reader.read(&mut buf) {
+                                        Ok(0) => break,
+                                        Ok(n) => {
+                                            hasher.update(&buf[..n]);
+                                            bytes_done += n as u64;
+                                            on_progress(
+                                                current, total, filename, bytes_done, file_size,
+                                            );
+                                        }
+                                        Err(e) => {
+                                            errors.push(FileValidationError::Io {
+                                                uuid: uuid_str.clone(),
+                                                path: abs_path.clone(),
+                                                message: e.to_string(),
+                                            });
+                                            had_error = true;
+                                            break;
+                                        }
+                                    }
+                                }
                                 base64::Engine::encode(
                                     &base64::engine::general_purpose::STANDARD,
-                                    digest,
+                                    hasher.finalize(),
                                 )
                             }
                             crate::assetmap::HashAlgorithm::Sha256 => {
-                                let digest = sha2::Sha256::digest(&bytes);
+                                use sha2::Digest;
+                                let mut hasher = sha2::Sha256::new();
+                                let mut buf = [0u8; 1024 * 1024];
+                                loop {
+                                    match reader.read(&mut buf) {
+                                        Ok(0) => break,
+                                        Ok(n) => {
+                                            hasher.update(&buf[..n]);
+                                            bytes_done += n as u64;
+                                            on_progress(
+                                                current, total, filename, bytes_done, file_size,
+                                            );
+                                        }
+                                        Err(e) => {
+                                            errors.push(FileValidationError::Io {
+                                                uuid: uuid_str.clone(),
+                                                path: abs_path.clone(),
+                                                message: e.to_string(),
+                                            });
+                                            had_error = true;
+                                            break;
+                                        }
+                                    }
+                                }
                                 base64::Engine::encode(
                                     &base64::engine::general_purpose::STANDARD,
-                                    digest,
+                                    hasher.finalize(),
                                 )
                             }
                         };
-                        let expected_b64 = asset.hash.to_base64();
-                        if actual_b64 != expected_b64 {
-                            errors.push(FileValidationError::HashMismatch {
-                                uuid: uuid_str,
-                                path: abs_path.clone(),
-                                expected: expected_b64,
-                                actual: actual_b64,
-                            });
+                        if !had_error {
+                            let expected_b64 = asset.hash.to_base64();
+                            if actual_b64 != expected_b64 {
+                                errors.push(FileValidationError::HashMismatch {
+                                    uuid: uuid_str,
+                                    path: abs_path.clone(),
+                                    expected: expected_b64,
+                                    actual: actual_b64,
+                                });
+                            }
                         }
                     }
                 }

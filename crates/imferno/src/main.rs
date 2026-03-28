@@ -224,54 +224,64 @@ fn cmd_validate(
         let show_progress = !matches!(format, OutputFormat::Json) && color;
         let hash_errs: Vec<_> = result
             .package
-            .validate_file_hashes_with_progress(|current, total, filename| {
-                if show_progress {
-                    use chromakopia::{Color, Gradient};
-                    let pct = if total > 0 { current * 100 / total } else { 0 };
-                    let bar_width = 30;
-                    let filled = if total > 0 {
-                        current * bar_width / total
-                    } else {
-                        0
-                    };
+            .validate_file_hashes_with_progress(
+                |current, total, filename, bytes_done, bytes_total| {
+                    if show_progress {
+                        use chromakopia::{Color, Gradient};
 
-                    // Fire gradient: red → orange → yellow → white
-                    let fire = Gradient::new(vec![
-                        Color::new(220, 38, 38),   // red
-                        Color::new(249, 115, 22),  // orange
-                        Color::new(250, 204, 21),  // yellow
-                        Color::new(255, 255, 255), // white hot
-                    ]);
+                        // Overall file progress + within-file byte progress
+                        let file_pct = if bytes_total > 0 {
+                            bytes_done as f64 / bytes_total as f64
+                        } else {
+                            0.0
+                        };
+                        let overall = if total > 0 {
+                            ((current - 1) as f64 + file_pct) / total as f64
+                        } else {
+                            0.0
+                        };
+                        let pct = (overall * 100.0) as usize;
 
-                    // Animate: shift the gradient based on current file index
-                    let phase = (current as f64 / total.max(1) as f64 * 2.0) % 1.0;
-                    let bar_chars: String = (0..bar_width)
-                        .map(|i| {
-                            if i < filled {
-                                // Shift palette position by phase for animation
-                                let t = (i as f64 / bar_width as f64 + phase) % 1.0;
-                                let palette = fire.palette(bar_width);
-                                let idx = (t * (palette.len() - 1) as f64) as usize;
-                                let c = &palette[idx.min(palette.len() - 1)];
-                                format!("\x1b[38;2;{};{};{}m█\x1b[0m", c.r, c.g, c.b)
-                            } else {
-                                "\x1b[38;5;238m░\x1b[0m".to_string()
-                            }
-                        })
-                        .collect();
+                        let bar_width = 30;
+                        let filled = (overall * bar_width as f64) as usize;
 
-                    let label = fire.apply("  🔥 hashing ");
-                    let fname = if filename.len() > 25 {
-                        &filename[..25]
-                    } else {
-                        filename
-                    };
-                    eprint!(
-                        "\r{}{} {}% [{}/{}] {}   ",
-                        label, bar_chars, pct, current, total, fname,
-                    );
-                }
-            })
+                        let fire = Gradient::new(vec![
+                            Color::new(220, 38, 38),
+                            Color::new(249, 115, 22),
+                            Color::new(250, 204, 21),
+                            Color::new(255, 255, 255),
+                        ]);
+
+                        let palette = fire.palette(bar_width);
+                        let phase = (overall * 3.0) % 1.0;
+                        let bar_chars: String = (0..bar_width)
+                            .map(|i| {
+                                if i < filled {
+                                    let t = (i as f64 / bar_width as f64 + phase) % 1.0;
+                                    let idx = (t * (palette.len() - 1) as f64) as usize;
+                                    let c = &palette[idx.min(palette.len() - 1)];
+                                    format!("\x1b[38;2;{};{};{}m█\x1b[0m", c.r, c.g, c.b)
+                                } else {
+                                    "\x1b[38;5;238m░\x1b[0m".to_string()
+                                }
+                            })
+                            .collect();
+
+                        let label = fire.apply("  🔥 hashing ");
+                        let fname = if filename.len() > 20 {
+                            &filename[..20]
+                        } else {
+                            filename
+                        };
+                        let size_mb = bytes_total as f64 / 1_048_576.0;
+                        let done_mb = bytes_done as f64 / 1_048_576.0;
+                        eprint!(
+                            "\r{}{} {}% [{}/{}] {} {:.0}/{:.0}MB   ",
+                            label, bar_chars, pct, current, total, fname, done_mb, size_mb,
+                        );
+                    }
+                },
+            )
             .into_iter()
             .filter(|e| {
                 !matches!(

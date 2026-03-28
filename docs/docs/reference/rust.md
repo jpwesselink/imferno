@@ -1,11 +1,49 @@
 ---
 title: Rust API
-description: imferno-core public API — Imferno, ValidationReport, parsers.
+description: imferno-core public API — validate, Imferno, ValidationReport, parsers.
+---
+
+## `validate`
+
+Parse and validate an IMF package in one call. This is the **recommended entry point**.
+
+```rust
+use imferno_core::package::{validate, read_dir, ValidationOptions};
+
+let files = read_dir("/path/to/your.imp")?;
+let result = validate(files, &ValidationOptions::default());
+
+// Full parsed package
+let cpls = &result.package.composition_playlists;
+
+// Validation results
+if result.validation.is_compliant {
+    println!("OK");
+} else {
+    for issue in &result.validation.errors {
+        eprintln!("[error] {} — {}", issue.code, issue.message);
+    }
+}
+```
+
+---
+
+## `ValidationResult`
+
+Returned by `validate()`. Contains the full parsed package and the validation report.
+
+```rust
+pub struct ValidationResult {
+    pub package: Imferno,
+    pub validation: ValidationReport,
+}
+```
+
 ---
 
 ## `read_dir`
 
-Reads the XML documents from an IMF package directory into a filename → content map. MXF essence files are not loaded.
+Reads the XML documents from an IMF package directory into a filename-to-content map. MXF essence files are not loaded.
 
 ```rust
 use imferno_core::package::read_dir;
@@ -19,21 +57,18 @@ let files: HashMap<String, String> = read_dir("/path/to/your.imp")?;
 
 The central type. Holds the fully parsed in-memory representation of an IMF package.
 
-### Parse
+### Parse (without validation)
 
 ```rust
-// Parse from a file map (works on disk, in WASM, and in tests)
-Imferno::parse(files: HashMap<String, String>) -> Result<Self>
+use imferno_core::package::{Imferno, read_dir};
+
+let files = read_dir("/path/to/your.imp")?;
+let package = Imferno::parse(files)?;
 ```
 
-### Parse and validate
+Use `Imferno::parse()` when you need the parsed package without running validation. For most use cases, prefer `validate()` instead.
 
-```rust
-// Parse + validate in one call — the most common entry point
-Imferno::parse_and_validate(files: HashMap<String, String>, options: &ValidationOptions) -> ValidationReport
-```
-
-### Validate
+### Validate an existing package
 
 ```rust
 // Structural check — no MXF reads
@@ -53,7 +88,7 @@ fn get_asset_path(&self, uuid: ImfUuid) -> Option<&PathBuf>
 fn analyze_tracks(&self) -> Vec<TrackAnalysis>
 ```
 
-### Report
+### Report (legacy)
 
 ```rust
 use imferno_core::package::{build_report, format_report, ValidationOptions};
@@ -62,8 +97,7 @@ let report = build_report(&package, &ValidationOptions::default(), None)?;
 let text = format_report(&report, false);  // false = no ANSI color
 ```
 
-`build_report()` returns an `ImfReport` (the same JSON the CLI `export` command produces).
-`format_report()` renders it as a human-readable string (the same output as CLI `validate`).
+`build_report()` returns an `ImfReport` (the same JSON the CLI `export` command produces). For new code, prefer `validate()` which returns `ValidationResult` directly.
 
 ---
 
@@ -137,7 +171,7 @@ For the full list of codes see the [Validation Codes](/guide/codes) reference.
 
 ## Low-level parsers
 
-All parsers live in `imferno_core` submodules:
+All parsers live in `imferno_core` submodules. Use these when you need to parse individual XML documents outside of a full package context.
 
 ### CPL
 

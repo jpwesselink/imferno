@@ -40,33 +40,24 @@ imferno-core = "2.0"
 ```
 
 ```rust
-use imferno_core::package::{Imferno, ValidationOptions, read_dir};
+use imferno_core::package::{validate, read_dir, ValidationOptions};
 
 let files = read_dir("/path/to/your.imp")?;
-let report = Imferno::parse_and_validate(files, &ValidationOptions::default());
+let result = validate(files, &ValidationOptions::default());
 
-if report.is_compliant {
+// result.package — full parsed Imferno struct
+// result.validation — ValidationReport
+
+if result.validation.is_compliant {
     println!("OK");
 } else {
-    for issue in &report.critical {
+    for issue in &result.validation.critical {
         eprintln!("[critical] {} — {}", issue.code, issue.message);
     }
-    for issue in &report.errors {
+    for issue in &result.validation.errors {
         eprintln!("[error] {} — {}", issue.code, issue.message);
     }
 }
-```
-
-#### Parse and report
-
-```rust
-use imferno_core::package::{Imferno, read_dir, build_report, format_report, ValidationOptions};
-
-let files = read_dir("/path/to/your.imp")?;
-let pkg = Imferno::parse(files)?;
-let report = build_report(&pkg, &ValidationOptions::default(), None).unwrap();
-
-print!("{}", format_report(&report, false));
 ```
 
 See the [Rust API Reference](/reference/rust/) for the full API surface.
@@ -77,24 +68,27 @@ See the [Rust API Reference](/reference/rust/) for the full API surface.
 npm install @imferno/wasm
 ```
 
-ESM module powered by WebAssembly. Use it in any browser or bundler.
+ESM module powered by WebAssembly. Use it in any browser or bundler. All WASM functions are **async**.
 
 ```javascript
-import { buildReport, formatReport } from '@imferno/wasm';
+import { validate, formatReport } from '@imferno/wasm';
 
-const report = await buildReport({
+const result = await validate({
     'VOLINDEX.xml': volindexXml,
     'ASSETMAP.xml': assetmapXml,
     'PKL_abc.xml':  pklXml,
     'CPL_def.xml':  cplXml,
 });
 
-// Pretty-print
-console.log(formatReport(report));
+// Full parsed package
+console.log(result.package.compositionPlaylists);
+
+// Pretty-print the validation report
+console.log(formatReport(result));
 
 // Check programmatically
-if (!report.validation.is_compliant) {
-    for (const err of report.validation.errors) {
+if (!result.validation.is_compliant) {
+    for (const err of result.validation.errors) {
         console.error(err.code, err.message);
     }
 }
@@ -108,19 +102,22 @@ See the [WASM API Reference](/reference/wasm/) for the full API surface.
 npm install @imferno/node
 ```
 
-Native bindings via NAPI — filesystem access, hash verification, and native speed.
+Native bindings via NAPI — filesystem access, hash verification, and native speed. All Node.js functions are **synchronous**.
 
 ```javascript
-import { buildReportFromPath, formatReport } from '@imferno/node';
+import { validatePath, formatReport } from '@imferno/node';
 
-const report = buildReportFromPath('./my-imp');
+const result = validatePath('./my-imp');
 
-// Pretty-print
-console.log(formatReport(report));
+// Full parsed package
+console.log(result.package.compositionPlaylists);
+
+// Pretty-print the validation report
+console.log(formatReport(result));
 
 // Check programmatically
-if (!report.validation.is_compliant) {
-    for (const err of report.validation.errors) {
+if (!result.validation.is_compliant) {
+    for (const err of result.validation.errors) {
         console.error(err.code, err.message);
     }
 }
@@ -131,15 +128,15 @@ if (!report.validation.is_compliant) {
 Same API as `@imferno/wasm` — no filesystem access:
 
 ```javascript
-import { buildReport, formatReport } from '@imferno/node';
+import { validate, formatReport } from '@imferno/node';
 
-const report = buildReport({
+const result = validate({
     'ASSETMAP.xml': assetmapXml,
     'PKL_abc.xml': pklXml,
     'CPL_def.xml': cplXml,
 });
 
-console.log(formatReport(report));
+console.log(formatReport(result));
 ```
 
 See the [Node.js API Reference](/reference/node/) for the full API surface.

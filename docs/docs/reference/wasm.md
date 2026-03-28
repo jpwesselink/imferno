@@ -9,39 +9,44 @@ description: "@imferno/wasm — WebAssembly bindings for JavaScript and TypeScri
 npm install @imferno/wasm
 ```
 
-ESM module powered by WebAssembly. Use it in any browser or bundler.
+ESM module powered by WebAssembly. Use it in any browser or bundler. All functions are **async**.
 
 ---
 
-## `buildReport`
+## `validate`
 
-Build a structured report from an IMF package. Pass all XML files as a filename to string map.
+Parse and validate an IMF package in one call. This is the **recommended entry point**.
+
+Pass all XML files as a filename-to-string map.
 
 ```typescript
-import { buildReport, formatReport } from '@imferno/wasm';
+import { validate, formatReport } from '@imferno/wasm';
 
-const report = await buildReport({
+const result = await validate({
   'VOLINDEX.xml': volindexXml,
   'ASSETMAP.xml': assetmapXml,
   'PKL.xml': pklXml,
   'CPL.xml': cplXml,
 });
 
-// Pretty-print
-console.log(formatReport(report));
+// Full parsed package
+console.log(result.package.compositionPlaylists);
 
-// Check programmatically
-if (!report.validation.is_compliant) {
-  for (const err of report.validation.errors) {
+// Validation results
+if (!result.validation.is_compliant) {
+  for (const err of result.validation.errors) {
     console.error(err.code, err.message);
   }
 }
+
+// Pretty-print the validation report
+console.log(formatReport(result));
 ```
 
 ### Options
 
 ```typescript
-const report = await buildReport(files, {
+const result = await validate(files, {
   coreSpec: 'v2020',
   app2eSpec: 'v2023',
   rules: {
@@ -59,15 +64,57 @@ const report = await buildReport(files, {
 
 ---
 
-## `formatReport`
+## `parsePackage`
 
-Pretty-print an `ImfReport` as a human-readable string. Same output as `imferno report` on the CLI.
+Parse an IMF package **without running validation**. Returns the full `Imferno` struct.
+
+```typescript
+import { parsePackage } from '@imferno/wasm';
+
+const pkg = await parsePackage({
+  'VOLINDEX.xml': volindexXml,
+  'ASSETMAP.xml': assetmapXml,
+  'PKL.xml': pklXml,
+  'CPL.xml': cplXml,
+});
+
+console.log(pkg.compositionPlaylists);
+console.log(pkg.packingLists);
+console.log(pkg.assetMap);
+```
+
+---
+
+## `buildReport` (legacy)
+
+Returns an `ImfReport` summary. Kept for backwards compatibility — prefer `validate()` instead.
 
 ```typescript
 import { buildReport, formatReport } from '@imferno/wasm';
 
-const report = await buildReport(files);
+const report = await buildReport({
+  'VOLINDEX.xml': volindexXml,
+  'ASSETMAP.xml': assetmapXml,
+  'PKL.xml': pklXml,
+  'CPL.xml': cplXml,
+});
+
 console.log(formatReport(report));
+```
+
+Accepts the same options as `validate`.
+
+---
+
+## `formatReport`
+
+Pretty-print a `ValidationResult` or `ImfReport` as a human-readable string. Same output as `imferno validate` on the CLI.
+
+```typescript
+import { validate, formatReport } from '@imferno/wasm';
+
+const result = await validate(files);
+console.log(formatReport(result));
 ```
 
 ---
@@ -97,9 +144,33 @@ console.log(await getVersion()); // "2.0.0"
 
 ---
 
-## `ImfReport`
+## `ValidationResult`
 
-`buildReport` returns the same structure as the Node.js API and CLI `export` command:
+`validate()` returns this structure:
+
+```typescript
+interface ValidationResult {
+  package: Imferno;      // full parsed package
+  validation: {          // ValidationReport
+    critical: ValidationIssue[];
+    errors: ValidationIssue[];
+    warnings: ValidationIssue[];
+    info: ValidationIssue[];
+    is_playable: boolean;
+    is_compliant: boolean;
+    profile: string;
+    timestamp: string;
+  };
+}
+```
+
+The `Imferno` type contains `compositionPlaylists`, `packingLists`, `assetMap`, and other parsed IMF package data.
+
+---
+
+## `ImfReport` (legacy)
+
+`buildReport()` returns this structure. For new code, prefer `ValidationResult` from `validate()`.
 
 ```typescript
 interface ImfReport {

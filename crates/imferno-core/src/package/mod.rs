@@ -17,7 +17,9 @@ use thiserror::Error;
 pub mod codes;
 pub mod report;
 
-pub use self::report::{build_report, format_report, ImfReport};
+pub use self::report::{
+    build_report, format_report, format_validation_result, FormatOptions, ImfReport, ReportFormat,
+};
 pub use crate::assetmap::{Asset, AssetMap, PackingList, PklAsset, VolumeIndex};
 pub use crate::cpl::{CompositionPlaylist, Resource as CplResource};
 pub use crate::diagnostics::{

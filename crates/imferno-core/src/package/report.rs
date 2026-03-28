@@ -8,6 +8,8 @@ use crate::cpl::{EssenceDescriptor, SequenceAccess};
 use crate::diagnostics::{Severity, ValidationReport};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+
+use super::ValidationResult;
 use std::fmt::Write;
 #[cfg(feature = "typescript")]
 use ts_rs::TS;
@@ -630,4 +632,319 @@ pub fn format_report(report: &ImfReport, color: bool) -> String {
     }
 
     out
+}
+
+// ── format_validation_result ────────────────────────────────────────────────
+
+/// Output format for `format_validation_result`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ReportFormat {
+    /// Human-readable plain text (with optional ANSI color).
+    Text,
+    /// Markdown — headers, tables, code blocks. Embeddable in PRs, Slack, Notion.
+    Markdown,
+    /// CSV — one row per validation issue. Importable into Excel, dashboards.
+    Csv,
+}
+
+/// Format options for `format_validation_result`.
+#[derive(Debug, Clone)]
+pub struct FormatOptions {
+    pub format: ReportFormat,
+    pub color: bool,
+}
+
+impl Default for FormatOptions {
+    fn default() -> Self {
+        Self {
+            format: ReportFormat::Text,
+            color: false,
+        }
+    }
+}
+
+/// Format a `ValidationResult` (full package + validation) as text, markdown, or CSV.
+///
+/// This is the recommended formatting function — it reads directly from the
+/// `Imferno` struct and `ValidationReport` without the lossy `ImfReport` intermediate.
+pub fn format_validation_result(result: &ValidationResult, opts: &FormatOptions) -> String {
+    match opts.format {
+        ReportFormat::Text => format_text(result, opts.color),
+        ReportFormat::Markdown => format_markdown(result),
+        ReportFormat::Csv => format_csv(result),
+    }
+}
+
+fn format_text(result: &ValidationResult, color: bool) -> String {
+    use std::fmt::Write;
+    let mut out = String::new();
+    let pkg = &result.package;
+    let v = &result.validation;
+
+    // Package structure
+    let _ = writeln!(
+        out,
+        "  {}  ASSETMAP.xml — {} assets",
+        c_green("ok", color),
+        pkg.asset_map.asset_list.assets.len()
+    );
+    let _ = writeln!(
+        out,
+        "  {}  {} CPL(s), {} PKL(s)",
+        c_green("ok", color),
+        pkg.composition_playlists.len(),
+        pkg.packing_lists.len()
+    );
+    if !pkg.sidecar_composition_maps.is_empty() {
+        let _ = writeln!(
+            out,
+            "  {}  {} SCM(s)",
+            c_green("ok", color),
+            pkg.sidecar_composition_maps.len()
+        );
+    }
+
+    // CPL timeline
+    for (uuid, cpl) in &pkg.composition_playlists {
+        let title = &cpl.content_title;
+        let _ = writeln!(
+            out,
+            "\n{}",
+            c_bold(
+                &format!("CPL [{}] {}", &uuid.to_string()[..8], title),
+                color
+            )
+        );
+
+        for seg in &cpl.segment_list.segments {
+            for seq in seg.sequence_list.all_sequences_typed() {
+                let (s, type_name) = seq;
+                let resource_count = s.resource_list().resources.len();
+                let lang = language_from_descriptor_lookup(s, cpl);
+                let label = match lang {
+                    Some(l) => format!("{} ({})", type_name, l),
+                    None => type_name.to_string(),
+                };
+                let _ = writeln!(
+                    out,
+                    "  {}  {} — {} resource(s)",
+                    c_cyan("track", color),
+                    c_bold(&label, color),
+                    resource_count,
+                );
+            }
+        }
+    }
+
+    // Validation findings
+    format_issues_text(&mut out, v, color);
+    format_summary_text(&mut out, v, color);
+
+    out
+}
+
+fn format_markdown(result: &ValidationResult) -> String {
+    use std::fmt::Write;
+    let mut out = String::new();
+    let pkg = &result.package;
+    let v = &result.validation;
+
+    let _ = writeln!(out, "# IMF Package Validation Report\n");
+    let _ = writeln!(
+        out,
+        "**AssetMap:** {} | **CPLs:** {} | **PKLs:** {}\n",
+        pkg.asset_map.id,
+        pkg.composition_playlists.len(),
+        pkg.packing_lists.len()
+    );
+
+    // CPLs
+    for (uuid, cpl) in &pkg.composition_playlists {
+        let _ = writeln!(
+            out,
+            "## CPL: {} (`{}`)\n",
+            cpl.content_title,
+            &uuid.to_string()[..8]
+        );
+
+        let _ = writeln!(out, "| Track | Language | Resources |");
+        let _ = writeln!(out, "|-------|----------|-----------|");
+        for seg in &cpl.segment_list.segments {
+            for (s, type_name) in seg.sequence_list.all_sequences_typed() {
+                let lang =
+                    language_from_descriptor_lookup(s, cpl).unwrap_or_else(|| "—".to_string());
+                let _ = writeln!(
+                    out,
+                    "| {} | {} | {} |",
+                    type_name,
+                    lang,
+                    s.resource_list().resources.len()
+                );
+            }
+        }
+        let _ = writeln!(out);
+    }
+
+    // Validation issues
+    let all_issues = collect_all_issues(v);
+    if !all_issues.is_empty() {
+        let _ = writeln!(out, "## Validation Findings\n");
+        let _ = writeln!(out, "| Severity | Code | Message |");
+        let _ = writeln!(out, "|----------|------|---------|");
+        for issue in &all_issues {
+            let sev = match issue.severity {
+                Severity::Critical => "🔴 Critical",
+                Severity::Error => "🔴 Error",
+                Severity::Warning => "🟡 Warning",
+                Severity::Info => "🔵 Info",
+            };
+            let msg = issue.message.replace('|', "\\|");
+            let _ = writeln!(out, "| {} | `{}` | {} |", sev, issue.code, msg);
+        }
+        let _ = writeln!(out);
+    }
+
+    // Summary
+    let total_errors = v.critical.len() + v.errors.len();
+    if total_errors > 0 {
+        let _ = writeln!(
+            out,
+            "**Result: FAILED** — {} error(s), {} warning(s)",
+            total_errors,
+            v.warnings.len()
+        );
+    } else if !v.warnings.is_empty() {
+        let _ = writeln!(out, "**Result: VALID** — {} warning(s)", v.warnings.len());
+    } else {
+        let _ = writeln!(out, "**Result: VALID**");
+    }
+
+    out
+}
+
+fn format_csv(result: &ValidationResult) -> String {
+    use std::fmt::Write;
+    let mut out = String::new();
+
+    // Header
+    let _ = writeln!(out, "severity,code,message,cpl_id,suggestion");
+
+    // One row per issue
+    for issue in collect_all_issues(&result.validation) {
+        let cpl_id = issue
+            .location
+            .cpl_id
+            .as_ref()
+            .map(|u| u.to_string())
+            .unwrap_or_default();
+        let suggestion = issue.suggestion.as_deref().unwrap_or("");
+        let _ = writeln!(
+            out,
+            "{},{},\"{}\",{},\"{}\"",
+            match issue.severity {
+                Severity::Critical => "critical",
+                Severity::Error => "error",
+                Severity::Warning => "warning",
+                Severity::Info => "info",
+            },
+            issue.code,
+            issue.message.replace('"', "\"\""),
+            cpl_id,
+            suggestion.replace('"', "\"\""),
+        );
+    }
+
+    out
+}
+
+// ── Shared helpers for new formatter ────────────────────────────────────────
+
+fn collect_all_issues(v: &ValidationReport) -> Vec<&crate::diagnostics::ValidationIssue> {
+    v.critical
+        .iter()
+        .chain(v.errors.iter())
+        .chain(v.warnings.iter())
+        .chain(v.info.iter())
+        .collect()
+}
+
+fn format_issues_text(out: &mut String, v: &ValidationReport, color: bool) {
+    use std::fmt::Write;
+    let all_issues = collect_all_issues(v);
+    if all_issues.is_empty() {
+        return;
+    }
+
+    let _ = writeln!(out, "\n{}", c_bold("Validation findings:", color));
+    for issue in &all_issues {
+        let (label, colorize): (&str, fn(&str, bool) -> String) = match issue.severity {
+            Severity::Critical => ("error", c_red),
+            Severity::Error => ("error", c_red),
+            Severity::Warning => ("warning", c_yellow),
+            Severity::Info => ("info", c_cyan),
+        };
+        let location = if let Some(ref c) = issue.location.cpl_id {
+            let s = c.to_string();
+            c_dim(&format!(" [CPL:{}]", &s[..s.len().min(8)]), color)
+        } else if let Some(ref f) = issue.location.file {
+            let fname = f.file_name().and_then(|n| n.to_str()).unwrap_or("?");
+            c_dim(&format!(" [{}]", fname), color)
+        } else {
+            String::new()
+        };
+        let _ = writeln!(
+            out,
+            "  {} {}{} {}",
+            colorize(&format!("{:<7}", label), color),
+            c_bold(&issue.code, color),
+            location,
+            issue.message,
+        );
+        if let Some(ref s) = issue.suggestion {
+            let _ = writeln!(out, "          {} {}", c_dim("→", color), c_dim(s, color));
+        }
+    }
+}
+
+fn format_summary_text(out: &mut String, v: &ValidationReport, color: bool) {
+    use std::fmt::Write;
+    let total_errors = v.critical.len() + v.errors.len();
+    let total_warnings = v.warnings.len();
+    if total_errors > 0 {
+        let mut reasons = Vec::new();
+        reasons.push(format!("{} error(s)", total_errors));
+        if total_warnings > 0 {
+            reasons.push(format!("{} warning(s)", total_warnings));
+        }
+        let _ = writeln!(
+            out,
+            "\n{} {}",
+            c_red("failed", color),
+            c_bold(&reasons.join(", "), color)
+        );
+    } else if total_warnings > 0 {
+        let _ = writeln!(
+            out,
+            "\n{}",
+            c_yellow(&format!("valid  {} warning(s)", total_warnings), color)
+        );
+    } else {
+        let _ = writeln!(out, "\n{}", c_green("valid", color));
+    }
+}
+
+/// Look up language for a sequence from the CPL's essence descriptor list.
+fn language_from_descriptor_lookup(
+    seq: &dyn SequenceAccess,
+    cpl: &crate::cpl::CompositionPlaylist,
+) -> Option<String> {
+    let se = seq
+        .resource_list()
+        .resources
+        .first()?
+        .source_encoding
+        .as_ref()?;
+    let edl = cpl.essence_descriptor_list.as_ref()?;
+    let ed = edl.essence_descriptors.iter().find(|e| &e.id == se)?;
+    language_from_descriptor(ed)
 }

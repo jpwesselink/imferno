@@ -3,7 +3,8 @@
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use imferno_core::package::{
-    format_report, validate, Imferno, RulesConfig, ValidationOptions, ValidationResult,
+    format_validation_result, validate, FormatOptions, Imferno, ReportFormat, RulesConfig,
+    ValidationOptions, ValidationResult,
 };
 use imferno_core::validation::{AppSpecTarget, CoreSpecTarget};
 use imferno_core::{Category, Severity, ValidationIssue, ValidationProfile, ValidationReport};
@@ -76,7 +77,13 @@ enum Commands {
 
 #[derive(Clone, Copy, Debug, clap::ValueEnum)]
 enum OutputFormat {
+    /// Human-readable summary with optional color
     Summary,
+    /// Markdown — tables and headers, embeddable in PRs
+    Markdown,
+    /// CSV — one row per issue, importable into Excel
+    Csv,
+    /// Full JSON (ValidationResult with package + validation)
     Json,
 }
 
@@ -246,11 +253,17 @@ fn cmd_validate(
         OutputFormat::Json => {
             println!("{}", serde_json::to_string_pretty(&result)?);
         }
-        OutputFormat::Summary => {
-            // Build the human-readable report from the package
-            let report = imferno_core::package::build_report(&result.package, &options, None)
-                .map_err(|e| anyhow::anyhow!(e))?;
-            print!("{}", format_report(&report, color));
+        OutputFormat::Summary | OutputFormat::Markdown | OutputFormat::Csv => {
+            let report_format = match format {
+                OutputFormat::Markdown => ReportFormat::Markdown,
+                OutputFormat::Csv => ReportFormat::Csv,
+                _ => ReportFormat::Text,
+            };
+            let opts = FormatOptions {
+                format: report_format,
+                color,
+            };
+            print!("{}", format_validation_result(&result, &opts));
             let has_errors =
                 !result.validation.critical.is_empty() || !result.validation.errors.is_empty();
             if has_errors && !exit_zero {

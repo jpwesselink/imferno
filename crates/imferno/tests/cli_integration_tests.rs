@@ -94,10 +94,8 @@ fn test_cli_validate_success() {
     let (success, stdout, stderr) = run_cli_command(&["validate", TEST_PACKAGE]);
 
     assert!(success, "CLI validate failed: {}", stderr);
-    assert!(stdout.contains("VOLINDEX.xml found"));
-    assert!(stdout.contains("ASSETMAP.xml found"));
-    assert!(stdout.contains("assets mapped"));
-    assert!(stdout.contains("CPL(s) parsed"));
+    assert!(stdout.contains("ASSETMAP.xml"));
+    assert!(stdout.contains("CPL"));
     assert!(
         stdout.contains("valid"),
         "Expected 'valid' in output: {}",

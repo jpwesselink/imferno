@@ -31,7 +31,7 @@ imferno validate <PATH> [OPTIONS]
 | Option | Description |
 |--------|-------------|
 | `--verify-hashes` | Verify SHA-1 hashes of all assets against PKL (slow) |
-| `--format <FORMAT>` | Output format: `summary` (default), `json` |
+| `--format <FORMAT>` | Output format: `summary` (default), `markdown`, `csv`, `json` |
 | `--core-spec <SPEC>` | Core spec version: `auto` (default), `v2013`, `v2016`, `v2020` |
 | `--app2e-spec <SPEC>` | App profile: `auto` (default), `none`, `v2020`, `v2021`, `v2023` |
 | `--skip-disk-checks` | Skip file manifest and MXF header checks (validates XML structure only) |
@@ -44,7 +44,13 @@ imferno validate <PATH> [OPTIONS]
 # Basic validation
 imferno validate ./my-imp
 
-# JSON output for CI pipelines
+# Markdown report — embeddable in PRs, Slack, Notion
+imferno validate ./my-imp --format markdown
+
+# CSV — one row per issue, importable into Excel or dashboards
+imferno validate ./my-imp --format csv
+
+# JSON — full ValidationResult (package + validation)
 imferno validate ./my-imp --format json --exit-zero
 
 # Full validation with hash verification

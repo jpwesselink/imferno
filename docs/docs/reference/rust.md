@@ -88,16 +88,28 @@ fn get_asset_path(&self, uuid: ImfUuid) -> Option<&PathBuf>
 fn analyze_tracks(&self) -> Vec<TrackAnalysis>
 ```
 
-### Report (legacy)
+### Formatting
 
 ```rust
-use imferno_core::package::{build_report, format_report, ValidationOptions};
+use imferno_core::package::{format_validation_result, FormatOptions, ReportFormat};
 
-let report = build_report(&package, &ValidationOptions::default(), None)?;
-let text = format_report(&report, false);  // false = no ANSI color
+let result = validate(files, &opts);
+
+// Plain text
+let text = format_validation_result(&result, &FormatOptions::default());
+
+// Markdown
+let md = format_validation_result(&result, &FormatOptions {
+    format: ReportFormat::Markdown,
+    color: false,
+});
+
+// CSV (one row per issue)
+let csv = format_validation_result(&result, &FormatOptions {
+    format: ReportFormat::Csv,
+    color: false,
+});
 ```
-
-`build_report()` returns an `ImfReport` (the same JSON the CLI `export` command produces). For new code, prefer `validate()` which returns `ValidationResult` directly.
 
 ---
 

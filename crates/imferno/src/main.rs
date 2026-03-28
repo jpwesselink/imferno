@@ -7,7 +7,7 @@ use imferno_core::package::{
 };
 use imferno_core::validation::{AppSpecTarget, CoreSpecTarget};
 use imferno_core::{Category, Severity, ValidationIssue, ValidationProfile, ValidationReport};
-use std::io::{IsTerminal, Read as _};
+use std::io::IsTerminal;
 use std::path::PathBuf;
 
 fn use_color() -> bool {
@@ -72,30 +72,6 @@ enum Commands {
         #[arg(short, long)]
         uuid: Option<String>,
     },
-
-    /// (deprecated) Export a full report as JSON — use `validate --format json` instead
-    #[command(hide = true)]
-    Export {
-        #[arg(value_name = "PATH")]
-        path: PathBuf,
-        #[arg(long)]
-        ancestor: Option<PathBuf>,
-        #[arg(long, value_enum, default_value = "auto")]
-        core_spec: CoreSpecVersion,
-        #[arg(long, value_enum, default_value = "auto")]
-        app2e_spec: App2eSpecVersion,
-        #[arg(long)]
-        xml_only: bool,
-        #[arg(long, value_name = "PATH")]
-        rules_config: Option<PathBuf>,
-    },
-
-    /// (deprecated) Pretty-print a JSON report — use `validate` instead
-    #[command(hide = true)]
-    Report {
-        #[arg(value_name = "PATH")]
-        path: String,
-    },
 }
 
 #[derive(Clone, Copy, Debug, clap::ValueEnum)]
@@ -145,31 +121,6 @@ fn main() -> Result<()> {
             rules_config.as_deref(),
         ),
         Commands::Cpl { path, uuid } => cmd_cpl(&path, uuid),
-        // Deprecated commands — still work but hidden from help
-        Commands::Export {
-            path,
-            ancestor: _,
-            core_spec,
-            app2e_spec,
-            xml_only,
-            rules_config,
-        } => {
-            eprintln!("Warning: `export` is deprecated. Use `validate --format json` instead.");
-            cmd_validate(
-                &path,
-                false,
-                OutputFormat::Json,
-                core_spec,
-                app2e_spec,
-                xml_only,
-                true,
-                rules_config.as_deref(),
-            )
-        }
-        Commands::Report { path } => {
-            eprintln!("Warning: `report` is deprecated. Use `validate` instead.");
-            cmd_report_legacy(&path)
-        }
     }
 }
 
@@ -362,28 +313,6 @@ fn cmd_cpl(path: &PathBuf, uuid: Option<String>) -> Result<()> {
             segment.sequence_count
         );
     }
-
-    Ok(())
-}
-
-/// Legacy command — kept for backwards compatibility
-fn cmd_report_legacy(path: &str) -> Result<()> {
-    let json = if path == "-" {
-        let mut buf = String::new();
-        std::io::stdin()
-            .read_to_string(&mut buf)
-            .context("Failed to read from stdin")?;
-        buf
-    } else {
-        std::fs::read_to_string(path)
-            .with_context(|| format!("Cannot read report file: {}", path))?
-    };
-
-    let report: imferno_core::package::ImfReport =
-        serde_json::from_str(&json).context("Invalid ImfReport JSON")?;
-
-    let color = use_color();
-    print!("{}", format_report(&report, color));
 
     Ok(())
 }

@@ -1,6 +1,22 @@
 /* tslint:disable */
 /* eslint-disable */
 /**
+ * Parse an IMF package from in-memory files, returning the full parsed package.
+ *
+ * Unlike `buildReport` which returns a summary, this returns the complete
+ * `Imferno` struct with all essence descriptors, locales, content versions, etc.
+ */
+export function parsePackage(files: any): any;
+/**
+ * Parse and validate an IMF package in one call.
+ *
+ * Returns `{ package, validation }` where `package` is the full `Imferno`
+ * struct and `validation` is the `ValidationReport` with all findings.
+ *
+ * This is the recommended entry point.
+ */
+export function validate(files: any, options: any): any;
+/**
  * Build a structured report from an IMF package.
  *
  * Pass all XML files as a plain JS object where each key is the filename
@@ -67,7 +83,7 @@ export interface MainImageSequence {
 }
 
 export interface EssenceDescriptorList {
-    essenceDescriptor: EssenceDescriptor[];
+    essenceDescriptors: EssenceDescriptor[];
 }
 
 export interface RGBADescriptor {
@@ -117,11 +133,11 @@ export interface SoundfieldGroupLabelSubDescriptor {
 }
 
 export interface LanguageList {
-    language: LanguageTag[];
+    languages: LanguageTag[];
 }
 
 export interface SegmentList {
-    segment: Segment[];
+    segments: Segment[];
 }
 
 export interface HearingImpairedCaptionsSequence {
@@ -135,11 +151,11 @@ export interface IABSubDescriptors {
 }
 
 export interface RegionList {
-    region: string[];
+    regions: string[];
 }
 
 export interface ContentMaturityRatingList {
-    contentMaturityRating: ContentMaturityRating[];
+    contentMaturityRatings: ContentMaturityRating[];
 }
 
 export interface AudioSubDescriptors {
@@ -170,7 +186,7 @@ export interface IsxdSubDescriptors {
 }
 
 export interface ResourceList {
-    resource?: Resource[];
+    resources?: Resource[];
 }
 
 export interface PHDRMetadataTrackSubDescriptor {
@@ -254,14 +270,14 @@ export interface J2KComponentSizing {
 }
 
 export interface SequenceList {
-    markerSequence?: MarkerSequence[];
-    mainImageSequence?: MainImageSequence[];
-    mainAudioSequence?: MainAudioSequence[];
-    subtitlesSequence?: SubtitlesSequence[];
-    hearingImpairedCaptionsSequence?: HearingImpairedCaptionsSequence[];
-    forcedNarrativeSequence?: ForcedNarrativeSequence[];
-    iabSequence?: IABSequence[];
-    isxdSequence?: ISXDSequence[];
+    markerSequences?: MarkerSequence[];
+    mainImageSequences?: MainImageSequence[];
+    mainAudioSequences?: MainAudioSequence[];
+    subtitlesSequences?: SubtitlesSequence[];
+    hearingImpairedCaptionsSequences?: HearingImpairedCaptionsSequence[];
+    forcedNarrativeSequences?: ForcedNarrativeSequence[];
+    iabSequences?: IABSequence[];
+    isxdSequences?: ISXDSequence[];
 }
 
 export interface ContentVersion {
@@ -270,7 +286,7 @@ export interface ContentVersion {
 }
 
 export interface LocaleList {
-    locale: Locale[];
+    locales: Locale[];
 }
 
 export interface WAVEPCMDescriptor {
@@ -304,7 +320,7 @@ export interface IABSoundfieldLabelSubDescriptor {
 }
 
 export interface ContentVersionList {
-    contentVersion: ContentVersion[];
+    contentVersions: ContentVersion[];
 }
 
 export interface MainAudioSequence {
@@ -425,7 +441,7 @@ export interface Resource {
     repeatCount?: number | null;
     keyId?: ImfUuid | null;
     hash?: string | null;
-    marker?: MarkerInfo[];
+    markers?: MarkerInfo[];
 }
 
 export interface ExtensionProperties {
@@ -509,6 +525,8 @@ export interface InitOutput {
   readonly formatReport: (a: any) => [number, number, number, number];
   readonly getVersion: () => [number, number];
   readonly init: () => void;
+  readonly parsePackage: (a: any) => [number, number, number];
+  readonly validate: (a: any, b: any) => [number, number, number];
   readonly __wbindgen_malloc: (a: number, b: number) => number;
   readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
   readonly __wbindgen_exn_store: (a: number) => void;

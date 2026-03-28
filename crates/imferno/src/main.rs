@@ -48,10 +48,10 @@ enum Commands {
         #[arg(long, value_enum, default_value = "auto")]
         app2e_spec: App2eSpecVersion,
 
-        /// Skip file manifest (existence/size) and MXF header checks.
-        /// Validates XML structure only.
+        /// Skip file existence/size checks and MXF header validation.
+        /// Only validates XML documents (ASSETMAP, PKL, CPL, VOLINDEX).
         #[arg(long)]
-        xml_only: bool,
+        skip_disk_checks: bool,
 
         /// Always exit with code 0, even when validation errors are found
         #[arg(long)]
@@ -107,7 +107,7 @@ fn main() -> Result<()> {
             format,
             core_spec,
             app2e_spec,
-            xml_only,
+            skip_disk_checks,
             exit_zero,
             rules_config,
         } => cmd_validate(
@@ -116,7 +116,7 @@ fn main() -> Result<()> {
             format,
             core_spec,
             app2e_spec,
-            xml_only,
+            skip_disk_checks,
             exit_zero,
             rules_config.as_deref(),
         ),
@@ -141,7 +141,7 @@ fn parse_rules(path: Option<&std::path::Path>) -> Result<RulesConfig> {
 fn make_options(
     core_spec: CoreSpecVersion,
     app2e_spec: App2eSpecVersion,
-    xml_only: bool,
+    skip_disk_checks: bool,
     rules: RulesConfig,
 ) -> ValidationOptions {
     let core_spec_target = match core_spec {
@@ -163,7 +163,7 @@ fn make_options(
         rules,
         core_spec: core_spec_target,
         app_specs: app_spec_targets,
-        skip_disk_checks: xml_only,
+        skip_disk_checks,
         ..Default::default()
     }
 }
@@ -177,12 +177,12 @@ fn cmd_validate(
     format: OutputFormat,
     core_spec: CoreSpecVersion,
     app2e_spec: App2eSpecVersion,
-    xml_only: bool,
+    skip_disk_checks: bool,
     exit_zero: bool,
     rules_config_path: Option<&std::path::Path>,
 ) -> Result<()> {
     let rules = parse_rules(rules_config_path)?;
-    let options = make_options(core_spec, app2e_spec, xml_only, rules);
+    let options = make_options(core_spec, app2e_spec, skip_disk_checks, rules);
     let color = use_color() && !matches!(format, OutputFormat::Json);
 
     // Read files

@@ -34,7 +34,7 @@ imferno validate <PATH> [OPTIONS]
 | `--format <FORMAT>` | Output format: `summary` (default), `json` |
 | `--core-spec <SPEC>` | Core spec version: `auto` (default), `v2013`, `v2016`, `v2020` |
 | `--app2e-spec <SPEC>` | App profile: `auto` (default), `none`, `v2020`, `v2021`, `v2023` |
-| `--xml-only` | Skip file manifest and MXF header checks (validates XML structure only) |
+| `--skip-disk-checks` | Skip file manifest and MXF header checks (validates XML structure only) |
 | `--exit-zero` | Always exit 0, even on validation errors (useful for CI) |
 | `--rules-config <PATH>` | Path to a JSON rules config file |
 
@@ -54,7 +54,7 @@ imferno validate ./my-imp --verify-hashes
 imferno validate ./my-imp --core-spec v2020 --app2e-spec v2023
 
 # XML-only mode (skip disk I/O — useful for remote filesystems)
-imferno validate ./my-imp --xml-only
+imferno validate ./my-imp --skip-disk-checks
 
 # Custom rules config
 imferno validate ./my-imp --rules-config rules.json

@@ -19,3 +19,4 @@ serde_json = { workspace = true }
 anyhow = { workspace = true }
 tokio = { workspace = true }
 comfy-table = "7.1"
+chromakopia = "0.1.0"

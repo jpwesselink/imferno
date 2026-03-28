@@ -1039,17 +1039,34 @@ impl Imferno {
     /// fast size-only check. Returns a list of `FileValidationError` describing
     /// hash mismatches (missing / size issues are also reported).
     pub fn validate_file_hashes(&self) -> Vec<FileValidationError> {
+        self.validate_file_hashes_with_progress(|_, _, _| {})
+    }
+
+    /// Like `validate_file_hashes` but calls `on_progress(current, total, filename)`
+    /// before each file is hashed.
+    pub fn validate_file_hashes_with_progress(
+        &self,
+        mut on_progress: impl FnMut(usize, usize, &str),
+    ) -> Vec<FileValidationError> {
         use sha1::Digest as _;
 
         let mut errors = self.validate_file_manifest();
-        // Collect UUIDs that already have errors to skip re-reading those files
         let errored_uuids: std::collections::HashSet<String> =
             errors.iter().map(|e| e.uuid().to_string()).collect();
 
         let path_map = self.build_asset_path_map();
 
+        // Count total assets to hash
+        let total: usize = self
+            .packing_lists
+            .values()
+            .map(|pkl| pkl.asset_list.assets.len())
+            .sum();
+        let mut current: usize = 0;
+
         for pkl in self.packing_lists.values() {
             for asset in &pkl.asset_list.assets {
+                current += 1;
                 let uuid_str = asset.id.to_string();
                 if errored_uuids.contains(&uuid_str) {
                     continue;
@@ -1057,6 +1074,9 @@ impl Imferno {
                 let Some(abs_path) = path_map.get(&asset.id) else {
                     continue;
                 };
+
+                let filename = abs_path.file_name().and_then(|n| n.to_str()).unwrap_or("?");
+                on_progress(current, total, filename);
 
                 match std::fs::read(abs_path) {
                     Err(e) => {

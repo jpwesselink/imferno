@@ -221,12 +221,37 @@ fn cmd_validate(
 
     // Hash verification (appends to validation)
     if verify_hashes {
-        if !matches!(format, OutputFormat::Json) {
-            println!("Verifying file hashes (this may take a moment)...");
-        }
+        let show_progress = !matches!(format, OutputFormat::Json) && color;
         let hash_errs: Vec<_> = result
             .package
-            .validate_file_hashes()
+            .validate_file_hashes_with_progress(|current, total, filename| {
+                if show_progress {
+                    use chromakopia::{Color, Gradient};
+                    let pct = if total > 0 { current * 100 / total } else { 0 };
+                    let bar_width = 30;
+                    let filled = if total > 0 {
+                        current * bar_width / total
+                    } else {
+                        0
+                    };
+                    let bar: String = "█".repeat(filled) + &"░".repeat(bar_width - filled);
+                    let gradient =
+                        Gradient::new(vec![Color::new(249, 115, 22), Color::new(34, 197, 94)]);
+                    let colored_bar = gradient.apply(&bar);
+                    eprint!(
+                        "\r  hashing  {} {}% [{}/{}] {}",
+                        colored_bar,
+                        pct,
+                        current,
+                        total,
+                        if filename.len() > 30 {
+                            &filename[..30]
+                        } else {
+                            filename
+                        },
+                    );
+                }
+            })
             .into_iter()
             .filter(|e| {
                 !matches!(
@@ -235,6 +260,9 @@ fn cmd_validate(
                 )
             })
             .collect();
+        if show_progress {
+            eprint!("\r{}\r", " ".repeat(80)); // clear progress line
+        }
         if hash_errs.is_empty() && !matches!(format, OutputFormat::Json) {
             println!("  ok  All PKL file hashes verified");
         }

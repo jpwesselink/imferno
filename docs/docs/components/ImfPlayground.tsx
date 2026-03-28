@@ -95,8 +95,17 @@ function soundfieldFromDescriptor(ed: any): string | null {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+// Helper: get a field trying camelCase, snake_case, and PascalCase
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function g(obj: any, ...keys: string[]): any {
+    if (!obj) return undefined;
+    for (const k of keys) {
+        if (obj[k] !== undefined) return obj[k];
+    }
+    return undefined;
+}
+
 function mapValidateResult(result: any): any {
-    console.log('[imf] validate() raw result:', JSON.stringify(result).slice(0, 2000));
     const pkg = result.package;
     const v = result.validation;
 
@@ -114,8 +123,10 @@ function mapValidateResult(result: any): any {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     function descriptorMap(cpl: any): Record<string, any> {
         const m: Record<string, any> = {}; // eslint-disable-line @typescript-eslint/no-explicit-any
-        for (const ed of cpl?.essenceDescriptorList?.essenceDescriptor ?? []) {
-            if (ed.id) m[ed.id] = ed;
+        const edl = g(cpl, 'essenceDescriptorList', 'EssenceDescriptorList');
+        for (const ed of g(edl, 'essenceDescriptors', 'essenceDescriptor', 'EssenceDescriptor') ?? []) {
+            const id = g(ed, 'id', 'Id');
+            if (id) m[id] = ed;
         }
         return m;
     }
@@ -124,11 +135,11 @@ function mapValidateResult(result: any): any {
 
     return {
         package: {
-            assetMapId: pkg?.assetMap?.id ?? '',
-            volumeIndex: pkg?.volumeIndex?.index ?? 1,
-            assetCount: pkg?.assetMap?.assetList?.assets?.length ?? 0,
+            assetMapId: g(g(pkg, 'assetMap', 'asset_map'), 'id') ?? '',
+            volumeIndex: g(g(pkg, 'volumeIndex', 'volume_index'), 'index', 'Index') ?? 1,
+            assetCount: g(g(g(pkg, 'assetMap', 'asset_map'), 'assetList', 'asset_list'), 'assets')?.length ?? 0,
             cplCount: cplEntries.length,
-            pklCount: Object.keys(pkg?.packingLists ?? {}).length,
+            pklCount: Object.keys(g(pkg, 'packingLists', 'packing_lists') ?? {}).length,
         },
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         cpls: cplEntries.map(([, cpl]: [string, any]) => {
@@ -139,7 +150,7 @@ function mapValidateResult(result: any): any {
             const title = typeof rawTitle === 'string' ? rawTitle : rawTitle?.['$text'] ?? rawTitle?.text ?? '';
             const rawSegList = cpl.segmentList ?? cpl.SegmentList;
             const segments = rawSegList?.segments ?? rawSegList?.Segments ?? rawSegList?.segment ?? rawSegList?.Segment ?? [];
-            if (!Array.isArray(segments)) console.log('[imf] segments is not array:', segments);
+            if (!Array.isArray(segments)) return null; // skip malformed CPLs
             const contentKind = typeof cpl.contentKind === 'string' ? cpl.contentKind : cpl.contentKind?.value ?? null;
 
             // Flatten sequences across segments, merge by trackId

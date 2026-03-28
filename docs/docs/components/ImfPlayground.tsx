@@ -60,24 +60,44 @@ function makeUid() {
     return Math.random().toString(36).slice(2);
 }
 
-/** Convert edit rate from "N/D" (Rust) to "N D" (component expects whitespace-split) */
-function normalizeEditRate(er: string | null | undefined): string | null {
-    if (!er) return null;
-    return er.replace('/', ' ');
-}
-
-/** Convert Rust sequence type to component sequence type (add "Sequence" suffix) */
-function normalizeSeqType(type: string): string {
-    if (type.endsWith('Sequence')) return type;
-    return type + 'Sequence';
-}
-
-// ─── map buildReport → IMFPackageViewer data ─────────────────────────────────
+// ─── map validate() result → IMFPackageViewer data ───────────────────────────
+//
+// validate() returns { package: Imferno, validation: ValidationReport }
+// In WASM builds, CPL fields are camelCase (feature = "wasm" serde rename).
+// Imferno top-level fields are camelCase (serde rename_all = "camelCase").
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function mapReportToViewData(report: any): any {
-    const pkg = report.package;
-    const v = report.validation;
+function langFromDescriptor(ed: any): string | null {
+    const wave = ed?.wavePcmDescriptor;
+    const sf = wave?.subDescriptors?.soundfieldGroupLabelSubDescriptor;
+    if (sf?.rfc5646SpokenLanguage) return String(sf.rfc5646SpokenLanguage);
+    const tt = ed?.dcTimedTextDescriptor;
+    const ttLangs = tt?.rfc5646LanguageTagList;
+    if (Array.isArray(ttLangs) && ttLangs.length > 0) return String(ttLangs[0]);
+    const iab = ed?.iabEssenceDescriptor;
+    const iabSf = iab?.subDescriptors?.iabSoundfieldLabelSubDescriptor;
+    if (iabSf?.rfc5646SpokenLanguage) return String(iabSf.rfc5646SpokenLanguage);
+    return null;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function channelsFromDescriptor(ed: any): number | null {
+    return ed?.wavePcmDescriptor?.channelCount ?? ed?.iabEssenceDescriptor?.channelCount ?? null;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function soundfieldFromDescriptor(ed: any): string | null {
+    const sf = ed?.wavePcmDescriptor?.subDescriptors?.soundfieldGroupLabelSubDescriptor;
+    if (sf?.mcaTagSymbol) return String(sf.mcaTagSymbol);
+    if (sf?.mcaTagName) return String(sf.mcaTagName);
+    if (ed?.iabEssenceDescriptor) return 'Atmos';
+    return null;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mapValidateResult(result: any): any {
+    const pkg = result.package;
+    const v = result.validation;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const flatIssues: any[] = [
@@ -87,36 +107,125 @@ function mapReportToViewData(report: any): any {
         ...(v.info ?? []),
     ];
 
-    const hasCritical = (v.critical?.length ?? 0) > 0;
-    const hasErrors = (v.errors?.length ?? 0) > 0;
-    const valid = !hasCritical && !hasErrors;
+    const valid = !(v.critical?.length > 0) && !(v.errors?.length > 0);
+
+    // Build descriptor map per CPL: id → EssenceDescriptor
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    function descriptorMap(cpl: any): Record<string, any> {
+        const m: Record<string, any> = {}; // eslint-disable-line @typescript-eslint/no-explicit-any
+        for (const ed of cpl?.essenceDescriptorList?.essenceDescriptors ?? []) {
+            if (ed.id) m[ed.id] = ed;
+        }
+        return m;
+    }
+
+    const cplEntries = Object.entries(pkg?.compositionPlaylists ?? {});
 
     return {
         package: {
-            assetMapId: pkg.assetMapId ?? '',
-            volumeIndex: pkg.volumeIndex ?? 1,
-            assetCount: pkg.assetCount ?? 0,
-            cplCount: pkg.cplCount ?? 0,
-            pklCount: pkg.pklCount ?? 0,
+            assetMapId: pkg?.assetMap?.id ?? '',
+            volumeIndex: pkg?.volumeIndex?.index ?? 1,
+            assetCount: pkg?.assetMap?.assetList?.assets?.length ?? 0,
+            cplCount: cplEntries.length,
+            pklCount: Object.keys(pkg?.packingLists ?? {}).length,
         },
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        cpls: (report.cpls ?? []).map((cpl: any) => {
-            const editRate = normalizeEditRate(cpl.editRate);
+        cpls: cplEntries.map(([, cpl]: [string, any]) => {
+            const er = cpl.editRate;
+            const editRate = er ? `${er.numerator} ${er.denominator}` : null;
+            const descs = descriptorMap(cpl);
+            const title = typeof cpl.contentTitle === 'string' ? cpl.contentTitle : cpl.contentTitle?.text ?? '';
+            const segments = cpl.segmentList?.segments ?? [];
+            const contentKind = typeof cpl.contentKind === 'string' ? cpl.contentKind : cpl.contentKind?.value ?? null;
+
+            // Flatten sequences across segments, merge by trackId
+            const seqTypeKeys: [string, string][] = [
+                ['mainImageSequences', 'MainImageSequence'],
+                ['mainAudioSequences', 'MainAudioSequence'],
+                ['subtitlesSequences', 'SubtitlesSequence'],
+                ['hearingImpairedCaptionsSequences', 'HearingImpairedCaptionsSequence'],
+                ['forcedNarrativeSequences', 'ForcedNarrativeSequence'],
+                ['iabSequences', 'IABSequence'],
+                ['isxdSequences', 'ISXDSequence'],
+            ];
+
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const sequences: any[] = [];
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            for (const seg of segments) {
+                const sl = seg.sequenceList ?? {};
+                for (const [key, typeName] of seqTypeKeys) {
+                    const arr = sl[key];
+                    if (!Array.isArray(arr)) continue;
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    for (const seq of arr) {
+                        const trackId = seq.trackId ?? '';
+                        const resources = (seq.resourceList?.resources ?? []).map((r: any) => ({ // eslint-disable-line @typescript-eslint/no-explicit-any
+                            id: r.id ?? '',
+                            intrinsicDuration: r.intrinsicDuration ?? 0,
+                            sourceDuration: r.sourceDuration ?? r.intrinsicDuration ?? 0,
+                            sourceEncoding: r.sourceEncoding ?? null,
+                            trackFileId: r.trackFileId ?? null,
+                            editRate: r.editRate ? `${r.editRate.numerator} ${r.editRate.denominator}` : editRate,
+                            entryPoint: r.entryPoint ?? null,
+                        }));
+                        const existing = sequences.find((s: any) => s.trackId === trackId); // eslint-disable-line @typescript-eslint/no-explicit-any
+                        if (existing) {
+                            existing.sequenceResources.push(...resources);
+                        } else {
+                            const seUuid = (seq.resourceList?.resources ?? [])[0]?.sourceEncoding;
+                            const ed = seUuid ? descs[seUuid] : null;
+                            sequences.push({
+                                type: typeName,
+                                id: seq.id ?? '',
+                                trackId,
+                                language: ed ? langFromDescriptor(ed) : null,
+                                channelCount: ed ? channelsFromDescriptor(ed) : null,
+                                soundfield: ed ? soundfieldFromDescriptor(ed) : null,
+                                segmentId: null,
+                                sequenceNumber: sequences.length,
+                                sequenceResources: resources,
+                            });
+                        }
+                    }
+                }
+            }
+
+            // Markers
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const markers: any[] = [];
+            for (const seg of segments) {
+                for (const ms of seg.sequenceList?.markerSequences ?? []) {
+                    for (const r of ms.resourceList?.resources ?? []) {
+                        for (const m of r.markerList ?? []) {
+                            markers.push({
+                                label: typeof m.label === 'string' ? m.label : m.label?.value ?? '',
+                                offset: m.offset ?? null,
+                                scope: m.label?.scope ?? null,
+                            });
+                        }
+                    }
+                }
+            }
+
             return {
                 id: cpl.id ?? '',
-                title: cpl.title ?? '',
-                applicationProfile: cpl.applicationProfile ?? null,
-                segmentCount: cpl.segmentCount ?? 0,
-                timecodeStart: cpl.timecodeStart ?? null,
-                isSupplemental: cpl.isSupplemental ?? false,
-                markers: (cpl.markers ?? []).map((m: any) => ({ // eslint-disable-line @typescript-eslint/no-explicit-any
-                    label: m.label ?? '',
-                    offset: m.offset ?? null,
-                    scope: m.annotation ?? null,
-                })),
+                title,
+                applicationProfile: (() => {
+                    for (const ext of cpl.extensionProperties?.extensionProperties ?? []) {
+                        const appId = ext.applicationIdentification;
+                        if (Array.isArray(appId) && appId.length > 0) return appId[0];
+                        if (typeof appId === 'string') return appId;
+                    }
+                    return null;
+                })(),
+                segmentCount: segments.length,
+                timecodeStart: cpl.compositionTimecode?.timecodeStartAddress ?? null,
+                isSupplemental: false,
+                markers,
                 sourceAsset: {
-                    contentKind: null,
-                    contentTitle: cpl.title ?? null,
+                    contentKind,
+                    contentTitle: title,
                     territory: null,
                     editRate,
                     frameRate: editRate ? (() => {
@@ -128,32 +237,14 @@ function mapReportToViewData(report: any): any {
                         return null;
                     })() : null,
                     duration: null,
-                    audioLanguages: [],
-                    subtitleLanguages: [],
-                    forcedNarrativeLanguages: [],
+                    audioLanguages: [...new Set(sequences.filter(s => s.type === 'MainAudioSequence' && s.language).map(s => s.language))],
+                    subtitleLanguages: [...new Set(sequences.filter(s => s.type === 'SubtitlesSequence' && s.language).map(s => s.language))],
+                    forcedNarrativeLanguages: [...new Set(sequences.filter(s => s.type === 'ForcedNarrativeSequence' && s.language).map(s => s.language))],
                     audioType: null,
                     videoQuality: null,
                     videoDynamicRange: null,
                     tracks: { VIDEO: [], AUDIO: [], SUBTITLES: [], CAPTIONS: [], FORCED_NARRATIVE: [] },
-                    sequences: (cpl.sequences ?? []).map((seq: any, i: number) => ({ // eslint-disable-line @typescript-eslint/no-explicit-any
-                        type: normalizeSeqType(seq.type),
-                        id: seq.id ?? '',
-                        trackId: seq.trackId ?? '',
-                        language: seq.language ?? null,
-                        channelCount: seq.channelCount ?? null,
-                        soundfield: seq.soundfield ?? null,
-                        segmentId: null,
-                        sequenceNumber: i,
-                        sequenceResources: (seq.resources ?? []).map((r: any) => ({ // eslint-disable-line @typescript-eslint/no-explicit-any
-                            id: r.id ?? '',
-                            intrinsicDuration: r.intrinsicDuration ?? 0,
-                            sourceDuration: r.sourceDuration ?? r.intrinsicDuration ?? 0,
-                            sourceEncoding: r.sourceEncoding ?? null,
-                            trackFileId: r.trackFileId ?? null,
-                            editRate: normalizeEditRate(r.editRate) ?? editRate,
-                            entryPoint: r.entryPoint ?? null,
-                        })),
-                    })),
+                    sequences,
                 },
             };
         }),
@@ -273,8 +364,8 @@ export default function ImfPlayground() {
         const mod = getWasmModule();
         if (!mod || Object.keys(xmlMapRef.current).length === 0) return;
         try {
-            const report = mod.buildReport(xmlMapRef.current, { rules: rulesConfig });
-            setPackageData(mapReportToViewData(report));
+            const result = mod.validate(xmlMapRef.current, { rules: rulesConfig });
+            setPackageData(mapValidateResult(result));
             setParseError(null);
         } catch (e) {
             console.error('[imf] re-validate error:', e);
@@ -311,10 +402,10 @@ export default function ImfPlayground() {
         const mod = getWasmModule();
         if (mod && Object.keys(xmlMap).length > 0) {
             try {
-                const report = mod.buildReport(xmlMap, { rules: rulesConfigRef.current });
-                setPackageData(mapReportToViewData(report));
+                const result = mod.validate(xmlMap, { rules: rulesConfigRef.current });
+                setPackageData(mapValidateResult(result));
             } catch (e) {
-                console.error('[imf] buildReport error:', e);
+                console.error('[imf] validate error:', e);
                 setParseError(String(e));
             }
         }

@@ -96,6 +96,7 @@ function soundfieldFromDescriptor(ed: any): string | null {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapValidateResult(result: any): any {
+    console.log('[imf] validate() raw result:', JSON.stringify(result).slice(0, 2000));
     const pkg = result.package;
     const v = result.validation;
 
@@ -113,7 +114,7 @@ function mapValidateResult(result: any): any {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     function descriptorMap(cpl: any): Record<string, any> {
         const m: Record<string, any> = {}; // eslint-disable-line @typescript-eslint/no-explicit-any
-        for (const ed of cpl?.essenceDescriptorList?.essenceDescriptors ?? []) {
+        for (const ed of cpl?.essenceDescriptorList?.essenceDescriptor ?? []) {
             if (ed.id) m[ed.id] = ed;
         }
         return m;
@@ -135,18 +136,20 @@ function mapValidateResult(result: any): any {
             const editRate = er ? `${er.numerator} ${er.denominator}` : null;
             const descs = descriptorMap(cpl);
             const title = typeof cpl.contentTitle === 'string' ? cpl.contentTitle : cpl.contentTitle?.text ?? '';
-            const segments = cpl.segmentList?.segments ?? [];
+            // WASM serde uses singular field names: "segment", not "segments"
+            const segments = cpl.segmentList?.segment ?? cpl.segmentList?.segments ?? [];
             const contentKind = typeof cpl.contentKind === 'string' ? cpl.contentKind : cpl.contentKind?.value ?? null;
 
             // Flatten sequences across segments, merge by trackId
+            // WASM serde uses singular camelCase: "mainImageSequence", not "mainImageSequences"
             const seqTypeKeys: [string, string][] = [
-                ['mainImageSequences', 'MainImageSequence'],
-                ['mainAudioSequences', 'MainAudioSequence'],
-                ['subtitlesSequences', 'SubtitlesSequence'],
-                ['hearingImpairedCaptionsSequences', 'HearingImpairedCaptionsSequence'],
-                ['forcedNarrativeSequences', 'ForcedNarrativeSequence'],
-                ['iabSequences', 'IABSequence'],
-                ['isxdSequences', 'ISXDSequence'],
+                ['mainImageSequence', 'MainImageSequence'],
+                ['mainAudioSequence', 'MainAudioSequence'],
+                ['subtitlesSequence', 'SubtitlesSequence'],
+                ['hearingImpairedCaptionsSequence', 'HearingImpairedCaptionsSequence'],
+                ['forcedNarrativeSequence', 'ForcedNarrativeSequence'],
+                ['iabSequence', 'IABSequence'],
+                ['isxdSequence', 'ISXDSequence'],
             ];
 
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -160,7 +163,7 @@ function mapValidateResult(result: any): any {
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     for (const seq of arr) {
                         const trackId = seq.trackId ?? '';
-                        const resources = (seq.resourceList?.resources ?? []).map((r: any) => ({ // eslint-disable-line @typescript-eslint/no-explicit-any
+                        const resources = (seq.resourceList?.resource ?? []).map((r: any) => ({ // eslint-disable-line @typescript-eslint/no-explicit-any
                             id: r.id ?? '',
                             intrinsicDuration: r.intrinsicDuration ?? 0,
                             sourceDuration: r.sourceDuration ?? r.intrinsicDuration ?? 0,
@@ -173,7 +176,7 @@ function mapValidateResult(result: any): any {
                         if (existing) {
                             existing.sequenceResources.push(...resources);
                         } else {
-                            const seUuid = (seq.resourceList?.resources ?? [])[0]?.sourceEncoding;
+                            const seUuid = (seq.resourceList?.resource ?? [])[0]?.sourceEncoding;
                             const ed = seUuid ? descs[seUuid] : null;
                             sequences.push({
                                 type: typeName,
@@ -195,7 +198,7 @@ function mapValidateResult(result: any): any {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const markers: any[] = [];
             for (const seg of segments) {
-                for (const ms of seg.sequenceList?.markerSequences ?? []) {
+                for (const ms of seg.sequenceList?.markerSequence ?? []) {
                     for (const r of ms.resourceList?.resources ?? []) {
                         for (const m of r.markerList ?? []) {
                             markers.push({

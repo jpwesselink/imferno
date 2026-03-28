@@ -119,7 +119,7 @@ export interface ContentMaturityRating {
 }
 
 export interface ContentMaturityRatingList {
-    contentMaturityRating: ContentMaturityRating[];
+    contentMaturityRatings: ContentMaturityRating[];
 }
 
 export interface ContentVersion {
@@ -128,7 +128,7 @@ export interface ContentVersion {
 }
 
 export interface ContentVersionList {
-    contentVersion: ContentVersion[];
+    contentVersions: ContentVersion[];
 }
 
 export interface DCTimedTextDescriptor {
@@ -155,7 +155,7 @@ export interface EssenceDescriptor {
 }
 
 export interface EssenceDescriptorList {
-    essenceDescriptor: EssenceDescriptor[];
+    essenceDescriptors: EssenceDescriptor[];
 }
 
 export interface ExtensionProperties {
@@ -261,7 +261,7 @@ export interface JPEG2000SubDescriptor {
 }
 
 export interface LanguageList {
-    language: LanguageTag[];
+    languages: LanguageTag[];
 }
 
 export interface LanguageString {
@@ -276,7 +276,7 @@ export interface Locale {
 }
 
 export interface LocaleList {
-    locale: Locale[];
+    locales: Locale[];
 }
 
 export interface MainAudioSequence {
@@ -360,7 +360,7 @@ export interface RGBALayoutComponent {
 }
 
 export interface RegionList {
-    region: string[];
+    regions: string[];
 }
 
 export interface Resolution {
@@ -380,11 +380,11 @@ export interface Resource {
     repeatCount?: number | null;
     keyId?: ImfUuid | null;
     hash?: string | null;
-    marker?: MarkerInfo[];
+    markers?: MarkerInfo[];
 }
 
 export interface ResourceList {
-    resource?: Resource[];
+    resources?: Resource[];
 }
 
 export interface Segment {
@@ -393,18 +393,18 @@ export interface Segment {
 }
 
 export interface SegmentList {
-    segment: Segment[];
+    segments: Segment[];
 }
 
 export interface SequenceList {
-    markerSequence?: MarkerSequence[];
-    mainImageSequence?: MainImageSequence[];
-    mainAudioSequence?: MainAudioSequence[];
-    subtitlesSequence?: SubtitlesSequence[];
-    hearingImpairedCaptionsSequence?: HearingImpairedCaptionsSequence[];
-    forcedNarrativeSequence?: ForcedNarrativeSequence[];
-    iabSequence?: IABSequence[];
-    isxdSequence?: ISXDSequence[];
+    markerSequences?: MarkerSequence[];
+    mainImageSequences?: MainImageSequence[];
+    mainAudioSequences?: MainAudioSequence[];
+    subtitlesSequences?: SubtitlesSequence[];
+    hearingImpairedCaptionsSequences?: HearingImpairedCaptionsSequence[];
+    forcedNarrativeSequences?: ForcedNarrativeSequence[];
+    iabSequences?: IABSequence[];
+    isxdSequences?: ISXDSequence[];
 }
 
 export interface SoundfieldGroupLabelSubDescriptor {

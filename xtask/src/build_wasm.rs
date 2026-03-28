@@ -1,5 +1,5 @@
 //! Builds `crates/imferno-wasm` with wasm-pack and syncs the output into
-//! `docs/public/wasm/` so the Astro site always uses the freshest build.
+//! `docs/docs/public/wasm/` so the Astro site always uses the freshest build.
 
 use std::path::Path;
 use std::process::Command;
@@ -12,7 +12,7 @@ pub fn run() {
 
     let wasm_crate = workspace_root.join("crates/imferno-wasm");
     let pkg_dir = wasm_crate.join("pkg");
-    let docs_wasm = workspace_root.join("docs/public/wasm");
+    let docs_wasm = workspace_root.join("docs/docs/public/wasm");
 
     // ── 1. Run wasm-pack ────────────────────────────────────────────────────
     println!("building imferno-wasm with wasm-pack…");
@@ -33,8 +33,8 @@ pub fn run() {
         std::process::exit(status.code().unwrap_or(1));
     }
 
-    // ── 2. Sync pkg/ → docs/public/wasm/ ───────────────────────────────────
-    println!("syncing pkg/ → docs/public/wasm/…");
+    // ── 2. Sync pkg/ → docs/docs/public/wasm/ ───────────────────────────────────
+    println!("syncing pkg/ → docs/docs/public/wasm/…");
     fs::create_dir_all(&docs_wasm).expect("create docs/public/wasm");
 
     let mut copied = 0usize;

@@ -32,7 +32,7 @@ fn usage() {
     eprintln!();
     eprintln!("commands:");
     eprintln!(
-        "  build-wasm         build imferno-wasm with wasm-pack and sync to docs/public/wasm/"
+        "  build-wasm         build imferno-wasm with wasm-pack and sync to docs/docs/public/wasm/"
     );
     eprintln!("  generate-docs      generate reference/codes/*.md from spec crate enums");
     eprintln!("  generate-schema    generate JSON Schema files into crates/imferno-core/npm/schema/schemas/");

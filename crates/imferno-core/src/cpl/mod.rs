@@ -1214,7 +1214,7 @@ impl schemars::JsonSchema for LanguageString {
 #[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
 pub struct LocaleList {
     #[cfg_attr(not(feature = "wasm"), serde(rename = "Locale"))]
-    #[cfg_attr(feature = "wasm", serde(rename = "locale", alias = "Locale"))]
+    #[cfg_attr(feature = "wasm", serde(rename = "locales", alias = "Locale"))]
     pub locales: Vec<Locale>,
 }
 
@@ -1264,7 +1264,7 @@ pub struct ContentMaturityRatingList {
     #[cfg_attr(not(feature = "wasm"), serde(rename = "ContentMaturityRating"))]
     #[cfg_attr(
         feature = "wasm",
-        serde(rename = "contentMaturityRating", alias = "ContentMaturityRating")
+        serde(rename = "contentMaturityRatings", alias = "ContentMaturityRating")
     )]
     pub ratings: Vec<ContentMaturityRating>,
 }
@@ -1316,7 +1316,7 @@ pub struct AudienceElement {
 #[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
 pub struct LanguageList {
     #[cfg_attr(not(feature = "wasm"), serde(rename = "Language"))]
-    #[cfg_attr(feature = "wasm", serde(rename = "language", alias = "Language"))]
+    #[cfg_attr(feature = "wasm", serde(rename = "languages", alias = "Language"))]
     pub languages: Vec<LanguageTag>, // RFC 5646 language tags
 }
 
@@ -1328,7 +1328,7 @@ pub struct LanguageList {
 #[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
 pub struct RegionList {
     #[cfg_attr(not(feature = "wasm"), serde(rename = "Region"))]
-    #[cfg_attr(feature = "wasm", serde(rename = "region", alias = "Region"))]
+    #[cfg_attr(feature = "wasm", serde(rename = "regions", alias = "Region"))]
     pub regions: Vec<String>, // ISO 3166-1 country codes
 }
 
@@ -1383,7 +1383,7 @@ pub struct EssenceDescriptorList {
     #[cfg_attr(not(feature = "wasm"), serde(rename = "EssenceDescriptor"))]
     #[cfg_attr(
         feature = "wasm",
-        serde(rename = "essenceDescriptor", alias = "EssenceDescriptor")
+        serde(rename = "essenceDescriptors", alias = "EssenceDescriptor")
     )]
     pub essence_descriptors: Vec<EssenceDescriptor>,
 }
@@ -2449,7 +2449,7 @@ pub struct ContentVersionList {
     #[cfg_attr(not(feature = "wasm"), serde(rename = "ContentVersion"))]
     #[cfg_attr(
         feature = "wasm",
-        serde(rename = "contentVersion", alias = "ContentVersion")
+        serde(rename = "contentVersions", alias = "ContentVersion")
     )]
     pub content_versions: Vec<ContentVersion>,
 }
@@ -2485,7 +2485,7 @@ pub struct ContentVersion {
 #[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
 pub struct SegmentList {
     #[cfg_attr(not(feature = "wasm"), serde(rename = "Segment"))]
-    #[cfg_attr(feature = "wasm", serde(rename = "segment", alias = "Segment"))]
+    #[cfg_attr(feature = "wasm", serde(rename = "segments", alias = "Segment"))]
     pub segments: Vec<Segment>,
 }
 
@@ -2518,21 +2518,21 @@ pub struct SequenceList {
     #[cfg_attr(not(feature = "wasm"), serde(rename = "MarkerSequence", default))]
     #[cfg_attr(
         feature = "wasm",
-        serde(rename = "markerSequence", alias = "MarkerSequence", default)
+        serde(rename = "markerSequences", alias = "MarkerSequence", default)
     )]
     pub marker_sequences: Vec<MarkerSequence>,
 
     #[cfg_attr(not(feature = "wasm"), serde(rename = "MainImageSequence", default))]
     #[cfg_attr(
         feature = "wasm",
-        serde(rename = "mainImageSequence", alias = "MainImageSequence", default)
+        serde(rename = "mainImageSequences", alias = "MainImageSequence", default)
     )]
     pub main_image_sequences: Vec<MainImageSequence>,
 
     #[cfg_attr(not(feature = "wasm"), serde(rename = "MainAudioSequence", default))]
     #[cfg_attr(
         feature = "wasm",
-        serde(rename = "mainAudioSequence", alias = "MainAudioSequence", default)
+        serde(rename = "mainAudioSequences", alias = "MainAudioSequence", default)
     )]
     pub main_audio_sequences: Vec<MainAudioSequence>,
 
@@ -2543,7 +2543,7 @@ pub struct SequenceList {
     #[cfg_attr(
         feature = "wasm",
         serde(
-            rename = "subtitlesSequence",
+            rename = "subtitlesSequences",
             alias = "SubtitlesSequence",
             alias = "MainSubtitleSequence",
             default
@@ -2558,7 +2558,7 @@ pub struct SequenceList {
     #[cfg_attr(
         feature = "wasm",
         serde(
-            rename = "hearingImpairedCaptionsSequence",
+            rename = "hearingImpairedCaptionsSequences",
             alias = "HearingImpairedCaptionsSequence",
             default
         )
@@ -2572,7 +2572,7 @@ pub struct SequenceList {
     #[cfg_attr(
         feature = "wasm",
         serde(
-            rename = "forcedNarrativeSequence",
+            rename = "forcedNarrativeSequences",
             alias = "ForcedNarrativeSequence",
             default
         )
@@ -2582,14 +2582,14 @@ pub struct SequenceList {
     #[cfg_attr(not(feature = "wasm"), serde(rename = "IABSequence", default))]
     #[cfg_attr(
         feature = "wasm",
-        serde(rename = "iabSequence", alias = "IABSequence", default)
+        serde(rename = "iabSequences", alias = "IABSequence", default)
     )]
     pub iab_sequences: Vec<IABSequence>,
 
     #[cfg_attr(not(feature = "wasm"), serde(rename = "ISXDSequence", default))]
     #[cfg_attr(
         feature = "wasm",
-        serde(rename = "isxdSequence", alias = "ISXDSequence", default)
+        serde(rename = "isxdSequences", alias = "ISXDSequence", default)
     )]
     pub isxd_sequences: Vec<ISXDSequence>,
 }
@@ -2720,7 +2720,7 @@ pub struct ResourceList {
     #[cfg_attr(not(feature = "wasm"), serde(rename = "Resource", default))]
     #[cfg_attr(
         feature = "wasm",
-        serde(rename = "resource", alias = "Resource", default)
+        serde(rename = "resources", alias = "Resource", default)
     )]
     pub resources: Vec<Resource>,
 }
@@ -2813,7 +2813,7 @@ pub struct Resource {
     pub hash: Option<String>,
 
     #[cfg_attr(not(feature = "wasm"), serde(rename = "Marker", default))]
-    #[cfg_attr(feature = "wasm", serde(rename = "marker", alias = "Marker", default))]
+    #[cfg_attr(feature = "wasm", serde(rename = "markers", alias = "Marker", default))]
     pub markers: Vec<MarkerInfo>,
 }
 

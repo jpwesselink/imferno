@@ -1,0 +1,7 @@
+[
+  { "type": "file", "name": "rust", "label": "Rust" },
+  { "type": "file", "name": "wasm", "label": "WASM" },
+  { "type": "file", "name": "node", "label": "Node.js" },
+  { "type": "file", "name": "cli", "label": "CLI" },
+  { "type": "file", "name": "standards", "label": "Standards" }
+]

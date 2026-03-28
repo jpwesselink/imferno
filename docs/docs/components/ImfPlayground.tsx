@@ -132,11 +132,19 @@ function mapValidateResult(result: any): any {
         },
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         cpls: cplEntries.map(([, cpl]: [string, any]) => {
-            const er = cpl.editRate;
-            const editRate = er ? `${er.numerator} ${er.denominator}` : null;
+            console.log('[imf] CPL keys:', Object.keys(cpl));
+            console.log('[imf] CPL.contentTitle:', cpl.contentTitle, cpl.ContentTitle);
+            console.log('[imf] CPL.segmentList:', cpl.segmentList, cpl.SegmentList);
+            if (cpl.segmentList) console.log('[imf] segmentList keys:', Object.keys(cpl.segmentList));
+            if (cpl.SegmentList) console.log('[imf] SegmentList keys:', Object.keys(cpl.SegmentList));
+            const er = cpl.editRate ?? cpl.EditRate;
+            const editRate = er ? `${er.numerator ?? er.Numerator} ${er.denominator ?? er.Denominator}` : null;
             const descs = descriptorMap(cpl);
-            const title = typeof cpl.contentTitle === 'string' ? cpl.contentTitle : cpl.contentTitle?.text ?? '';
-            const segments = cpl.segmentList?.segments ?? [];
+            const rawTitle = cpl.contentTitle ?? cpl.ContentTitle;
+            const title = typeof rawTitle === 'string' ? rawTitle : rawTitle?.text ?? rawTitle?.Text ?? '';
+            const rawSegList = cpl.segmentList ?? cpl.SegmentList;
+            const segments = rawSegList?.segments ?? rawSegList?.Segments ?? rawSegList?.segment ?? rawSegList?.Segment ?? [];
+            if (!Array.isArray(segments)) console.log('[imf] segments is not array:', segments);
             const contentKind = typeof cpl.contentKind === 'string' ? cpl.contentKind : cpl.contentKind?.value ?? null;
 
             // Flatten sequences across segments, merge by trackId

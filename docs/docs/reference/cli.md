@@ -3,22 +3,19 @@ title: CLI Reference
 description: "imferno CLI — validate, export, and report on IMF packages."
 ---
 
-## Quick run
-
-No global install needed. Run the latest version directly via npx:
-
-```bash
-npx imferno@latest validate ./my-package
-```
-
 ## Install
 
+imferno is a native Rust binary — fast, offline, no runtime. Install via Cargo or npm:
+
 ```bash
+# Via Cargo (native Rust binary)
+cargo install imferno
+
 # Via npm (prebuilt binaries for all platforms)
 npm install -g imferno
 
-# Via Cargo
-cargo install imferno
+# Or run without installing
+npx imferno@latest validate ./my-package
 ```
 
 ---

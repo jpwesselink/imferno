@@ -2543,7 +2543,7 @@ pub struct SequenceList {
     #[cfg_attr(
         feature = "wasm",
         serde(
-            rename = "subtitlesSequence",
+            rename = "subtitlesSequences",
             alias = "SubtitlesSequence",
             alias = "MainSubtitleSequence",
             default
@@ -2558,7 +2558,7 @@ pub struct SequenceList {
     #[cfg_attr(
         feature = "wasm",
         serde(
-            rename = "hearingImpairedCaptionsSequence",
+            rename = "hearingImpairedCaptionsSequences",
             alias = "HearingImpairedCaptionsSequence",
             default
         )
@@ -2572,7 +2572,7 @@ pub struct SequenceList {
     #[cfg_attr(
         feature = "wasm",
         serde(
-            rename = "forcedNarrativeSequence",
+            rename = "forcedNarrativeSequences",
             alias = "ForcedNarrativeSequence",
             default
         )

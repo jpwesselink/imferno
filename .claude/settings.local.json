@@ -145,7 +145,12 @@
       "Bash(bash:*)",
       "mcp__github__pull_request_read",
       "mcp__github__update_pull_request",
-      "Bash(npx napi:*)"
+      "Bash(npx napi:*)",
+      "Read(//Users/jpwesselink/projects/release-playground/docs/**)",
+      "Read(//Users/jpwesselink/projects/release-playground/**)",
+      "Bash(mv docs:*)",
+      "Bash(mv docs-new:*)",
+      "Bash(DOCS_VERSION=pr-31 npx rspress build)"
     ],
     "deny": [],
     "ask": []

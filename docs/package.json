@@ -8,7 +8,9 @@
   },
   "devDependencies": {
     "@rspress/core": "^2.0.5",
+    "@tailwindcss/vite": "^4.2.2",
     "react": "^19.1.0",
-    "react-dom": "^19.1.0"
+    "react-dom": "^19.1.0",
+    "tailwindcss": "^4.2.2"
   }
 }

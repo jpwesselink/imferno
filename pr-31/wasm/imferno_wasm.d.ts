@@ -400,9 +400,9 @@ export interface SequenceList {
     markerSequences?: MarkerSequence[];
     mainImageSequences?: MainImageSequence[];
     mainAudioSequences?: MainAudioSequence[];
-    subtitlesSequence?: SubtitlesSequence[];
-    hearingImpairedCaptionsSequence?: HearingImpairedCaptionsSequence[];
-    forcedNarrativeSequence?: ForcedNarrativeSequence[];
+    subtitlesSequences?: SubtitlesSequence[];
+    hearingImpairedCaptionsSequences?: HearingImpairedCaptionsSequence[];
+    forcedNarrativeSequences?: ForcedNarrativeSequence[];
     iabSequences?: IABSequence[];
     isxdSequences?: ISXDSequence[];
 }

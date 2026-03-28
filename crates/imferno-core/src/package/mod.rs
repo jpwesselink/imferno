@@ -3526,6 +3526,47 @@ mod tests {
     }
 
     #[test]
+    fn dump_imferno_json_shape() {
+        let test_path = test_data("MERIDIAN_Netflix_Photon_161006");
+        let files = read_dir(test_path).unwrap();
+        let pkg = Imferno::parse(files).unwrap();
+        let json = serde_json::to_value(&pkg).unwrap();
+        if let serde_json::Value::Object(map) = &json {
+            for (k, v) in map {
+                match v {
+                    serde_json::Value::Object(inner) => {
+                        let sample_keys: Vec<String> = inner.keys().take(5).cloned().collect();
+                        eprintln!(
+                            "  {}: {{{}...}} ({} keys)",
+                            k,
+                            sample_keys.join(", "),
+                            inner.len()
+                        );
+                        if k == "compositionPlaylists" {
+                            if let Some((_uuid, cpl_val)) = inner.iter().next() {
+                                if let serde_json::Value::Object(cpl) = cpl_val {
+                                    for (ck, cv) in cpl.iter().take(20) {
+                                        let preview = serde_json::to_string(cv).unwrap_or_default();
+                                        eprintln!(
+                                            "      {}: {}",
+                                            ck,
+                                            &preview[..preview.len().min(120)]
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    serde_json::Value::String(s) => {
+                        eprintln!("  {}: \"{}\"", k, &s[..s.len().min(60)])
+                    }
+                    _ => {}
+                }
+            }
+        }
+    }
+
+    #[test]
     fn sequence_language_extracted_from_descriptors() {
         let test_path = test_data("MERIDIAN_Netflix_Photon_161006");
         let files = read_dir(test_path).unwrap();

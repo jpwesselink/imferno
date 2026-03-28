@@ -136,20 +136,19 @@ function mapValidateResult(result: any): any {
             const editRate = er ? `${er.numerator} ${er.denominator}` : null;
             const descs = descriptorMap(cpl);
             const title = typeof cpl.contentTitle === 'string' ? cpl.contentTitle : cpl.contentTitle?.text ?? '';
-            // WASM serde uses singular field names: "segment", not "segments"
-            const segments = cpl.segmentList?.segment ?? cpl.segmentList?.segments ?? [];
+            const segments = cpl.segmentList?.segments ?? [];
             const contentKind = typeof cpl.contentKind === 'string' ? cpl.contentKind : cpl.contentKind?.value ?? null;
 
             // Flatten sequences across segments, merge by trackId
-            // WASM serde uses singular camelCase: "mainImageSequence", not "mainImageSequences"
+            // Sequence type keys → IMFPackageViewer type names
             const seqTypeKeys: [string, string][] = [
-                ['mainImageSequence', 'MainImageSequence'],
-                ['mainAudioSequence', 'MainAudioSequence'],
-                ['subtitlesSequence', 'SubtitlesSequence'],
-                ['hearingImpairedCaptionsSequence', 'HearingImpairedCaptionsSequence'],
-                ['forcedNarrativeSequence', 'ForcedNarrativeSequence'],
-                ['iabSequence', 'IABSequence'],
-                ['isxdSequence', 'ISXDSequence'],
+                ['mainImageSequences', 'MainImageSequence'],
+                ['mainAudioSequences', 'MainAudioSequence'],
+                ['subtitlesSequences', 'SubtitlesSequence'],
+                ['hearingImpairedCaptionsSequences', 'HearingImpairedCaptionsSequence'],
+                ['forcedNarrativeSequences', 'ForcedNarrativeSequence'],
+                ['iabSequences', 'IABSequence'],
+                ['isxdSequences', 'ISXDSequence'],
             ];
 
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -198,9 +197,9 @@ function mapValidateResult(result: any): any {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const markers: any[] = [];
             for (const seg of segments) {
-                for (const ms of seg.sequenceList?.markerSequence ?? []) {
+                for (const ms of seg.sequenceList?.markerSequences ?? []) {
                     for (const r of ms.resourceList?.resources ?? []) {
-                        for (const m of r.markerList ?? []) {
+                        for (const m of r.markers ?? []) {
                             markers.push({
                                 label: typeof m.label === 'string' ? m.label : m.label?.value ?? '',
                                 offset: m.offset ?? null,

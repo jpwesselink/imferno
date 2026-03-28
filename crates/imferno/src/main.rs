@@ -1,10 +1,10 @@
 //! IMF CLI — Command-line tool for validating IMF packages.
-//!
-//! Uses [`build_report`] / [`format_report`] from `imferno-core`.
 
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
-use imferno_core::package::{build_report, format_report, ImfReport, Imferno, ValidationOptions};
+use imferno_core::package::{
+    format_report, validate, Imferno, RulesConfig, ValidationOptions, ValidationResult,
+};
 use imferno_core::validation::{AppSpecTarget, CoreSpecTarget};
 use imferno_core::{Category, Severity, ValidationIssue, ValidationProfile, ValidationReport};
 use std::io::{IsTerminal, Read as _};
@@ -62,40 +62,6 @@ enum Commands {
         rules_config: Option<PathBuf>,
     },
 
-    /// Export a full report as JSON (package metadata + validation + CPL analysis)
-    Export {
-        /// Path to the IMF package directory
-        #[arg(value_name = "PATH")]
-        path: PathBuf,
-
-        /// Path to ancestor IMP directory (for supplemental packages)
-        #[arg(long)]
-        ancestor: Option<PathBuf>,
-
-        /// Core constraints spec version selection
-        #[arg(long, value_enum, default_value = "auto")]
-        core_spec: CoreSpecVersion,
-
-        /// Application profile selection
-        #[arg(long, value_enum, default_value = "auto")]
-        app2e_spec: App2eSpecVersion,
-
-        /// Skip file manifest and MXF header checks
-        #[arg(long)]
-        xml_only: bool,
-
-        /// Path to a JSON rules config file
-        #[arg(long, value_name = "PATH")]
-        rules_config: Option<PathBuf>,
-    },
-
-    /// Pretty-print a previously exported JSON report
-    Report {
-        /// Path to a JSON report file, or "-" for stdin
-        #[arg(value_name = "PATH")]
-        path: String,
-    },
-
     /// Show detailed CPL information
     Cpl {
         /// Path to the IMF package directory
@@ -105,6 +71,30 @@ enum Commands {
         /// CPL UUID (optional, shows first CPL if not specified)
         #[arg(short, long)]
         uuid: Option<String>,
+    },
+
+    /// (deprecated) Export a full report as JSON — use `validate --format json` instead
+    #[command(hide = true)]
+    Export {
+        #[arg(value_name = "PATH")]
+        path: PathBuf,
+        #[arg(long)]
+        ancestor: Option<PathBuf>,
+        #[arg(long, value_enum, default_value = "auto")]
+        core_spec: CoreSpecVersion,
+        #[arg(long, value_enum, default_value = "auto")]
+        app2e_spec: App2eSpecVersion,
+        #[arg(long)]
+        xml_only: bool,
+        #[arg(long, value_name = "PATH")]
+        rules_config: Option<PathBuf>,
+    },
+
+    /// (deprecated) Pretty-print a JSON report — use `validate` instead
+    #[command(hide = true)]
+    Report {
+        #[arg(value_name = "PATH")]
+        path: String,
     },
 }
 
@@ -144,49 +134,48 @@ fn main() -> Result<()> {
             xml_only,
             exit_zero,
             rules_config,
-        } => {
-            cmd_validate(
-                &path,
-                verify_hashes,
-                format,
-                core_spec,
-                app2e_spec,
-                xml_only,
-                exit_zero,
-                rules_config.as_deref(),
-            )?;
-        }
+        } => cmd_validate(
+            &path,
+            verify_hashes,
+            format,
+            core_spec,
+            app2e_spec,
+            xml_only,
+            exit_zero,
+            rules_config.as_deref(),
+        ),
+        Commands::Cpl { path, uuid } => cmd_cpl(&path, uuid),
+        // Deprecated commands — still work but hidden from help
         Commands::Export {
             path,
-            ancestor,
+            ancestor: _,
             core_spec,
             app2e_spec,
             xml_only,
             rules_config,
         } => {
-            cmd_export(
+            eprintln!("Warning: `export` is deprecated. Use `validate --format json` instead.");
+            cmd_validate(
                 &path,
-                ancestor.as_deref(),
+                false,
+                OutputFormat::Json,
                 core_spec,
                 app2e_spec,
                 xml_only,
+                true,
                 rules_config.as_deref(),
-            )?;
+            )
         }
         Commands::Report { path } => {
-            cmd_report(&path)?;
-        }
-        Commands::Cpl { path, uuid } => {
-            cmd_cpl(&path, uuid)?;
+            eprintln!("Warning: `report` is deprecated. Use `validate` instead.");
+            cmd_report_legacy(&path)
         }
     }
-
-    Ok(())
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-fn parse_rules(path: Option<&std::path::Path>) -> Result<imferno_core::package::RulesConfig> {
+fn parse_rules(path: Option<&std::path::Path>) -> Result<RulesConfig> {
     match path {
         Some(p) => {
             let json = std::fs::read_to_string(p)
@@ -202,7 +191,7 @@ fn make_options(
     core_spec: CoreSpecVersion,
     app2e_spec: App2eSpecVersion,
     xml_only: bool,
-    rules: imferno_core::package::RulesConfig,
+    rules: RulesConfig,
 ) -> ValidationOptions {
     let core_spec_target = match core_spec {
         CoreSpecVersion::Auto => None,
@@ -245,14 +234,13 @@ fn cmd_validate(
     let options = make_options(core_spec, app2e_spec, xml_only, rules);
     let color = use_color() && !matches!(format, OutputFormat::Json);
 
-    // Parse
-    let parse_result = imferno_core::package::read_dir(path).and_then(Imferno::parse);
-    let package = match parse_result {
-        Ok(p) => p,
+    // Read files
+    let files = match imferno_core::package::read_dir(path) {
+        Ok(f) => f,
         Err(e) => {
             if matches!(format, OutputFormat::Json) {
-                let mut report = ValidationReport::new(ValidationProfile::SMPTE);
-                report.add(
+                let mut validation = ValidationReport::new(ValidationProfile::SMPTE);
+                validation.add(
                     ValidationIssue::new(
                         Severity::Critical,
                         Category::Structure,
@@ -263,22 +251,23 @@ fn cmd_validate(
                         "Ensure the directory contains VOLINDEX.xml and ASSETMAP.xml.",
                     ),
                 );
-                println!("{}", serde_json::to_string_pretty(&report)?);
+                println!("{}", serde_json::to_string_pretty(&validation)?);
                 return Ok(());
             }
             return Err(e.into());
         }
     };
 
-    // Build report
-    let mut report = build_report(&package, &options, None).map_err(|e| anyhow::anyhow!(e))?;
+    // Validate (parse + check in one call)
+    let mut result: ValidationResult = validate(files, &options);
 
-    // Hash verification (appends to report.validation)
+    // Hash verification (appends to validation)
     if verify_hashes {
         if !matches!(format, OutputFormat::Json) {
             println!("Verifying file hashes (this may take a moment)...");
         }
-        let hash_errs: Vec<_> = package
+        let hash_errs: Vec<_> = result
+            .package
             .validate_file_hashes()
             .into_iter()
             .filter(|e| {
@@ -292,7 +281,7 @@ fn cmd_validate(
             println!("  ok  All PKL file hashes verified");
         }
         for err in &hash_errs {
-            report.validation.add(ValidationIssue::new(
+            result.validation.add(ValidationIssue::new(
                 Severity::Error,
                 Category::Asset,
                 "FILE-HASH-ERROR",
@@ -304,64 +293,20 @@ fn cmd_validate(
     // Output
     match format {
         OutputFormat::Json => {
-            println!("{}", serde_json::to_string_pretty(&report)?);
+            println!("{}", serde_json::to_string_pretty(&result)?);
         }
         OutputFormat::Summary => {
+            // Build the human-readable report from the package
+            let report = imferno_core::package::build_report(&result.package, &options, None)
+                .map_err(|e| anyhow::anyhow!(e))?;
             print!("{}", format_report(&report, color));
             let has_errors =
-                !report.validation.critical.is_empty() || !report.validation.errors.is_empty();
+                !result.validation.critical.is_empty() || !result.validation.errors.is_empty();
             if has_errors && !exit_zero {
                 return Err(anyhow::anyhow!("Validation failed"));
             }
         }
     }
-
-    Ok(())
-}
-
-fn cmd_export(
-    path: &PathBuf,
-    ancestor_path: Option<&std::path::Path>,
-    core_spec: CoreSpecVersion,
-    app2e_spec: App2eSpecVersion,
-    xml_only: bool,
-    rules_config_path: Option<&std::path::Path>,
-) -> Result<()> {
-    let rules = parse_rules(rules_config_path)?;
-    let options = make_options(core_spec, app2e_spec, xml_only, rules);
-
-    let package = Imferno::parse(imferno_core::package::read_dir(path)?)?;
-
-    let ancestor = if let Some(anc_path) = ancestor_path {
-        Some(Imferno::parse(imferno_core::package::read_dir(anc_path)?)?)
-    } else {
-        None
-    };
-
-    let report =
-        build_report(&package, &options, ancestor.as_ref()).map_err(|e| anyhow::anyhow!(e))?;
-
-    println!("{}", serde_json::to_string_pretty(&report)?);
-
-    Ok(())
-}
-
-fn cmd_report(path: &str) -> Result<()> {
-    let json = if path == "-" {
-        let mut buf = String::new();
-        std::io::stdin()
-            .read_to_string(&mut buf)
-            .context("Failed to read from stdin")?;
-        buf
-    } else {
-        std::fs::read_to_string(path)
-            .with_context(|| format!("Cannot read report file: {}", path))?
-    };
-
-    let report: ImfReport = serde_json::from_str(&json).context("Invalid ImfReport JSON")?;
-
-    let color = use_color();
-    print!("{}", format_report(&report, color));
 
     Ok(())
 }
@@ -417,6 +362,28 @@ fn cmd_cpl(path: &PathBuf, uuid: Option<String>) -> Result<()> {
             segment.sequence_count
         );
     }
+
+    Ok(())
+}
+
+/// Legacy command — kept for backwards compatibility
+fn cmd_report_legacy(path: &str) -> Result<()> {
+    let json = if path == "-" {
+        let mut buf = String::new();
+        std::io::stdin()
+            .read_to_string(&mut buf)
+            .context("Failed to read from stdin")?;
+        buf
+    } else {
+        std::fs::read_to_string(path)
+            .with_context(|| format!("Cannot read report file: {}", path))?
+    };
+
+    let report: imferno_core::package::ImfReport =
+        serde_json::from_str(&json).context("Invalid ImfReport JSON")?;
+
+    let color = use_color();
+    print!("{}", format_report(&report, color));
 
     Ok(())
 }

@@ -53,8 +53,7 @@ fn test_cli_help() {
     assert!(stdout.contains("SMPTE ST 2067 IMF validator"));
     assert!(stdout.contains("cpl"));
     assert!(stdout.contains("validate"));
-    assert!(stdout.contains("export"));
-    assert!(stdout.contains("report"));
+    // export and report are deprecated (hidden from help)
 }
 
 #[test]

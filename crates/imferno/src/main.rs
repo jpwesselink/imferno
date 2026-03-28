@@ -234,21 +234,41 @@ fn cmd_validate(
                     } else {
                         0
                     };
-                    let bar: String = "█".repeat(filled) + &"░".repeat(bar_width - filled);
-                    let gradient =
-                        Gradient::new(vec![Color::new(249, 115, 22), Color::new(34, 197, 94)]);
-                    let colored_bar = gradient.apply(&bar);
+
+                    // Fire gradient: red → orange → yellow → white
+                    let fire = Gradient::new(vec![
+                        Color::new(220, 38, 38),   // red
+                        Color::new(249, 115, 22),  // orange
+                        Color::new(250, 204, 21),  // yellow
+                        Color::new(255, 255, 255), // white hot
+                    ]);
+
+                    // Animate: shift the gradient based on current file index
+                    let phase = (current as f64 / total.max(1) as f64 * 2.0) % 1.0;
+                    let bar_chars: String = (0..bar_width)
+                        .map(|i| {
+                            if i < filled {
+                                // Shift palette position by phase for animation
+                                let t = (i as f64 / bar_width as f64 + phase) % 1.0;
+                                let palette = fire.palette(bar_width);
+                                let idx = (t * (palette.len() - 1) as f64) as usize;
+                                let c = &palette[idx.min(palette.len() - 1)];
+                                format!("\x1b[38;2;{};{};{}m█\x1b[0m", c.r, c.g, c.b)
+                            } else {
+                                "\x1b[38;5;238m░\x1b[0m".to_string()
+                            }
+                        })
+                        .collect();
+
+                    let label = fire.apply("  🔥 hashing ");
+                    let fname = if filename.len() > 25 {
+                        &filename[..25]
+                    } else {
+                        filename
+                    };
                     eprint!(
-                        "\r  hashing  {} {}% [{}/{}] {}",
-                        colored_bar,
-                        pct,
-                        current,
-                        total,
-                        if filename.len() > 30 {
-                            &filename[..30]
-                        } else {
-                            filename
-                        },
+                        "\r{}{} {}% [{}/{}] {}   ",
+                        label, bar_chars, pct, current, total, fname,
                     );
                 }
             })

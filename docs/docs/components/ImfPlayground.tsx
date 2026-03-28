@@ -176,7 +176,7 @@ function mapValidateResult(result: any): any {
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     for (const seq of arr) {
                         const trackId = seq.trackId ?? '';
-                        const resources = (seq.resourceList?.resource ?? []).map((r: any) => ({ // eslint-disable-line @typescript-eslint/no-explicit-any
+                        const resources = (seq.resourceList?.resources ?? []).map((r: any) => ({ // eslint-disable-line @typescript-eslint/no-explicit-any
                             id: r.id ?? '',
                             intrinsicDuration: r.intrinsicDuration ?? 0,
                             sourceDuration: r.sourceDuration ?? r.intrinsicDuration ?? 0,
@@ -189,7 +189,7 @@ function mapValidateResult(result: any): any {
                         if (existing) {
                             existing.sequenceResources.push(...resources);
                         } else {
-                            const seUuid = (seq.resourceList?.resource ?? [])[0]?.sourceEncoding;
+                            const seUuid = (seq.resourceList?.resources ?? [])[0]?.sourceEncoding;
                             const ed = seUuid ? descs[seUuid] : null;
                             sequences.push({
                                 type: typeName,

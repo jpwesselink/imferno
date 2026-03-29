@@ -320,7 +320,21 @@ async fn cmd_validate(
                                     filled_str, empty_str
                                 )
                             } else if filled > 0 {
-                                let colored = glow(&filled_str, frame);
+                                // Reverse → glow → reverse: glow moves right
+                                let rev: String = filled_str.chars().rev().collect();
+                                let glowed = glow(&rev, frame);
+                                // Reverse the ANSI-colored string by splitting on reset
+                                let colored: String = {
+                                    let parts: Vec<&str> = glowed.split("\x1b[0m").collect();
+                                    let mut reversed = Vec::new();
+                                    for p in parts.iter().rev() {
+                                        if !p.is_empty() {
+                                            reversed.push(*p);
+                                            reversed.push("\x1b[0m");
+                                        }
+                                    }
+                                    reversed.concat()
+                                };
                                 format!("{}\x1b[38;5;238m{}\x1b[0m", colored, empty_str)
                             } else {
                                 format!("\x1b[38;5;238m{}\x1b[0m", empty_str)

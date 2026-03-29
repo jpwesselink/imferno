@@ -30,7 +30,7 @@ imferno validate <PATH> [OPTIONS]
 
 | Option | Description |
 |--------|-------------|
-| `--verify-hashes` | Verify SHA-1 hashes of all assets against PKL (slow) |
+| `--verify-hashes` | Verify SHA-1/SHA-256 hashes against PKL (8 files in parallel) |
 | `--format <FORMAT>` | Output format: `summary` (default), `markdown`, `csv`, `json` |
 | `--core-spec <SPEC>` | Core spec version: `auto` (default), `v2013`, `v2016`, `v2020` |
 | `--app2e-spec <SPEC>` | App profile: `auto` (default), `none`, `v2020`, `v2021`, `v2023` |

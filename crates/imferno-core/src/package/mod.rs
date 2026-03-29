@@ -1171,6 +1171,78 @@ impl Imferno {
         errors
     }
 
+    /// Parallel hash verification using tokio.
+    ///
+    /// Hashes up to `concurrency` files simultaneously. Calls `on_progress(bytes_done, bytes_total)`
+    /// periodically so callers can render a progress bar.
+    ///
+    /// Requires the `tokio` feature.
+    #[cfg(feature = "tokio")]
+    pub async fn validate_file_hashes_parallel(
+        &self,
+        concurrency: usize,
+    ) -> (
+        Vec<FileValidationError>,
+        std::sync::Arc<std::sync::atomic::AtomicU64>,
+        u64,
+    ) {
+        use std::sync::atomic::AtomicU64;
+        use std::sync::Arc;
+
+        let path_map = self.build_asset_path_map();
+        let semaphore = Arc::new(tokio::sync::Semaphore::new(concurrency));
+        let bytes_done = Arc::new(AtomicU64::new(0));
+        let mut total_bytes: u64 = 0;
+        let mut handles = Vec::new();
+
+        // First pass: validate file manifest (sync, fast)
+        let manifest_errors = self.validate_file_manifest();
+        let errored_uuids: std::collections::HashSet<String> = manifest_errors
+            .iter()
+            .map(|e| e.uuid().to_string())
+            .collect();
+
+        // Collect files to hash
+        for pkl in self.packing_lists.values() {
+            for asset in &pkl.asset_list.assets {
+                let uuid_str = asset.id.to_string();
+                if errored_uuids.contains(&uuid_str) {
+                    continue;
+                }
+                let Some(abs_path) = path_map.get(&asset.id) else {
+                    continue;
+                };
+                let file_size = std::fs::metadata(abs_path).map(|m| m.len()).unwrap_or(0);
+                total_bytes += file_size;
+
+                let abs_path = abs_path.clone();
+                let expected_b64 = asset.hash.to_base64();
+                let algorithm = asset.hash.algorithm();
+                let sem = semaphore.clone();
+                let counter = bytes_done.clone();
+
+                handles.push(tokio::spawn(async move {
+                    let _permit = sem.acquire().await.unwrap();
+                    tokio::task::spawn_blocking(move || {
+                        hash_single_file(&uuid_str, &abs_path, &expected_b64, algorithm, &counter)
+                    })
+                    .await
+                    .unwrap_or(None)
+                }));
+            }
+        }
+
+        // Collect results
+        let mut errors = manifest_errors;
+        for handle in handles {
+            if let Ok(Some(err)) = handle.await {
+                errors.push(err);
+            }
+        }
+
+        (errors, bytes_done, total_bytes)
+    }
+
     /// Validate PKL structural constraints per SMPTE ST 2067-2.
     ///
     /// Checks:
@@ -2124,6 +2196,95 @@ pub struct ValidationOptions {
     /// XML-only structural validation is sufficient.
     #[cfg(not(target_arch = "wasm32"))]
     pub skip_disk_checks: bool,
+}
+
+/// Hash a single file and compare against expected digest. Returns error on mismatch.
+#[cfg(not(target_arch = "wasm32"))]
+fn hash_single_file(
+    uuid: &str,
+    path: &std::path::Path,
+    expected_b64: &str,
+    algorithm: crate::assetmap::HashAlgorithm,
+    bytes_done: &std::sync::atomic::AtomicU64,
+) -> Option<FileValidationError> {
+    use std::io::Read;
+    use std::sync::atomic::Ordering;
+
+    let file = match std::fs::File::open(path) {
+        Ok(f) => f,
+        Err(e) => {
+            return Some(FileValidationError::Io {
+                uuid: uuid.to_string(),
+                path: path.to_path_buf(),
+                message: e.to_string(),
+            });
+        }
+    };
+
+    let mut reader = std::io::BufReader::with_capacity(1024 * 1024, file);
+    let mut buf = [0u8; 1024 * 1024];
+
+    let actual_b64 = match algorithm {
+        crate::assetmap::HashAlgorithm::Sha1 => {
+            use sha1::Digest;
+            let mut hasher = sha1::Sha1::new();
+            loop {
+                match reader.read(&mut buf) {
+                    Ok(0) => break,
+                    Ok(n) => {
+                        hasher.update(&buf[..n]);
+                        bytes_done.fetch_add(n as u64, Ordering::Relaxed);
+                    }
+                    Err(e) => {
+                        return Some(FileValidationError::Io {
+                            uuid: uuid.to_string(),
+                            path: path.to_path_buf(),
+                            message: e.to_string(),
+                        });
+                    }
+                }
+            }
+            base64::Engine::encode(
+                &base64::engine::general_purpose::STANDARD,
+                hasher.finalize(),
+            )
+        }
+        crate::assetmap::HashAlgorithm::Sha256 => {
+            use sha2::Digest;
+            let mut hasher = sha2::Sha256::new();
+            loop {
+                match reader.read(&mut buf) {
+                    Ok(0) => break,
+                    Ok(n) => {
+                        hasher.update(&buf[..n]);
+                        bytes_done.fetch_add(n as u64, Ordering::Relaxed);
+                    }
+                    Err(e) => {
+                        return Some(FileValidationError::Io {
+                            uuid: uuid.to_string(),
+                            path: path.to_path_buf(),
+                            message: e.to_string(),
+                        });
+                    }
+                }
+            }
+            base64::Engine::encode(
+                &base64::engine::general_purpose::STANDARD,
+                hasher.finalize(),
+            )
+        }
+    };
+
+    if actual_b64 != expected_b64 {
+        Some(FileValidationError::HashMismatch {
+            uuid: uuid.to_string(),
+            path: path.to_path_buf(),
+            expected: expected_b64.to_string(),
+            actual: actual_b64,
+        })
+    } else {
+        None
+    }
 }
 
 #[cfg(test)]

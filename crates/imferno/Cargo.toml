@@ -13,7 +13,7 @@ name = "imferno"
 path = "src/main.rs"
 
 [dependencies]
-imferno-core = { path = "../imferno-core", version = "2.0.0" }
+imferno-core = { path = "../imferno-core", version = "2.0.0", features = ["tokio"] }
 clap = { workspace = true }
 serde_json = { workspace = true }
 anyhow = { workspace = true }

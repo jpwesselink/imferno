@@ -104,7 +104,8 @@ enum App2eSpecVersion {
     V2023,
 }
 
-fn main() -> Result<()> {
+#[tokio::main]
+async fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
@@ -117,16 +118,19 @@ fn main() -> Result<()> {
             skip_disk_checks,
             exit_zero,
             rules_config,
-        } => cmd_validate(
-            &path,
-            verify_hashes,
-            format,
-            core_spec,
-            app2e_spec,
-            skip_disk_checks,
-            exit_zero,
-            rules_config.as_deref(),
-        ),
+        } => {
+            cmd_validate(
+                &path,
+                verify_hashes,
+                format,
+                core_spec,
+                app2e_spec,
+                skip_disk_checks,
+                exit_zero,
+                rules_config.as_deref(),
+            )
+            .await
+        }
         Commands::Cpl { path, uuid } => cmd_cpl(&path, uuid),
     }
 }
@@ -178,7 +182,7 @@ fn make_options(
 // ── Commands ─────────────────────────────────────────────────────────────────
 
 #[allow(clippy::too_many_arguments)]
-fn cmd_validate(
+async fn cmd_validate(
     path: &PathBuf,
     verify_hashes: bool,
     format: OutputFormat,
@@ -219,69 +223,16 @@ fn cmd_validate(
     // Validate (parse + check in one call)
     let mut result: ValidationResult = validate(files, &options);
 
-    // Hash verification (appends to validation)
+    // Hash verification — parallel with tokio
     if verify_hashes {
-        let show_progress = !matches!(format, OutputFormat::Json) && color;
-        let hash_errs: Vec<_> = result
-            .package
-            .validate_file_hashes_with_progress(
-                |current, total, filename, bytes_done, bytes_total| {
-                    if show_progress {
-                        use chromakopia::{Color, Gradient};
+        if !matches!(format, OutputFormat::Json) {
+            eprintln!("  hashing  verifying file hashes (8 files in parallel)...");
+        }
 
-                        // Overall file progress + within-file byte progress
-                        let file_pct = if bytes_total > 0 {
-                            bytes_done as f64 / bytes_total as f64
-                        } else {
-                            0.0
-                        };
-                        let overall = if total > 0 {
-                            ((current - 1) as f64 + file_pct) / total as f64
-                        } else {
-                            0.0
-                        };
-                        let pct = (overall * 100.0) as usize;
+        let (errs, _bytes_done, _total_bytes) =
+            result.package.validate_file_hashes_parallel(8).await;
 
-                        let bar_width = 30;
-                        let filled = (overall * bar_width as f64) as usize;
-
-                        // Smooth gradient across the filled portion only
-                        let fire = Gradient::new(vec![
-                            Color::new(220, 38, 38),  // red
-                            Color::new(249, 115, 22), // orange
-                            Color::new(250, 204, 21), // yellow
-                        ]);
-                        let palette = fire.palette(100);
-
-                        let bar_chars: String = (0..bar_width)
-                            .map(|i| {
-                                if i < filled {
-                                    // Map position within filled portion to gradient
-                                    let t = i as f64 / filled.max(1) as f64;
-                                    let idx = (t * (palette.len() - 1) as f64) as usize;
-                                    let c = &palette[idx.min(palette.len() - 1)];
-                                    format!("\x1b[38;2;{};{};{}m█\x1b[0m", c.r, c.g, c.b)
-                                } else {
-                                    "\x1b[38;5;238m░\x1b[0m".to_string()
-                                }
-                            })
-                            .collect();
-
-                        let label = "  hashing ";
-                        let fname = if filename.len() > 20 {
-                            &filename[..20]
-                        } else {
-                            filename
-                        };
-                        let size_mb = bytes_total as f64 / 1_048_576.0;
-                        let done_mb = bytes_done as f64 / 1_048_576.0;
-                        eprint!(
-                            "\r{}{} {}% [{}/{}] {} {:.0}/{:.0}MB   ",
-                            label, bar_chars, pct, current, total, fname, done_mb, size_mb,
-                        );
-                    }
-                },
-            )
+        let hash_errs: Vec<_> = errs
             .into_iter()
             .filter(|e| {
                 !matches!(
@@ -290,9 +241,6 @@ fn cmd_validate(
                 )
             })
             .collect();
-        if show_progress {
-            eprint!("\r\x1b[2K"); // clear entire line
-        }
         if hash_errs.is_empty() && !matches!(format, OutputFormat::Json) {
             println!("  ok  All PKL file hashes verified");
         }

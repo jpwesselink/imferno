@@ -1094,7 +1094,7 @@ impl Imferno {
                             crate::assetmap::HashAlgorithm::Sha1 => {
                                 use sha1::Digest;
                                 let mut hasher = sha1::Sha1::new();
-                                let mut buf = [0u8; 1024 * 1024];
+                                let mut buf = vec![0u8; 1024 * 1024];
                                 loop {
                                     match reader.read(&mut buf) {
                                         Ok(0) => break,
@@ -1124,7 +1124,7 @@ impl Imferno {
                             crate::assetmap::HashAlgorithm::Sha256 => {
                                 use sha2::Digest;
                                 let mut hasher = sha2::Sha256::new();
-                                let mut buf = [0u8; 1024 * 1024];
+                                let mut buf = vec![0u8; 1024 * 1024];
                                 loop {
                                     match reader.read(&mut buf) {
                                         Ok(0) => break,
@@ -1171,15 +1171,10 @@ impl Imferno {
         errors
     }
 
-    /// Parallel hash verification using tokio.
-    ///
-    /// Hashes up to `concurrency` files simultaneously. Calls `on_progress(bytes_done, bytes_total)`
-    /// periodically so callers can render a progress bar.
+    /// Returns the total number of bytes to be hashed, for progress bar setup.
+    /// Call this before `validate_file_hashes_parallel` to know the total size.
     ///
     /// Requires the `tokio` feature.
-    #[cfg(feature = "tokio")]
-    /// Returns `(total_bytes, bytes_done_counter)` for progress tracking before calling
-    /// `validate_file_hashes_parallel`. Call this first to set up the progress bar.
     #[cfg(feature = "tokio")]
     pub fn hash_verification_size(&self) -> u64 {
         let path_map = self.build_asset_path_map();
@@ -1243,10 +1238,12 @@ impl Imferno {
             let algorithm = asset.hash.algorithm();
             let sem = semaphore.clone();
 
+            let err_uuid = uuid_str.clone();
+            let err_path = abs_path.clone();
             handles.push(tokio::spawn(async move {
                 let _permit = sem.acquire().await.unwrap();
                 status_flag.store(1, std::sync::atomic::Ordering::Relaxed); // Hashing
-                let result = tokio::task::spawn_blocking(move || {
+                let result = match tokio::task::spawn_blocking(move || {
                     hash_single_file(
                         &uuid_str,
                         &abs_path,
@@ -1256,7 +1253,14 @@ impl Imferno {
                     )
                 })
                 .await
-                .unwrap_or(None);
+                {
+                    Ok(r) => r,
+                    Err(e) => Some(FileValidationError::Io {
+                        uuid: err_uuid,
+                        path: err_path,
+                        message: format!("hash task failed: {}", e),
+                    }),
+                };
 
                 status_flag.store(
                     if result.is_some() { 3 } else { 2 }, // Failed or Done
@@ -2326,7 +2330,7 @@ impl Default for HashProgressTracker {
 }
 
 /// Hash a single file and compare against expected digest. Returns error on mismatch.
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), feature = "tokio"))]
 fn hash_single_file(
     uuid: &str,
     path: &std::path::Path,
@@ -2349,7 +2353,7 @@ fn hash_single_file(
     };
 
     let mut reader = std::io::BufReader::with_capacity(1024 * 1024, file);
-    let mut buf = [0u8; 1024 * 1024];
+    let mut buf = vec![0u8; 1024 * 1024];
 
     let actual_b64 = match algorithm {
         crate::assetmap::HashAlgorithm::Sha1 => {

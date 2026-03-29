@@ -211,6 +211,10 @@ async fn cmd_validate(
     exit_zero: bool,
     rules_config_path: Option<&std::path::Path>,
 ) -> Result<()> {
+    anyhow::ensure!(
+        hash_concurrency >= 1,
+        "--hash-concurrency must be at least 1"
+    );
     let rules = parse_rules(rules_config_path)?;
     let options = make_options(core_spec, app2e_spec, skip_disk_checks, rules);
     let color = use_color() && !matches!(format, OutputFormat::Json);
@@ -302,10 +306,22 @@ async fn cmd_validate(
                     let mut lines = 1;
                     let name_width = 30;
                     for (name, bytes_done, size, status) in &snap {
-                        let short_name = if name.len() > name_width {
+                        let short_name = if name.chars().count() > name_width {
                             let half = (name_width - 1) / 2;
-                            let tail = name_width - 1 - half;
-                            format!("{}…{}", &name[..half], &name[name.len() - tail..])
+                            let start: String = name.chars().take(half).collect();
+                            let end: String = name
+                                .chars()
+                                .rev()
+                                .take(name_width - 1 - half)
+                                .collect::<Vec<_>>()
+                                .into_iter()
+                                .rev()
+                                .collect();
+                            format!(
+                                "{:<width$}",
+                                format!("{}…{}", start, end),
+                                width = name_width
+                            )
                         } else {
                             format!("{:<width$}", name, width = name_width)
                         };

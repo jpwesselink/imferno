@@ -341,8 +341,8 @@ async fn cmd_validate(
                                 let bar = make_bar(file_pct, false);
                                 let done_str = format_size(*bytes_done);
                                 eprintln!(
-                                    "\x1b[2K    {} {:>8} {} {}/{}",
-                                    short_name, size_str, bar, done_str, size_str,
+                                    "\x1b[2K    {} {:>8} {} {}",
+                                    short_name, size_str, bar, done_str,
                                 );
                             }
                             HashFileStatus::Waiting => {

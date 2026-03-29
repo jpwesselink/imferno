@@ -266,6 +266,7 @@ async fn cmd_validate(
                 let palette = fire.palette(100);
                 let bar_width = 20;
 
+                let glow = chromakopia::animate::glow_effect(fire.clone());
                 let mut last_lines = 0;
                 let mut frame: usize = 0;
                 loop {
@@ -351,9 +352,10 @@ async fn cmd_validate(
                                 };
                                 let bar = make_bar(file_pct, false);
                                 let done_str = format_size(*bytes_done);
+                                let label = glow("[ hashing ]", frame);
                                 eprintln!(
-                                    "\x1b[2K  [ hashing ] {} {:>8} {} {}",
-                                    short_name, size_str, bar, done_str,
+                                    "\x1b[2K  {} {} {:>8} {} {}",
+                                    label, short_name, size_str, bar, done_str,
                                 );
                             }
                             HashFileStatus::Waiting => {

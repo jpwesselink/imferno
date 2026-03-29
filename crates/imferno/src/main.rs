@@ -225,12 +225,78 @@ async fn cmd_validate(
 
     // Hash verification — parallel with tokio
     if verify_hashes {
-        if !matches!(format, OutputFormat::Json) {
-            eprintln!("  hashing  verifying file hashes (8 files in parallel)...");
-        }
+        use std::sync::atomic::{AtomicU64, Ordering};
+        use std::sync::Arc;
 
-        let (errs, _bytes_done, _total_bytes) =
-            result.package.validate_file_hashes_parallel(8).await;
+        let show_progress = !matches!(format, OutputFormat::Json) && color;
+        let total_bytes = result.package.hash_verification_size();
+        let bytes_done = Arc::new(AtomicU64::new(0));
+
+        // Spawn progress ticker (reads atomic counter every 100ms)
+        let progress_done = Arc::new(AtomicU64::new(0)); // 1 = stop
+        let ticker = if show_progress {
+            let bd = bytes_done.clone();
+            let stop = progress_done.clone();
+            Some(tokio::spawn(async move {
+                use chromakopia::{Color, Gradient};
+                let fire = Gradient::new(vec![
+                    Color::new(220, 38, 38),
+                    Color::new(249, 115, 22),
+                    Color::new(250, 204, 21),
+                ]);
+                let palette = fire.palette(100);
+                let bar_width = 30;
+                loop {
+                    if stop.load(Ordering::Relaxed) == 1 {
+                        break;
+                    }
+                    let done = bd.load(Ordering::Relaxed);
+                    let overall = if total_bytes > 0 {
+                        done as f64 / total_bytes as f64
+                    } else {
+                        0.0
+                    };
+                    let pct = (overall * 100.0).min(100.0) as usize;
+                    let filled = (overall * bar_width as f64) as usize;
+                    let bar: String = (0..bar_width)
+                        .map(|i| {
+                            if i < filled {
+                                let t = i as f64 / filled.max(1) as f64;
+                                let idx = (t * (palette.len() - 1) as f64) as usize;
+                                let c = &palette[idx.min(palette.len() - 1)];
+                                format!("\x1b[38;2;{};{};{}m█\x1b[0m", c.r, c.g, c.b)
+                            } else {
+                                "\x1b[38;5;238m░\x1b[0m".to_string()
+                            }
+                        })
+                        .collect();
+                    let done_mb = done as f64 / 1_048_576.0;
+                    let total_mb = total_bytes as f64 / 1_048_576.0;
+                    eprint!(
+                        "\r  hashing {} {}% {:.0}/{:.0}MB   ",
+                        bar, pct, done_mb, total_mb,
+                    );
+                    tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+                }
+            }))
+        } else {
+            None
+        };
+
+        // Run parallel hash verification
+        let errs = result
+            .package
+            .validate_file_hashes_parallel(8, bytes_done)
+            .await;
+
+        // Stop progress ticker
+        progress_done.store(1, Ordering::Relaxed);
+        if let Some(t) = ticker {
+            let _ = t.await;
+        }
+        if show_progress {
+            eprint!("\r\x1b[2K");
+        }
 
         let hash_errs: Vec<_> = errs
             .into_iter()

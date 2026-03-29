@@ -1178,21 +1178,32 @@ impl Imferno {
     ///
     /// Requires the `tokio` feature.
     #[cfg(feature = "tokio")]
+    /// Returns `(total_bytes, bytes_done_counter)` for progress tracking before calling
+    /// `validate_file_hashes_parallel`. Call this first to set up the progress bar.
+    #[cfg(feature = "tokio")]
+    pub fn hash_verification_size(&self) -> u64 {
+        let path_map = self.build_asset_path_map();
+        self.packing_lists
+            .values()
+            .flat_map(|pkl| pkl.asset_list.assets.iter())
+            .filter_map(|asset| {
+                path_map
+                    .get(&asset.id)
+                    .and_then(|p| std::fs::metadata(p).ok())
+                    .map(|m| m.len())
+            })
+            .sum()
+    }
+
     pub async fn validate_file_hashes_parallel(
         &self,
         concurrency: usize,
-    ) -> (
-        Vec<FileValidationError>,
-        std::sync::Arc<std::sync::atomic::AtomicU64>,
-        u64,
-    ) {
-        use std::sync::atomic::AtomicU64;
+        bytes_done: std::sync::Arc<std::sync::atomic::AtomicU64>,
+    ) -> Vec<FileValidationError> {
         use std::sync::Arc;
 
         let path_map = self.build_asset_path_map();
         let semaphore = Arc::new(tokio::sync::Semaphore::new(concurrency));
-        let bytes_done = Arc::new(AtomicU64::new(0));
-        let mut total_bytes: u64 = 0;
         let mut handles = Vec::new();
 
         // First pass: validate file manifest (sync, fast)
@@ -1212,8 +1223,6 @@ impl Imferno {
                 let Some(abs_path) = path_map.get(&asset.id) else {
                     continue;
                 };
-                let file_size = std::fs::metadata(abs_path).map(|m| m.len()).unwrap_or(0);
-                total_bytes += file_size;
 
                 let abs_path = abs_path.clone();
                 let expected_b64 = asset.hash.to_base64();
@@ -1240,7 +1249,7 @@ impl Imferno {
             }
         }
 
-        (errors, bytes_done, total_bytes)
+        errors
     }
 
     /// Validate PKL structural constraints per SMPTE ST 2067-2.

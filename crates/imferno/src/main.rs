@@ -291,7 +291,7 @@ fn cmd_validate(
             })
             .collect();
         if show_progress {
-            eprint!("\r{}\r", " ".repeat(80)); // clear progress line
+            eprint!("\r{}\r", " ".repeat(120)); // clear progress line
         }
         if hash_errs.is_empty() && !matches!(format, OutputFormat::Json) {
             println!("  ok  All PKL file hashes verified");

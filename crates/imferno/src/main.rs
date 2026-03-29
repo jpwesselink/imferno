@@ -322,13 +322,13 @@ async fn cmd_validate(
                         match status {
                             HashFileStatus::Done => {
                                 eprintln!(
-                                    "\x1b[2K  \x1b[32m✓\x1b[0m {} {:>8}",
+                                    "\x1b[2K  \x1b[32m[ matched ]\x1b[0m {} {:>8}",
                                     short_name, size_str,
                                 );
                             }
                             HashFileStatus::Failed => {
                                 eprintln!(
-                                    "\x1b[2K  \x1b[31m✗\x1b[0m {} {:>8}",
+                                    "\x1b[2K  \x1b[31m[mismatch]\x1b[0m {} {:>8}",
                                     short_name, size_str,
                                 );
                             }
@@ -341,13 +341,13 @@ async fn cmd_validate(
                                 let bar = make_bar(file_pct, false);
                                 let done_str = format_size(*bytes_done);
                                 eprintln!(
-                                    "\x1b[2K    {} {:>8} {} {}",
+                                    "\x1b[2K  [ hashing ] {} {:>8} {} {}",
                                     short_name, size_str, bar, done_str,
                                 );
                             }
                             HashFileStatus::Waiting => {
                                 eprintln!(
-                                    "\x1b[2K  \x1b[38;5;238m⏳ {} {:>8}\x1b[0m",
+                                    "\x1b[2K  \x1b[38;5;238m[  queued ] {} {:>8}\x1b[0m",
                                     short_name, size_str,
                                 );
                             }

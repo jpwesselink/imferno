@@ -45,9 +45,13 @@ enum Commands {
         #[arg(value_name = "PATH")]
         path: PathBuf,
 
-        /// Verify SHA-1 hashes of all assets against PKL (slow)
+        /// Verify SHA-1/SHA-256 hashes of all assets against PKL
         #[arg(long)]
         verify_hashes: bool,
+
+        /// Number of files to hash in parallel (default: 8)
+        #[arg(long, default_value = "8")]
+        hash_concurrency: usize,
 
         /// Output format (summary = human-readable, json = full report)
         #[arg(short, long, value_enum, default_value = "summary")]
@@ -124,6 +128,7 @@ async fn main() -> Result<()> {
         Commands::Validate {
             path,
             verify_hashes,
+            hash_concurrency,
             format,
             core_spec,
             app2e_spec,
@@ -134,6 +139,7 @@ async fn main() -> Result<()> {
             cmd_validate(
                 &path,
                 verify_hashes,
+                hash_concurrency,
                 format,
                 core_spec,
                 app2e_spec,
@@ -197,6 +203,7 @@ fn make_options(
 async fn cmd_validate(
     path: &PathBuf,
     verify_hashes: bool,
+    hash_concurrency: usize,
     format: OutputFormat,
     core_spec: CoreSpecVersion,
     app2e_spec: App2eSpecVersion,
@@ -284,7 +291,7 @@ async fn cmd_validate(
                     let done_mb = total_done as f64 / 1_048_576.0;
                     let total_mb = total_size as f64 / 1_048_576.0;
                     eprintln!(
-                        "\x1b[2K  hashing [8 parallel]  {}% {:.0}/{:.0}MB",
+                        "\x1b[2K  hashing  {}% {:.0}/{:.0}MB",
                         pct, done_mb, total_mb,
                     );
 
@@ -365,7 +372,7 @@ async fn cmd_validate(
         // Run parallel hash verification
         let errs = result
             .package
-            .validate_file_hashes_parallel(8, tracker.clone())
+            .validate_file_hashes_parallel(hash_concurrency, tracker.clone())
             .await;
 
         // Stop progress ticker

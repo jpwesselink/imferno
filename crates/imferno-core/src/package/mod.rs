@@ -1215,52 +1215,55 @@ impl Imferno {
             .map(|e| e.uuid().to_string())
             .collect();
 
+        // Collect assets to hash, sorted smallest first for fast early progress
+        let mut assets_to_hash: Vec<_> = self
+            .packing_lists
+            .values()
+            .flat_map(|pkl| pkl.asset_list.assets.iter())
+            .filter(|asset| !errored_uuids.contains(&asset.id.to_string()))
+            .filter(|asset| path_map.contains_key(&asset.id))
+            .collect();
+        assets_to_hash.sort_by_key(|a| a.size);
+
         // Register and spawn hash tasks
-        for pkl in self.packing_lists.values() {
-            for asset in &pkl.asset_list.assets {
-                let uuid_str = asset.id.to_string();
-                if errored_uuids.contains(&uuid_str) {
-                    continue;
-                }
-                let Some(abs_path) = path_map.get(&asset.id) else {
-                    continue;
-                };
+        for asset in assets_to_hash {
+            let abs_path = path_map.get(&asset.id).unwrap();
 
-                let filename = abs_path
-                    .file_name()
-                    .and_then(|n| n.to_str())
-                    .unwrap_or("?")
-                    .to_string();
-                let file_size = std::fs::metadata(abs_path).map(|m| m.len()).unwrap_or(0);
-                let (bytes_counter, status_flag) = progress.register(filename, file_size);
+            let filename = abs_path
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("?")
+                .to_string();
+            let file_size = asset.size;
+            let (bytes_counter, status_flag) = progress.register(filename, file_size);
 
-                let abs_path = abs_path.clone();
-                let expected_b64 = asset.hash.to_base64();
-                let algorithm = asset.hash.algorithm();
-                let sem = semaphore.clone();
+            let uuid_str = asset.id.to_string();
+            let abs_path = abs_path.clone();
+            let expected_b64 = asset.hash.to_base64();
+            let algorithm = asset.hash.algorithm();
+            let sem = semaphore.clone();
 
-                handles.push(tokio::spawn(async move {
-                    let _permit = sem.acquire().await.unwrap();
-                    status_flag.store(1, std::sync::atomic::Ordering::Relaxed); // Hashing
-                    let result = tokio::task::spawn_blocking(move || {
-                        hash_single_file(
-                            &uuid_str,
-                            &abs_path,
-                            &expected_b64,
-                            algorithm,
-                            &bytes_counter,
-                        )
-                    })
-                    .await
-                    .unwrap_or(None);
+            handles.push(tokio::spawn(async move {
+                let _permit = sem.acquire().await.unwrap();
+                status_flag.store(1, std::sync::atomic::Ordering::Relaxed); // Hashing
+                let result = tokio::task::spawn_blocking(move || {
+                    hash_single_file(
+                        &uuid_str,
+                        &abs_path,
+                        &expected_b64,
+                        algorithm,
+                        &bytes_counter,
+                    )
+                })
+                .await
+                .unwrap_or(None);
 
-                    status_flag.store(
-                        if result.is_some() { 3 } else { 2 }, // Failed or Done
-                        std::sync::atomic::Ordering::Relaxed,
-                    );
-                    result
-                }));
-            }
+                status_flag.store(
+                    if result.is_some() { 3 } else { 2 }, // Failed or Done
+                    std::sync::atomic::Ordering::Relaxed,
+                );
+                result
+            }));
         }
 
         // Collect results

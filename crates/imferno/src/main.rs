@@ -263,7 +263,7 @@ async fn cmd_validate(
                     Color::new(249, 115, 22),
                     Color::new(250, 204, 21),
                 ]);
-                let palette = fire.palette(100);
+
                 let bar_width = 20;
 
                 let glow = chromakopia::animate::glow_effect(fire.clone());
@@ -312,24 +312,19 @@ async fn cmd_validate(
                         let size_str = format_size(*size);
                         let make_bar = |pct: f64, full_green: bool| -> String {
                             let filled = (pct * bar_width as f64) as usize;
-                            let phase = frame as f64 * 0.15; // animation speed
-                            (0..bar_width)
-                                .map(|i| {
-                                    if i < filled {
-                                        if full_green {
-                                            "\x1b[32m█\x1b[0m".to_string()
-                                        } else {
-                                            // Shift gradient position by phase for animation
-                                            let t = ((i as f64 / bar_width as f64) + phase) % 1.0;
-                                            let idx = (t * (palette.len() - 1) as f64) as usize;
-                                            let c = &palette[idx.min(palette.len() - 1)];
-                                            format!("\x1b[38;2;{};{};{}m█\x1b[0m", c.r, c.g, c.b)
-                                        }
-                                    } else {
-                                        "\x1b[38;5;238m░\x1b[0m".to_string()
-                                    }
-                                })
-                                .collect()
+                            let filled_str: String = "█".repeat(filled);
+                            let empty_str: String = "░".repeat(bar_width - filled);
+                            if full_green {
+                                format!(
+                                    "\x1b[32m{}\x1b[0m\x1b[38;5;238m{}\x1b[0m",
+                                    filled_str, empty_str
+                                )
+                            } else if filled > 0 {
+                                let colored = glow(&filled_str, frame);
+                                format!("{}\x1b[38;5;238m{}\x1b[0m", colored, empty_str)
+                            } else {
+                                format!("\x1b[38;5;238m{}\x1b[0m", empty_str)
+                            }
                         };
                         match status {
                             HashFileStatus::Done => {
@@ -352,10 +347,9 @@ async fn cmd_validate(
                                 };
                                 let bar = make_bar(file_pct, false);
                                 let done_str = format_size(*bytes_done);
-                                let label = glow("[ hashing ]", frame);
                                 eprintln!(
-                                    "\x1b[2K  {} {} {:>8} {} {}",
-                                    label, short_name, size_str, bar, done_str,
+                                    "\x1b[2K  [ hashing ] {} {:>8} {} {}",
+                                    short_name, size_str, bar, done_str,
                                 );
                             }
                             HashFileStatus::Waiting => {

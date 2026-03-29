@@ -153,6 +153,21 @@ jobs:
             require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
           "
 
+      - name: Wait for platform packages on npm
+        shell: bash
+        run: |
+          VERSION="${{ needs.resolve-version.outputs.version }}"
+          for pkg in @imferno/darwin-arm64 @imferno/darwin-x64 @imferno/linux-x64-gnu @imferno/linux-arm64-gnu; do
+            echo "Waiting for ${pkg}@${VERSION}..."
+            for i in $(seq 1 30); do
+              if npm view "${pkg}@${VERSION}" version 2>/dev/null; then
+                echo "  ✓ ${pkg}@${VERSION} available"
+                break
+              fi
+              sleep 10
+            done
+          done
+
       - name: Copy LICENSE
         run: cp LICENSE crates/imferno/npm/imferno/LICENSE
 

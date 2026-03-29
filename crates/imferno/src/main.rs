@@ -266,7 +266,7 @@ async fn cmd_validate(
 
                 let bar_width = 20;
 
-                let glow = chromakopia::animate::glow_effect(fire.clone());
+                let cycle = chromakopia::animate::cycle_effect(fire.clone());
                 let mut last_lines = 0;
                 let mut frame: usize = 0;
                 loop {
@@ -320,7 +320,7 @@ async fn cmd_validate(
                                     filled_str, empty_str
                                 )
                             } else if filled > 0 {
-                                let colored = glow(&filled_str, frame);
+                                let colored = cycle(&filled_str, frame * 3);
                                 format!("{}\x1b[38;5;238m{}\x1b[0m", colored, empty_str)
                             } else {
                                 format!("\x1b[38;5;238m{}\x1b[0m", empty_str)
@@ -359,7 +359,7 @@ async fn cmd_validate(
                         lines += 1;
                     }
                     last_lines = lines;
-                    tokio::time::sleep(std::time::Duration::from_millis(150)).await;
+                    tokio::time::sleep(std::time::Duration::from_millis(80)).await;
                 }
             }))
         } else {

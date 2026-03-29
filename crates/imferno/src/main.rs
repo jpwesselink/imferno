@@ -267,10 +267,12 @@ async fn cmd_validate(
                 let bar_width = 20;
 
                 let mut last_lines = 0;
+                let mut frame: usize = 0;
                 loop {
                     if s.load(std::sync::atomic::Ordering::Relaxed) {
                         break;
                     }
+                    frame += 1;
 
                     let snap = t.snapshot();
                     let total_done: u64 = snap.iter().map(|(_, d, _, _)| *d).sum();
@@ -309,13 +311,15 @@ async fn cmd_validate(
                         let size_str = format_size(*size);
                         let make_bar = |pct: f64, full_green: bool| -> String {
                             let filled = (pct * bar_width as f64) as usize;
+                            let phase = frame as f64 * 0.15; // animation speed
                             (0..bar_width)
                                 .map(|i| {
                                     if i < filled {
                                         if full_green {
                                             "\x1b[32m█\x1b[0m".to_string()
                                         } else {
-                                            let t = i as f64 / filled.max(1) as f64;
+                                            // Shift gradient position by phase for animation
+                                            let t = ((i as f64 / bar_width as f64) + phase) % 1.0;
                                             let idx = (t * (palette.len() - 1) as f64) as usize;
                                             let c = &palette[idx.min(palette.len() - 1)];
                                             format!("\x1b[38;2;{};{};{}m█\x1b[0m", c.r, c.g, c.b)

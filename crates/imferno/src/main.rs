@@ -288,22 +288,48 @@ async fn cmd_validate(
                         pct, done_mb, total_mb,
                     );
 
-                    // Per-file lines
+                    // Per-file lines: fixed-width name | bar | size
                     let mut lines = 1;
+                    let name_width = 30;
                     for (name, bytes_done, size, status) in &snap {
-                        let short_name = if name.len() > 28 { &name[..28] } else { name };
+                        let short_name = if name.len() > name_width {
+                            format!("{}…", &name[..name_width - 1])
+                        } else {
+                            format!("{:<width$}", name, width = name_width)
+                        };
                         let size_str = format_size(*size);
+                        let make_bar = |pct: f64, full_green: bool| -> String {
+                            let filled = (pct * bar_width as f64) as usize;
+                            (0..bar_width)
+                                .map(|i| {
+                                    if i < filled {
+                                        if full_green {
+                                            "\x1b[32m█\x1b[0m".to_string()
+                                        } else {
+                                            let t = i as f64 / filled.max(1) as f64;
+                                            let idx = (t * (palette.len() - 1) as f64) as usize;
+                                            let c = &palette[idx.min(palette.len() - 1)];
+                                            format!("\x1b[38;2;{};{};{}m█\x1b[0m", c.r, c.g, c.b)
+                                        }
+                                    } else {
+                                        "\x1b[38;5;238m░\x1b[0m".to_string()
+                                    }
+                                })
+                                .collect()
+                        };
                         match status {
                             HashFileStatus::Done => {
+                                let bar = make_bar(1.0, true);
                                 eprintln!(
-                                    "\x1b[2K  \x1b[32m✓\x1b[0m {:<30} {}",
-                                    short_name, size_str
+                                    "\x1b[2K  \x1b[32m✓\x1b[0m {} {} {}",
+                                    short_name, bar, size_str,
                                 );
                             }
                             HashFileStatus::Failed => {
+                                let bar = make_bar(1.0, false);
                                 eprintln!(
-                                    "\x1b[2K  \x1b[31m✗\x1b[0m {:<30} {}",
-                                    short_name, size_str
+                                    "\x1b[2K  \x1b[31m✗\x1b[0m {} {} {}",
+                                    short_name, bar, size_str,
                                 );
                             }
                             HashFileStatus::Hashing => {
@@ -312,29 +338,18 @@ async fn cmd_validate(
                                 } else {
                                     0.0
                                 };
-                                let filled = (file_pct * bar_width as f64) as usize;
-                                let bar: String = (0..bar_width)
-                                    .map(|i| {
-                                        if i < filled {
-                                            let t = i as f64 / filled.max(1) as f64;
-                                            let idx = (t * (palette.len() - 1) as f64) as usize;
-                                            let c = &palette[idx.min(palette.len() - 1)];
-                                            format!("\x1b[38;2;{};{};{}m█\x1b[0m", c.r, c.g, c.b)
-                                        } else {
-                                            "\x1b[38;5;238m░\x1b[0m".to_string()
-                                        }
-                                    })
-                                    .collect();
+                                let bar = make_bar(file_pct, false);
                                 let done_str = format_size(*bytes_done);
                                 eprintln!(
-                                    "\x1b[2K  {} {:<30} {}/{}",
-                                    bar, short_name, done_str, size_str,
+                                    "\x1b[2K    {} {} {}/{}",
+                                    short_name, bar, done_str, size_str,
                                 );
                             }
                             HashFileStatus::Waiting => {
+                                let bar = make_bar(0.0, false);
                                 eprintln!(
-                                    "\x1b[2K  \x1b[38;5;238m⏳ {:<30} {}\x1b[0m",
-                                    short_name, size_str,
+                                    "\x1b[2K  \x1b[38;5;238m⏳ {} {} {}\x1b[0m",
+                                    short_name, bar, size_str,
                                 );
                             }
                         }

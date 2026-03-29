@@ -267,7 +267,7 @@ fn cmd_validate(
                             })
                             .collect();
 
-                        let label = fire.apply("  🔥 hashing ");
+                        let label = "  hashing ";
                         let fname = if filename.len() > 20 {
                             &filename[..20]
                         } else {

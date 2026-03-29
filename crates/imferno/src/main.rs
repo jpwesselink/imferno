@@ -11,6 +11,18 @@ use imferno_core::{Category, Severity, ValidationIssue, ValidationProfile, Valid
 use std::io::IsTerminal;
 use std::path::PathBuf;
 
+fn format_size(bytes: u64) -> String {
+    if bytes >= 1_073_741_824 {
+        format!("{:.1}GB", bytes as f64 / 1_073_741_824.0)
+    } else if bytes >= 1_048_576 {
+        format!("{:.0}MB", bytes as f64 / 1_048_576.0)
+    } else if bytes >= 1024 {
+        format!("{:.0}KB", bytes as f64 / 1024.0)
+    } else {
+        format!("{}B", bytes)
+    }
+}
+
 fn use_color() -> bool {
     std::io::stdout().is_terminal()
         && std::env::var("NO_COLOR").is_err()
@@ -225,18 +237,18 @@ async fn cmd_validate(
 
     // Hash verification — parallel with tokio
     if verify_hashes {
-        use std::sync::atomic::{AtomicU64, Ordering};
+        use imferno_core::package::{HashFileStatus, HashProgressTracker};
+        use std::sync::atomic::AtomicBool;
         use std::sync::Arc;
 
         let show_progress = !matches!(format, OutputFormat::Json) && color;
-        let total_bytes = result.package.hash_verification_size();
-        let bytes_done = Arc::new(AtomicU64::new(0));
+        let tracker = Arc::new(HashProgressTracker::new());
 
-        // Spawn progress ticker (reads atomic counter every 100ms)
-        let progress_done = Arc::new(AtomicU64::new(0)); // 1 = stop
+        // Spawn progress display ticker
+        let stop = Arc::new(AtomicBool::new(false));
         let ticker = if show_progress {
-            let bd = bytes_done.clone();
-            let stop = progress_done.clone();
+            let t = tracker.clone();
+            let s = stop.clone();
             Some(tokio::spawn(async move {
                 use chromakopia::{Color, Gradient};
                 let fire = Gradient::new(vec![
@@ -245,38 +257,91 @@ async fn cmd_validate(
                     Color::new(250, 204, 21),
                 ]);
                 let palette = fire.palette(100);
-                let bar_width = 30;
+                let bar_width = 20;
+
+                let mut last_lines = 0;
                 loop {
-                    if stop.load(Ordering::Relaxed) == 1 {
+                    if s.load(std::sync::atomic::Ordering::Relaxed) {
                         break;
                     }
-                    let done = bd.load(Ordering::Relaxed);
-                    let overall = if total_bytes > 0 {
-                        done as f64 / total_bytes as f64
+
+                    let snap = t.snapshot();
+                    let total_done: u64 = snap.iter().map(|(_, d, _, _)| *d).sum();
+                    let total_size: u64 = snap.iter().map(|(_, _, s, _)| *s).sum();
+                    let overall = if total_size > 0 {
+                        total_done as f64 / total_size as f64
                     } else {
                         0.0
                     };
                     let pct = (overall * 100.0).min(100.0) as usize;
-                    let filled = (overall * bar_width as f64) as usize;
-                    let bar: String = (0..bar_width)
-                        .map(|i| {
-                            if i < filled {
-                                let t = i as f64 / filled.max(1) as f64;
-                                let idx = (t * (palette.len() - 1) as f64) as usize;
-                                let c = &palette[idx.min(palette.len() - 1)];
-                                format!("\x1b[38;2;{};{};{}m█\x1b[0m", c.r, c.g, c.b)
-                            } else {
-                                "\x1b[38;5;238m░\x1b[0m".to_string()
-                            }
-                        })
-                        .collect();
-                    let done_mb = done as f64 / 1_048_576.0;
-                    let total_mb = total_bytes as f64 / 1_048_576.0;
-                    eprint!(
-                        "\r  hashing {} {}% {:.0}/{:.0}MB   ",
-                        bar, pct, done_mb, total_mb,
+
+                    // Move cursor up to overwrite previous output
+                    if last_lines > 0 {
+                        eprint!("\x1b[{}A", last_lines);
+                    }
+
+                    // Overall progress line
+                    let done_mb = total_done as f64 / 1_048_576.0;
+                    let total_mb = total_size as f64 / 1_048_576.0;
+                    eprintln!(
+                        "\x1b[2K  hashing [8 parallel]  {}% {:.0}/{:.0}MB",
+                        pct, done_mb, total_mb,
                     );
-                    tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+
+                    // Per-file lines
+                    let mut lines = 1;
+                    for (name, bytes_done, size, status) in &snap {
+                        let short_name = if name.len() > 28 { &name[..28] } else { name };
+                        let size_str = format_size(*size);
+                        match status {
+                            HashFileStatus::Done => {
+                                eprintln!(
+                                    "\x1b[2K  \x1b[32m✓\x1b[0m {:<30} {}",
+                                    short_name, size_str
+                                );
+                            }
+                            HashFileStatus::Failed => {
+                                eprintln!(
+                                    "\x1b[2K  \x1b[31m✗\x1b[0m {:<30} {}",
+                                    short_name, size_str
+                                );
+                            }
+                            HashFileStatus::Hashing => {
+                                let file_pct = if *size > 0 {
+                                    *bytes_done as f64 / *size as f64
+                                } else {
+                                    0.0
+                                };
+                                let filled = (file_pct * bar_width as f64) as usize;
+                                let bar: String = (0..bar_width)
+                                    .map(|i| {
+                                        if i < filled {
+                                            let t = i as f64 / filled.max(1) as f64;
+                                            let idx = (t * (palette.len() - 1) as f64) as usize;
+                                            let c = &palette[idx.min(palette.len() - 1)];
+                                            format!("\x1b[38;2;{};{};{}m█\x1b[0m", c.r, c.g, c.b)
+                                        } else {
+                                            "\x1b[38;5;238m░\x1b[0m".to_string()
+                                        }
+                                    })
+                                    .collect();
+                                let done_str = format_size(*bytes_done);
+                                eprintln!(
+                                    "\x1b[2K  {} {:<30} {}/{}",
+                                    bar, short_name, done_str, size_str,
+                                );
+                            }
+                            HashFileStatus::Waiting => {
+                                eprintln!(
+                                    "\x1b[2K  \x1b[38;5;238m⏳ {:<30} {}\x1b[0m",
+                                    short_name, size_str,
+                                );
+                            }
+                        }
+                        lines += 1;
+                    }
+                    last_lines = lines;
+                    tokio::time::sleep(std::time::Duration::from_millis(150)).await;
                 }
             }))
         } else {
@@ -286,16 +351,21 @@ async fn cmd_validate(
         // Run parallel hash verification
         let errs = result
             .package
-            .validate_file_hashes_parallel(8, bytes_done)
+            .validate_file_hashes_parallel(8, tracker.clone())
             .await;
 
         // Stop progress ticker
-        progress_done.store(1, Ordering::Relaxed);
+        stop.store(true, std::sync::atomic::Ordering::Relaxed);
         if let Some(t) = ticker {
             let _ = t.await;
         }
         if show_progress {
-            eprint!("\r\x1b[2K");
+            // Clear the progress display
+            let snap = tracker.snapshot();
+            for _ in 0..=snap.len() {
+                eprint!("\x1b[2K\x1b[1A");
+            }
+            eprint!("\x1b[2K");
         }
 
         let hash_errs: Vec<_> = errs

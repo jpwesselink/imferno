@@ -293,7 +293,9 @@ async fn cmd_validate(
                     let name_width = 30;
                     for (name, bytes_done, size, status) in &snap {
                         let short_name = if name.len() > name_width {
-                            format!("{}…", &name[..name_width - 1])
+                            let half = (name_width - 1) / 2;
+                            let tail = name_width - 1 - half;
+                            format!("{}…{}", &name[..half], &name[name.len() - tail..])
                         } else {
                             format!("{:<width$}", name, width = name_width)
                         };
@@ -319,17 +321,15 @@ async fn cmd_validate(
                         };
                         match status {
                             HashFileStatus::Done => {
-                                let bar = make_bar(1.0, true);
                                 eprintln!(
-                                    "\x1b[2K  \x1b[32m✓\x1b[0m {} {} {}",
-                                    short_name, bar, size_str,
+                                    "\x1b[2K  \x1b[32m✓\x1b[0m {} {:>8}",
+                                    short_name, size_str,
                                 );
                             }
                             HashFileStatus::Failed => {
-                                let bar = make_bar(1.0, false);
                                 eprintln!(
-                                    "\x1b[2K  \x1b[31m✗\x1b[0m {} {} {}",
-                                    short_name, bar, size_str,
+                                    "\x1b[2K  \x1b[31m✗\x1b[0m {} {:>8}",
+                                    short_name, size_str,
                                 );
                             }
                             HashFileStatus::Hashing => {
@@ -341,15 +341,14 @@ async fn cmd_validate(
                                 let bar = make_bar(file_pct, false);
                                 let done_str = format_size(*bytes_done);
                                 eprintln!(
-                                    "\x1b[2K    {} {} {}/{}",
-                                    short_name, bar, done_str, size_str,
+                                    "\x1b[2K    {} {:>8} {} {}/{}",
+                                    short_name, size_str, bar, done_str, size_str,
                                 );
                             }
                             HashFileStatus::Waiting => {
-                                let bar = make_bar(0.0, false);
                                 eprintln!(
-                                    "\x1b[2K  \x1b[38;5;238m⏳ {} {} {}\x1b[0m",
-                                    short_name, bar, size_str,
+                                    "\x1b[2K  \x1b[38;5;238m⏳ {} {:>8}\x1b[0m",
+                                    short_name, size_str,
                                 );
                             }
                         }

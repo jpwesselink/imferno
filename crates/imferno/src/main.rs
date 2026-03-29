@@ -245,19 +245,19 @@ fn cmd_validate(
                         let bar_width = 30;
                         let filled = (overall * bar_width as f64) as usize;
 
+                        // Smooth gradient across the filled portion only
                         let fire = Gradient::new(vec![
-                            Color::new(220, 38, 38),
-                            Color::new(249, 115, 22),
-                            Color::new(250, 204, 21),
-                            Color::new(255, 255, 255),
+                            Color::new(220, 38, 38),  // red
+                            Color::new(249, 115, 22), // orange
+                            Color::new(250, 204, 21), // yellow
                         ]);
+                        let palette = fire.palette(100);
 
-                        let palette = fire.palette(bar_width);
-                        let phase = (overall * 3.0) % 1.0;
                         let bar_chars: String = (0..bar_width)
                             .map(|i| {
                                 if i < filled {
-                                    let t = (i as f64 / bar_width as f64 + phase) % 1.0;
+                                    // Map position within filled portion to gradient
+                                    let t = i as f64 / filled.max(1) as f64;
                                     let idx = (t * (palette.len() - 1) as f64) as usize;
                                     let c = &palette[idx.min(palette.len() - 1)];
                                     format!("\x1b[38;2;{};{};{}m█\x1b[0m", c.r, c.g, c.b)

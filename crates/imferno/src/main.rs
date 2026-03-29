@@ -353,10 +353,7 @@ async fn cmd_validate(
                                 );
                             }
                             HashFileStatus::Waiting => {
-                                eprintln!(
-                                    "\x1b[2K  \x1b[38;5;238m[  queued ] {} {:>8}\x1b[0m",
-                                    short_name, size_str,
-                                );
+                                eprintln!("\x1b[2K  [  queued ] {} {:>8}", short_name, size_str,);
                             }
                         }
                         lines += 1;

@@ -37,6 +37,11 @@
     "label": "beta (2.0.0)",
     "path": "/beta/"
   },
-  "prs": [],
+  "prs": [
+    {
+      "label": "#32 feat/tokio-parallel-hashing",
+      "path": "/pr-32/"
+    }
+  ],
   "latest": "/v2.0.0/"
 }

@@ -1094,7 +1094,7 @@ impl Imferno {
                             crate::assetmap::HashAlgorithm::Sha1 => {
                                 use sha1::Digest;
                                 let mut hasher = sha1::Sha1::new();
-                                let mut buf = [0u8; 1024 * 1024];
+                                let mut buf = vec![0u8; 1024 * 1024];
                                 loop {
                                     match reader.read(&mut buf) {
                                         Ok(0) => break,
@@ -1124,7 +1124,7 @@ impl Imferno {
                             crate::assetmap::HashAlgorithm::Sha256 => {
                                 use sha2::Digest;
                                 let mut hasher = sha2::Sha256::new();
-                                let mut buf = [0u8; 1024 * 1024];
+                                let mut buf = vec![0u8; 1024 * 1024];
                                 loop {
                                     match reader.read(&mut buf) {
                                         Ok(0) => break,
@@ -1165,6 +1165,116 @@ impl Imferno {
                         }
                     }
                 }
+            }
+        }
+
+        errors
+    }
+
+    /// Returns the total number of bytes to be hashed, for progress bar setup.
+    /// Call this before `validate_file_hashes_parallel` to know the total size.
+    ///
+    /// Requires the `tokio` feature.
+    #[cfg(feature = "tokio")]
+    pub fn hash_verification_size(&self) -> u64 {
+        let path_map = self.build_asset_path_map();
+        self.packing_lists
+            .values()
+            .flat_map(|pkl| pkl.asset_list.assets.iter())
+            .filter_map(|asset| {
+                path_map
+                    .get(&asset.id)
+                    .and_then(|p| std::fs::metadata(p).ok())
+                    .map(|m| m.len())
+            })
+            .sum()
+    }
+
+    /// Per-file progress state for parallel hash verification.
+    #[cfg(feature = "tokio")]
+    pub async fn validate_file_hashes_parallel(
+        &self,
+        concurrency: usize,
+        progress: std::sync::Arc<HashProgressTracker>,
+    ) -> Vec<FileValidationError> {
+        use std::sync::Arc;
+
+        let path_map = self.build_asset_path_map();
+        let semaphore = Arc::new(tokio::sync::Semaphore::new(concurrency));
+        let mut handles = Vec::new();
+
+        // First pass: validate file manifest (sync, fast)
+        let manifest_errors = self.validate_file_manifest();
+        let errored_uuids: std::collections::HashSet<String> = manifest_errors
+            .iter()
+            .map(|e| e.uuid().to_string())
+            .collect();
+
+        // Collect assets to hash, sorted smallest first for fast early progress
+        let mut assets_to_hash: Vec<_> = self
+            .packing_lists
+            .values()
+            .flat_map(|pkl| pkl.asset_list.assets.iter())
+            .filter(|asset| !errored_uuids.contains(&asset.id.to_string()))
+            .filter(|asset| path_map.contains_key(&asset.id))
+            .collect();
+        assets_to_hash.sort_by_key(|a| a.size);
+
+        // Register and spawn hash tasks
+        for asset in assets_to_hash {
+            let abs_path = path_map.get(&asset.id).unwrap();
+
+            let filename = abs_path
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("?")
+                .to_string();
+            let file_size = asset.size;
+            let (bytes_counter, status_flag) = progress.register(filename, file_size);
+
+            let uuid_str = asset.id.to_string();
+            let abs_path = abs_path.clone();
+            let expected_b64 = asset.hash.to_base64();
+            let algorithm = asset.hash.algorithm();
+            let sem = semaphore.clone();
+
+            let err_uuid = uuid_str.clone();
+            let err_path = abs_path.clone();
+            handles.push(tokio::spawn(async move {
+                let _permit = sem.acquire().await.unwrap();
+                status_flag.store(1, std::sync::atomic::Ordering::Relaxed); // Hashing
+                let result = match tokio::task::spawn_blocking(move || {
+                    hash_single_file(
+                        &uuid_str,
+                        &abs_path,
+                        &expected_b64,
+                        algorithm,
+                        &bytes_counter,
+                    )
+                })
+                .await
+                {
+                    Ok(r) => r,
+                    Err(e) => Some(FileValidationError::Io {
+                        uuid: err_uuid,
+                        path: err_path,
+                        message: format!("hash task failed: {}", e),
+                    }),
+                };
+
+                status_flag.store(
+                    if result.is_some() { 3 } else { 2 }, // Failed or Done
+                    std::sync::atomic::Ordering::Relaxed,
+                );
+                result
+            }));
+        }
+
+        // Collect results
+        let mut errors = manifest_errors;
+        for handle in handles {
+            if let Ok(Some(err)) = handle.await {
+                errors.push(err);
             }
         }
 
@@ -2124,6 +2234,188 @@ pub struct ValidationOptions {
     /// XML-only structural validation is sufficient.
     #[cfg(not(target_arch = "wasm32"))]
     pub skip_disk_checks: bool,
+}
+
+/// Per-file hash verification status.
+#[cfg(feature = "tokio")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HashFileStatus {
+    Waiting,
+    Hashing,
+    Done,
+    Failed,
+}
+
+/// Per-file progress info for the hash verification display.
+#[cfg(feature = "tokio")]
+pub struct HashFileInfo {
+    pub name: String,
+    pub size: u64,
+    pub bytes_done: std::sync::Arc<std::sync::atomic::AtomicU64>,
+    pub status: std::sync::Arc<std::sync::atomic::AtomicU8>,
+}
+
+/// Thread-safe progress tracker for parallel hash verification.
+#[cfg(feature = "tokio")]
+pub struct HashProgressTracker {
+    pub files: std::sync::Mutex<Vec<HashFileInfo>>,
+}
+
+#[cfg(feature = "tokio")]
+impl HashProgressTracker {
+    pub fn new() -> Self {
+        Self {
+            files: std::sync::Mutex::new(Vec::new()),
+        }
+    }
+
+    pub fn register(
+        &self,
+        name: String,
+        size: u64,
+    ) -> (
+        std::sync::Arc<std::sync::atomic::AtomicU64>,
+        std::sync::Arc<std::sync::atomic::AtomicU8>,
+    ) {
+        let bytes_done = std::sync::Arc::new(std::sync::atomic::AtomicU64::new(0));
+        let status = std::sync::Arc::new(std::sync::atomic::AtomicU8::new(0));
+        let bd = bytes_done.clone();
+        let st = status.clone();
+        self.files.lock().unwrap().push(HashFileInfo {
+            name,
+            size,
+            bytes_done,
+            status,
+        });
+        (bd, st)
+    }
+
+    /// Snapshot of all file progress for display. Lock-free reads on atomics.
+    pub fn snapshot(&self) -> Vec<(String, u64, u64, HashFileStatus)> {
+        use std::sync::atomic::Ordering::Relaxed;
+        let files = self.files.lock().unwrap();
+        files
+            .iter()
+            .map(|f| {
+                let status = match f.status.load(Relaxed) {
+                    1 => HashFileStatus::Hashing,
+                    2 => HashFileStatus::Done,
+                    3 => HashFileStatus::Failed,
+                    _ => HashFileStatus::Waiting,
+                };
+                (f.name.clone(), f.bytes_done.load(Relaxed), f.size, status)
+            })
+            .collect()
+    }
+
+    /// Total bytes done across all files.
+    pub fn total_bytes_done(&self) -> u64 {
+        use std::sync::atomic::Ordering::Relaxed;
+        let files = self.files.lock().unwrap();
+        files.iter().map(|f| f.bytes_done.load(Relaxed)).sum()
+    }
+
+    /// Total bytes across all files.
+    pub fn total_bytes(&self) -> u64 {
+        let files = self.files.lock().unwrap();
+        files.iter().map(|f| f.size).sum()
+    }
+}
+
+#[cfg(feature = "tokio")]
+impl Default for HashProgressTracker {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Hash a single file and compare against expected digest. Returns error on mismatch.
+#[cfg(all(not(target_arch = "wasm32"), feature = "tokio"))]
+fn hash_single_file(
+    uuid: &str,
+    path: &std::path::Path,
+    expected_b64: &str,
+    algorithm: crate::assetmap::HashAlgorithm,
+    bytes_done: &std::sync::atomic::AtomicU64,
+) -> Option<FileValidationError> {
+    use std::io::Read;
+    use std::sync::atomic::Ordering;
+
+    let file = match std::fs::File::open(path) {
+        Ok(f) => f,
+        Err(e) => {
+            return Some(FileValidationError::Io {
+                uuid: uuid.to_string(),
+                path: path.to_path_buf(),
+                message: e.to_string(),
+            });
+        }
+    };
+
+    let mut reader = std::io::BufReader::with_capacity(1024 * 1024, file);
+    let mut buf = vec![0u8; 1024 * 1024];
+
+    let actual_b64 = match algorithm {
+        crate::assetmap::HashAlgorithm::Sha1 => {
+            use sha1::Digest;
+            let mut hasher = sha1::Sha1::new();
+            loop {
+                match reader.read(&mut buf) {
+                    Ok(0) => break,
+                    Ok(n) => {
+                        hasher.update(&buf[..n]);
+                        bytes_done.fetch_add(n as u64, Ordering::Relaxed);
+                    }
+                    Err(e) => {
+                        return Some(FileValidationError::Io {
+                            uuid: uuid.to_string(),
+                            path: path.to_path_buf(),
+                            message: e.to_string(),
+                        });
+                    }
+                }
+            }
+            base64::Engine::encode(
+                &base64::engine::general_purpose::STANDARD,
+                hasher.finalize(),
+            )
+        }
+        crate::assetmap::HashAlgorithm::Sha256 => {
+            use sha2::Digest;
+            let mut hasher = sha2::Sha256::new();
+            loop {
+                match reader.read(&mut buf) {
+                    Ok(0) => break,
+                    Ok(n) => {
+                        hasher.update(&buf[..n]);
+                        bytes_done.fetch_add(n as u64, Ordering::Relaxed);
+                    }
+                    Err(e) => {
+                        return Some(FileValidationError::Io {
+                            uuid: uuid.to_string(),
+                            path: path.to_path_buf(),
+                            message: e.to_string(),
+                        });
+                    }
+                }
+            }
+            base64::Engine::encode(
+                &base64::engine::general_purpose::STANDARD,
+                hasher.finalize(),
+            )
+        }
+    };
+
+    if actual_b64 != expected_b64 {
+        Some(FileValidationError::HashMismatch {
+            uuid: uuid.to_string(),
+            path: path.to_path_buf(),
+            expected: expected_b64.to_string(),
+            actual: actual_b64,
+        })
+    } else {
+        None
+    }
 }
 
 #[cfg(test)]

@@ -74,8 +74,17 @@ Use `Imferno::parse()` when you need the parsed package without running validati
 // Structural check — no MXF reads
 fn validate(&self, options: &ValidationOptions) -> ValidationReport
 
-// Structural + stream every MXF for hash verification. Not available in WASM.
-fn validate_hashes(&self, options: &ValidationOptions) -> ValidationReport
+// Sequential hash verification (reads every file)
+fn validate_file_hashes(&self) -> Vec<FileValidationError>
+
+// Parallel hash verification with tokio
+// Requires feature = "tokio"
+fn hash_verification_size(&self) -> u64  // total bytes to hash
+async fn validate_file_hashes_parallel(
+    &self,
+    concurrency: usize,
+    progress: Arc<HashProgressTracker>,  // per-file progress tracking
+) -> Vec<FileValidationError>
 ```
 
 ### Query

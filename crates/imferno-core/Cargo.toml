@@ -14,6 +14,7 @@ wasm       = ["dep:tsify", "dep:wasm-bindgen"]
 typescript = ["dep:ts-rs"]
 xmlsec1    = ["dep:tempfile"]
 jsonschema = ["dep:schemars"]
+tokio = ["dep:tokio"]
 
 [dependencies]
 serde        = { workspace = true, features = ["derive"] }
@@ -33,6 +34,7 @@ tempfile     = { workspace = true, optional = true }
 schemars     = { version = "0.8", optional = true }
 xmlsec       = { version = "0.3.0", optional = true }
 libxml       = { version = "0.3.8", optional = true }
+tokio = { workspace = true, features = ["rt-multi-thread", "sync", "time", "macros"], optional = true }
 
 [dev-dependencies]
 pretty_assertions = { workspace = true }

@@ -11,6 +11,18 @@ use imferno_core::{Category, Severity, ValidationIssue, ValidationProfile, Valid
 use std::io::IsTerminal;
 use std::path::PathBuf;
 
+fn format_size(bytes: u64) -> String {
+    if bytes >= 1_073_741_824 {
+        format!("{:.1}GB", bytes as f64 / 1_073_741_824.0)
+    } else if bytes >= 1_048_576 {
+        format!("{:.0}MB", bytes as f64 / 1_048_576.0)
+    } else if bytes >= 1024 {
+        format!("{:.0}KB", bytes as f64 / 1024.0)
+    } else {
+        format!("{}B", bytes)
+    }
+}
+
 fn use_color() -> bool {
     std::io::stdout().is_terminal()
         && std::env::var("NO_COLOR").is_err()
@@ -33,9 +45,13 @@ enum Commands {
         #[arg(value_name = "PATH")]
         path: PathBuf,
 
-        /// Verify SHA-1 hashes of all assets against PKL (slow)
+        /// Verify SHA-1/SHA-256 hashes of all assets against PKL
         #[arg(long)]
         verify_hashes: bool,
+
+        /// Number of files to hash in parallel (default: 8)
+        #[arg(long, default_value = "8")]
+        hash_concurrency: usize,
 
         /// Output format (summary = human-readable, json = full report)
         #[arg(short, long, value_enum, default_value = "summary")]
@@ -104,29 +120,35 @@ enum App2eSpecVersion {
     V2023,
 }
 
-fn main() -> Result<()> {
+#[tokio::main]
+async fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
         Commands::Validate {
             path,
             verify_hashes,
+            hash_concurrency,
             format,
             core_spec,
             app2e_spec,
             skip_disk_checks,
             exit_zero,
             rules_config,
-        } => cmd_validate(
-            &path,
-            verify_hashes,
-            format,
-            core_spec,
-            app2e_spec,
-            skip_disk_checks,
-            exit_zero,
-            rules_config.as_deref(),
-        ),
+        } => {
+            cmd_validate(
+                &path,
+                verify_hashes,
+                hash_concurrency,
+                format,
+                core_spec,
+                app2e_spec,
+                skip_disk_checks,
+                exit_zero,
+                rules_config.as_deref(),
+            )
+            .await
+        }
         Commands::Cpl { path, uuid } => cmd_cpl(&path, uuid),
     }
 }
@@ -178,9 +200,10 @@ fn make_options(
 // ── Commands ─────────────────────────────────────────────────────────────────
 
 #[allow(clippy::too_many_arguments)]
-fn cmd_validate(
+async fn cmd_validate(
     path: &PathBuf,
     verify_hashes: bool,
+    hash_concurrency: usize,
     format: OutputFormat,
     core_spec: CoreSpecVersion,
     app2e_spec: App2eSpecVersion,
@@ -188,6 +211,10 @@ fn cmd_validate(
     exit_zero: bool,
     rules_config_path: Option<&std::path::Path>,
 ) -> Result<()> {
+    anyhow::ensure!(
+        hash_concurrency >= 1,
+        "--hash-concurrency must be at least 1"
+    );
     let rules = parse_rules(rules_config_path)?;
     let options = make_options(core_spec, app2e_spec, skip_disk_checks, rules);
     let color = use_color() && !matches!(format, OutputFormat::Json);
@@ -219,69 +246,177 @@ fn cmd_validate(
     // Validate (parse + check in one call)
     let mut result: ValidationResult = validate(files, &options);
 
-    // Hash verification (appends to validation)
+    // Hash verification — parallel with tokio
     if verify_hashes {
+        use imferno_core::package::{HashFileStatus, HashProgressTracker};
+        use std::sync::atomic::AtomicBool;
+        use std::sync::Arc;
+
         let show_progress = !matches!(format, OutputFormat::Json) && color;
-        let hash_errs: Vec<_> = result
-            .package
-            .validate_file_hashes_with_progress(
-                |current, total, filename, bytes_done, bytes_total| {
-                    if show_progress {
-                        use chromakopia::{Color, Gradient};
+        let tracker = Arc::new(HashProgressTracker::new());
 
-                        // Overall file progress + within-file byte progress
-                        let file_pct = if bytes_total > 0 {
-                            bytes_done as f64 / bytes_total as f64
-                        } else {
-                            0.0
-                        };
-                        let overall = if total > 0 {
-                            ((current - 1) as f64 + file_pct) / total as f64
-                        } else {
-                            0.0
-                        };
-                        let pct = (overall * 100.0) as usize;
+        // Spawn progress display ticker
+        let stop = Arc::new(AtomicBool::new(false));
+        let ticker = if show_progress {
+            let t = tracker.clone();
+            let s = stop.clone();
+            Some(tokio::spawn(async move {
+                use chromakopia::{Color, Gradient};
+                let fire = Gradient::new(vec![
+                    Color::new(220, 38, 38),
+                    Color::new(249, 115, 22),
+                    Color::new(250, 204, 21),
+                ]);
 
-                        let bar_width = 30;
-                        let filled = (overall * bar_width as f64) as usize;
+                let bar_width = 20;
 
-                        // Smooth gradient across the filled portion only
-                        let fire = Gradient::new(vec![
-                            Color::new(220, 38, 38),  // red
-                            Color::new(249, 115, 22), // orange
-                            Color::new(250, 204, 21), // yellow
-                        ]);
-                        let palette = fire.palette(100);
-
-                        let bar_chars: String = (0..bar_width)
-                            .map(|i| {
-                                if i < filled {
-                                    // Map position within filled portion to gradient
-                                    let t = i as f64 / filled.max(1) as f64;
-                                    let idx = (t * (palette.len() - 1) as f64) as usize;
-                                    let c = &palette[idx.min(palette.len() - 1)];
-                                    format!("\x1b[38;2;{};{};{}m█\x1b[0m", c.r, c.g, c.b)
-                                } else {
-                                    "\x1b[38;5;238m░\x1b[0m".to_string()
-                                }
-                            })
-                            .collect();
-
-                        let label = "  hashing ";
-                        let fname = if filename.len() > 20 {
-                            &filename[..20]
-                        } else {
-                            filename
-                        };
-                        let size_mb = bytes_total as f64 / 1_048_576.0;
-                        let done_mb = bytes_done as f64 / 1_048_576.0;
-                        eprint!(
-                            "\r{}{} {}% [{}/{}] {} {:.0}/{:.0}MB   ",
-                            label, bar_chars, pct, current, total, fname, done_mb, size_mb,
-                        );
+                let glow = chromakopia::animate::glow_effect(fire.clone());
+                let mut last_lines = 0;
+                let mut frame: usize = 0;
+                loop {
+                    if s.load(std::sync::atomic::Ordering::Relaxed) {
+                        break;
                     }
-                },
-            )
+                    frame += 1;
+
+                    let snap = t.snapshot();
+                    let total_done: u64 = snap.iter().map(|(_, d, _, _)| *d).sum();
+                    let total_size: u64 = snap.iter().map(|(_, _, s, _)| *s).sum();
+                    let overall = if total_size > 0 {
+                        total_done as f64 / total_size as f64
+                    } else {
+                        0.0
+                    };
+                    let pct = (overall * 100.0).min(100.0) as usize;
+
+                    // Move cursor up to overwrite previous output
+                    if last_lines > 0 {
+                        eprint!("\x1b[{}A", last_lines);
+                    }
+
+                    // Overall progress line
+                    let done_mb = total_done as f64 / 1_048_576.0;
+                    let total_mb = total_size as f64 / 1_048_576.0;
+                    eprintln!(
+                        "\x1b[2K  hashing  {}% {:.0}/{:.0}MB",
+                        pct, done_mb, total_mb,
+                    );
+
+                    // Per-file lines: fixed-width name | bar | size
+                    let mut lines = 1;
+                    let name_width = 30;
+                    for (name, bytes_done, size, status) in &snap {
+                        let short_name = if name.chars().count() > name_width {
+                            let half = (name_width - 1) / 2;
+                            let start: String = name.chars().take(half).collect();
+                            let end: String = name
+                                .chars()
+                                .rev()
+                                .take(name_width - 1 - half)
+                                .collect::<Vec<_>>()
+                                .into_iter()
+                                .rev()
+                                .collect();
+                            format!(
+                                "{:<width$}",
+                                format!("{}…{}", start, end),
+                                width = name_width
+                            )
+                        } else {
+                            format!("{:<width$}", name, width = name_width)
+                        };
+                        let size_str = format_size(*size);
+                        let make_bar = |pct: f64, full_green: bool| -> String {
+                            let filled = (pct * bar_width as f64) as usize;
+                            let filled_str: String = "█".repeat(filled);
+                            let empty_str: String = "░".repeat(bar_width - filled);
+                            if full_green {
+                                format!(
+                                    "\x1b[32m{}\x1b[0m\x1b[38;5;238m{}\x1b[0m",
+                                    filled_str, empty_str
+                                )
+                            } else if filled > 0 {
+                                // Reverse → glow → reverse: glow moves right
+                                let rev: String = filled_str.chars().rev().collect();
+                                let glowed = glow(&rev, frame);
+                                // Reverse the ANSI-colored string by splitting on reset
+                                let colored: String = {
+                                    let parts: Vec<&str> = glowed.split("\x1b[0m").collect();
+                                    let mut reversed = Vec::new();
+                                    for p in parts.iter().rev() {
+                                        if !p.is_empty() {
+                                            reversed.push(*p);
+                                            reversed.push("\x1b[0m");
+                                        }
+                                    }
+                                    reversed.concat()
+                                };
+                                format!("{}\x1b[38;5;238m{}\x1b[0m", colored, empty_str)
+                            } else {
+                                format!("\x1b[38;5;238m{}\x1b[0m", empty_str)
+                            }
+                        };
+                        match status {
+                            HashFileStatus::Done => {
+                                eprintln!(
+                                    "\x1b[2K  \x1b[32m[ matched ]\x1b[0m {} {:>8}",
+                                    short_name, size_str,
+                                );
+                            }
+                            HashFileStatus::Failed => {
+                                eprintln!(
+                                    "\x1b[2K  \x1b[31m[mismatch]\x1b[0m {} {:>8}",
+                                    short_name, size_str,
+                                );
+                            }
+                            HashFileStatus::Hashing => {
+                                let file_pct = if *size > 0 {
+                                    *bytes_done as f64 / *size as f64
+                                } else {
+                                    0.0
+                                };
+                                let bar = make_bar(file_pct, false);
+                                let done_str = format_size(*bytes_done);
+                                eprintln!(
+                                    "\x1b[2K  [ hashing ] {} {:>8} {} {}",
+                                    short_name, size_str, bar, done_str,
+                                );
+                            }
+                            HashFileStatus::Waiting => {
+                                eprintln!("\x1b[2K  [  queued ] {} {:>8}", short_name, size_str,);
+                            }
+                        }
+                        lines += 1;
+                    }
+                    last_lines = lines;
+                    tokio::time::sleep(std::time::Duration::from_millis(80)).await;
+                }
+            }))
+        } else {
+            None
+        };
+
+        // Run parallel hash verification
+        let errs = result
+            .package
+            .validate_file_hashes_parallel(hash_concurrency, tracker.clone())
+            .await;
+
+        // Stop progress ticker
+        stop.store(true, std::sync::atomic::Ordering::Relaxed);
+        if let Some(t) = ticker {
+            let _ = t.await;
+        }
+        if show_progress {
+            // Clear the progress display
+            let snap = tracker.snapshot();
+            for _ in 0..=snap.len() {
+                eprint!("\x1b[2K\x1b[1A");
+            }
+            eprint!("\x1b[2K");
+        }
+
+        let hash_errs: Vec<_> = errs
             .into_iter()
             .filter(|e| {
                 !matches!(
@@ -290,9 +425,6 @@ fn cmd_validate(
                 )
             })
             .collect();
-        if show_progress {
-            eprint!("\r\x1b[2K"); // clear entire line
-        }
         if hash_errs.is_empty() && !matches!(format, OutputFormat::Json) {
             println!("  ok  All PKL file hashes verified");
         }

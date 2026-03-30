@@ -39,13 +39,13 @@ pub enum VolindexError {
 /// The spec allows multi-volume packages but they are rarely used.
 #[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, serde::Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
 #[cfg_attr(feature = "wasm", derive(tsify::Tsify))]
 #[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
 pub struct VolumeIndex {
     /// The volume count. Almost always `1`.
-    #[serde(rename = "Index")]
     pub index: u32,
 }
 

@@ -463,9 +463,19 @@ impl Imferno {
             volume_index: VolumeIndex { index: 1 },
             volindex_issues: Vec::new(),
             parse_issues: Vec::new(),
-            asset_map: crate::assetmap::parse_assetmap(
-                r#"<AssetMap xmlns="http://www.smpte-ra.org/schemas/429-9/2007/AM"><Id>urn:uuid:00000000-0000-0000-0000-000000000000</Id><VolumeCount>1</VolumeCount><IssueDate>1970-01-01T00:00:00+00:00</IssueDate><Issuer/><AssetList/></AssetMap>"#,
-            ).unwrap_or_else(|_| unreachable!()),
+            asset_map: crate::assetmap::AssetMap {
+                namespace: Default::default(),
+                id: ImfUuid::parse("urn:uuid:00000000-0000-0000-0000-000000000000")
+                    .expect("nil UUID is always valid"),
+                annotation_text: None,
+                creator: None,
+                volume_count: 1,
+                issue_date: "1970-01-01T00:00:00+00:00".into(),
+                issuer: None,
+                asset_list: crate::assetmap::AssetList {
+                    assets: Vec::new(),
+                },
+            },
             packing_lists: HashMap::new(),
             composition_playlists: HashMap::new(),
             cpl_xml_content: HashMap::new(),

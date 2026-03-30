@@ -10,7 +10,7 @@
 <script defer src="/imferno/beta/static/js/lib-react.b5c7e46ca4.js"></script>
 <script defer src="/imferno/beta/static/js/lib-router.817721ac3d.js"></script>
 <script defer src="/imferno/beta/static/js/775.0d6446e051.js"></script>
-<script defer src="/imferno/beta/static/js/index.28e5fa2dcf.js"></script>
+<script defer src="/imferno/beta/static/js/index.7d8e2e064e.js"></script>
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="generator" content="Rspress v2.0.7">
 <meta property="og:type" content="website">
@@ -70,7 +70,11 @@
 
 
 
-<div class="rp-table-scroll-container rp-scrollbar"><table><thead><tr><th>Option</th><th>Description</th></tr></thead><tbody><tr><td><code>--verify-hashes</code></td><td>Verify SHA-1 hashes of all assets against PKL (slow)</td></tr><tr><td><code>--format &lt;FORMAT&gt;</code></td><td>Output format: <code>summary</code> (default), <code>markdown</code>, <code>csv</code>, <code>json</code></td></tr><tr><td><code>--core-spec &lt;SPEC&gt;</code></td><td>Core spec version: <code>auto</code> (default), <code>v2013</code>, <code>v2016</code>, <code>v2020</code></td></tr><tr><td><code>--app2e-spec &lt;SPEC&gt;</code></td><td>App profile: <code>auto</code> (default), <code>none</code>, <code>v2020</code>, <code>v2021</code>, <code>v2023</code></td></tr><tr><td><code>--skip-disk-checks</code></td><td>Skip file manifest and MXF header checks (validates XML structure only)</td></tr><tr><td><code>--exit-zero</code></td><td>Always exit 0, even on validation errors (useful for CI)</td></tr><tr><td><code>--rules-config &lt;PATH&gt;</code></td><td>Path to a JSON rules config file</td></tr></tbody></table></div>
+
+
+
+
+<div class="rp-table-scroll-container rp-scrollbar"><table><thead><tr><th>Option</th><th>Description</th></tr></thead><tbody><tr><td><code>--verify-hashes</code></td><td>Verify SHA-1/SHA-256 hashes against PKL (parallel)</td></tr><tr><td><code>--hash-concurrency &lt;N&gt;</code></td><td>Number of files to hash in parallel (default: 8)</td></tr><tr><td><code>--format &lt;FORMAT&gt;</code></td><td>Output format: <code>summary</code> (default), <code>markdown</code>, <code>csv</code>, <code>json</code></td></tr><tr><td><code>--core-spec &lt;SPEC&gt;</code></td><td>Core spec version: <code>auto</code> (default), <code>v2013</code>, <code>v2016</code>, <code>v2020</code></td></tr><tr><td><code>--app2e-spec &lt;SPEC&gt;</code></td><td>App profile: <code>auto</code> (default), <code>none</code>, <code>v2020</code>, <code>v2021</code>, <code>v2023</code></td></tr><tr><td><code>--skip-disk-checks</code></td><td>Skip file manifest and MXF header checks (validates XML structure only)</td></tr><tr><td><code>--exit-zero</code></td><td>Always exit 0, even on validation errors (useful for CI)</td></tr><tr><td><code>--rules-config &lt;PATH&gt;</code></td><td>Path to a JSON rules config file</td></tr></tbody></table></div>
 <h3 class="rp-toc-include" id="examples"><a href="#examples" class="rp-header-anchor rp-link" aria-hidden="true">#</a>Examples</h3>
 <div class="rp-codeblock language-bash"><div class="rp-codeblock__content"><div class="rp-codeblock__content__scroll-container rp-scrollbar rp-scrollbar--always"><pre class="shiki css-variables" style="background-color:var(--shiki-background);color:var(--shiki-foreground)" tabindex="0" data-lang="bash"><code><span class="line"><span style="color:var(--shiki-token-comment)"># Basic validation</span></span>
 <span class="line"><span style="color:var(--shiki-token-function)">imferno</span><span style="color:var(--shiki-token-string)"> validate</span><span style="color:var(--shiki-token-string)"> ./my-imp</span></span>
@@ -84,8 +88,11 @@
 <span class="line"><span style="color:var(--shiki-token-comment)"># JSON — full ValidationResult (package + validation)</span></span>
 <span class="line"><span style="color:var(--shiki-token-function)">imferno</span><span style="color:var(--shiki-token-string)"> validate</span><span style="color:var(--shiki-token-string)"> ./my-imp</span><span style="color:var(--shiki-token-string)"> --format</span><span style="color:var(--shiki-token-string)"> json</span><span style="color:var(--shiki-token-string)"> --exit-zero</span></span>
 <span class="line"></span>
-<span class="line"><span style="color:var(--shiki-token-comment)"># Full validation with hash verification</span></span>
+<span class="line"><span style="color:var(--shiki-token-comment)"># Full validation with hash verification (8 files in parallel)</span></span>
 <span class="line"><span style="color:var(--shiki-token-function)">imferno</span><span style="color:var(--shiki-token-string)"> validate</span><span style="color:var(--shiki-token-string)"> ./my-imp</span><span style="color:var(--shiki-token-string)"> --verify-hashes</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:var(--shiki-token-comment)"># Hash with 16 concurrent files (useful for network storage)</span></span>
+<span class="line"><span style="color:var(--shiki-token-function)">imferno</span><span style="color:var(--shiki-token-string)"> validate</span><span style="color:var(--shiki-token-string)"> ./my-imp</span><span style="color:var(--shiki-token-string)"> --verify-hashes</span><span style="color:var(--shiki-token-string)"> --hash-concurrency</span><span style="color:var(--shiki-token-constant)"> 16</span></span>
 <span class="line"></span>
 <span class="line"><span style="color:var(--shiki-token-comment)"># Force specific spec versions</span></span>
 <span class="line"><span style="color:var(--shiki-token-function)">imferno</span><span style="color:var(--shiki-token-string)"> validate</span><span style="color:var(--shiki-token-string)"> ./my-imp</span><span style="color:var(--shiki-token-string)"> --core-spec</span><span style="color:var(--shiki-token-string)"> v2020</span><span style="color:var(--shiki-token-string)"> --app2e-spec</span><span style="color:var(--shiki-token-string)"> v2023</span></span>

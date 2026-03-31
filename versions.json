@@ -37,11 +37,6 @@
     "label": "beta (2.0.0)",
     "path": "/beta/"
   },
-  "prs": [
-    {
-      "label": "#33 feat/consistent-serde-naming",
-      "path": "/pr-33/"
-    }
-  ],
+  "prs": [],
   "latest": "/v2.0.0/"
 }

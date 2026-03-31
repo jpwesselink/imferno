@@ -60,6 +60,11 @@ impl RulesConfig {
         self.0.insert(code.code().to_string(), severity);
     }
 
+    /// Set severity by raw string key (rule suffix or full code).
+    pub fn set_raw(&mut self, key: String, severity: RuleSeverity) {
+        self.0.insert(key, severity);
+    }
+
     /// Returns `true` if no overrides are configured.
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()

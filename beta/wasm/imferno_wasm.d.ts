@@ -2,8 +2,8 @@
 /* eslint-disable */
 export interface Asset {
     id: ImfUuid;
-    packing_list: boolean | null;
-    chunk_list: ChunkList;
+    packingList: boolean | null;
+    chunkList: ChunkList;
 }
 
 export interface AssetList {
@@ -12,12 +12,12 @@ export interface AssetList {
 
 export interface AssetMap {
     id: ImfUuid;
-    annotation_text: string | null;
+    annotationText: string | null;
     creator: string | null;
-    volume_count: number;
-    issue_date: string;
+    volumeCount: number;
+    issueDate: string;
     issuer: string | null;
-    asset_list: AssetList;
+    assetList: AssetList;
 }
 
 export interface AudienceElement {
@@ -71,7 +71,7 @@ export interface CDCIDescriptor {
 
 export interface Chunk {
     path: string;
-    volume_index: number;
+    volumeIndex: number;
 }
 
 export interface ChunkList {
@@ -439,7 +439,7 @@ export interface VideoSubDescriptors {
 }
 
 export interface VolumeIndex {
-    Index: number;
+    index: number;
 }
 
 export interface WAVEPCMDescriptor {

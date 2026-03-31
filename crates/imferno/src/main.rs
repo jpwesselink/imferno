@@ -190,9 +190,9 @@ fn parse_rules(path: Option<&std::path::Path>, inline: &[String]) -> Result<Rule
     };
 
     for entry in inline {
-        let (key, sev_str) = entry
-            .split_once('=')
-            .ok_or_else(|| anyhow::anyhow!("Invalid --rule format '{}', expected RULE=SEVERITY", entry))?;
+        let (key, sev_str) = entry.split_once('=').ok_or_else(|| {
+            anyhow::anyhow!("Invalid --rule format '{}', expected RULE=SEVERITY", entry)
+        })?;
         let severity = parse_rule_severity(sev_str)?;
         rules.set_raw(key.to_string(), severity);
     }

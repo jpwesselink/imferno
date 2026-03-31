@@ -474,10 +474,7 @@ pub async fn read_s3(
     let mut continuation_token: Option<String> = None;
 
     loop {
-        let mut req = client
-            .list_objects_v2()
-            .bucket(bucket)
-            .prefix(prefix);
+        let mut req = client.list_objects_v2().bucket(bucket).prefix(prefix);
 
         if let Some(token) = continuation_token.take() {
             req = req.continuation_token(token);
@@ -556,9 +553,7 @@ impl Imferno {
                 volume_count: 1,
                 issue_date: "1970-01-01T00:00:00+00:00".into(),
                 issuer: None,
-                asset_list: crate::assetmap::AssetList {
-                    assets: Vec::new(),
-                },
+                asset_list: crate::assetmap::AssetList { assets: Vec::new() },
             },
             packing_lists: HashMap::new(),
             composition_playlists: HashMap::new(),

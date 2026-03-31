@@ -705,6 +705,7 @@ mod raw {
 /// ASSETMAP.xml — maps UUIDs to physical file paths (ST 429-9 §6).
 #[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
 #[cfg_attr(feature = "wasm", derive(tsify::Tsify))]
@@ -748,6 +749,7 @@ impl AssetMap {
 /// The `<AssetList>` element in ASSETMAP.xml.
 #[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
 #[cfg_attr(feature = "wasm", derive(tsify::Tsify))]
@@ -770,6 +772,7 @@ impl AssetList {
 /// A single asset entry in ASSETMAP.xml.
 #[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
 #[cfg_attr(feature = "wasm", derive(tsify::Tsify))]
@@ -798,6 +801,7 @@ impl Asset {
 /// A list of file chunks for a single asset.
 #[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
 #[cfg_attr(feature = "wasm", derive(tsify::Tsify))]
@@ -824,6 +828,7 @@ impl ChunkList {
 /// A single file path entry in a ChunkList.
 #[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
 #[cfg_attr(feature = "wasm", derive(tsify::Tsify))]
@@ -842,6 +847,7 @@ pub struct Chunk {
 /// extension types).
 #[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
 pub struct OutputProfileList {
     pub id: ImfUuid,
     pub annotation: Option<String>,
@@ -880,6 +886,7 @@ impl OutputProfileList {
 /// determined by the optional `<HashAlgorithm>` element on each asset.
 #[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
 pub struct PackingList {
     /// The SMPTE spec version detected from the root xmlns.
     #[serde(skip)]
@@ -928,6 +935,7 @@ impl PackingList {
 /// The `<AssetList>` element in a PKL.
 #[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
 pub struct PklAssetList {
     pub assets: Vec<PklAsset>,
 }
@@ -946,6 +954,7 @@ impl PklAssetList {
 /// A single asset entry in a PKL.
 #[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct PklAsset {
     pub id: ImfUuid,
     pub annotation_text: Option<String>,

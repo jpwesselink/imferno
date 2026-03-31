@@ -33,6 +33,10 @@ web-sys = "0.3"
 clap = { version = "4.0", features = ["derive"] }
 tokio = { version = "1.0", features = ["full"] }
 
+# AWS (optional)
+aws-sdk-s3 = "1.127"
+aws-config = "1.7"
+
 # Testing and validation
 tempfile = "3.8"
 pretty_assertions = "1.4"

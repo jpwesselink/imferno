@@ -77,6 +77,12 @@ enum Commands {
         /// Path to a JSON rules config file with ESLint-style severity overrides.
         #[arg(long, value_name = "PATH")]
         rules_config: Option<PathBuf>,
+
+        /// Inline rule severity override (repeatable).
+        /// Format: RULE=SEVERITY where SEVERITY is off|info|warn|error|critical.
+        /// Example: --rule SegmentDuration=off --rule FileNotFound=critical
+        #[arg(long = "rule", value_name = "RULE=SEVERITY")]
+        rules: Vec<String>,
     },
 
     /// Show detailed CPL information
@@ -135,6 +141,7 @@ async fn main() -> Result<()> {
             skip_disk_checks,
             exit_zero,
             rules_config,
+            rules,
         } => {
             cmd_validate(
                 &path,
@@ -146,6 +153,7 @@ async fn main() -> Result<()> {
                 skip_disk_checks,
                 exit_zero,
                 rules_config.as_deref(),
+                &rules,
             )
             .await
         }
@@ -155,16 +163,41 @@ async fn main() -> Result<()> {
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-fn parse_rules(path: Option<&std::path::Path>) -> Result<RulesConfig> {
-    match path {
+fn parse_rule_severity(s: &str) -> Result<imferno_core::diagnostics::rules::RuleSeverity> {
+    use imferno_core::diagnostics::rules::RuleSeverity;
+    match s {
+        "off" => Ok(RuleSeverity::Off),
+        "info" => Ok(RuleSeverity::Info),
+        "warn" => Ok(RuleSeverity::Warn),
+        "error" => Ok(RuleSeverity::Error),
+        "critical" => Ok(RuleSeverity::Critical),
+        _ => Err(anyhow::anyhow!(
+            "Invalid severity '{}', expected: off|info|warn|error|critical",
+            s
+        )),
+    }
+}
+
+fn parse_rules(path: Option<&std::path::Path>, inline: &[String]) -> Result<RulesConfig> {
+    let mut rules: RulesConfig = match path {
         Some(p) => {
             let json = std::fs::read_to_string(p)
                 .with_context(|| format!("Cannot read rules config: {}", p.display()))?;
             serde_json::from_str(&json)
-                .with_context(|| format!("Invalid rules config JSON: {}", p.display()))
+                .with_context(|| format!("Invalid rules config JSON: {}", p.display()))?
         }
-        None => Ok(Default::default()),
+        None => Default::default(),
+    };
+
+    for entry in inline {
+        let (key, sev_str) = entry.split_once('=').ok_or_else(|| {
+            anyhow::anyhow!("Invalid --rule format '{}', expected RULE=SEVERITY", entry)
+        })?;
+        let severity = parse_rule_severity(sev_str)?;
+        rules.set_raw(key.to_string(), severity);
     }
+
+    Ok(rules)
 }
 
 fn make_options(
@@ -210,12 +243,13 @@ async fn cmd_validate(
     skip_disk_checks: bool,
     exit_zero: bool,
     rules_config_path: Option<&std::path::Path>,
+    inline_rules: &[String],
 ) -> Result<()> {
     anyhow::ensure!(
         hash_concurrency >= 1,
         "--hash-concurrency must be at least 1"
     );
-    let rules = parse_rules(rules_config_path)?;
+    let rules = parse_rules(rules_config_path, inline_rules)?;
     let options = make_options(core_spec, app2e_spec, skip_disk_checks, rules);
     let color = use_color() && !matches!(format, OutputFormat::Json);
 

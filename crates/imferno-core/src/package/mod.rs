@@ -455,6 +455,87 @@ pub fn read_dir(path: impl AsRef<Path>) -> Result<HashMap<String, String>> {
     Ok(files)
 }
 
+/// Read all XML files from an S3 prefix into a filename→content map.
+///
+/// This mirrors [`read_dir`] but reads from an S3 bucket. Only `.xml` files
+/// are returned. Keys are `s3://{bucket}/{key}` URIs.
+///
+/// # Arguments
+/// * `client` — An `aws_sdk_s3::Client` (caller controls region, credentials, endpoint).
+/// * `bucket` — The S3 bucket name.
+/// * `prefix` — The key prefix (e.g. `"packages/my-imf-package/"`). Should end with `/`.
+#[cfg(feature = "aws-s3")]
+pub async fn read_s3(
+    client: &aws_sdk_s3::Client,
+    bucket: &str,
+    prefix: &str,
+) -> Result<HashMap<String, String>> {
+    let mut files = HashMap::new();
+    let mut continuation_token: Option<String> = None;
+
+    loop {
+        let mut req = client.list_objects_v2().bucket(bucket).prefix(prefix);
+
+        if let Some(token) = continuation_token.take() {
+            req = req.continuation_token(token);
+        }
+
+        let resp = req.send().await.map_err(|e| {
+            std::io::Error::new(std::io::ErrorKind::Other, format!("S3 ListObjectsV2: {e}"))
+        })?;
+
+        for obj in resp.contents() {
+            let key = match obj.key() {
+                Some(k) => k,
+                None => continue,
+            };
+
+            // Only read XML files, same as read_dir
+            if !key.to_ascii_lowercase().ends_with(".xml") {
+                continue;
+            }
+
+            let get_resp = client
+                .get_object()
+                .bucket(bucket)
+                .key(key)
+                .send()
+                .await
+                .map_err(|e| {
+                    std::io::Error::new(
+                        std::io::ErrorKind::Other,
+                        format!("S3 GetObject {key}: {e}"),
+                    )
+                })?;
+
+            let body = get_resp.body.collect().await.map_err(|e| {
+                std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    format!("S3 read body {key}: {e}"),
+                )
+            })?;
+
+            match String::from_utf8(body.into_bytes().to_vec()) {
+                Ok(content) => {
+                    let uri = format!("s3://{bucket}/{key}");
+                    files.insert(uri, content);
+                }
+                Err(_) => {
+                    eprintln!("Warning: S3 object {key} is not valid UTF-8, skipping");
+                }
+            }
+        }
+
+        if resp.is_truncated() == Some(true) {
+            continuation_token = resp.next_continuation_token().map(|s| s.to_string());
+        } else {
+            break;
+        }
+    }
+
+    Ok(files)
+}
+
 impl Imferno {
     /// Create an empty Imferno (used when parse fails but we still need a struct).
     fn empty() -> Self {
@@ -463,9 +544,17 @@ impl Imferno {
             volume_index: VolumeIndex { index: 1 },
             volindex_issues: Vec::new(),
             parse_issues: Vec::new(),
-            asset_map: crate::assetmap::parse_assetmap(
-                r#"<AssetMap xmlns="http://www.smpte-ra.org/schemas/429-9/2007/AM"><Id>urn:uuid:00000000-0000-0000-0000-000000000000</Id><VolumeCount>1</VolumeCount><IssueDate>1970-01-01T00:00:00+00:00</IssueDate><Issuer/><AssetList/></AssetMap>"#,
-            ).unwrap_or_else(|_| unreachable!()),
+            asset_map: crate::assetmap::AssetMap {
+                namespace: Default::default(),
+                id: ImfUuid::parse("urn:uuid:00000000-0000-0000-0000-000000000000")
+                    .expect("nil UUID is always valid"),
+                annotation_text: None,
+                creator: None,
+                volume_count: 1,
+                issue_date: "1970-01-01T00:00:00+00:00".into(),
+                issuer: None,
+                asset_list: crate::assetmap::AssetList { assets: Vec::new() },
+            },
             packing_lists: HashMap::new(),
             composition_playlists: HashMap::new(),
             cpl_xml_content: HashMap::new(),

@@ -716,6 +716,30 @@ fn format_text(result: &ValidationResult, color: bool) -> String {
             )
         );
 
+        // Media info
+        if let Some(vi) = video_info_from_cpl(cpl) {
+            let _ = writeln!(
+                out,
+                "  {}  {} {} {} {} {}",
+                c_dim("video", color),
+                vi.resolution,
+                vi.frame_rate,
+                vi.codec,
+                vi.bit_depth,
+                vi.dynamic_range,
+            );
+        }
+        for ai in audio_infos_from_cpl(cpl) {
+            let _ = writeln!(
+                out,
+                "  {}  {} {} {}",
+                c_dim("audio", color),
+                ai.format,
+                ai.sample_rate,
+                ai.bit_depth,
+            );
+        }
+
         for seg in &cpl.segment_list.segments {
             for seq in seg.sequence_list.all_sequences_typed() {
                 let (s, type_name) = seq;
@@ -931,6 +955,201 @@ fn format_summary_text(out: &mut String, v: &ValidationReport, color: bool) {
     } else {
         let _ = writeln!(out, "\n{}", c_green("valid", color));
     }
+}
+
+// ── Media info helpers ──────────────────────────────────────────────────────
+
+struct VideoInfo {
+    resolution: String,
+    frame_rate: String,
+    codec: String,
+    dynamic_range: String,
+    bit_depth: String,
+}
+
+struct AudioInfo {
+    format: String,
+    sample_rate: String,
+    bit_depth: String,
+}
+
+fn video_info_from_cpl(cpl: &crate::cpl::CompositionPlaylist) -> Option<VideoInfo> {
+    let edl = cpl.essence_descriptor_list.as_ref()?;
+    for ed in &edl.essence_descriptors {
+        if let Some(info) = video_info_from_descriptor(ed) {
+            return Some(info);
+        }
+    }
+    None
+}
+
+fn video_info_from_descriptor(ed: &EssenceDescriptor) -> Option<VideoInfo> {
+    // Try CDCI first (most common for YCbCr), then RGBA
+    let (width, height, sample_rate, tc, codec, bit_depth, sub_descs) =
+        if let Some(ref d) = ed.cdci_descriptor {
+            (
+                d.stored_width,
+                d.stored_height,
+                d.sample_rate.as_ref(),
+                d.transfer_characteristic.as_ref(),
+                d.picture_compression.as_ref(),
+                d.component_depth,
+                d.sub_descriptors.as_ref(),
+            )
+        } else if let Some(ref d) = ed.rgba_descriptor {
+            (
+                d.stored_width,
+                d.stored_height,
+                d.sample_rate.as_ref(),
+                d.transfer_characteristic.as_ref(),
+                d.picture_compression.as_ref(),
+                None,
+                d.sub_descriptors.as_ref(),
+            )
+        } else {
+            return None;
+        };
+
+    let resolution = match (width, height) {
+        (Some(w), Some(h)) => format!("{}x{}", w, h),
+        _ => "?".into(),
+    };
+
+    let frame_rate = match sample_rate {
+        Some(r) => {
+            let fps = r.numerator as f64 / r.denominator as f64;
+            if r.denominator == 1 {
+                format!("{}fps", r.numerator)
+            } else {
+                format!("{:.2}fps", fps)
+            }
+        }
+        None => "?".into(),
+    };
+
+    use crate::cpl::types::TransferCharacteristic;
+    let has_dolby_vision = sub_descs
+        .map(|s| s.phdr_metadata_track_sub_descriptor.is_some())
+        .unwrap_or(false);
+    let dynamic_range = if has_dolby_vision {
+        "Dolby Vision".into()
+    } else {
+        match tc {
+            Some(TransferCharacteristic::PqSt2084) => "HDR10 (PQ)".into(),
+            Some(TransferCharacteristic::Hlg) => "HLG".into(),
+            Some(TransferCharacteristic::Bt709) => "SDR".into(),
+            Some(TransferCharacteristic::Bt2020) => "SDR (BT.2020)".into(),
+            Some(TransferCharacteristic::Linear) => "Linear".into(),
+            Some(TransferCharacteristic::Smpte240M) => "SDR (240M)".into(),
+            Some(TransferCharacteristic::XvYcc709) => "SDR (xvYCC)".into(),
+            Some(TransferCharacteristic::Unknown(s)) => format!("Unknown ({})", s),
+            None => "?".into(),
+        }
+    };
+
+    use crate::cpl::types::VideoCodec;
+    let codec = match codec {
+        Some(VideoCodec::Jpeg2000) => "JPEG 2000".into(),
+        Some(VideoCodec::Jpeg2000Imf2k) => "JPEG 2000 (2K)".into(),
+        Some(VideoCodec::Jpeg2000Imf4k) => "JPEG 2000 (4K)".into(),
+        Some(VideoCodec::Jpeg2000Broadcast) => "JPEG 2000 (BCP)".into(),
+        Some(VideoCodec::Jpeg2000Ht) => "JPEG 2000 HT".into(),
+        Some(VideoCodec::Vc5) => "VC-5".into(),
+        Some(VideoCodec::Mpeg2) => "MPEG-2".into(),
+        Some(VideoCodec::H264) => "H.264".into(),
+        Some(VideoCodec::H265) => "H.265".into(),
+        Some(VideoCodec::ProRes) => "ProRes".into(),
+        Some(VideoCodec::Av1) => "AV1".into(),
+        Some(VideoCodec::Unknown(s)) => format!("Unknown ({})", s),
+        None => "?".into(),
+    };
+
+    let bit_depth = match bit_depth {
+        Some(d) => format!("{}-bit", d),
+        None => "?".into(),
+    };
+
+    Some(VideoInfo {
+        resolution,
+        frame_rate,
+        codec,
+        dynamic_range,
+        bit_depth,
+    })
+}
+
+fn audio_infos_from_cpl(cpl: &crate::cpl::CompositionPlaylist) -> Vec<AudioInfo> {
+    let edl = match cpl.essence_descriptor_list.as_ref() {
+        Some(edl) => edl,
+        None => return Vec::new(),
+    };
+    let mut infos = Vec::new();
+    for ed in &edl.essence_descriptors {
+        if let Some(info) = audio_info_from_descriptor(ed) {
+            infos.push(info);
+        }
+    }
+    infos
+}
+
+fn audio_info_from_descriptor(ed: &EssenceDescriptor) -> Option<AudioInfo> {
+    if let Some(ref _iab) = ed.iab_essence_descriptor {
+        return Some(AudioInfo {
+            format: "IAB (Dolby Atmos)".into(),
+            sample_rate: "—".into(),
+            bit_depth: "—".into(),
+        });
+    }
+
+    let d = ed.wave_pcm_descriptor.as_ref()?;
+    let channel_count = d.channel_count.unwrap_or(0);
+
+    use crate::cpl::types::McaTagSymbol;
+    let mca = d
+        .sub_descriptors
+        .as_ref()
+        .and_then(|s| s.soundfield_group_label_sub_descriptor.as_ref())
+        .and_then(|s| s.mca_tag_symbol.as_ref());
+
+    let format = match mca {
+        Some(McaTagSymbol::Sg51) => "5.1 Surround".into(),
+        Some(McaTagSymbol::Sg71) => "7.1 Surround".into(),
+        Some(McaTagSymbol::Sg71Ds) => "7.1 Dolby Surround".into(),
+        Some(McaTagSymbol::SgSt) => "Stereo".into(),
+        Some(McaTagSymbol::SgMono) => "Mono".into(),
+        Some(McaTagSymbol::Iab) => "IAB (Dolby Atmos)".into(),
+        Some(McaTagSymbol::Other(s)) => s.clone(),
+        _ => match channel_count {
+            1 => "Mono".into(),
+            2 => "Stereo".into(),
+            6 => "5.1".into(),
+            8 => "7.1".into(),
+            n => format!("{}ch", n),
+        },
+    };
+
+    let sample_rate = match d.audio_sample_rate.as_ref().or(d.sample_rate.as_ref()) {
+        Some(r) => {
+            let hz = r.numerator as f64 / r.denominator as f64;
+            if hz >= 1000.0 {
+                format!("{:.1}kHz", hz / 1000.0)
+            } else {
+                format!("{}Hz", hz as u32)
+            }
+        }
+        None => "?".into(),
+    };
+
+    let bit_depth = match d.quantization_bits {
+        Some(b) => format!("{}-bit", b),
+        None => "?".into(),
+    };
+
+    Some(AudioInfo {
+        format,
+        sample_rate,
+        bit_depth,
+    })
 }
 
 /// Look up language for a sequence from the CPL's essence descriptor list.

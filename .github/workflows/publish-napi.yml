@@ -112,7 +112,6 @@ jobs:
   publish:
     name: Publish to NPM
     needs: [resolve-version, build]
-    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

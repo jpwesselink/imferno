@@ -716,30 +716,6 @@ fn format_text(result: &ValidationResult, color: bool) -> String {
             )
         );
 
-        // Media info
-        if let Some(vi) = video_info_from_cpl(cpl) {
-            let _ = writeln!(
-                out,
-                "  {}  {} {} {} {} {}",
-                c_dim("video", color),
-                vi.resolution,
-                vi.frame_rate,
-                vi.codec,
-                vi.bit_depth,
-                vi.dynamic_range,
-            );
-        }
-        for ai in audio_infos_from_cpl(cpl) {
-            let _ = writeln!(
-                out,
-                "  {}  {} {} {}",
-                c_dim("audio", color),
-                ai.format,
-                ai.sample_rate,
-                ai.bit_depth,
-            );
-        }
-
         for seg in &cpl.segment_list.segments {
             for seq in seg.sequence_list.all_sequences_typed() {
                 let (s, type_name) = seq;
@@ -749,12 +725,54 @@ fn format_text(result: &ValidationResult, color: bool) -> String {
                     Some(l) => format!("{} ({})", type_name, l),
                     None => type_name.to_string(),
                 };
+
+                // Per-track media info from essence descriptor
+                let media_detail = descriptor_lookup(s, cpl).and_then(|ed| {
+                    if let Some(vi) = video_info_from_descriptor(ed) {
+                        Some(format!(
+                            "{} {} {} {} {}",
+                            vi.resolution, vi.frame_rate, vi.codec, vi.bit_depth, vi.dynamic_range
+                        ))
+                    } else if ed.iab_essence_descriptor.is_some() {
+                        Some("IAB (Dolby Atmos)".into())
+                    } else if let Some(ai) = audio_info_from_descriptor(ed) {
+                        Some(format!("{} {} {}", ai.format, ai.sample_rate, ai.bit_depth))
+                    } else {
+                        None
+                    }
+                });
+
+                let resources_str = s
+                    .resource_list()
+                    .resources
+                    .iter()
+                    .filter_map(|r| {
+                        r.track_file_id
+                            .as_ref()
+                            .map(|id| id.to_string()[..8].to_string())
+                    })
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                let resources_display = if resources_str.is_empty() {
+                    format!("{} resource(s)", resource_count)
+                } else {
+                    resources_str
+                };
+
+                let detail_str = match media_detail {
+                    Some(d) => format!(
+                        " — {} — {}",
+                        c_dim(&d, color),
+                        c_dim(&resources_display, color)
+                    ),
+                    None => format!(" — {}", c_dim(&resources_display, color)),
+                };
                 let _ = writeln!(
                     out,
-                    "  {}  {} — {} resource(s)",
+                    "  {}  {}{}",
                     c_cyan("track", color),
                     c_bold(&label, color),
-                    resource_count,
+                    detail_str,
                 );
             }
         }
@@ -973,16 +991,6 @@ struct AudioInfo {
     bit_depth: String,
 }
 
-fn video_info_from_cpl(cpl: &crate::cpl::CompositionPlaylist) -> Option<VideoInfo> {
-    let edl = cpl.essence_descriptor_list.as_ref()?;
-    for ed in &edl.essence_descriptors {
-        if let Some(info) = video_info_from_descriptor(ed) {
-            return Some(info);
-        }
-    }
-    None
-}
-
 fn video_info_from_descriptor(ed: &EssenceDescriptor) -> Option<VideoInfo> {
     // Try CDCI first (most common for YCbCr), then RGBA
     let (width, height, sample_rate, tc, codec, bit_depth, sub_descs) =
@@ -1078,20 +1086,6 @@ fn video_info_from_descriptor(ed: &EssenceDescriptor) -> Option<VideoInfo> {
     })
 }
 
-fn audio_infos_from_cpl(cpl: &crate::cpl::CompositionPlaylist) -> Vec<AudioInfo> {
-    let edl = match cpl.essence_descriptor_list.as_ref() {
-        Some(edl) => edl,
-        None => return Vec::new(),
-    };
-    let mut infos = Vec::new();
-    for ed in &edl.essence_descriptors {
-        if let Some(info) = audio_info_from_descriptor(ed) {
-            infos.push(info);
-        }
-    }
-    infos
-}
-
 fn audio_info_from_descriptor(ed: &EssenceDescriptor) -> Option<AudioInfo> {
     if let Some(ref _iab) = ed.iab_essence_descriptor {
         return Some(AudioInfo {
@@ -1150,6 +1144,21 @@ fn audio_info_from_descriptor(ed: &EssenceDescriptor) -> Option<AudioInfo> {
         sample_rate,
         bit_depth,
     })
+}
+
+/// Look up the essence descriptor for a sequence from the CPL.
+fn descriptor_lookup<'a>(
+    seq: &dyn SequenceAccess,
+    cpl: &'a crate::cpl::CompositionPlaylist,
+) -> Option<&'a EssenceDescriptor> {
+    let se = seq
+        .resource_list()
+        .resources
+        .first()?
+        .source_encoding
+        .as_ref()?;
+    let edl = cpl.essence_descriptor_list.as_ref()?;
+    edl.essence_descriptors.iter().find(|e| &e.id == se)
 }
 
 /// Look up language for a sequence from the CPL's essence descriptor list.

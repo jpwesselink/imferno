@@ -968,8 +968,9 @@ impl Imferno {
         }
     }
 
-    /// Emit `ImfernoCode::UnlistedEssence` warnings for any `.mxf` file in the
-    /// package directory that is not listed as a chunk path in the AssetMap.
+    /// Emit `ImfernoCode::UnlistedEssence` warnings for any file in the
+    /// package directory that is not accounted for by the AssetMap, PKL,
+    /// VOLINDEX, or ASSETMAP itself.
     ///
     /// Scans the root directory non-recursively.  Skipped on WASM and when
     /// `root_path` is unset (in-memory / WASM packages).
@@ -981,7 +982,7 @@ impl Imferno {
         }
 
         // All filenames listed as chunks in the AssetMap.
-        let mapped: std::collections::HashSet<String> = self
+        let mut known: std::collections::HashSet<String> = self
             .asset_map
             .asset_list
             .assets
@@ -994,6 +995,15 @@ impl Imferno {
             })
             .collect();
 
+        // Package infrastructure files are always expected.
+        known.insert("ASSETMAP.xml".into());
+        known.insert("VOLINDEX.xml".into());
+        // Case variants seen in the wild.
+        known.insert("assetmap.xml".into());
+        known.insert("volindex.xml".into());
+        known.insert("ASSETMAP".into());
+        known.insert("VOLINDEX".into());
+
         let entries = match std::fs::read_dir(&self.root_path) {
             Ok(e) => e,
             Err(e) => {
@@ -1001,10 +1011,7 @@ impl Imferno {
                     Severity::Info,
                     Category::Structure,
                     codes::ImfernoCode::ReadDirError,
-                    format!(
-                        "Could not scan package directory for unlisted essences: {}",
-                        e,
-                    ),
+                    format!("Could not scan package directory for unlisted files: {}", e,),
                 ));
                 return;
             }
@@ -1024,25 +1031,27 @@ impl Imferno {
                 }
             };
             let path = entry.path();
-            let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
-            if !ext.eq_ignore_ascii_case("mxf") {
+            // Skip directories
+            if path.is_dir() {
                 continue;
             }
             let filename = match path.file_name() {
                 Some(n) => n.to_string_lossy().into_owned(),
                 None => continue,
             };
-            if !mapped.contains(&filename) {
-                report.add(ValidationIssue::new(
-                    Severity::Warning,
-                    Category::Structure,
-                    codes::ImfernoCode::UnlistedEssence.code(),
-                    format!(
-                        "MXF file '{}' is present in the package directory but not listed in the AssetMap",
-                        filename,
-                    ),
-                ));
+            // Case-insensitive match against known files
+            if known.iter().any(|k| k.eq_ignore_ascii_case(&filename)) {
+                continue;
             }
+            report.add(ValidationIssue::new(
+                Severity::Warning,
+                Category::Structure,
+                codes::ImfernoCode::UnlistedEssence.code(),
+                format!(
+                    "File '{}' is present in the package directory but not listed in the AssetMap",
+                    filename,
+                ),
+            ));
         }
     }
 

@@ -27,7 +27,7 @@ pub enum ImfernoCode {
     /// reference and no SCM declaration.  Likely a sidecar essence (e.g.
     /// Dolby Atmos MXF) delivered without an accompanying SCM document.
     UnreferencedAsset,
-    /// An MXF file is present in the package directory but not listed as a
+    /// A file is present in the package directory but not listed as a
     /// chunk in any AssetMap entry.  The file is completely outside the
     /// package manifest and will be ignored by any conforming IMF reader.
     UnlistedEssence,
@@ -67,7 +67,7 @@ impl ValidationCode for ImfernoCode {
             Self::UnreferencedAsset =>
                 "Asset is present in the AssetMap but not referenced by any CPL Virtual Track and has no SCM declaration. Likely a sidecar essence without an SCM.",
             Self::UnlistedEssence =>
-                "MXF file is present in the package directory but not listed in the AssetMap. The file is invisible to any conforming IMF reader.",
+                "File is present in the package directory but not listed in the AssetMap. The file is invisible to any conforming IMF reader.",
             Self::ParseError =>
                 "IMF package failed to parse due to a structural error.",
             Self::PklParseError =>

@@ -180,6 +180,89 @@ pub fn validate_path_js(
 }
 
 // =============================================================================
+// URI-based variants (file://, s3://, bare paths)
+// =============================================================================
+
+#[napi(js_name = "buildReportFromUri")]
+pub fn build_report_from_uri(
+    uri: String,
+    options: Option<serde_json::Value>,
+) -> napi::Result<serde_json::Value> {
+    let opts = parse_options(options.as_ref())?;
+    let files = read_uri(&uri)?;
+
+    let validation_options = ValidationOptions {
+        rules: opts.rules,
+        core_spec: opts.core_spec,
+        app_specs: opts.app_specs,
+        verify_hashes: None,
+        skip_disk_checks: opts.skip_disk_checks,
+    };
+
+    let package = Imferno::parse(files)
+        .map_err(|e| napi::Error::from_reason(format!("Failed to parse IMF package: {}", e)))?;
+
+    let report =
+        build_report(&package, &validation_options, None).map_err(napi::Error::from_reason)?;
+
+    serde_json::to_value(&report)
+        .map_err(|e| napi::Error::from_reason(format!("Serialization error: {}", e)))
+}
+
+#[napi(js_name = "validateUri")]
+pub fn validate_uri_js(
+    uri: String,
+    options: Option<serde_json::Value>,
+) -> napi::Result<serde_json::Value> {
+    let opts = parse_options(options.as_ref())?;
+    let files = read_uri(&uri)?;
+
+    let validation_options = ValidationOptions {
+        rules: opts.rules,
+        core_spec: opts.core_spec,
+        app_specs: opts.app_specs,
+        verify_hashes: None,
+        skip_disk_checks: opts.skip_disk_checks,
+    };
+
+    let result = validate_package(files, &validation_options);
+    serde_json::to_value(&result)
+        .map_err(|e| napi::Error::from_reason(format!("Serialization error: {}", e)))
+}
+
+fn read_uri(uri: &str) -> napi::Result<HashMap<String, String>> {
+    use imferno_core::package::read_xml_files;
+    use imferno_core::storage::fs::FsStorage;
+    use imferno_core::storage::{Scheme, StorageUri};
+
+    let parsed = StorageUri::parse(uri)
+        .map_err(|e| napi::Error::from_reason(format!("Invalid URI: {}", e)))?;
+
+    match parsed.scheme {
+        Scheme::File => {
+            let storage = FsStorage::new();
+            read_xml_files(&parsed, &storage)
+                .map_err(|e| napi::Error::from_reason(format!("Failed to read URI: {}", e)))
+        }
+        Scheme::S3 => {
+            #[cfg(feature = "aws-s3")]
+            {
+                let storage = imferno_core::storage::s3::S3Storage::from_default()
+                    .map_err(|e| napi::Error::from_reason(format!("S3 init: {}", e)))?;
+                read_xml_files(&parsed, &storage)
+                    .map_err(|e| napi::Error::from_reason(format!("Failed to read S3 URI: {}", e)))
+            }
+            #[cfg(not(feature = "aws-s3"))]
+            {
+                Err(napi::Error::from_reason(
+                    "s3:// URIs require building imferno-napi with the aws-s3 feature".to_string(),
+                ))
+            }
+        }
+    }
+}
+
+// =============================================================================
 // Internal helpers
 // =============================================================================
 

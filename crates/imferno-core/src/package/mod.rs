@@ -455,6 +455,17 @@ pub fn read_dir(path: impl AsRef<Path>) -> Result<HashMap<String, String>> {
 /// let files = read(&uri, &storage).unwrap();
 /// let package = Imferno::parse(files).unwrap();
 /// ```
+///
+/// # Example — S3 (requires the `aws-s3` feature)
+///
+/// ```ignore
+/// use imferno_core::package::{read, Imferno};
+/// use imferno_core::storage::{s3::S3Storage, StorageUri};
+///
+/// let uri = StorageUri::parse("s3://my-bucket/imp/").unwrap();
+/// let storage = S3Storage::from_default().unwrap();
+/// let files = read(&uri, &storage).unwrap();
+/// ```
 pub fn read_xml_files(
     uri: &crate::storage::StorageUri,
     storage: &dyn crate::storage::Storage,

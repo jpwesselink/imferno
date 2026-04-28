@@ -41,6 +41,10 @@
     {
       "label": "#35 feat/storage-trait",
       "path": "/pr-35/"
+    },
+    {
+      "label": "#36 chore/clippy-rust-1.95-lints",
+      "path": "/pr-36/"
     }
   ],
   "latest": "/v2.0.0/"

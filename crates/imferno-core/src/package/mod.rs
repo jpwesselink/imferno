@@ -498,65 +498,23 @@ pub async fn read_s3(
     bucket: &str,
     prefix: &str,
 ) -> Result<HashMap<String, String>> {
-    let mut files = HashMap::new();
-    let mut continuation_token: Option<String> = None;
+    use crate::storage::{s3::S3Storage, StorageUri};
 
-    loop {
-        let mut req = client.list_objects_v2().bucket(bucket).prefix(prefix);
+    let storage =
+        S3Storage::from_client(client.clone()).map_err(|e| std::io::Error::other(e.to_string()))?;
+    let uri_str = format!("s3://{bucket}/{prefix}");
+    let uri = StorageUri::parse(&uri_str)
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidInput, e.to_string()))?;
 
-        if let Some(token) = continuation_token.take() {
-            req = req.continuation_token(token);
-        }
-
-        let resp = req
-            .send()
-            .await
-            .map_err(|e| std::io::Error::other(format!("S3 ListObjectsV2: {e}")))?;
-
-        for obj in resp.contents() {
-            let key = match obj.key() {
-                Some(k) => k,
-                None => continue,
-            };
-
-            // Only read XML files, same as read_dir
-            if !key.to_ascii_lowercase().ends_with(".xml") {
-                continue;
-            }
-
-            let get_resp = client
-                .get_object()
-                .bucket(bucket)
-                .key(key)
-                .send()
-                .await
-                .map_err(|e| std::io::Error::other(format!("S3 GetObject {key}: {e}")))?;
-
-            let body = get_resp
-                .body
-                .collect()
-                .await
-                .map_err(|e| std::io::Error::other(format!("S3 read body {key}: {e}")))?;
-
-            match String::from_utf8(body.into_bytes().to_vec()) {
-                Ok(content) => {
-                    let uri = format!("s3://{bucket}/{key}");
-                    files.insert(uri, content);
-                }
-                Err(_) => {
-                    eprintln!("Warning: S3 object {key} is not valid UTF-8, skipping");
-                }
-            }
-        }
-
-        if resp.is_truncated() == Some(true) {
-            continuation_token = resp.next_continuation_token().map(|s| s.to_string());
-        } else {
-            break;
-        }
-    }
-
-    Ok(files)
+    // The trait method is sync; run on a blocking task so we don't block the
+    // async caller's runtime.
+    tokio::task::spawn_blocking(move || {
+        crate::package::read_xml_files(&uri, &storage)
+            .map_err(|e| std::io::Error::other(e.to_string()))
+    })
+    .await
+    .map_err(|e| std::io::Error::other(format!("join error: {e}")))?
+    .map_err(Into::into)
 }
 
 impl Imferno {

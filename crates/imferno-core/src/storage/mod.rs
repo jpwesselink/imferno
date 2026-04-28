@@ -70,6 +70,43 @@ impl StorageUri {
     }
 }
 
+/// Synchronous abstraction over a storage backend.
+///
+/// Implementations expose the operations needed by the IMF package reader:
+/// listing entries under a URI and reading their full contents as UTF-8 strings.
+/// Range reads are intentionally absent from v1.0 — the validator currently
+/// loads full XML files and reads MXF header partitions through the local FS.
+/// Range support will be added when MXF reading is migrated to the trait.
+///
+/// All methods are sync. Async backends (e.g. S3) wrap a tokio runtime
+/// internally so callers do not need an async context.
+pub trait Storage: Send + Sync {
+    /// List entries at the given URI.
+    ///
+    /// For `file://`, this is non-recursive `read_dir`. For `s3://`, this is
+    /// `ListObjectsV2` with the URI's path as `prefix`.
+    fn list(&self, uri: &StorageUri) -> Result<Vec<Entry>, StorageError>;
+
+    /// Read a file's full contents as a UTF-8 string.
+    ///
+    /// Files that fail UTF-8 decoding return an error; callers (e.g. the
+    /// XML-only filter in `read_xml_files`) should skip them gracefully.
+    fn read_to_string(&self, uri: &StorageUri) -> Result<String, StorageError>;
+}
+
+/// A single entry returned by [`Storage::list`].
+///
+/// `uri` is whatever the backend uses as its identifier — for `FsStorage`
+/// it is a bare absolute path string (no `file://` prefix), preserving
+/// backward compatibility with `package::read_dir`. For `S3Storage` it is
+/// an `s3://bucket/key` URI.
+#[derive(Debug, Clone)]
+pub struct Entry {
+    pub uri: String,
+    pub size: u64,
+    pub is_file: bool,
+}
+
 #[derive(thiserror::Error, Debug)]
 pub enum StorageError {
     #[error("invalid URI: {0}")]

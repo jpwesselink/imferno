@@ -100,29 +100,33 @@ validate `imferno`'s output without depending on any of them.
 
 ## Why Rust?
 
-Three reasons Rust fits this particular problem.
+Four reasons Rust fits this particular problem.
 
-**Tri-target distribution from one source tree.** The same code compiles to a
-CLI binary, a WebAssembly module, and a Node.js native addon, each via
-mature tooling:
+**Type safety.** IMF entities — CPL, AssetMap, PKL, sidecar maps — translate
+cleanly into Rust structs and enums. The compiler catches mismatches at
+build time: when a new spec year adds a field, every consumer site that
+needs to handle it stops compiling until you do. Renaming, refactoring, and
+extending the parser are operations the type system makes safe instead of
+operations a code review has to catch.
 
-- `wasm32-unknown-unknown` + `wasm-bindgen` → [`@imferno/wasm`](https://www.npmjs.com/package/@imferno/wasm)
-- [napi-rs](https://napi.rs) → [`@imferno/node`](https://www.npmjs.com/package/@imferno/node)
-- `cargo build --target …` → CLI binaries for Linux / macOS / Windows on x64 and arm64
+**Easy bindings to other languages.** Rust's FFI story is unusually good.
+[napi-rs](https://napi.rs) wraps Rust functions as native Node.js modules
+with a single `#[napi]` attribute — that's how
+[`@imferno/node`](https://www.npmjs.com/package/@imferno/node) exists. The
+same pattern applies elsewhere: PyO3 for Python, jni-rs for Java/Kotlin,
+csbindgen for C#, UniFFI for Swift/Kotlin. When a user asks for "imferno in
+language X", the answer is a binding crate, not a rewrite.
 
-Other languages can reach the same set of targets — Go via TinyGo, C++ via
-Emscripten + node-addon-api, etc. — but the path in Rust today is shorter
-and the toolchains are better maintained. No per-target source shims, no
-separate build systems.
+**Easy WASM.** `wasm32-unknown-unknown` is a first-class `rustc` target.
+[`wasm-bindgen`](https://rustwasm.github.io/wasm-bindgen/) handles the JS
+interop. The same engine ships to browsers, Cloudflare Workers, Vercel
+Edge, Deno Deploy — anywhere a sandboxed JS runtime exists — distributed
+as [`@imferno/wasm`](https://www.npmjs.com/package/@imferno/wasm).
 
-**Errors are values, not exceptions.** A validator's job is to *return*
-issues, not throw them, and Rust's `Result` makes that the natural shape.
-Every parser entry point is `fn(input) -> Result<Parsed, ParseError>`; every
-validator pushes typed issues onto a `ValidationReport`. The error path is
-visible in the function signature, so the compiler — not a runbook — reminds
-you to handle it.
-
-**One binary, no runtime to install.** `cargo install imferno` (or
-`npm install -g imferno` for the prebuilt) gives you a zero-dependency
-executable. Useful in CI containers and on customer ingest boxes where
-adding a JVM, a Node runtime, or a Python interpreter is its own project.
+**Cross-compiled binaries for every platform people actually use.**
+`cargo build --target …` (with [`cross`](https://github.com/cross-rs/cross)
+for the awkward triples) produces native binaries from a single CI matrix:
+Linux x64 / arm64, macOS x64 / arm64 (Intel + Apple Silicon), Windows x64
+/ arm64. No per-platform build farms, no Docker-in-Docker tricks, no
+cross-toolchain hand-rolling. The CLI ships as a single static binary on
+every one of them.

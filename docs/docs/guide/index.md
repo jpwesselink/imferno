@@ -26,21 +26,64 @@ IMF is the successor to DCP for long-form content. It supports multiple versions
 
 ## Ecosystem
 
-### Rust crates (crates.io)
+The parsing engine is written once, in Rust (`imferno-core`), and exposed
+through every runtime that actually ships in production media stacks. Pick
+the package that matches *where your code runs*, not how it's distributed.
 
-| Crate | Description |
+### Rust
+
+The source of truth. Use these directly when your application is itself in
+Rust, or when you want to embed validation in another native tool.
+
+| Crate | When to reach for it |
 |---|---|
-| [`imferno-core`](https://crates.io/crates/imferno-core) | All parsing and validation logic |
-| [`imferno`](https://crates.io/crates/imferno) | Command-line tool |
+| [`imferno-core`](https://crates.io/crates/imferno-core) | Library — call from any Rust app: parse, validate, inspect, generate JSON reports. The `Storage` trait lets you point it at local FS or S3 (with the `aws-s3` feature). |
+| [`imferno`](https://crates.io/crates/imferno) | Command-line tool installable via `cargo install imferno`. Same code as the npm CLI, just built from source on your machine. |
 
-### npm packages
+### Node.js
 
-| Package | Description |
+For server-side validation pipelines, ingest gates, CI hooks, and CLI use.
+NAPI gives you native speed without a child-process boundary.
+
+| Package | When to reach for it |
 |---|---|
-| [`imferno`](https://www.npmjs.com/package/imferno) | CLI — prebuilt native binaries for all platforms |
-| [`@imferno/wasm`](https://www.npmjs.com/package/@imferno/wasm) | WebAssembly bindings for JS/TS |
-| [`@imferno/node`](https://www.npmjs.com/package/@imferno/node) | Native Node.js bindings (filesystem + hash verification) |
-| [`@imferno/schema`](https://www.npmjs.com/package/@imferno/schema) | JSON Schema definitions for all IMF types |
+| [`imferno`](https://www.npmjs.com/package/imferno) (npm) | Drop-in CLI: `npm install -g imferno` ships prebuilt binaries for Linux/macOS/Windows on x64 + arm64. Perfect for CI and shell scripts that don't want a Rust toolchain. |
+| [`@imferno/node`](https://www.npmjs.com/package/@imferno/node) | Native NAPI bindings — call `validatePath` / `validateUri` / `buildReport` from JS/TS in-process. Filesystem access, hash verification, S3 input (with the `aws-s3` build). The fastest way to validate from a Node server. |
+
+### Browser / WebAssembly
+
+Anywhere JS runs and you can't load a native binary — browsers, edge runtimes,
+bundlers, sandboxed serverless platforms.
+
+| Package | When to reach for it |
+|---|---|
+| [`@imferno/wasm`](https://www.npmjs.com/package/@imferno/wasm) | Pure-WASM build of the same engine. Pass XML strings in, get a validation report out. No filesystem access (it's a sandboxed runtime), so callers fetch the manifest XMLs themselves and hand them to `validate({})`. |
+
+### Schemas (runtime-agnostic)
+
+| Package | When to reach for it |
+|---|---|
+| [`@imferno/schema`](https://www.npmjs.com/package/@imferno/schema) | JSON Schema definitions for every type the engine emits — `ValidationReport`, `Imferno`, CPL, AssetMap, PKL, etc. Use to type-check imferno's output in any language with a JSON Schema validator. |
+
+### How they relate
+
+```
+                     ┌──────────────────┐
+                     │   imferno-core   │   Rust crate — engine
+                     │   (parser +      │   (parses XML, validates,
+                     │    validators)   │    storage trait)
+                     └────────┬─────────┘
+                              │ same code, three doors
+            ┌─────────────────┼─────────────────┐
+            ▼                 ▼                 ▼
+       imferno CLI       @imferno/node      @imferno/wasm
+       (cargo install     (NAPI bindings,    (WASM bindings,
+        or npm install     in-process JS)     browser/edge)
+        for binaries)
+```
+
+`@imferno/schema` describes the JSON these all emit, so consumers can
+validate `imferno`'s output without depending on any of them.
 
 ## Standards coverage
 

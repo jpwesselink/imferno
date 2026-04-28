@@ -14,7 +14,7 @@ path = "src/main.rs"
 
 [features]
 default = []
-aws-s3 = ["imferno-core/aws-s3"]
+aws-s3 = ["imferno-core/aws-s3", "dep:aws-config", "dep:aws-sdk-s3"]
 
 [dependencies]
 imferno-core = { path = "../imferno-core", version = "2.0.0", features = ["tokio"] }
@@ -24,3 +24,5 @@ anyhow = { workspace = true }
 tokio = { workspace = true }
 comfy-table = "7.1"
 chromakopia = "0.1.0"
+aws-config = { workspace = true, optional = true }
+aws-sdk-s3 = { workspace = true, optional = true }

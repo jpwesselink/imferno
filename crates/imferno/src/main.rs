@@ -15,7 +15,11 @@ use std::path::PathBuf;
 ///
 /// Accepts `file://` URIs, bare filesystem paths, and (when built with the
 /// `aws-s3` feature) `s3://bucket/prefix/` URIs.
-fn read_input(input: &str) -> Result<std::collections::HashMap<String, String>> {
+///
+/// This function is async because S3 dispatch goes through the legacy
+/// `read_s3` async wrapper (which itself uses `spawn_blocking` to host the
+/// sync `S3Storage` trait safely under an outer tokio runtime).
+async fn read_input(input: &str) -> Result<std::collections::HashMap<String, String>> {
     use imferno_core::package::read_xml_files;
     use imferno_core::storage::{fs::FsStorage, Scheme, StorageUri};
 
@@ -28,11 +32,18 @@ fn read_input(input: &str) -> Result<std::collections::HashMap<String, String>> 
         Scheme::S3 => {
             #[cfg(feature = "aws-s3")]
             {
-                let storage = imferno_core::storage::s3::S3Storage::from_default()?;
-                Ok(read_xml_files(&uri, &storage)?)
+                let bucket = uri
+                    .bucket
+                    .as_ref()
+                    .ok_or_else(|| anyhow::anyhow!("s3 URI missing bucket"))?;
+                let cfg =
+                    aws_config::load_defaults(aws_config::BehaviorVersion::latest()).await;
+                let client = aws_sdk_s3::Client::new(&cfg);
+                Ok(imferno_core::package::read_s3(&client, bucket, &uri.path).await?)
             }
             #[cfg(not(feature = "aws-s3"))]
             {
+                let _ = uri;
                 anyhow::bail!("s3:// input requires building imferno with --features aws-s3");
             }
         }
@@ -185,7 +196,7 @@ async fn main() -> Result<()> {
             )
             .await
         }
-        Commands::Cpl { path, uuid } => cmd_cpl(&path, uuid),
+        Commands::Cpl { path, uuid } => cmd_cpl(&path, uuid).await,
     }
 }
 
@@ -282,7 +293,7 @@ async fn cmd_validate(
     let color = use_color() && !matches!(format, OutputFormat::Json);
 
     // Read files
-    let files = match read_input(&path.to_string_lossy()) {
+    let files = match read_input(&path.to_string_lossy()).await {
         Ok(f) => f,
         Err(e) => {
             if matches!(format, OutputFormat::Json) {
@@ -527,8 +538,8 @@ async fn cmd_validate(
     Ok(())
 }
 
-fn cmd_cpl(path: &std::path::Path, uuid: Option<String>) -> Result<()> {
-    let package = Imferno::parse(read_input(&path.to_string_lossy())?)?;
+async fn cmd_cpl(path: &std::path::Path, uuid: Option<String>) -> Result<()> {
+    let package = Imferno::parse(read_input(&path.to_string_lossy()).await?)?;
 
     let cpl_uuid = if let Some(uuid) = uuid {
         uuid

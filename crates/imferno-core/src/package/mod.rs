@@ -480,9 +480,10 @@ pub async fn read_s3(
             req = req.continuation_token(token);
         }
 
-        let resp = req.send().await.map_err(|e| {
-            std::io::Error::new(std::io::ErrorKind::Other, format!("S3 ListObjectsV2: {e}"))
-        })?;
+        let resp = req
+            .send()
+            .await
+            .map_err(|e| std::io::Error::other(format!("S3 ListObjectsV2: {e}")))?;
 
         for obj in resp.contents() {
             let key = match obj.key() {
@@ -501,19 +502,13 @@ pub async fn read_s3(
                 .key(key)
                 .send()
                 .await
-                .map_err(|e| {
-                    std::io::Error::new(
-                        std::io::ErrorKind::Other,
-                        format!("S3 GetObject {key}: {e}"),
-                    )
-                })?;
+                .map_err(|e| std::io::Error::other(format!("S3 GetObject {key}: {e}")))?;
 
-            let body = get_resp.body.collect().await.map_err(|e| {
-                std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    format!("S3 read body {key}: {e}"),
-                )
-            })?;
+            let body = get_resp
+                .body
+                .collect()
+                .await
+                .map_err(|e| std::io::Error::other(format!("S3 read body {key}: {e}")))?;
 
             match String::from_utf8(body.into_bytes().to_vec()) {
                 Ok(content) => {

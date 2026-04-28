@@ -17,8 +17,11 @@ npm install -g imferno
 ## Usage
 
 ```bash
-# Validate an IMF package
+# Validate an IMF package — accepts a local path, a file:// URI, or
+# (with --features aws-s3) an s3://bucket/prefix/ URI
 imferno validate ./my-imp
+imferno validate file:///abs/path/to/my-imp
+imferno validate s3://my-bucket/path/to/imp/
 
 # Validate with JSON output
 imferno validate ./my-imp --format json
@@ -28,10 +31,17 @@ imferno validate ./my-imp --verify-hashes
 
 # Use a custom rules config
 imferno validate ./my-imp --rules-config rules.json
-
-# Export a full report (JSON)
-imferno export ./my-imp
 ```
+
+S3 input requires building with the `aws-s3` feature:
+
+```bash
+cargo install imferno --features aws-s3
+```
+
+The S3 backend uses the default AWS credential chain (env vars, profile, or
+EC2 IMDS). Only XML manifest files are fetched over the network — MXF
+binaries are not downloaded.
 
 ## License
 

@@ -33,6 +33,25 @@ console.log("Warnings:", report.validation.warnings.length);
 console.log("CPLs:", report.package.cplCount);
 ```
 
+### Validate from a URI (filesystem or S3)
+
+```js
+import { validateUri, buildReportFromUri } from "@imferno/node";
+
+// Local FS path or file:// URI
+const result = validateUri("./my-imp");
+const result2 = validateUri("file:///abs/path/to/my-imp");
+
+// S3 (requires the binary to be built with the aws-s3 feature; uses the
+// default AWS credential chain — env vars, profile, or IMDS)
+const result3 = validateUri("s3://my-bucket/path/to/imp/");
+
+// Same options object as validatePath
+const report = buildReportFromUri("s3://my-bucket/path/to/imp/", {
+  coreSpec: "v2020",
+});
+```
+
 ### Validate with options
 
 ```js

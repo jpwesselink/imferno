@@ -60,6 +60,21 @@ if result.validation.is_compliant {
 }
 ```
 
+For cloud-stored packages, use the URI-aware entry point — accepts `file://`,
+bare paths, and (with `--features aws-s3`) `s3://bucket/prefix/`:
+
+```rust
+use imferno_core::package::{read, Imferno};
+use imferno_core::storage::{fs::FsStorage, StorageUri};
+
+let uri = StorageUri::parse("s3://my-bucket/path/to/imp/")?;
+// let storage = FsStorage::new();
+// or with the aws-s3 feature:
+let storage = imferno_core::storage::s3::S3Storage::from_default()?;
+let files = read(&uri, &storage)?;
+let package = Imferno::parse(files)?;
+```
+
 See the [Rust API Reference](/reference/rust/) for the full API surface.
 
 ### WASM
@@ -105,9 +120,13 @@ npm install @imferno/node
 Native bindings via NAPI — filesystem access, hash verification, and native speed. All Node.js functions are **synchronous**.
 
 ```javascript
-import { validatePath, formatReport } from '@imferno/node';
+import { validatePath, validateUri, formatReport } from '@imferno/node';
 
+// Local FS path
 const result = validatePath('./my-imp');
+
+// Or via URI (file://, bare path, or — with aws-s3 build — s3:// URIs)
+const result2 = validateUri('s3://my-bucket/path/to/imp/');
 
 // Full parsed package
 console.log(result.package.compositionPlaylists);

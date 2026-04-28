@@ -41,6 +41,14 @@ imferno validate /path/to/your.imp --format json
 imferno validate /path/to/your.imp --format json --exit-zero
 ```
 
+The CLI also accepts `file://` URIs and (with `--features aws-s3`)
+`s3://bucket/prefix/` URIs:
+
+```bash
+imferno validate file:///abs/path/to/your.imp
+imferno validate s3://my-bucket/path/to/your.imp/
+```
+
 See the [CLI Reference](/reference/cli/) for all options.
 
 ### Rust
@@ -64,6 +72,21 @@ let files = read_dir("/path/to/your.imp")?;
 let pkg = Imferno::parse(files)?;
 let report = pkg.validate_hashes(&ValidationOptions::default());
 ```
+
+#### Cloud storage (S3)
+
+```rust
+use imferno_core::package::{read, Imferno, ValidationOptions};
+use imferno_core::storage::{s3::S3Storage, StorageUri};
+
+let uri = StorageUri::parse("s3://my-bucket/path/to/imp/")?;
+let storage = S3Storage::from_default()?;     // default AWS credential chain
+let files = read(&uri, &storage)?;
+let report = Imferno::parse_and_validate(files, &ValidationOptions::default());
+```
+
+Requires the `aws-s3` Cargo feature. Only XML manifest files are fetched
+over the network; MXF essence files are not downloaded.
 
 See the [Rust API Reference](/reference/rust/) for the full API surface.
 

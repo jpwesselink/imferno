@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `storage` module exposing a `Storage` trait that abstracts package I/O.
+- `FsStorage` (always available) and `S3Storage` (behind `aws-s3` feature) implementations.
+- `StorageUri` parser supporting `file://`, `s3://`, and bare-path inputs.
+- `package::read(uri, &dyn Storage)` as the unified trait-based entry point.
+- `package::read_xml_files` (canonical name; `read` is the public alias).
+- New CLI input forms: `imferno validate file://path`, `imferno validate /path`, and (with `--features aws-s3`) `imferno validate s3://bucket/prefix/`.
+- New NAPI exports: `validateUri` and `buildReportFromUri`.
+
+### Changed
+
+- `package::read_dir` now delegates to `FsStorage` internally. Public signature and behavior unchanged.
+- `package::read_s3` now delegates to `S3Storage` internally. Public signature and behavior unchanged.
+
 ## [2.0.0](https://github.com/jpwesselink/imferno/compare/imferno-core-v1.1.0...imferno-core-v2.0.0) - 2026-03-04
 
 ### Added

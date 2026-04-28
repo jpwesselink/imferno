@@ -6,6 +6,7 @@ pub mod diagnostics;
 pub mod mxf;
 pub mod package;
 pub mod scm;
+pub mod storage;
 pub mod validation;
 
 // Re-export the most-used diagnostic types at crate root so that

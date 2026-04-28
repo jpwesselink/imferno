@@ -5,12 +5,12 @@
 <title>Introduction - imferno</title>
 <script src="/imferno/pr-35/version-switcher.js" defer>
   <script>{;const saved = localStorage.getItem('rspress-theme-appearance');const preferDark = window.matchMedia('(prefers-color-scheme: dark)').matches;const isDark = !saved || saved === 'auto' ? preferDark : saved === 'dark';document.documentElement.classList.toggle('dark', isDark);document.documentElement.classList.toggle('rp-dark', isDark);document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';}</script>
-<link href="/imferno/pr-35/static/css/styles.6106481d1a.css" rel="stylesheet">
+<link href="/imferno/pr-35/static/css/styles.eb198fdab4.css" rel="stylesheet">
 <script defer src="/imferno/pr-35/static/js/styles.b0a46514a9.js"></script>
 <script defer src="/imferno/pr-35/static/js/lib-react.d073bb02c1.js"></script>
 <script defer src="/imferno/pr-35/static/js/lib-router.6e25a73ba1.js"></script>
 <script defer src="/imferno/pr-35/static/js/189.f2db4c7777.js"></script>
-<script defer src="/imferno/pr-35/static/js/index.f499cb18fc.js"></script>
+<script defer src="/imferno/pr-35/static/js/index.37fd2ca784.js"></script>
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="generator" content="Rspress v2.0.10">
 <meta property="og:type" content="website">
@@ -183,29 +183,32 @@ validate <code>imferno</code>&#x27;s output without depending on any of them.</p
 
 <div class="rp-table-scroll-container rp-scrollbar"><table><thead><tr><th>Standard</th><th>Description</th><th>Status</th></tr></thead><tbody><tr><td>ST 429-9:2014</td><td>Volume Index &amp; Asset Map</td><td>Complete</td></tr><tr><td>ST 2067-2:2013, :2016, :2020</td><td>Core Constraints &amp; Packing List</td><td>Complete</td></tr><tr><td>ST 2067-3:2013, :2016, :2020</td><td>Composition Playlist</td><td>Complete</td></tr><tr><td>ST 2067-9:2018</td><td>Sidecar Composition Map</td><td>Complete</td></tr><tr><td>ST 2067-21:2020, :2023, :2025</td><td>Application Profile #2E (UHD/HDR)</td><td>Complete</td></tr><tr><td>ST 2067-201:2019, :2021</td><td>IAB (Immersive Audio Bitstream)</td><td>Complete</td></tr><tr><td>ST 2067-202:2022</td><td>ISXD (Immersive Sound XML Data) Plug-in</td><td>Complete</td></tr><tr><td>ST 377-1:2011</td><td>MXF file structure</td><td>Partial — header partition only</td></tr></tbody></table></div>
 <h2 class="rp-toc-include" id="why-rust"><a href="#why-rust" class="rp-header-anchor rp-link" aria-hidden="true">#</a>Why Rust?</h2>
-<p>Three reasons Rust fits this particular problem.</p>
-<p><strong>Tri-target distribution from one source tree.</strong> The same code compiles to a
-CLI binary, a WebAssembly module, and a Node.js native addon, each via
-mature tooling:</p>
-<ul>
-<li><code>wasm32-unknown-unknown</code> + <code>wasm-bindgen</code> → <a href="https://www.npmjs.com/package/@imferno/wasm" target="_blank" rel="noopener noreferrer" class="rp-link"><code>@imferno/wasm</code></a></li>
-<li><a href="https://napi.rs" target="_blank" rel="noopener noreferrer" class="rp-link">napi-rs</a> → <a href="https://www.npmjs.com/package/@imferno/node" target="_blank" rel="noopener noreferrer" class="rp-link"><code>@imferno/node</code></a></li>
-<li><code>cargo build --target …</code> → CLI binaries for Linux / macOS / Windows on x64 and arm64</li>
-</ul>
-<p>Other languages can reach the same set of targets — Go via TinyGo, C++ via
-Emscripten + node-addon-api, etc. — but the path in Rust today is shorter
-and the toolchains are better maintained. No per-target source shims, no
-separate build systems.</p>
-<p><strong>Errors are values, not exceptions.</strong> A validator&#x27;s job is to <em>return</em>
-issues, not throw them, and Rust&#x27;s <code>Result</code> makes that the natural shape.
-Every parser entry point is <code>fn(input) -&gt; Result&lt;Parsed, ParseError&gt;</code>; every
-validator pushes typed issues onto a <code>ValidationReport</code>. The error path is
-visible in the function signature, so the compiler — not a runbook — reminds
-you to handle it.</p>
-<p><strong>One binary, no runtime to install.</strong> <code>cargo install imferno</code> (or
-<code>npm install -g imferno</code> for the prebuilt) gives you a zero-dependency
-executable. Useful in CI containers and on customer ingest boxes where
-adding a JVM, a Node runtime, or a Python interpreter is its own project.</p><!--/$--></div><footer class="rp-doc-footer"><div class="rp-doc-footer__edit"></div><div class="rp-doc-footer__divider"></div><div class="rp-prev-next-page"><div class="rp-prev-next-page__placeholder"></div><a href="/imferno/pr-35/guide/quick-start.html" class="rp-prev-next-page__item rp-prev-next-page__next rp-link"><span class="rp-prev-next-page__item__desc">Next page</span><span class="rp-prev-next-page__item__title"><span>Getting Started</span><svg width="1em" height="1em" viewBox="0 0 32 32" class="rp-prev-next-page__icon"><path fill="currentColor" d="M22 16 12 26l-1.4-1.4 8.6-8.6-8.6-8.6L12 6z"></path></svg></span></a></div></footer></main></div><aside class="rp-doc-layout__outline rp-scrollbar"><div class="rp-outline"><div class="rp-outline__title">ON THIS PAGE<svg width="14" height="14" class="rp-progress-circle"><circle cx="7" cy="7" r="6" stroke-linecap="round" fill="none" stroke="var(--rp-c-divider-light)" stroke-width="2"></circle><circle cx="7" cy="7" r="6" stroke-linecap="round" fill="none" stroke="var(--rp-c-brand)" stroke-width="2" stroke-dasharray="37.69911184307752" stroke-dashoffset="37.69911184307752" transform="rotate(-90 7 7)" style="transition:stroke-dashoffset 0.3s"></circle></svg></div><nav class="rp-outline__toc rp-scrollbar"><a href="#what-is-imf" class="rp-toc-item rp-link" title="What is IMF?" style="padding-left:0" data-depth="0"><span class="rp-toc-item__text rp-doc">What is IMF?</span></a><a href="#what-imferno-does" class="rp-toc-item rp-link" title="What imferno does" style="padding-left:0" data-depth="0"><span class="rp-toc-item__text rp-doc">What imferno does</span></a><a href="#ecosystem" class="rp-toc-item rp-link" title="Ecosystem" style="padding-left:0" data-depth="0"><span class="rp-toc-item__text rp-doc">Ecosystem</span></a><a href="#rust" class="rp-toc-item rp-link" title="Rust" style="padding-left:12px" data-depth="1"><span class="rp-toc-item__text rp-doc">Rust</span></a><a href="#nodejs" class="rp-toc-item rp-link" title="Node.js" style="padding-left:12px" data-depth="1"><span class="rp-toc-item__text rp-doc">Node.js</span></a><a href="#browser--webassembly" class="rp-toc-item rp-link" title="Browser / WebAssembly" style="padding-left:12px" data-depth="1"><span class="rp-toc-item__text rp-doc">Browser / WebAssembly</span></a><a href="#schemas-runtime-agnostic" class="rp-toc-item rp-link" title="Schemas (runtime-agnostic)" style="padding-left:12px" data-depth="1"><span class="rp-toc-item__text rp-doc">Schemas (runtime-agnostic)</span></a><a href="#how-they-relate" class="rp-toc-item rp-link" title="How they relate" style="padding-left:12px" data-depth="1"><span class="rp-toc-item__text rp-doc">How they relate</span></a><a href="#standards-coverage" class="rp-toc-item rp-link" title="Standards coverage" style="padding-left:0" data-depth="0"><span class="rp-toc-item__text rp-doc">Standards coverage</span></a><a href="#why-rust" class="rp-toc-item rp-link" title="Why Rust?" style="padding-left:0" data-depth="0"><span class="rp-toc-item__text rp-doc">Why Rust?</span></a></nav><div class="rp-outline__divider"></div><div class="rp-outline__bottom"></div></div></aside></div></div>
+<p>Four reasons Rust fits this particular problem.</p>
+<p><strong>Type safety.</strong> IMF entities — CPL, AssetMap, PKL, sidecar maps — translate
+cleanly into Rust structs and enums. The compiler catches mismatches at
+build time: when a new spec year adds a field, every consumer site that
+needs to handle it stops compiling until you do. Renaming, refactoring, and
+extending the parser are operations the type system makes safe instead of
+operations a code review has to catch.</p>
+<p><strong>Easy bindings to other languages.</strong> Rust&#x27;s FFI story is unusually good.
+<a href="https://napi.rs" target="_blank" rel="noopener noreferrer" class="rp-link">napi-rs</a> wraps Rust functions as native Node.js modules
+with a single <code>#[napi]</code> attribute — that&#x27;s how
+<a href="https://www.npmjs.com/package/@imferno/node" target="_blank" rel="noopener noreferrer" class="rp-link"><code>@imferno/node</code></a> exists. The
+same pattern applies elsewhere: PyO3 for Python, jni-rs for Java/Kotlin,
+csbindgen for C#, UniFFI for Swift/Kotlin. When a user asks for &quot;imferno in
+language X&quot;, the answer is a binding crate, not a rewrite.</p>
+<p><strong>Easy WASM.</strong> <code>wasm32-unknown-unknown</code> is a first-class <code>rustc</code> target.
+<a href="https://rustwasm.github.io/wasm-bindgen/" target="_blank" rel="noopener noreferrer" class="rp-link"><code>wasm-bindgen</code></a> handles the JS
+interop. The same engine ships to browsers, Cloudflare Workers, Vercel
+Edge, Deno Deploy — anywhere a sandboxed JS runtime exists — distributed
+as <a href="https://www.npmjs.com/package/@imferno/wasm" target="_blank" rel="noopener noreferrer" class="rp-link"><code>@imferno/wasm</code></a>.</p>
+<p><strong>Cross-compiled binaries for every platform people actually use.</strong>
+<code>cargo build --target …</code> (with <a href="https://github.com/cross-rs/cross" target="_blank" rel="noopener noreferrer" class="rp-link"><code>cross</code></a>
+for the awkward triples) produces native binaries from a single CI matrix:
+Linux x64 / arm64, macOS x64 / arm64 (Intel + Apple Silicon), Windows x64
+/ arm64. No per-platform build farms, no Docker-in-Docker tricks, no
+cross-toolchain hand-rolling. The CLI ships as a single static binary on
+every one of them.</p><!--/$--></div><footer class="rp-doc-footer"><div class="rp-doc-footer__edit"></div><div class="rp-doc-footer__divider"></div><div class="rp-prev-next-page"><div class="rp-prev-next-page__placeholder"></div><a href="/imferno/pr-35/guide/quick-start.html" class="rp-prev-next-page__item rp-prev-next-page__next rp-link"><span class="rp-prev-next-page__item__desc">Next page</span><span class="rp-prev-next-page__item__title"><span>Getting Started</span><svg width="1em" height="1em" viewBox="0 0 32 32" class="rp-prev-next-page__icon"><path fill="currentColor" d="M22 16 12 26l-1.4-1.4 8.6-8.6-8.6-8.6L12 6z"></path></svg></span></a></div></footer></main></div><aside class="rp-doc-layout__outline rp-scrollbar"><div class="rp-outline"><div class="rp-outline__title">ON THIS PAGE<svg width="14" height="14" class="rp-progress-circle"><circle cx="7" cy="7" r="6" stroke-linecap="round" fill="none" stroke="var(--rp-c-divider-light)" stroke-width="2"></circle><circle cx="7" cy="7" r="6" stroke-linecap="round" fill="none" stroke="var(--rp-c-brand)" stroke-width="2" stroke-dasharray="37.69911184307752" stroke-dashoffset="37.69911184307752" transform="rotate(-90 7 7)" style="transition:stroke-dashoffset 0.3s"></circle></svg></div><nav class="rp-outline__toc rp-scrollbar"><a href="#what-is-imf" class="rp-toc-item rp-link" title="What is IMF?" style="padding-left:0" data-depth="0"><span class="rp-toc-item__text rp-doc">What is IMF?</span></a><a href="#what-imferno-does" class="rp-toc-item rp-link" title="What imferno does" style="padding-left:0" data-depth="0"><span class="rp-toc-item__text rp-doc">What imferno does</span></a><a href="#ecosystem" class="rp-toc-item rp-link" title="Ecosystem" style="padding-left:0" data-depth="0"><span class="rp-toc-item__text rp-doc">Ecosystem</span></a><a href="#rust" class="rp-toc-item rp-link" title="Rust" style="padding-left:12px" data-depth="1"><span class="rp-toc-item__text rp-doc">Rust</span></a><a href="#nodejs" class="rp-toc-item rp-link" title="Node.js" style="padding-left:12px" data-depth="1"><span class="rp-toc-item__text rp-doc">Node.js</span></a><a href="#browser--webassembly" class="rp-toc-item rp-link" title="Browser / WebAssembly" style="padding-left:12px" data-depth="1"><span class="rp-toc-item__text rp-doc">Browser / WebAssembly</span></a><a href="#schemas-runtime-agnostic" class="rp-toc-item rp-link" title="Schemas (runtime-agnostic)" style="padding-left:12px" data-depth="1"><span class="rp-toc-item__text rp-doc">Schemas (runtime-agnostic)</span></a><a href="#how-they-relate" class="rp-toc-item rp-link" title="How they relate" style="padding-left:12px" data-depth="1"><span class="rp-toc-item__text rp-doc">How they relate</span></a><a href="#standards-coverage" class="rp-toc-item rp-link" title="Standards coverage" style="padding-left:0" data-depth="0"><span class="rp-toc-item__text rp-doc">Standards coverage</span></a><a href="#why-rust" class="rp-toc-item rp-link" title="Why Rust?" style="padding-left:0" data-depth="0"><span class="rp-toc-item__text rp-doc">Why Rust?</span></a></nav><div class="rp-outline__divider"></div><div class="rp-outline__bottom"></div></div></aside></div></div>
     <div id="__rspress_modal_container"></div>
   </body>
 </html>

@@ -262,7 +262,7 @@ fn make_options(
 
 #[allow(clippy::too_many_arguments)]
 async fn cmd_validate(
-    path: &PathBuf,
+    path: &std::path::Path,
     verify_hashes: bool,
     hash_concurrency: usize,
     format: OutputFormat,
@@ -301,7 +301,7 @@ async fn cmd_validate(
                 println!("{}", serde_json::to_string_pretty(&validation)?);
                 return Ok(());
             }
-            return Err(e.into());
+            return Err(e);
         }
     };
 
@@ -527,7 +527,7 @@ async fn cmd_validate(
     Ok(())
 }
 
-fn cmd_cpl(path: &PathBuf, uuid: Option<String>) -> Result<()> {
+fn cmd_cpl(path: &std::path::Path, uuid: Option<String>) -> Result<()> {
     let package = Imferno::parse(read_input(&path.to_string_lossy())?)?;
 
     let cpl_uuid = if let Some(uuid) = uuid {

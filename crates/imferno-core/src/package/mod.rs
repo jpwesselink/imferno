@@ -432,8 +432,7 @@ pub fn read_dir(path: impl AsRef<Path>) -> Result<HashMap<String, String>> {
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidInput, e.to_string()))?;
     let storage = FsStorage::new();
 
-    read_xml_files(&uri, &storage)
-        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()).into())
+    read_xml_files(&uri, &storage).map_err(|e| std::io::Error::other(e.to_string()).into())
 }
 
 /// Read all `.xml` files at the given URI through the supplied storage backend.

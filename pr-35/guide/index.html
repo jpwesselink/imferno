@@ -5,12 +5,12 @@
 <title>Introduction - imferno</title>
 <script src="/imferno/pr-35/version-switcher.js" defer>
   <script>{;const saved = localStorage.getItem('rspress-theme-appearance');const preferDark = window.matchMedia('(prefers-color-scheme: dark)').matches;const isDark = !saved || saved === 'auto' ? preferDark : saved === 'dark';document.documentElement.classList.toggle('dark', isDark);document.documentElement.classList.toggle('rp-dark', isDark);document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';}</script>
-<link href="/imferno/pr-35/static/css/styles.eb198fdab4.css" rel="stylesheet">
+<link href="/imferno/pr-35/static/css/styles.6106481d1a.css" rel="stylesheet">
 <script defer src="/imferno/pr-35/static/js/styles.b0a46514a9.js"></script>
 <script defer src="/imferno/pr-35/static/js/lib-react.d073bb02c1.js"></script>
 <script defer src="/imferno/pr-35/static/js/lib-router.6e25a73ba1.js"></script>
 <script defer src="/imferno/pr-35/static/js/189.f2db4c7777.js"></script>
-<script defer src="/imferno/pr-35/static/js/index.081380c634.js"></script>
+<script defer src="/imferno/pr-35/static/js/index.f499cb18fc.js"></script>
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="generator" content="Rspress v2.0.10">
 <meta property="og:type" content="website">
@@ -130,54 +130,6 @@ bundlers, sandboxed serverless platforms.</p>
 <span class="line"><span>        for binaries)</span></span></code></pre></div><div class="rp-code-button-group"><button class="rp-code-button-group__button rp-code-wrap-button" title="Toggle code wrap"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" class="rp-code-button-group__icon rp-code-button-group__icon--wrapped"><path fill="currentColor" d="M21 5H3v2h18zM3 19h7v-2H3zm0-6h15c1 0 2 .43 2 2s-1 2-2 2h-2v-2l-4 3 4 3v-2h2c2.95 0 4-1.27 4-4 0-2.72-1-4-4-4H3z"></path></svg><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" class="rp-code-button-group__icon rp-code-button-group__icon--wrap"><path fill="currentColor" d="M16 7H3V5h13zM3 19h13v-2H3zm19-7-4-3v2H3v2h15v2z"></path></svg></button><button class="rp-code-button-group__button rp-code-copy-button" title="Copy code"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" class="rp-code-button-group__icon rp-code-copy-button__icon rp-code-copy-button__icon--copy"><path fill="currentColor" d="M20 8v12H8V8zm0-2H8a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2"></path><path fill="currentColor" d="M4 16H2V4a2 2 0 0 1 2-2h12v2H4Z"></path></svg><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" class="rp-code-button-group__icon rp-code-copy-button__icon rp-code-copy-button__icon--success"><path fill="currentColor" d="m9.55 18-5.7-5.7 1.425-1.425L9.55 15.15l9.175-9.175L20.15 7.4z"></path></svg></button></div></div></div>
 <p><code>@imferno/schema</code> describes the JSON these all emit, so consumers can
 validate <code>imferno</code>&#x27;s output without depending on any of them.</p>
-<h2 class="rp-toc-include" id="why-rust"><a href="#why-rust" class="rp-header-anchor rp-link" aria-hidden="true">#</a>Why Rust?</h2>
-<p>The choice was deliberate, not aesthetic. IMF tooling has traditionally lived
-in C/C++ (asdcplib, Photon&#x27;s JNI bridges, Qt-based IMFTool) where memory
-errors and concurrency bugs are still routine. Rust gives the same native
-performance with guarantees those stacks can&#x27;t make.</p>
-<h3 class="rp-toc-include" id="what-rust-brings-to-a-validator"><a href="#what-rust-brings-to-a-validator" class="rp-header-anchor rp-link" aria-hidden="true">#</a>What Rust brings to a validator</h3>
-<ul>
-<li><strong>Memory safety without GC</strong> — no segfaults, no buffer overflows, no
-surprise allocator pauses while you&#x27;re reading a 50 GB MXF. Predictable
-latency for ingest pipelines.</li>
-<li><strong>Exhaustive pattern matching on enums</strong> — IMF is a long tail of <em>&quot;shall&quot;</em>
-constraints across multiple spec years. Each <code>match</code> over a CPL/AssetMap
-variant is checked at compile time; spec drift becomes a compile error,
-not a silent runtime bug.</li>
-<li><strong><code>Result</code> and <code>Option</code> instead of exceptions</strong> — every error path is part
-of the function signature. Validators can&#x27;t accidentally throw out of a
-parser five frames deep; a missing element either becomes a structured
-validation issue or a typed <code>Err</code>, and the compiler enforces handling.</li>
-<li><strong>Zero-cost abstractions</strong> — the high-level parser code (iterators,
-trait dispatch, generics) compiles down to the same loops and pointer
-arithmetic you&#x27;d write by hand in C, without the readability cost.</li>
-<li><strong>Fearless concurrency</strong> — parallel hash verification across hundreds of
-MXFs uses <code>Send</code>/<code>Sync</code> and the type system to rule out data races at
-compile time. No &quot;let&#x27;s hope nobody mutates this&quot; disclaimers.</li>
-<li><strong>Single static binary</strong> — <code>cargo install imferno</code> (or one <code>npm install</code>
-for the prebuilt) gives you a zero-dependency executable. No JVM, no
-Python wheels, no shared libraries to ship.</li>
-<li><strong>First-class cross-compilation</strong> — one <code>cargo build --target …</code> produces
-binaries for Linux/macOS/Windows on x64 + arm64 from any host.</li>
-</ul>
-<h3 class="rp-toc-include" id="three-runtimes-one-codebase"><a href="#three-runtimes-one-codebase" class="rp-header-anchor rp-link" aria-hidden="true">#</a>Three runtimes, one codebase</h3>
-<p>This is the part you can&#x27;t easily replicate in any other language:</p>
-<ul>
-<li><strong>WASM</strong> — <code>rustc</code> has a first-class <code>wasm32-unknown-unknown</code> target.
-The parser/validator compiles unchanged for browsers, Cloudflare Workers,
-Vercel Edge, Deno Deploy, and any sandboxed JS runtime. Distributed as
-<a href="https://www.npmjs.com/package/@imferno/wasm" target="_blank" rel="noopener noreferrer" class="rp-link"><code>@imferno/wasm</code></a>.</li>
-<li><strong>NAPI-RS</strong> — the same Rust code, wrapped as a native Node.js addon via
-<a href="https://napi.rs" target="_blank" rel="noopener noreferrer" class="rp-link">napi-rs</a>. In-process speed, no subprocess overhead, no
-child-process JSON marshalling. Distributed as
-<a href="https://www.npmjs.com/package/@imferno/node" target="_blank" rel="noopener noreferrer" class="rp-link"><code>@imferno/node</code></a>.</li>
-<li><strong>Native CLI</strong> — a static binary, prebuilt for six platforms (Linux,
-macOS, Windows × x64, arm64). Distributed via Cargo <em>and</em> npm so shell
-scripts and CI jobs don&#x27;t need a Rust toolchain.</li>
-</ul>
-<p>The same validator runs in your browser dev tools, on a Lambda, in your
-ingest pipeline, and on your laptop — without porting, without
-reimplementation, and without three different sets of bugs.</p>
 <h2 class="rp-toc-include" id="standards-coverage"><a href="#standards-coverage" class="rp-header-anchor rp-link" aria-hidden="true">#</a>Standards coverage</h2>
 
 
@@ -229,7 +181,31 @@ reimplementation, and without three different sets of bugs.</p>
 
 
 
-<div class="rp-table-scroll-container rp-scrollbar"><table><thead><tr><th>Standard</th><th>Description</th><th>Status</th></tr></thead><tbody><tr><td>ST 429-9:2014</td><td>Volume Index &amp; Asset Map</td><td>Complete</td></tr><tr><td>ST 2067-2:2013, :2016, :2020</td><td>Core Constraints &amp; Packing List</td><td>Complete</td></tr><tr><td>ST 2067-3:2013, :2016, :2020</td><td>Composition Playlist</td><td>Complete</td></tr><tr><td>ST 2067-9:2018</td><td>Sidecar Composition Map</td><td>Complete</td></tr><tr><td>ST 2067-21:2020, :2023, :2025</td><td>Application Profile #2E (UHD/HDR)</td><td>Complete</td></tr><tr><td>ST 2067-201:2019, :2021</td><td>IAB (Immersive Audio Bitstream)</td><td>Complete</td></tr><tr><td>ST 2067-202:2022</td><td>ISXD (Immersive Sound XML Data) Plug-in</td><td>Complete</td></tr><tr><td>ST 377-1:2011</td><td>MXF file structure</td><td>Partial — header partition only</td></tr></tbody></table></div><!--/$--></div><footer class="rp-doc-footer"><div class="rp-doc-footer__edit"></div><div class="rp-doc-footer__divider"></div><div class="rp-prev-next-page"><div class="rp-prev-next-page__placeholder"></div><a href="/imferno/pr-35/guide/quick-start.html" class="rp-prev-next-page__item rp-prev-next-page__next rp-link"><span class="rp-prev-next-page__item__desc">Next page</span><span class="rp-prev-next-page__item__title"><span>Getting Started</span><svg width="1em" height="1em" viewBox="0 0 32 32" class="rp-prev-next-page__icon"><path fill="currentColor" d="M22 16 12 26l-1.4-1.4 8.6-8.6-8.6-8.6L12 6z"></path></svg></span></a></div></footer></main></div><aside class="rp-doc-layout__outline rp-scrollbar"><div class="rp-outline"><div class="rp-outline__title">ON THIS PAGE<svg width="14" height="14" class="rp-progress-circle"><circle cx="7" cy="7" r="6" stroke-linecap="round" fill="none" stroke="var(--rp-c-divider-light)" stroke-width="2"></circle><circle cx="7" cy="7" r="6" stroke-linecap="round" fill="none" stroke="var(--rp-c-brand)" stroke-width="2" stroke-dasharray="37.69911184307752" stroke-dashoffset="37.69911184307752" transform="rotate(-90 7 7)" style="transition:stroke-dashoffset 0.3s"></circle></svg></div><nav class="rp-outline__toc rp-scrollbar"><a href="#what-is-imf" class="rp-toc-item rp-link" title="What is IMF?" style="padding-left:0" data-depth="0"><span class="rp-toc-item__text rp-doc">What is IMF?</span></a><a href="#what-imferno-does" class="rp-toc-item rp-link" title="What imferno does" style="padding-left:0" data-depth="0"><span class="rp-toc-item__text rp-doc">What imferno does</span></a><a href="#ecosystem" class="rp-toc-item rp-link" title="Ecosystem" style="padding-left:0" data-depth="0"><span class="rp-toc-item__text rp-doc">Ecosystem</span></a><a href="#rust" class="rp-toc-item rp-link" title="Rust" style="padding-left:12px" data-depth="1"><span class="rp-toc-item__text rp-doc">Rust</span></a><a href="#nodejs" class="rp-toc-item rp-link" title="Node.js" style="padding-left:12px" data-depth="1"><span class="rp-toc-item__text rp-doc">Node.js</span></a><a href="#browser--webassembly" class="rp-toc-item rp-link" title="Browser / WebAssembly" style="padding-left:12px" data-depth="1"><span class="rp-toc-item__text rp-doc">Browser / WebAssembly</span></a><a href="#schemas-runtime-agnostic" class="rp-toc-item rp-link" title="Schemas (runtime-agnostic)" style="padding-left:12px" data-depth="1"><span class="rp-toc-item__text rp-doc">Schemas (runtime-agnostic)</span></a><a href="#how-they-relate" class="rp-toc-item rp-link" title="How they relate" style="padding-left:12px" data-depth="1"><span class="rp-toc-item__text rp-doc">How they relate</span></a><a href="#why-rust" class="rp-toc-item rp-link" title="Why Rust?" style="padding-left:0" data-depth="0"><span class="rp-toc-item__text rp-doc">Why Rust?</span></a><a href="#what-rust-brings-to-a-validator" class="rp-toc-item rp-link" title="What Rust brings to a validator" style="padding-left:12px" data-depth="1"><span class="rp-toc-item__text rp-doc">What Rust brings to a validator</span></a><a href="#three-runtimes-one-codebase" class="rp-toc-item rp-link" title="Three runtimes, one codebase" style="padding-left:12px" data-depth="1"><span class="rp-toc-item__text rp-doc">Three runtimes, one codebase</span></a><a href="#standards-coverage" class="rp-toc-item rp-link" title="Standards coverage" style="padding-left:0" data-depth="0"><span class="rp-toc-item__text rp-doc">Standards coverage</span></a></nav><div class="rp-outline__divider"></div><div class="rp-outline__bottom"></div></div></aside></div></div>
+<div class="rp-table-scroll-container rp-scrollbar"><table><thead><tr><th>Standard</th><th>Description</th><th>Status</th></tr></thead><tbody><tr><td>ST 429-9:2014</td><td>Volume Index &amp; Asset Map</td><td>Complete</td></tr><tr><td>ST 2067-2:2013, :2016, :2020</td><td>Core Constraints &amp; Packing List</td><td>Complete</td></tr><tr><td>ST 2067-3:2013, :2016, :2020</td><td>Composition Playlist</td><td>Complete</td></tr><tr><td>ST 2067-9:2018</td><td>Sidecar Composition Map</td><td>Complete</td></tr><tr><td>ST 2067-21:2020, :2023, :2025</td><td>Application Profile #2E (UHD/HDR)</td><td>Complete</td></tr><tr><td>ST 2067-201:2019, :2021</td><td>IAB (Immersive Audio Bitstream)</td><td>Complete</td></tr><tr><td>ST 2067-202:2022</td><td>ISXD (Immersive Sound XML Data) Plug-in</td><td>Complete</td></tr><tr><td>ST 377-1:2011</td><td>MXF file structure</td><td>Partial — header partition only</td></tr></tbody></table></div>
+<h2 class="rp-toc-include" id="why-rust"><a href="#why-rust" class="rp-header-anchor rp-link" aria-hidden="true">#</a>Why Rust?</h2>
+<p>Three reasons Rust fits this particular problem.</p>
+<p><strong>Tri-target distribution from one source tree.</strong> The same code compiles to a
+CLI binary, a WebAssembly module, and a Node.js native addon, each via
+mature tooling:</p>
+<ul>
+<li><code>wasm32-unknown-unknown</code> + <code>wasm-bindgen</code> → <a href="https://www.npmjs.com/package/@imferno/wasm" target="_blank" rel="noopener noreferrer" class="rp-link"><code>@imferno/wasm</code></a></li>
+<li><a href="https://napi.rs" target="_blank" rel="noopener noreferrer" class="rp-link">napi-rs</a> → <a href="https://www.npmjs.com/package/@imferno/node" target="_blank" rel="noopener noreferrer" class="rp-link"><code>@imferno/node</code></a></li>
+<li><code>cargo build --target …</code> → CLI binaries for Linux / macOS / Windows on x64 and arm64</li>
+</ul>
+<p>Other languages can reach the same set of targets — Go via TinyGo, C++ via
+Emscripten + node-addon-api, etc. — but the path in Rust today is shorter
+and the toolchains are better maintained. No per-target source shims, no
+separate build systems.</p>
+<p><strong>Errors are values, not exceptions.</strong> A validator&#x27;s job is to <em>return</em>
+issues, not throw them, and Rust&#x27;s <code>Result</code> makes that the natural shape.
+Every parser entry point is <code>fn(input) -&gt; Result&lt;Parsed, ParseError&gt;</code>; every
+validator pushes typed issues onto a <code>ValidationReport</code>. The error path is
+visible in the function signature, so the compiler — not a runbook — reminds
+you to handle it.</p>
+<p><strong>One binary, no runtime to install.</strong> <code>cargo install imferno</code> (or
+<code>npm install -g imferno</code> for the prebuilt) gives you a zero-dependency
+executable. Useful in CI containers and on customer ingest boxes where
+adding a JVM, a Node runtime, or a Python interpreter is its own project.</p><!--/$--></div><footer class="rp-doc-footer"><div class="rp-doc-footer__edit"></div><div class="rp-doc-footer__divider"></div><div class="rp-prev-next-page"><div class="rp-prev-next-page__placeholder"></div><a href="/imferno/pr-35/guide/quick-start.html" class="rp-prev-next-page__item rp-prev-next-page__next rp-link"><span class="rp-prev-next-page__item__desc">Next page</span><span class="rp-prev-next-page__item__title"><span>Getting Started</span><svg width="1em" height="1em" viewBox="0 0 32 32" class="rp-prev-next-page__icon"><path fill="currentColor" d="M22 16 12 26l-1.4-1.4 8.6-8.6-8.6-8.6L12 6z"></path></svg></span></a></div></footer></main></div><aside class="rp-doc-layout__outline rp-scrollbar"><div class="rp-outline"><div class="rp-outline__title">ON THIS PAGE<svg width="14" height="14" class="rp-progress-circle"><circle cx="7" cy="7" r="6" stroke-linecap="round" fill="none" stroke="var(--rp-c-divider-light)" stroke-width="2"></circle><circle cx="7" cy="7" r="6" stroke-linecap="round" fill="none" stroke="var(--rp-c-brand)" stroke-width="2" stroke-dasharray="37.69911184307752" stroke-dashoffset="37.69911184307752" transform="rotate(-90 7 7)" style="transition:stroke-dashoffset 0.3s"></circle></svg></div><nav class="rp-outline__toc rp-scrollbar"><a href="#what-is-imf" class="rp-toc-item rp-link" title="What is IMF?" style="padding-left:0" data-depth="0"><span class="rp-toc-item__text rp-doc">What is IMF?</span></a><a href="#what-imferno-does" class="rp-toc-item rp-link" title="What imferno does" style="padding-left:0" data-depth="0"><span class="rp-toc-item__text rp-doc">What imferno does</span></a><a href="#ecosystem" class="rp-toc-item rp-link" title="Ecosystem" style="padding-left:0" data-depth="0"><span class="rp-toc-item__text rp-doc">Ecosystem</span></a><a href="#rust" class="rp-toc-item rp-link" title="Rust" style="padding-left:12px" data-depth="1"><span class="rp-toc-item__text rp-doc">Rust</span></a><a href="#nodejs" class="rp-toc-item rp-link" title="Node.js" style="padding-left:12px" data-depth="1"><span class="rp-toc-item__text rp-doc">Node.js</span></a><a href="#browser--webassembly" class="rp-toc-item rp-link" title="Browser / WebAssembly" style="padding-left:12px" data-depth="1"><span class="rp-toc-item__text rp-doc">Browser / WebAssembly</span></a><a href="#schemas-runtime-agnostic" class="rp-toc-item rp-link" title="Schemas (runtime-agnostic)" style="padding-left:12px" data-depth="1"><span class="rp-toc-item__text rp-doc">Schemas (runtime-agnostic)</span></a><a href="#how-they-relate" class="rp-toc-item rp-link" title="How they relate" style="padding-left:12px" data-depth="1"><span class="rp-toc-item__text rp-doc">How they relate</span></a><a href="#standards-coverage" class="rp-toc-item rp-link" title="Standards coverage" style="padding-left:0" data-depth="0"><span class="rp-toc-item__text rp-doc">Standards coverage</span></a><a href="#why-rust" class="rp-toc-item rp-link" title="Why Rust?" style="padding-left:0" data-depth="0"><span class="rp-toc-item__text rp-doc">Why Rust?</span></a></nav><div class="rp-outline__divider"></div><div class="rp-outline__bottom"></div></div></aside></div></div>
     <div id="__rspress_modal_container"></div>
   </body>
 </html>

@@ -36,8 +36,7 @@ async fn read_input(input: &str) -> Result<std::collections::HashMap<String, Str
                     .bucket
                     .as_ref()
                     .ok_or_else(|| anyhow::anyhow!("s3 URI missing bucket"))?;
-                let cfg =
-                    aws_config::load_defaults(aws_config::BehaviorVersion::latest()).await;
+                let cfg = aws_config::load_defaults(aws_config::BehaviorVersion::latest()).await;
                 let client = aws_sdk_s3::Client::new(&cfg);
                 Ok(imferno_core::package::read_s3(&client, bucket, &uri.path).await?)
             }

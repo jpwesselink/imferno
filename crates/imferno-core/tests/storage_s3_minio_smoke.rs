@@ -54,7 +54,10 @@ fn s3_storage_lists_and_reads_against_minio() {
 
     let cpl_uri = StorageUri::parse(&any_cpl.uri).unwrap();
     let body = storage.read_to_string(&cpl_uri).expect("read");
-    assert!(body.contains("CompositionPlaylist"), "CPL body should be valid XML");
+    assert!(
+        body.contains("CompositionPlaylist"),
+        "CPL body should be valid XML"
+    );
 }
 
 #[test]

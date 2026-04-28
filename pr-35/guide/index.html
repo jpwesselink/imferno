@@ -10,7 +10,7 @@
 <script defer src="/imferno/pr-35/static/js/lib-react.d073bb02c1.js"></script>
 <script defer src="/imferno/pr-35/static/js/lib-router.6e25a73ba1.js"></script>
 <script defer src="/imferno/pr-35/static/js/189.f2db4c7777.js"></script>
-<script defer src="/imferno/pr-35/static/js/index.ba2419ceee.js"></script>
+<script defer src="/imferno/pr-35/static/js/index.3287a534c5.js"></script>
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="generator" content="Rspress v2.0.10">
 <meta property="og:type" content="website">
@@ -38,6 +38,26 @@
 <li>Available as a native CLI, Rust crate, and WebAssembly module</li>
 </ul>
 <h2 class="rp-toc-include" id="ecosystem"><a href="#ecosystem" class="rp-header-anchor rp-link" aria-hidden="true">#</a>Ecosystem</h2>
+<h3 class="rp-toc-include" id="rust-crates-cratesio"><a href="#rust-crates-cratesio" class="rp-header-anchor rp-link" aria-hidden="true">#</a>Rust crates (crates.io)</h3>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="rp-table-scroll-container rp-scrollbar"><table><thead><tr><th>Crate</th><th>Description</th></tr></thead><tbody><tr><td><a href="https://crates.io/crates/imferno-core" target="_blank" rel="noopener noreferrer" class="rp-link"><code>imferno-core</code></a></td><td>All parsing and validation logic</td></tr><tr><td><a href="https://crates.io/crates/imferno" target="_blank" rel="noopener noreferrer" class="rp-link"><code>imferno</code></a></td><td>Command-line tool</td></tr></tbody></table></div>
+<h3 class="rp-toc-include" id="npm-packages"><a href="#npm-packages" class="rp-header-anchor rp-link" aria-hidden="true">#</a>npm packages</h3>
 
 
 
@@ -63,11 +83,7 @@
 
 
 
-
-
-
-
-<div class="rp-table-scroll-container rp-scrollbar"><table><thead><tr><th>Package</th><th>Description</th></tr></thead><tbody><tr><td><a href="https://www.npmjs.com/package/imferno" target="_blank" rel="noopener noreferrer" class="rp-link"><code>imferno</code></a></td><td>CLI with prebuilt native binaries</td></tr><tr><td><a href="https://www.npmjs.com/package/@imferno/wasm" target="_blank" rel="noopener noreferrer" class="rp-link"><code>@imferno/wasm</code></a></td><td>WebAssembly bindings for JS/TS</td></tr><tr><td><a href="https://www.npmjs.com/package/@imferno/node" target="_blank" rel="noopener noreferrer" class="rp-link"><code>@imferno/node</code></a></td><td>Native Node.js bindings (filesystem + hash verification)</td></tr><tr><td><a href="https://www.npmjs.com/package/@imferno/schema" target="_blank" rel="noopener noreferrer" class="rp-link"><code>@imferno/schema</code></a></td><td>JSON Schema definitions for structural validation</td></tr><tr><td><a href="https://crates.io/crates/imferno-core" target="_blank" rel="noopener noreferrer" class="rp-link"><code>imferno-core</code></a></td><td>Rust crate with all parsing and validation logic</td></tr></tbody></table></div>
+<div class="rp-table-scroll-container rp-scrollbar"><table><thead><tr><th>Package</th><th>Description</th></tr></thead><tbody><tr><td><a href="https://www.npmjs.com/package/imferno" target="_blank" rel="noopener noreferrer" class="rp-link"><code>imferno</code></a></td><td>CLI — prebuilt native binaries for all platforms</td></tr><tr><td><a href="https://www.npmjs.com/package/@imferno/wasm" target="_blank" rel="noopener noreferrer" class="rp-link"><code>@imferno/wasm</code></a></td><td>WebAssembly bindings for JS/TS</td></tr><tr><td><a href="https://www.npmjs.com/package/@imferno/node" target="_blank" rel="noopener noreferrer" class="rp-link"><code>@imferno/node</code></a></td><td>Native Node.js bindings (filesystem + hash verification)</td></tr><tr><td><a href="https://www.npmjs.com/package/@imferno/schema" target="_blank" rel="noopener noreferrer" class="rp-link"><code>@imferno/schema</code></a></td><td>JSON Schema definitions for all IMF types</td></tr></tbody></table></div>
 <h2 class="rp-toc-include" id="standards-coverage"><a href="#standards-coverage" class="rp-header-anchor rp-link" aria-hidden="true">#</a>Standards coverage</h2>
 
 
@@ -121,7 +137,7 @@
 
 <div class="rp-table-scroll-container rp-scrollbar"><table><thead><tr><th>Standard</th><th>Description</th><th>Status</th></tr></thead><tbody><tr><td>ST 429-9:2014</td><td>Volume Index &amp; Asset Map</td><td>Complete</td></tr><tr><td>ST 2067-2:2013, :2016, :2020</td><td>Core Constraints &amp; Packing List</td><td>Complete</td></tr><tr><td>ST 2067-3:2013, :2016, :2020</td><td>Composition Playlist</td><td>Complete</td></tr><tr><td>ST 2067-9:2018</td><td>Sidecar Composition Map</td><td>Complete</td></tr><tr><td>ST 2067-21:2020, :2023, :2025</td><td>Application Profile #2E (UHD/HDR)</td><td>Complete</td></tr><tr><td>ST 2067-201:2019, :2021</td><td>IAB (Immersive Audio Bitstream)</td><td>Complete</td></tr><tr><td>ST 2067-202:2022</td><td>ISXD (Immersive Sound XML Data) Plug-in</td><td>Complete</td></tr><tr><td>ST 377-1:2011</td><td>MXF file structure</td><td>Partial — header partition only</td></tr></tbody></table></div>
 <h2 class="rp-toc-include" id="why-rust"><a href="#why-rust" class="rp-header-anchor rp-link" aria-hidden="true">#</a>Why Rust?</h2>
-<p>imferno brings SMPTE ST-2067 correctness to Rust — with zero GC pauses, a native CLI, and WASM compilation for browser tooling.</p><!--/$--></div><footer class="rp-doc-footer"><div class="rp-doc-footer__edit"></div><div class="rp-doc-footer__divider"></div><div class="rp-prev-next-page"><div class="rp-prev-next-page__placeholder"></div><a href="/imferno/pr-35/guide/quick-start.html" class="rp-prev-next-page__item rp-prev-next-page__next rp-link"><span class="rp-prev-next-page__item__desc">Next page</span><span class="rp-prev-next-page__item__title"><span>Getting Started</span><svg width="1em" height="1em" viewBox="0 0 32 32" class="rp-prev-next-page__icon"><path fill="currentColor" d="M22 16 12 26l-1.4-1.4 8.6-8.6-8.6-8.6L12 6z"></path></svg></span></a></div></footer></main></div><aside class="rp-doc-layout__outline rp-scrollbar"><div class="rp-outline"><div class="rp-outline__title">ON THIS PAGE<svg width="14" height="14" class="rp-progress-circle"><circle cx="7" cy="7" r="6" stroke-linecap="round" fill="none" stroke="var(--rp-c-divider-light)" stroke-width="2"></circle><circle cx="7" cy="7" r="6" stroke-linecap="round" fill="none" stroke="var(--rp-c-brand)" stroke-width="2" stroke-dasharray="37.69911184307752" stroke-dashoffset="37.69911184307752" transform="rotate(-90 7 7)" style="transition:stroke-dashoffset 0.3s"></circle></svg></div><nav class="rp-outline__toc rp-scrollbar"><a href="#what-is-imf" class="rp-toc-item rp-link" title="What is IMF?" style="padding-left:0" data-depth="0"><span class="rp-toc-item__text rp-doc">What is IMF?</span></a><a href="#what-imferno-does" class="rp-toc-item rp-link" title="What imferno does" style="padding-left:0" data-depth="0"><span class="rp-toc-item__text rp-doc">What imferno does</span></a><a href="#ecosystem" class="rp-toc-item rp-link" title="Ecosystem" style="padding-left:0" data-depth="0"><span class="rp-toc-item__text rp-doc">Ecosystem</span></a><a href="#standards-coverage" class="rp-toc-item rp-link" title="Standards coverage" style="padding-left:0" data-depth="0"><span class="rp-toc-item__text rp-doc">Standards coverage</span></a><a href="#why-rust" class="rp-toc-item rp-link" title="Why Rust?" style="padding-left:0" data-depth="0"><span class="rp-toc-item__text rp-doc">Why Rust?</span></a></nav><div class="rp-outline__divider"></div><div class="rp-outline__bottom"></div></div></aside></div></div>
+<p>imferno brings SMPTE ST-2067 correctness to Rust — with zero GC pauses, a native CLI, and WASM compilation for browser tooling.</p><!--/$--></div><footer class="rp-doc-footer"><div class="rp-doc-footer__edit"></div><div class="rp-doc-footer__divider"></div><div class="rp-prev-next-page"><div class="rp-prev-next-page__placeholder"></div><a href="/imferno/pr-35/guide/quick-start.html" class="rp-prev-next-page__item rp-prev-next-page__next rp-link"><span class="rp-prev-next-page__item__desc">Next page</span><span class="rp-prev-next-page__item__title"><span>Getting Started</span><svg width="1em" height="1em" viewBox="0 0 32 32" class="rp-prev-next-page__icon"><path fill="currentColor" d="M22 16 12 26l-1.4-1.4 8.6-8.6-8.6-8.6L12 6z"></path></svg></span></a></div></footer></main></div><aside class="rp-doc-layout__outline rp-scrollbar"><div class="rp-outline"><div class="rp-outline__title">ON THIS PAGE<svg width="14" height="14" class="rp-progress-circle"><circle cx="7" cy="7" r="6" stroke-linecap="round" fill="none" stroke="var(--rp-c-divider-light)" stroke-width="2"></circle><circle cx="7" cy="7" r="6" stroke-linecap="round" fill="none" stroke="var(--rp-c-brand)" stroke-width="2" stroke-dasharray="37.69911184307752" stroke-dashoffset="37.69911184307752" transform="rotate(-90 7 7)" style="transition:stroke-dashoffset 0.3s"></circle></svg></div><nav class="rp-outline__toc rp-scrollbar"><a href="#what-is-imf" class="rp-toc-item rp-link" title="What is IMF?" style="padding-left:0" data-depth="0"><span class="rp-toc-item__text rp-doc">What is IMF?</span></a><a href="#what-imferno-does" class="rp-toc-item rp-link" title="What imferno does" style="padding-left:0" data-depth="0"><span class="rp-toc-item__text rp-doc">What imferno does</span></a><a href="#ecosystem" class="rp-toc-item rp-link" title="Ecosystem" style="padding-left:0" data-depth="0"><span class="rp-toc-item__text rp-doc">Ecosystem</span></a><a href="#rust-crates-cratesio" class="rp-toc-item rp-link" title="Rust crates (crates.io)" style="padding-left:12px" data-depth="1"><span class="rp-toc-item__text rp-doc">Rust crates (crates.io)</span></a><a href="#npm-packages" class="rp-toc-item rp-link" title="npm packages" style="padding-left:12px" data-depth="1"><span class="rp-toc-item__text rp-doc">npm packages</span></a><a href="#standards-coverage" class="rp-toc-item rp-link" title="Standards coverage" style="padding-left:0" data-depth="0"><span class="rp-toc-item__text rp-doc">Standards coverage</span></a><a href="#why-rust" class="rp-toc-item rp-link" title="Why Rust?" style="padding-left:0" data-depth="0"><span class="rp-toc-item__text rp-doc">Why Rust?</span></a></nav><div class="rp-outline__divider"></div><div class="rp-outline__bottom"></div></div></aside></div></div>
     <div id="__rspress_modal_container"></div>
   </body>
 </html>

@@ -85,6 +85,58 @@ bundlers, sandboxed serverless platforms.
 `@imferno/schema` describes the JSON these all emit, so consumers can
 validate `imferno`'s output without depending on any of them.
 
+## Why Rust?
+
+The choice was deliberate, not aesthetic. IMF tooling has traditionally lived
+in C/C++ (asdcplib, Photon's JNI bridges, Qt-based IMFTool) where memory
+errors and concurrency bugs are still routine. Rust gives the same native
+performance with guarantees those stacks can't make.
+
+### What Rust brings to a validator
+
+- **Memory safety without GC** — no segfaults, no buffer overflows, no
+  surprise allocator pauses while you're reading a 50 GB MXF. Predictable
+  latency for ingest pipelines.
+- **Exhaustive pattern matching on enums** — IMF is a long tail of *"shall"*
+  constraints across multiple spec years. Each `match` over a CPL/AssetMap
+  variant is checked at compile time; spec drift becomes a compile error,
+  not a silent runtime bug.
+- **`Result` and `Option` instead of exceptions** — every error path is part
+  of the function signature. Validators can't accidentally throw out of a
+  parser five frames deep; a missing element either becomes a structured
+  validation issue or a typed `Err`, and the compiler enforces handling.
+- **Zero-cost abstractions** — the high-level parser code (iterators,
+  trait dispatch, generics) compiles down to the same loops and pointer
+  arithmetic you'd write by hand in C, without the readability cost.
+- **Fearless concurrency** — parallel hash verification across hundreds of
+  MXFs uses `Send`/`Sync` and the type system to rule out data races at
+  compile time. No "let's hope nobody mutates this" disclaimers.
+- **Single static binary** — `cargo install imferno` (or one `npm install`
+  for the prebuilt) gives you a zero-dependency executable. No JVM, no
+  Python wheels, no shared libraries to ship.
+- **First-class cross-compilation** — one `cargo build --target …` produces
+  binaries for Linux/macOS/Windows on x64 + arm64 from any host.
+
+### Three runtimes, one codebase
+
+This is the part you can't easily replicate in any other language:
+
+- **WASM** — `rustc` has a first-class `wasm32-unknown-unknown` target.
+  The parser/validator compiles unchanged for browsers, Cloudflare Workers,
+  Vercel Edge, Deno Deploy, and any sandboxed JS runtime. Distributed as
+  [`@imferno/wasm`](https://www.npmjs.com/package/@imferno/wasm).
+- **NAPI-RS** — the same Rust code, wrapped as a native Node.js addon via
+  [napi-rs](https://napi.rs). In-process speed, no subprocess overhead, no
+  child-process JSON marshalling. Distributed as
+  [`@imferno/node`](https://www.npmjs.com/package/@imferno/node).
+- **Native CLI** — a static binary, prebuilt for six platforms (Linux,
+  macOS, Windows × x64, arm64). Distributed via Cargo *and* npm so shell
+  scripts and CI jobs don't need a Rust toolchain.
+
+The same validator runs in your browser dev tools, on a Lambda, in your
+ingest pipeline, and on your laptop — without porting, without
+reimplementation, and without three different sets of bugs.
+
 ## Standards coverage
 
 | Standard | Description | Status |
@@ -97,7 +149,3 @@ validate `imferno`'s output without depending on any of them.
 | ST 2067-201:2019, :2021 | IAB (Immersive Audio Bitstream) | Complete |
 | ST 2067-202:2022 | ISXD (Immersive Sound XML Data) Plug-in | Complete |
 | ST 377-1:2011 | MXF file structure | Partial — header partition only |
-
-## Why Rust?
-
-imferno brings SMPTE ST-2067 correctness to Rust — with zero GC pauses, a native CLI, and WASM compilation for browser tooling.

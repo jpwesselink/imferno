@@ -11,6 +11,34 @@ use imferno_core::{Category, Severity, ValidationIssue, ValidationProfile, Valid
 use std::io::IsTerminal;
 use std::path::PathBuf;
 
+/// Read an IMF package's XML manifest files from a URI.
+///
+/// Accepts `file://` URIs, bare filesystem paths, and (when built with the
+/// `aws-s3` feature) `s3://bucket/prefix/` URIs.
+fn read_input(input: &str) -> Result<std::collections::HashMap<String, String>> {
+    use imferno_core::package::read_xml_files;
+    use imferno_core::storage::{fs::FsStorage, Scheme, StorageUri};
+
+    let uri = StorageUri::parse(input).context("parsing input URI")?;
+    match uri.scheme {
+        Scheme::File => {
+            let storage = FsStorage::new();
+            Ok(read_xml_files(&uri, &storage)?)
+        }
+        Scheme::S3 => {
+            #[cfg(feature = "aws-s3")]
+            {
+                let storage = imferno_core::storage::s3::S3Storage::from_default()?;
+                Ok(read_xml_files(&uri, &storage)?)
+            }
+            #[cfg(not(feature = "aws-s3"))]
+            {
+                anyhow::bail!("s3:// input requires building imferno with --features aws-s3");
+            }
+        }
+    }
+}
+
 fn format_size(bytes: u64) -> String {
     if bytes >= 1_073_741_824 {
         format!("{:.1}GB", bytes as f64 / 1_073_741_824.0)
@@ -254,7 +282,7 @@ async fn cmd_validate(
     let color = use_color() && !matches!(format, OutputFormat::Json);
 
     // Read files
-    let files = match imferno_core::package::read_dir(path) {
+    let files = match read_input(&path.to_string_lossy()) {
         Ok(f) => f,
         Err(e) => {
             if matches!(format, OutputFormat::Json) {
@@ -500,7 +528,7 @@ async fn cmd_validate(
 }
 
 fn cmd_cpl(path: &PathBuf, uuid: Option<String>) -> Result<()> {
-    let package = Imferno::parse(imferno_core::package::read_dir(path)?)?;
+    let package = Imferno::parse(read_input(&path.to_string_lossy())?)?;
 
     let cpl_uuid = if let Some(uuid) = uuid {
         uuid

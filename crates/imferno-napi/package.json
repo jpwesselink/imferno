@@ -39,12 +39,12 @@
     "LICENSE"
   ],
   "optionalDependencies": {
-    "@imferno/node-darwin-arm64": "0.1.0",
-    "@imferno/node-darwin-x64": "0.1.0",
-    "@imferno/node-linux-x64-gnu": "0.1.0",
-    "@imferno/node-linux-arm64-gnu": "0.1.0",
-    "@imferno/node-win32-x64-msvc": "0.1.0",
-    "@imferno/node-win32-arm64-msvc": "0.1.0"
+    "@imferno/darwin-arm64": "0.1.0",
+    "@imferno/darwin-x64": "0.1.0",
+    "@imferno/linux-x64-gnu": "0.1.0",
+    "@imferno/linux-arm64-gnu": "0.1.0",
+    "@imferno/win32-x64-msvc": "0.1.0",
+    "@imferno/win32-arm64-msvc": "0.1.0"
   },
   "publishConfig": {
     "access": "public"

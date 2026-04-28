@@ -52,4 +52,5 @@ test-typed-complete.html
 tmp
 .cargo/*
 !.cargo/config.toml
+!.cargo/audit.toml
 .claude/worktrees/

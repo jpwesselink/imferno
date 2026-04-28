@@ -2116,6 +2116,10 @@ const APP2E_APPLICATION_IDENTIFICATION: &str = "http://www.smpte-ra.org/ns/2067-
 /// - `Jpeg2000Broadcast`: stored width must be 1–3840, stored height ≤ 2160.
 /// - `Jpeg2000` (generic node): no resolution bounds enforced.
 /// - All other J2K variants (should not occur after CODEC_TABLE is correct): error.
+// `clippy::collapsible_match` would suggest moving each `if !cond` into a guard, but
+// the wildcard arm has different semantics (specific to non-J2K codecs), so collapsing
+// would route the "passes-validation" case through it incorrectly.
+#[allow(clippy::collapsible_match)]
 fn validate_j2k_profile(
     codec: &crate::cpl::VideoCodec,
     stored_width: u32,

@@ -1,9 +1,9 @@
 {
-  "name": "@imferno/node-win32-arm64-msvc",
+  "name": "@imferno/linux-x64-gnu",
   "version": "0.1.0",
-  "description": "imferno native Node.js bindings for Windows ARM64",
-  "os": ["win32"],
-  "cpu": ["arm64"],
+  "description": "imferno native Node.js bindings for Linux x64 (GNU)",
+  "os": ["linux"],
+  "cpu": ["x64"],
   "main": "imferno-node.node",
   "files": ["imferno-node.node"],
   "publishConfig": {

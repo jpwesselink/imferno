@@ -1,12 +1,12 @@
 const path = require("path");
 
 const PLATFORMS = {
-  "darwin-arm64": "@imferno/node-darwin-arm64",
-  "darwin-x64": "@imferno/node-darwin-x64",
-  "linux-x64": "@imferno/node-linux-x64-gnu",
-  "linux-arm64": "@imferno/node-linux-arm64-gnu",
-  "win32-x64": "@imferno/node-win32-x64-msvc",
-  "win32-arm64": "@imferno/node-win32-arm64-msvc",
+  "darwin-arm64": "@imferno/darwin-arm64",
+  "darwin-x64": "@imferno/darwin-x64",
+  "linux-x64": "@imferno/linux-x64-gnu",
+  "linux-arm64": "@imferno/linux-arm64-gnu",
+  "win32-x64": "@imferno/win32-x64-msvc",
+  "win32-arm64": "@imferno/win32-arm64-msvc",
 };
 
 const key = `${process.platform}-${process.arch}`;

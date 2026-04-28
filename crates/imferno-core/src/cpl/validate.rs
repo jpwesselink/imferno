@@ -464,6 +464,10 @@ fn validate_content_version_uniqueness(
 ///   `res_er.numerator × cpl_er.denominator`
 ///
 /// The sum across all resources must reduce to an integer (denominator = 1 after GCD reduction).
+// `clippy::manual_checked_ops` would suggest `checked_div`, but that returns Option
+// and changes the structure of the GCD-normalize step here; the explicit `if g > 0`
+// guard is clearer for non-Option arithmetic.
+#[allow(clippy::manual_checked_ops)]
 fn validate_sequence_duration_integer_edit_units(
     cpl: &CompositionPlaylist,
     code: fn(St2067_3Code) -> &'static str,
@@ -546,6 +550,7 @@ fn gcd_u64(mut a: u64, mut b: u64) -> u64 {
     a
 }
 
+#[allow(clippy::manual_checked_ops)]
 fn lcm_u64(a: u64, b: u64) -> u64 {
     let g = gcd_u64(a, b);
     if g == 0 {

@@ -1,9 +1,9 @@
 {
-  "name": "@imferno/node-linux-x64-gnu",
+  "name": "@imferno/darwin-arm64",
   "version": "0.1.0",
-  "description": "imferno native Node.js bindings for Linux x64 (GNU)",
-  "os": ["linux"],
-  "cpu": ["x64"],
+  "description": "imferno native Node.js bindings for macOS ARM64 (Apple Silicon)",
+  "os": ["darwin"],
+  "cpu": ["arm64"],
   "main": "imferno-node.node",
   "files": ["imferno-node.node"],
   "publishConfig": {

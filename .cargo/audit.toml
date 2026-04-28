@@ -1,0 +1,26 @@
+# cargo-audit configuration.
+#
+# Each ignore must include a brief justification. Re-evaluate periodically
+# (e.g. when bumping AWS SDK versions) and remove entries once upstream
+# transitive deps have been updated.
+
+[advisories]
+ignore = [
+    # rustls-webpki 0.101.7 — pulled transitively via:
+    #   aws-sdk-s3 → aws-config → aws-smithy-runtime → aws-smithy-http-client
+    #     → hyper-rustls 0.24.2 → rustls 0.21 → rustls-webpki 0.101.7
+    #
+    # AWS smithy ships hyper-rustls 0.27.9 alongside, but 0.24.2 remains as a
+    # legacy compat path until aws-smithy-http-client > 1.1.12 ships. Tracked
+    # upstream at https://github.com/awslabs/smithy-rs/issues
+    #
+    # Risk assessment: these advisories concern certificate name-constraint
+    # edge cases in WebPKI. imferno-core's AWS usage connects to S3 via
+    # standard AWS endpoints with AWS-issued chains, no custom CA pinning,
+    # no custom name constraints. The exposure surface for these specific
+    # advisories is effectively zero in our usage.
+
+    "RUSTSEC-2026-0098", # rustls-webpki — name constraints for URI names
+    "RUSTSEC-2026-0099", # rustls-webpki — wildcard name constraints
+    "RUSTSEC-2026-0104", # rustls-webpki — reachable panic in CRL parsing
+]

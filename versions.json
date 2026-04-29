@@ -41,6 +41,11 @@
     "label": "beta (2.1.0)",
     "path": "/beta/"
   },
-  "prs": [],
+  "prs": [
+    {
+      "label": "#39 fix/napi-platform-pkg-names",
+      "path": "/pr-39/"
+    }
+  ],
   "latest": "/v2.1.0/"
 }

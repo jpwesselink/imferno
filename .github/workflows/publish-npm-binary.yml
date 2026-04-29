@@ -94,11 +94,16 @@ jobs:
 
       - name: Build binary
         shell: bash
+        env:
+          USE_CROSS: ${{ matrix.cross }}
+          TARGET: ${{ matrix.target }}
         run: |
-          if [ "${{ matrix.cross }}" = "true" ]; then
-            cross build --release --target ${{ matrix.target }} -p imferno
+          # Prebuilt CLI binaries include the aws-s3 feature so
+          # `imferno validate s3://...` works without rebuilding.
+          if [ "$USE_CROSS" = "true" ]; then
+            cross build --release --target "$TARGET" -p imferno --features aws-s3
           else
-            cargo build --release --target ${{ matrix.target }} -p imferno
+            cargo build --release --target "$TARGET" -p imferno --features aws-s3
           fi
 
       - name: Copy binary into npm package

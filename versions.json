@@ -1,6 +1,10 @@
 {
   "stable": [
     {
+      "version": "v2.1.1",
+      "path": "/v2.1.1/"
+    },
+    {
       "version": "v2.1.0",
       "path": "/v2.1.0/"
     },
@@ -42,5 +46,5 @@
     "path": "/beta/"
   },
   "prs": [],
-  "latest": "/v2.1.0/"
+  "latest": "/v2.1.1/"
 }

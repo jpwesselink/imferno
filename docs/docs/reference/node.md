@@ -18,7 +18,7 @@ Native bindings via NAPI. Provides filesystem access for path-based validation. 
 Parse and validate an IMF package in one call. This is the **recommended entry point**.
 
 - `validatePath` reads XML files from a local directory.
-- `validateUri` accepts a `file://` URI, a bare path, or — when the binary is built with the `aws-s3` feature — an `s3://bucket/prefix/` URI.
+- `validateUri` accepts a `file://` URI, a bare path, or an `s3://bucket/prefix/` URI (the prebuilt npm binary ships with S3 support enabled).
 - `validate` takes a filename-to-string map (no filesystem access).
 
 ```javascript
@@ -59,17 +59,11 @@ const result = validate({
 
 ### S3 input
 
-`validateUri` and `buildReportFromUri` accept `s3://bucket/prefix/` URIs when
-the underlying NAPI binary is built with the `aws-s3` Cargo feature.
+`validateUri` and `buildReportFromUri` accept `s3://bucket/prefix/` URIs out
+of the box. The prebuilt `@imferno/node` binaries on npm include the
+`aws-s3` feature for every supported platform — no rebuild required.
 
-> **Heads up — the prebuilt `@imferno/node` on npm currently ships *without*
-> the `aws-s3` feature.** To use S3 input from Node today, build the addon
-> from source (in this repo: `cargo build -p imferno-napi --features aws-s3`
-> and `napi build --features aws-s3`). A prebuilt `@imferno/node-aws` is on
-> the v1.1 roadmap.
-
-When `aws-s3` is enabled, `S3Storage` uses the **default AWS credential
-chain**:
+`S3Storage` uses the **default AWS credential chain**:
 
 1. `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_SESSION_TOKEN` env
 2. `~/.aws/credentials` profile (set `AWS_PROFILE` to pick one)

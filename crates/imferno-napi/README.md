@@ -42,8 +42,8 @@ import { validateUri, buildReportFromUri } from "@imferno/node";
 const result = validateUri("./my-imp");
 const result2 = validateUri("file:///abs/path/to/my-imp");
 
-// S3 (requires the binary to be built with the aws-s3 feature; uses the
-// default AWS credential chain — env vars, profile, or IMDS)
+// S3 — prebuilt npm binaries include S3 support; uses the default AWS
+// credential chain (env vars, profile, or EC2/ECS/EKS IMDS)
 const result3 = validateUri("s3://my-bucket/path/to/imp/");
 
 // Same options object as validatePath

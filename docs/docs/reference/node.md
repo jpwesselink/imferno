@@ -57,6 +57,38 @@ const result = validate({
 });
 ```
 
+### S3 input
+
+`validateUri` and `buildReportFromUri` accept `s3://bucket/prefix/` URIs when
+the underlying NAPI binary is built with the `aws-s3` Cargo feature.
+
+> **Heads up — the prebuilt `@imferno/node` on npm currently ships *without*
+> the `aws-s3` feature.** To use S3 input from Node today, build the addon
+> from source (in this repo: `cargo build -p imferno-napi --features aws-s3`
+> and `napi build --features aws-s3`). A prebuilt `@imferno/node-aws` is on
+> the v1.1 roadmap.
+
+When `aws-s3` is enabled, `S3Storage` uses the **default AWS credential
+chain**:
+
+1. `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_SESSION_TOKEN` env
+2. `~/.aws/credentials` profile (set `AWS_PROFILE` to pick one)
+3. EC2 / ECS / EKS instance metadata service (IMDSv2)
+
+Region resolution follows the standard AWS resolution order
+(`AWS_REGION` env → profile config → IMDS).
+
+For S3-compatible endpoints (MinIO, R2, etc.), set:
+
+```bash
+AWS_ENDPOINT_URL_S3=https://my-r2-endpoint.example.com
+AWS_REGION=auto
+```
+
+Only the IMF manifest XMLs (`ASSETMAP.xml`, `PKL_*.xml`, `CPL_*.xml`,
+`VOLINDEX.xml`, etc.) are fetched over the network. MXF essence files are
+**not** downloaded — IMF validation in v1.0 is XML-only on cloud backends.
+
 ### Options
 
 ```javascript

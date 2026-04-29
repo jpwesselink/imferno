@@ -41,6 +41,11 @@
     "label": "beta (2.1.0)",
     "path": "/beta/"
   },
-  "prs": [],
+  "prs": [
+    {
+      "label": "#40 docs/imferno-napi-platform-naming",
+      "path": "/pr-40/"
+    }
+  ],
   "latest": "/v2.1.0/"
 }

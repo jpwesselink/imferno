@@ -51,6 +51,31 @@ let pkl = parse_pkl(pkl_xml)?;
 let volindex = parse_volindex(volindex_xml)?;
 ```
 
+### Validate a package directly from a URI
+
+`package::read` accepts `file://` and bare paths out of the box, plus
+`s3://bucket/prefix/` when built with the `aws-s3` Cargo feature.
+
+```rust
+use imferno_core::package::{read, Imferno};
+use imferno_core::storage::{fs::FsStorage, StorageUri};
+
+let uri = StorageUri::parse("/path/to/imp")?;
+let storage = FsStorage::new();
+let files = read(&uri, &storage)?;
+let package = Imferno::parse(files)?;
+```
+
+S3 (with `--features aws-s3`):
+
+```rust
+use imferno_core::storage::{s3::S3Storage, StorageUri};
+
+let uri = StorageUri::parse("s3://my-bucket/path/to/imp/")?;
+let storage = S3Storage::from_default()?;
+let files = imferno_core::package::read(&uri, &storage)?;
+```
+
 ## Standards coverage
 
 | Standard | Title | Status |

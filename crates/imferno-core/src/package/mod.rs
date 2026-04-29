@@ -422,38 +422,76 @@ fn sanitize_asset_path(root: &Path, chunk_path: &str) -> Option<PathBuf> {
 /// derives the package `root_path` from these keys so that file-manifest
 /// and MXF-header validation work correctly on native targets.
 pub fn read_dir(path: impl AsRef<Path>) -> Result<HashMap<String, String>> {
+    use crate::storage::{fs::FsStorage, StorageUri};
+
     let path = path
         .as_ref()
         .canonicalize()
         .unwrap_or_else(|_| path.as_ref().to_path_buf());
+    let uri = StorageUri::parse(&path.to_string_lossy())
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidInput, e.to_string()))?;
+    let storage = FsStorage::new();
+
+    read_xml_files(&uri, &storage).map_err(|e| std::io::Error::other(e.to_string()).into())
+}
+
+/// Read all `.xml` files at the given URI through the supplied storage backend.
+///
+/// Returns a map of fully-qualified URIs to file contents. Non-XML entries
+/// and files that fail UTF-8 decoding are skipped (with a warning to stderr
+/// for parity with the legacy `read_dir` behavior).
+///
+/// This is the recommended trait-based entry point. Re-exported as [`read`].
+///
+/// # Example — local filesystem
+///
+/// ```no_run
+/// use imferno_core::package::{read, Imferno};
+/// use imferno_core::storage::{fs::FsStorage, StorageUri};
+///
+/// let uri = StorageUri::parse("/path/to/imp").unwrap();
+/// let storage = FsStorage::new();
+/// let files = read(&uri, &storage).unwrap();
+/// let package = Imferno::parse(files).unwrap();
+/// ```
+///
+/// # Example — S3 (requires the `aws-s3` feature)
+///
+/// ```ignore
+/// use imferno_core::package::{read, Imferno};
+/// use imferno_core::storage::{s3::S3Storage, StorageUri};
+///
+/// let uri = StorageUri::parse("s3://my-bucket/imp/").unwrap();
+/// let storage = S3Storage::from_default().unwrap();
+/// let files = read(&uri, &storage).unwrap();
+/// ```
+pub fn read_xml_files(
+    uri: &crate::storage::StorageUri,
+    storage: &dyn crate::storage::Storage,
+) -> std::result::Result<HashMap<String, String>, crate::storage::StorageError> {
     let mut files = HashMap::new();
-    for entry in std::fs::read_dir(&path)? {
-        let entry = entry?;
-        let p = entry.path();
-        // Only read XML files — MXF and other binary assets are parsed separately
-        // and must not be opened here (avoids pulling large files over remote mounts).
-        let ext = p
-            .extension()
-            .and_then(|e| e.to_str())
-            .unwrap_or("")
-            .to_ascii_lowercase();
-        if ext != "xml" {
+    for entry in storage.list(uri)? {
+        if !entry.is_file {
             continue;
         }
-        let abs_path = p.to_string_lossy().into_owned();
-        match std::fs::read_to_string(&p) {
+        if !entry.uri.to_ascii_lowercase().ends_with(".xml") {
+            continue;
+        }
+        let entry_uri = crate::storage::StorageUri::parse(&entry.uri)?;
+        match storage.read_to_string(&entry_uri) {
             Ok(content) => {
-                files.insert(abs_path, content);
+                files.insert(entry.uri, content);
             }
             Err(e) => {
-                // read_dir is a filesystem helper with no ValidationReport context;
-                // log to stderr so callers have some visibility into read failures.
-                eprintln!("Warning: failed to read XML file {}: {}", abs_path, e);
+                eprintln!("Warning: failed to read XML file {}: {}", entry.uri, e);
             }
         }
     }
     Ok(files)
 }
+
+/// Public alias: `package::read(uri, storage)` — same as [`read_xml_files`].
+pub use self::read_xml_files as read;
 
 /// Read all XML files from an S3 prefix into a filename→content map.
 ///
@@ -470,65 +508,23 @@ pub async fn read_s3(
     bucket: &str,
     prefix: &str,
 ) -> Result<HashMap<String, String>> {
-    let mut files = HashMap::new();
-    let mut continuation_token: Option<String> = None;
+    use crate::storage::{s3::S3Storage, StorageUri};
 
-    loop {
-        let mut req = client.list_objects_v2().bucket(bucket).prefix(prefix);
+    let storage =
+        S3Storage::from_client(client.clone()).map_err(|e| std::io::Error::other(e.to_string()))?;
+    let uri_str = format!("s3://{bucket}/{prefix}");
+    let uri = StorageUri::parse(&uri_str)
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidInput, e.to_string()))?;
 
-        if let Some(token) = continuation_token.take() {
-            req = req.continuation_token(token);
-        }
-
-        let resp = req
-            .send()
-            .await
-            .map_err(|e| std::io::Error::other(format!("S3 ListObjectsV2: {e}")))?;
-
-        for obj in resp.contents() {
-            let key = match obj.key() {
-                Some(k) => k,
-                None => continue,
-            };
-
-            // Only read XML files, same as read_dir
-            if !key.to_ascii_lowercase().ends_with(".xml") {
-                continue;
-            }
-
-            let get_resp = client
-                .get_object()
-                .bucket(bucket)
-                .key(key)
-                .send()
-                .await
-                .map_err(|e| std::io::Error::other(format!("S3 GetObject {key}: {e}")))?;
-
-            let body = get_resp
-                .body
-                .collect()
-                .await
-                .map_err(|e| std::io::Error::other(format!("S3 read body {key}: {e}")))?;
-
-            match String::from_utf8(body.into_bytes().to_vec()) {
-                Ok(content) => {
-                    let uri = format!("s3://{bucket}/{key}");
-                    files.insert(uri, content);
-                }
-                Err(_) => {
-                    eprintln!("Warning: S3 object {key} is not valid UTF-8, skipping");
-                }
-            }
-        }
-
-        if resp.is_truncated() == Some(true) {
-            continuation_token = resp.next_continuation_token().map(|s| s.to_string());
-        } else {
-            break;
-        }
-    }
-
-    Ok(files)
+    // The trait method is sync; run on a blocking task so we don't block the
+    // async caller's runtime.
+    tokio::task::spawn_blocking(move || {
+        crate::package::read_xml_files(&uri, &storage)
+            .map_err(|e| std::io::Error::other(e.to_string()))
+    })
+    .await
+    .map_err(|e| std::io::Error::other(format!("join error: {e}")))?
+    .map_err(Into::into)
 }
 
 impl Imferno {

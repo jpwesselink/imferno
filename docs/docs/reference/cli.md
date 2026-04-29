@@ -25,7 +25,17 @@ npx imferno@latest validate ./my-package
 Validate an IMF package against SMPTE ST-2067.
 
 ```bash
-imferno validate <PATH> [OPTIONS]
+imferno validate <PATH_OR_URI> [OPTIONS]
+```
+
+The argument accepts a local filesystem path, a `file://` URI, or — when
+imferno is built with the `aws-s3` feature — an `s3://bucket/prefix/` URI.
+Bare paths are normalised to `file://`.
+
+```bash
+imferno validate ./my-imp
+imferno validate file:///abs/path/to/my-imp
+imferno validate s3://my-bucket/path/to/imp/   # requires --features aws-s3
 ```
 
 | Option | Description |
@@ -68,7 +78,20 @@ imferno validate ./my-imp --skip-disk-checks
 
 # Custom rules config
 imferno validate ./my-imp --rules-config rules.json
+
+# S3 input (requires building with --features aws-s3; uses default AWS credential chain)
+imferno validate s3://my-bucket/path/to/imp/
 ```
+
+### Building with S3 support
+
+```bash
+cargo install imferno --features aws-s3
+```
+
+The S3 backend uses the default AWS credential chain (env vars, profile,
+or IMDS on EC2). Only XML manifest files are fetched over the network;
+MXF binaries are not downloaded.
 
 ---
 

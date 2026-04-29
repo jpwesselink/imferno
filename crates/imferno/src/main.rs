@@ -11,6 +11,44 @@ use imferno_core::{Category, Severity, ValidationIssue, ValidationProfile, Valid
 use std::io::IsTerminal;
 use std::path::PathBuf;
 
+/// Read an IMF package's XML manifest files from a URI.
+///
+/// Accepts `file://` URIs, bare filesystem paths, and (when built with the
+/// `aws-s3` feature) `s3://bucket/prefix/` URIs.
+///
+/// This function is async because S3 dispatch goes through the legacy
+/// `read_s3` async wrapper (which itself uses `spawn_blocking` to host the
+/// sync `S3Storage` trait safely under an outer tokio runtime).
+async fn read_input(input: &str) -> Result<std::collections::HashMap<String, String>> {
+    use imferno_core::package::read_xml_files;
+    use imferno_core::storage::{fs::FsStorage, Scheme, StorageUri};
+
+    let uri = StorageUri::parse(input).context("parsing input URI")?;
+    match uri.scheme {
+        Scheme::File => {
+            let storage = FsStorage::new();
+            Ok(read_xml_files(&uri, &storage)?)
+        }
+        Scheme::S3 => {
+            #[cfg(feature = "aws-s3")]
+            {
+                let bucket = uri
+                    .bucket
+                    .as_ref()
+                    .ok_or_else(|| anyhow::anyhow!("s3 URI missing bucket"))?;
+                let cfg = aws_config::load_defaults(aws_config::BehaviorVersion::latest()).await;
+                let client = aws_sdk_s3::Client::new(&cfg);
+                Ok(imferno_core::package::read_s3(&client, bucket, &uri.path).await?)
+            }
+            #[cfg(not(feature = "aws-s3"))]
+            {
+                let _ = uri;
+                anyhow::bail!("s3:// input requires building imferno with --features aws-s3");
+            }
+        }
+    }
+}
+
 fn format_size(bytes: u64) -> String {
     if bytes >= 1_073_741_824 {
         format!("{:.1}GB", bytes as f64 / 1_073_741_824.0)
@@ -157,7 +195,7 @@ async fn main() -> Result<()> {
             )
             .await
         }
-        Commands::Cpl { path, uuid } => cmd_cpl(&path, uuid),
+        Commands::Cpl { path, uuid } => cmd_cpl(&path, uuid).await,
     }
 }
 
@@ -234,7 +272,7 @@ fn make_options(
 
 #[allow(clippy::too_many_arguments)]
 async fn cmd_validate(
-    path: &PathBuf,
+    path: &std::path::Path,
     verify_hashes: bool,
     hash_concurrency: usize,
     format: OutputFormat,
@@ -254,7 +292,7 @@ async fn cmd_validate(
     let color = use_color() && !matches!(format, OutputFormat::Json);
 
     // Read files
-    let files = match imferno_core::package::read_dir(path) {
+    let files = match read_input(&path.to_string_lossy()).await {
         Ok(f) => f,
         Err(e) => {
             if matches!(format, OutputFormat::Json) {
@@ -273,7 +311,7 @@ async fn cmd_validate(
                 println!("{}", serde_json::to_string_pretty(&validation)?);
                 return Ok(());
             }
-            return Err(e.into());
+            return Err(e);
         }
     };
 
@@ -499,8 +537,8 @@ async fn cmd_validate(
     Ok(())
 }
 
-fn cmd_cpl(path: &PathBuf, uuid: Option<String>) -> Result<()> {
-    let package = Imferno::parse(imferno_core::package::read_dir(path)?)?;
+async fn cmd_cpl(path: &std::path::Path, uuid: Option<String>) -> Result<()> {
+    let package = Imferno::parse(read_input(&path.to_string_lossy()).await?)?;
 
     let cpl_uuid = if let Some(uuid) = uuid {
         uuid

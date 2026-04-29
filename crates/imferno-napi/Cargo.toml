@@ -7,6 +7,10 @@ license = "MIT"
 repository = "https://github.com/jpwesselink/imferno"
 publish = false
 
+[features]
+default = []
+aws-s3 = ["imferno-core/aws-s3"]
+
 [lib]
 crate-type = ["cdylib"]
 

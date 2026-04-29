@@ -20,6 +20,9 @@ export default defineConfig({
     socialLinks: [
       { icon: "github", mode: "link", content: "https://github.com/jpwesselink/imferno" },
     ],
+    nav: [
+      { text: "Docs", link: "/guide/" },
+    ],
     sidebar: {
       "/guide/": [
         { text: "Introduction", link: "/guide/" },

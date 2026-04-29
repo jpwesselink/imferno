@@ -13,16 +13,22 @@ Native bindings via NAPI. Provides filesystem access for path-based validation. 
 
 ---
 
-## `validate` / `validatePath`
+## `validate` / `validatePath` / `validateUri`
 
 Parse and validate an IMF package in one call. This is the **recommended entry point**.
 
-`validatePath` reads XML files from disk. `validate` takes a filename-to-string map.
+- `validatePath` reads XML files from a local directory.
+- `validateUri` accepts a `file://` URI, a bare path, or — when the binary is built with the `aws-s3` feature — an `s3://bucket/prefix/` URI.
+- `validate` takes a filename-to-string map (no filesystem access).
 
 ```javascript
-import { validatePath, formatReport } from '@imferno/node';
+import { validatePath, validateUri, formatReport } from '@imferno/node';
 
+// Local FS path
 const result = validatePath('./my-imp');
+
+// URI form (filesystem or, with aws-s3, S3)
+const result2 = validateUri('s3://my-bucket/path/to/imp/');
 
 // Full parsed package
 console.log(result.package.compositionPlaylists);
@@ -102,14 +108,15 @@ const pkg = parsePackage({
 
 ---
 
-## `buildReport` / `buildReportFromPath` (legacy)
+## `buildReport` / `buildReportFromPath` / `buildReportFromUri` (legacy)
 
-Returns an `ImfReport` summary. Kept for backwards compatibility — prefer `validate()` / `validatePath()` instead.
+Returns an `ImfReport` summary. Kept for backwards compatibility — prefer `validate()` / `validatePath()` / `validateUri()` instead.
 
 ```javascript
-import { buildReportFromPath, formatReport } from '@imferno/node';
+import { buildReportFromPath, buildReportFromUri, formatReport } from '@imferno/node';
 
-const report = buildReportFromPath('./my-imp');
+const report  = buildReportFromPath('./my-imp');
+const report2 = buildReportFromUri('s3://my-bucket/path/to/imp/');
 console.log(formatReport(report));
 ```
 

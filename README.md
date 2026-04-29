@@ -111,6 +111,42 @@ for issue in &report.errors {
 }
 ```
 
+### Rust — Storage trait (URI-aware)
+
+The `imferno_core::storage` module abstracts where IMF packages live —
+local filesystem (always on) and S3 (behind the `aws-s3` feature flag).
+Use `package::read` for cloud-aware reads:
+
+```rust
+use imferno_core::package::{read, Imferno};
+use imferno_core::storage::{fs::FsStorage, StorageUri};
+
+// Local filesystem (bare paths and file:// URIs both work)
+let uri = StorageUri::parse("/path/to/imp")?;
+let storage = FsStorage::new();
+let files = read(&uri, &storage)?;
+let package = Imferno::parse(files)?;
+```
+
+S3 (requires `--features aws-s3`):
+
+```rust
+# #[cfg(feature = "aws-s3")] {
+use imferno_core::storage::s3::S3Storage;
+let uri = imferno_core::storage::StorageUri::parse("s3://my-bucket/path/to/imp/")?;
+let storage = S3Storage::from_default()?;  // uses default AWS credential chain
+let files = imferno_core::package::read(&uri, &storage)?;
+# }
+```
+
+The CLI accepts the same URI forms:
+
+```bash
+imferno validate /path/to/imp
+imferno validate file:///path/to/imp
+imferno --features aws-s3 validate s3://my-bucket/path/to/imp/
+```
+
 ## Standards coverage
 
 | Standard | Title | Status |

@@ -51,6 +51,51 @@ use imferno_core::package::read_dir;
 let files: HashMap<String, String> = read_dir("/path/to/your.imp")?;
 ```
 
+`read_dir` is now a thin wrapper over the `Storage` trait (see below). Existing
+callers do not need to change; the public signature and return shape are
+preserved.
+
+---
+
+## `Storage` trait — URI-aware input
+
+For new code, prefer the URI-based entry point. It accepts `file://` paths today
+and `s3://bucket/prefix/` when the `aws-s3` feature is enabled.
+
+```rust
+use imferno_core::package::{read, Imferno};
+use imferno_core::storage::{fs::FsStorage, StorageUri};
+
+// Local filesystem (bare paths and file:// URIs both accepted)
+let uri = StorageUri::parse("/path/to/imp")?;
+let storage = FsStorage::new();
+let files = read(&uri, &storage)?;
+let package = Imferno::parse(files)?;
+```
+
+S3 (requires the `aws-s3` Cargo feature):
+
+```rust
+use imferno_core::package::read;
+use imferno_core::storage::{s3::S3Storage, StorageUri};
+
+let uri = StorageUri::parse("s3://my-bucket/path/to/imp/")?;
+let storage = S3Storage::from_default()?;  // default AWS credential chain
+let files = read(&uri, &storage)?;
+```
+
+The trait abstracts package I/O. Built-in implementations:
+
+| Backend | URI scheme | Feature gate |
+|---------|------------|--------------|
+| `FsStorage` | `file://` and bare paths | always available |
+| `S3Storage` | `s3://bucket/prefix/` | `aws-s3` |
+
+The `Storage` trait itself is sync. `S3Storage` wraps the async AWS SDK in a
+private tokio runtime; for callers that already run inside a tokio runtime
+(e.g. an Axum handler), prefer the existing async `read_s3` wrapper which
+internally offloads to `tokio::task::spawn_blocking`.
+
 ---
 
 ## `Imferno`

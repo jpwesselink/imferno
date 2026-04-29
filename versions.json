@@ -37,11 +37,6 @@
     "label": "beta (2.0.0)",
     "path": "/beta/"
   },
-  "prs": [
-    {
-      "label": "#37 docs/nav-guide-reference",
-      "path": "/pr-37/"
-    }
-  ],
+  "prs": [],
   "latest": "/v2.0.0/"
 }

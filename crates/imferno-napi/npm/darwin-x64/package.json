@@ -4,8 +4,8 @@
   "description": "imferno native Node.js bindings for macOS x64 (Intel)",
   "os": ["darwin"],
   "cpu": ["x64"],
-  "main": "imferno-node.node",
-  "files": ["imferno-node.node"],
+  "main": "imferno-node.darwin-x64.node",
+  "files": ["imferno-node.darwin-x64.node"],
   "publishConfig": {
     "access": "public"
   },

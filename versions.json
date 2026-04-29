@@ -45,6 +45,11 @@
     "label": "beta (2.1.1)",
     "path": "/beta/"
   },
-  "prs": [],
+  "prs": [
+    {
+      "label": "#43 fix/napi-platform-package-binaries",
+      "path": "/pr-43/"
+    }
+  ],
   "latest": "/v2.1.1/"
 }

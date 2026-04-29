@@ -74,3 +74,29 @@ export declare function validate(files: Record<string, string>, options?: any | 
  * @returns `{ package, validation }` — full Imferno struct + ValidationReport
  */
 export declare function validatePath(path: string, options?: any | undefined | null): any
+
+/**
+ * Parse and validate an IMF package from a URI.
+ *
+ * Accepts `file://` URIs, bare filesystem paths, and (when the binary is built
+ * with the `aws-s3` feature) `s3://bucket/prefix/` URIs. The prebuilt binaries
+ * on npm include `aws-s3` enabled.
+ *
+ * @param uri - Path or URI to the IMP
+ * @param options - Optional validation options
+ * @returns `{ package, validation }` — full Imferno struct + ValidationReport
+ */
+export declare function validateUri(uri: string, options?: any | undefined | null): any
+
+/**
+ * Build an ImfReport summary from a URI.
+ *
+ * Accepts the same URI forms as `validateUri`. Prefer `validateUri` for new
+ * code — `buildReportFromUri` is kept for parity with `buildReport` /
+ * `buildReportFromPath`.
+ *
+ * @param uri - Path or URI to the IMP
+ * @param options - Optional validation options
+ * @returns An `ImfReport` object with `package`, `cpls`, and `validation` fields.
+ */
+export declare function buildReportFromUri(uri: string, options?: any | undefined | null): any

@@ -4,8 +4,8 @@
   "description": "imferno native Node.js bindings for Linux ARM64 (GNU)",
   "os": ["linux"],
   "cpu": ["arm64"],
-  "main": "imferno-node.node",
-  "files": ["imferno-node.node"],
+  "main": "imferno-node.linux-arm64-gnu.node",
+  "files": ["imferno-node.linux-arm64-gnu.node"],
   "publishConfig": {
     "access": "public"
   },

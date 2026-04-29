@@ -4,8 +4,8 @@
   "description": "imferno native Node.js bindings for macOS ARM64 (Apple Silicon)",
   "os": ["darwin"],
   "cpu": ["arm64"],
-  "main": "imferno-node.node",
-  "files": ["imferno-node.node"],
+  "main": "imferno-node.darwin-arm64.node",
+  "files": ["imferno-node.darwin-arm64.node"],
   "publishConfig": {
     "access": "public"
   },

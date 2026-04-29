@@ -41,11 +41,6 @@
     "label": "beta (2.1.0)",
     "path": "/beta/"
   },
-  "prs": [
-    {
-      "label": "#38 fix/napi-publish-gate",
-      "path": "/pr-38/"
-    }
-  ],
+  "prs": [],
   "latest": "/v2.1.0/"
 }

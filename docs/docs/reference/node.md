@@ -18,7 +18,7 @@ Native bindings via NAPI. Provides filesystem access for path-based validation. 
 Parse and validate an IMF package in one call. This is the **recommended entry point**.
 
 - `validatePath` reads XML files from a local directory.
-- `validateUri` accepts a `file://` URI, a bare path, or — when the binary is built with the `aws-s3` feature — an `s3://bucket/prefix/` URI.
+- `validateUri` accepts a `file://` URI, a bare path, or an `s3://bucket/prefix/` URI (the prebuilt npm binary ships with S3 support enabled).
 - `validate` takes a filename-to-string map (no filesystem access).
 
 ```javascript
@@ -56,6 +56,32 @@ const result = validate({
   'CPL.xml': cplXml,
 });
 ```
+
+### S3 input
+
+`validateUri` and `buildReportFromUri` accept `s3://bucket/prefix/` URIs out
+of the box. The prebuilt `@imferno/node` binaries on npm include the
+`aws-s3` feature for every supported platform — no rebuild required.
+
+`S3Storage` uses the **default AWS credential chain**:
+
+1. `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_SESSION_TOKEN` env
+2. `~/.aws/credentials` profile (set `AWS_PROFILE` to pick one)
+3. EC2 / ECS / EKS instance metadata service (IMDSv2)
+
+Region resolution follows the standard AWS resolution order
+(`AWS_REGION` env → profile config → IMDS).
+
+For S3-compatible endpoints (MinIO, R2, etc.), set:
+
+```bash
+AWS_ENDPOINT_URL_S3=https://my-r2-endpoint.example.com
+AWS_REGION=auto
+```
+
+Only the IMF manifest XMLs (`ASSETMAP.xml`, `PKL_*.xml`, `CPL_*.xml`,
+`VOLINDEX.xml`, etc.) are fetched over the network. MXF essence files are
+**not** downloaded — IMF validation in v1.0 is XML-only on cloud backends.
 
 ### Options
 

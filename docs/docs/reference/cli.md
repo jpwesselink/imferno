@@ -28,14 +28,16 @@ Validate an IMF package against SMPTE ST-2067.
 imferno validate <PATH_OR_URI> [OPTIONS]
 ```
 
-The argument accepts a local filesystem path, a `file://` URI, or — when
-imferno is built with the `aws-s3` feature — an `s3://bucket/prefix/` URI.
-Bare paths are normalised to `file://`.
+The argument accepts a local filesystem path, a `file://` URI, or an
+`s3://bucket/prefix/` URI. Bare paths are normalised to `file://`. The
+prebuilt binaries (npm, GitHub Releases) include S3 support out of the
+box; `cargo install imferno` defaults to FS-only — pass
+`--features aws-s3` to opt in.
 
 ```bash
 imferno validate ./my-imp
 imferno validate file:///abs/path/to/my-imp
-imferno validate s3://my-bucket/path/to/imp/   # requires --features aws-s3
+imferno validate s3://my-bucket/path/to/imp/
 ```
 
 | Option | Description |
@@ -79,19 +81,37 @@ imferno validate ./my-imp --skip-disk-checks
 # Custom rules config
 imferno validate ./my-imp --rules-config rules.json
 
-# S3 input (requires building with --features aws-s3; uses default AWS credential chain)
+# S3 input — uses the default AWS credential chain
 imferno validate s3://my-bucket/path/to/imp/
 ```
 
-### Building with S3 support
+### S3 support
+
+The prebuilt CLI binaries (`npm install -g imferno` and the GitHub Release
+binaries) include S3 support out of the box. `cargo install imferno`
+defaults to FS-only; opt in with:
 
 ```bash
 cargo install imferno --features aws-s3
 ```
 
-The S3 backend uses the default AWS credential chain (env vars, profile,
-or IMDS on EC2). Only XML manifest files are fetched over the network;
-MXF binaries are not downloaded.
+The S3 backend uses the **default AWS credential chain**:
+
+1. `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_SESSION_TOKEN`
+2. `~/.aws/credentials` profile (`AWS_PROFILE` to pick one)
+3. EC2 / ECS / EKS instance metadata service (IMDSv2)
+
+For S3-compatible endpoints (MinIO, R2):
+
+```bash
+AWS_ENDPOINT_URL_S3=https://my-r2-endpoint.example.com
+AWS_REGION=auto
+imferno validate s3://my-bucket/path/to/imp/
+```
+
+Only XML manifest files (`ASSETMAP.xml`, `PKL_*.xml`, `CPL_*.xml`,
+`VOLINDEX.xml`) are fetched over the network. MXF essence files are
+**not** downloaded.
 
 ---
 

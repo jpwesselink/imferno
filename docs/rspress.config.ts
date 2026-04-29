@@ -21,7 +21,8 @@ export default defineConfig({
       { icon: "github", mode: "link", content: "https://github.com/jpwesselink/imferno" },
     ],
     nav: [
-      { text: "Docs", link: "/guide/" },
+      { text: "Guide", link: "/guide/" },
+      { text: "Reference", link: "/reference/rust" },
     ],
     sidebar: {
       "/guide/": [

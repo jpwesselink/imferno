@@ -1,6 +1,13 @@
 //! Native Node.js bindings for imferno — SMPTE ST 2067 IMF validator.
 //!
-//! Provides `buildReport` / `buildReportFromPath` / `formatReport` plus `getVersion`.
+//! Provides `buildReport` / `buildReportFromPath` / `buildReportFromUri`,
+//! `validate` / `validatePath` / `validateUri`, `formatReport`, and `getVersion`.
+//!
+//! Platform binaries are published to npm under the `@imferno/node-<platform>`
+//! scope (e.g. `@imferno/node-darwin-arm64`); the wrapper at `@imferno/node`
+//! resolves the right one at runtime via `optionalDependencies`. The CLI's
+//! prebuilt platform packages live under `@imferno/<platform>` (no `node-`
+//! prefix) — separate namespace, no collision.
 
 use std::collections::HashMap;
 use std::path::PathBuf;

@@ -7,6 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.0](https://github.com/jpwesselink/imferno/compare/imferno-v2.0.0...imferno-v2.1.0) - 2026-04-29
+
+### Added
+
+- *(storage)* introduce Storage trait and unified read() entry point ([#35](https://github.com/jpwesselink/imferno/pull/35))
+- add --rule CLI flag for inline severity overrides
+- glow animates right-to-left (toward the leading edge)
+- switch to subtle glow_effect for progress bars
+- cycle_effect for smooth sliding gradient, 3x speed, 80ms ticker
+- chromakopia glow animation on progress bars, plain label
+- neon glow animation on [hashing] label via chromakopia glow_effect
+- animated fire gradient glow on hashing progress bars
+- sort smallest files first, add --hash-concurrency flag
+- fixed-width filename column with per-file progress bar alongside
+- multi-line per-file progress display for parallel hash verification
+- live fire gradient progress bar during parallel hash verification
+- parallel file hashing with tokio (8 concurrent files)
+- streaming hash with per-MB progress — no more frozen progress bar
+- fire gradient animation on hash verification progress bar 🔥
+- progress indicator with chromakopia gradient for hash verification
+- format_validation_result with text, markdown, and CSV output
+- rename --xml-only to --skip-disk-checks
+- remove export and report commands from CLI
+- CLI validate uses validate() API, deprecate export/report
+
+### Fixed
+
+- address all code review findings on PR #32
+- same text color for queued and hashing files
+- use fixed-width status labels [matched] [hashing] [queued] [mismatch]
+- remove redundant size after progress bar
+- middle-truncate filenames, bar on right, no bar when done
+- use ANSI clear-line escape to properly wipe progress bar
+- plain 'hashing' label, no flame emoji or gradient
+- widen progress line clear to 120 chars
+- smooth fire gradient on progress bar — no more color blocks
+- remove bin field from platform packages to fix npx resolution
+
+### Other
+
+- split top nav into Guide + Reference ([#37](https://github.com/jpwesselink/imferno/pull/37))
+- rustfmt
+
 ## [2.0.0](https://github.com/jpwesselink/imferno/compare/imferno-v1.1.0...imferno-v2.0.0) - 2026-03-04
 
 ### Added

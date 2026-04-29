@@ -7,6 +7,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.0](https://github.com/jpwesselink/imferno/compare/imferno-core-v2.0.0...imferno-core-v2.1.0) - 2026-04-29
+
+### Added
+
+- *(storage)* introduce Storage trait and unified read() entry point ([#35](https://github.com/jpwesselink/imferno/pull/35))
+- inline media info on track lines, show resource IDs
+- show video/audio media info in CLI summary output
+- add --rule CLI flag for inline severity overrides
+- add read_s3() behind aws-s3 feature flag
+- consistent camelCase serde naming for all public structs
+- sort smallest files first, add --hash-concurrency flag
+- multi-line per-file progress display for parallel hash verification
+- live fire gradient progress bar during parallel hash verification
+- parallel file hashing with tokio (8 concurrent files)
+- streaming hash with per-MB progress — no more frozen progress bar
+- progress indicator with chromakopia gradient for hash verification
+- format_validation_result with text, markdown, and CSV output
+- add validate() as primary API — returns { package, validation }
+- expose full Imferno struct through WASM and NAPI
+- add channel count and soundfield info to sequences
+- add language tags to sequence report output
+- barrel re-export validation codes and add usage docs ([#16](https://github.com/jpwesselink/imferno/pull/16))
+
+### Fixed
+
+- UnlistedEssence now detects all unlisted files, not just MXF
+- replace unreachable!() in Imferno::empty() with direct struct construction
+- address all code review findings on PR #32
+- remove debug dump test that triggered clippy in CI
+- plural serde renames + Tailwind CSS + contentTitle parsing
+- use plural names for Vec fields in WASM serde output
+- clippy — use &Path instead of &PathBuf in serialize_path
+- pass language field through playground mapping + add test
+- remaining review findings — type safety, dedup, and encapsulation
+- address all code review findings across 5 agents
+
+### Other
+
+- *(clippy)* silence rust-1.95 lints surfaced after CI toolchain bump ([#36](https://github.com/jpwesselink/imferno/pull/36))
+- rustfmt
+- cargo fmt
+- apply cargo fmt
+- update all documentation for v2 API
+- apply cargo fmt
+- add tests for security fixes, new APIs, and serde round-trips
+
+### Security
+
+- fix path traversal and integer overflow vulnerabilities
+
 ### Added
 
 - `storage` module exposing a `Storage` trait that abstracts package I/O.

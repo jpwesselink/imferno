@@ -1,5 +1,5 @@
 {
-  "name": "@imferno/win32-arm64-msvc",
+  "name": "@imferno/node-win32-arm64-msvc",
   "version": "0.1.0",
   "description": "imferno native Node.js bindings for Windows ARM64",
   "os": ["win32"],

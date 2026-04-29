@@ -1,5 +1,5 @@
 {
-  "name": "@imferno/linux-arm64-gnu",
+  "name": "@imferno/node-linux-arm64-gnu",
   "version": "0.1.0",
   "description": "imferno native Node.js bindings for Linux ARM64 (GNU)",
   "os": ["linux"],

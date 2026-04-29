@@ -1,5 +1,5 @@
 {
-  "name": "@imferno/darwin-arm64",
+  "name": "@imferno/node-darwin-arm64",
   "version": "0.1.0",
   "description": "imferno native Node.js bindings for macOS ARM64 (Apple Silicon)",
   "os": ["darwin"],

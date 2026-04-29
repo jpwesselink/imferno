@@ -41,6 +41,11 @@
     "label": "beta (2.1.0)",
     "path": "/beta/"
   },
-  "prs": [],
+  "prs": [
+    {
+      "label": "#41 fix/napi-version-align",
+      "path": "/pr-41/"
+    }
+  ],
   "latest": "/v2.1.0/"
 }

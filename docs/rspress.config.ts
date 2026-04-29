@@ -24,6 +24,9 @@ export default defineConfig({
       { text: "Guide", link: "/guide/" },
       { text: "Reference", link: "/reference/rust" },
     ],
+    search: {
+      mode: "local",
+    },
     sidebar: {
       "/guide/": [
         { text: "Introduction", link: "/guide/" },

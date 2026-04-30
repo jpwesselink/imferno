@@ -4,7 +4,7 @@ use crate::diagnostics::codes::ValidationCode;
 use crate::diagnostics::{Category, Severity};
 
 /// Validation codes defined by SMPTE ST 377-1:2011 (MXF File Format).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, strum::EnumIter)]
 pub enum St377_1_2011 {
     /// File is not a valid MXF container.
     NotMxf,

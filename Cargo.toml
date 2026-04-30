@@ -24,6 +24,7 @@ sha1 = { version = "0.10", features = ["oid"] }
 sha2 = "0.10"
 base64 = "0.22"
 url = "2.5"
+strum = { version = "0.26", features = ["derive"] }
 
 # WASM specific
 wasm-bindgen = "0.2"

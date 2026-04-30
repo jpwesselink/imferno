@@ -18,7 +18,7 @@ macro_rules! impl_into_string {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// Validation codes defined by SMPTE ST 2067-21:2020 (Application Profile #2E).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, strum::EnumIter)]
 pub enum St2067_21_2020 {
     /// Application identifier in CPL ExtensionProperties does not match the expected App2E URI.
     AppIdMismatch,

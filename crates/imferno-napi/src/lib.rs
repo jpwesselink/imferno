@@ -16,10 +16,13 @@ use imferno_core::package::{
     build_report, format_report, validate as validate_package, ImfReport, Imferno, RulesConfig,
     ValidationOptions,
 };
+use imferno_core::diagnostics::codes::ValidationCode;
 use imferno_core::validation::{
     parse_app_spec_targets, parse_core_spec_target, AppSpecTarget, CoreSpecTarget,
 };
 use napi_derive::napi;
+use serde_json::json;
+use strum::IntoEnumIterator;
 
 // =============================================================================
 // Version
@@ -28,6 +31,40 @@ use napi_derive::napi;
 #[napi(js_name = "getVersion")]
 pub fn get_version() -> String {
     env!("CARGO_PKG_VERSION").to_string()
+}
+
+// =============================================================================
+// listRules — enumerate every configurable validation code
+// =============================================================================
+
+/// Returns the engine's full catalogue of validation rule codes, one entry per
+/// per-spec enum variant. Used by Imferno Studio's settings UI to render a
+/// configurable severity dropdown per rule. The shape is stable JSON, so
+/// downstream callers can store severity overrides keyed by `code`.
+#[napi(js_name = "listRules")]
+pub fn list_rules_js() -> serde_json::Value {
+    fn collect<C: ValidationCode + IntoEnumIterator>(
+        spec: &str,
+        out: &mut Vec<serde_json::Value>,
+    ) {
+        for c in C::iter() {
+            out.push(json!({
+                "code": c.code(),
+                "spec": spec,
+                "description": c.description(),
+                "defaultSeverity": format!("{:?}", c.default_severity()).to_lowercase(),
+                "category": format!("{:?}", c.category()),
+            }));
+        }
+    }
+
+    let mut out: Vec<serde_json::Value> = Vec::new();
+    collect::<imferno_core::assetmap::codes::St2067_2_2020>("core", &mut out);
+    collect::<imferno_core::cpl::codes::St2067_3_2020>("cpl", &mut out);
+    collect::<imferno_core::validation::codes::St2067_21_2020>("app2e", &mut out);
+    collect::<imferno_core::assetmap::volindex_codes::St429_9_2014>("volindex", &mut out);
+    collect::<imferno_core::mxf::codes::St377_1_2011>("mxf", &mut out);
+    serde_json::Value::Array(out)
 }
 
 // =============================================================================

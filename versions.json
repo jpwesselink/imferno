@@ -49,6 +49,11 @@
     "label": "beta (2.1.2)",
     "path": "/beta/"
   },
-  "prs": [],
+  "prs": [
+    {
+      "label": "#44 feat/napi-explicit-s3-credentials",
+      "path": "/pr-44/"
+    }
+  ],
   "latest": "/v2.1.2/"
 }

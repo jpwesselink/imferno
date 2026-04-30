@@ -12,11 +12,11 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 
+use imferno_core::diagnostics::codes::ValidationCode;
 use imferno_core::package::{
     build_report, format_report, validate as validate_package, ImfReport, Imferno, RulesConfig,
     ValidationOptions,
 };
-use imferno_core::diagnostics::codes::ValidationCode;
 use imferno_core::validation::{
     parse_app_spec_targets, parse_core_spec_target, AppSpecTarget, CoreSpecTarget,
 };
@@ -43,10 +43,7 @@ pub fn get_version() -> String {
 /// downstream callers can store severity overrides keyed by `code`.
 #[napi(js_name = "listRules")]
 pub fn list_rules_js() -> serde_json::Value {
-    fn collect<C: ValidationCode + IntoEnumIterator>(
-        spec: &str,
-        out: &mut Vec<serde_json::Value>,
-    ) {
+    fn collect<C: ValidationCode + IntoEnumIterator>(spec: &str, out: &mut Vec<serde_json::Value>) {
         for c in C::iter() {
             out.push(json!({
                 "code": c.code(),

@@ -56,11 +56,31 @@ pub fn list_rules_js() -> serde_json::Value {
     }
 
     let mut out: Vec<serde_json::Value> = Vec::new();
+
+    // Core (ASSETMAP / PKL)
     collect::<imferno_core::assetmap::codes::St2067_2_2020>("core", &mut out);
+
+    // CPL — all three editions
+    collect::<imferno_core::cpl::codes::St2067_3_2013>("cpl", &mut out);
+    collect::<imferno_core::cpl::codes::St2067_3_2016>("cpl", &mut out);
     collect::<imferno_core::cpl::codes::St2067_3_2020>("cpl", &mut out);
+
+    // App 2E — all three editions
     collect::<imferno_core::validation::codes::St2067_21_2020>("app2e", &mut out);
+    collect::<imferno_core::validation::codes::St2067_21_2023>("app2e", &mut out);
+    collect::<imferno_core::validation::codes::St2067_21_2025>("app2e", &mut out);
+
+    // Volume Index, MXF, Sidecar Composition Map, ISXD, IAB
     collect::<imferno_core::assetmap::volindex_codes::St429_9_2014>("volindex", &mut out);
     collect::<imferno_core::mxf::codes::St377_1_2011>("mxf", &mut out);
+    collect::<imferno_core::scm::codes::St2067_9_2018>("scm", &mut out);
+    collect::<imferno_core::validation::isxd_codes::St2067_202_2022>("isxd", &mut out);
+    collect::<imferno_core::validation::iab_codes::St2067_201_2019>("iab", &mut out);
+    collect::<imferno_core::validation::iab_codes::St2067_201_2021>("iab", &mut out);
+
+    // Imferno's own rule namespace (cross-cutting checks beyond pure SMPTE).
+    collect::<imferno_core::package::codes::ImfernoCode>("imferno", &mut out);
+
     serde_json::Value::Array(out)
 }
 

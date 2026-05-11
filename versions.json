@@ -51,10 +51,6 @@
   },
   "prs": [
     {
-      "label": "#44 feat/napi-explicit-s3-credentials",
-      "path": "/pr-44/"
-    },
-    {
       "label": "#45 feat/napi-list-rules",
       "path": "/pr-45/"
     }

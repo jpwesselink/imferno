@@ -476,16 +476,10 @@ async fn cmd_validate(
                                     0.0
                                 };
                                 let bar = make_bar(file_pct, false);
-                                eprintln!(
-                                    "\x1b[2K    {} {} {}",
-                                    short_name, size_str, bar,
-                                );
+                                eprintln!("\x1b[2K    {} {} {}", short_name, size_str, bar,);
                             }
                             HashFileStatus::Waiting => {
-                                eprintln!(
-                                    "\x1b[2K    {} {}",
-                                    short_name, size_str,
-                                );
+                                eprintln!("\x1b[2K    {} {}", short_name, size_str,);
                             }
                         }
                     }
@@ -545,14 +539,20 @@ async fn cmd_validate(
                 match status {
                     HashFileStatus::Done => {
                         if color {
-                            println!("  \x1b[32mok\x1b[0m  {} — SHA-1 verified ({})", name, size_str);
+                            println!(
+                                "  \x1b[32mok\x1b[0m  {} — SHA-1 verified ({})",
+                                name, size_str
+                            );
                         } else {
                             println!("  ok  {} — SHA-1 verified ({})", name, size_str);
                         }
                     }
                     HashFileStatus::Failed => {
                         if color {
-                            println!("  \x1b[31mFAIL\x1b[0m  {} — hash mismatch ({})", name, size_str);
+                            println!(
+                                "  \x1b[31mFAIL\x1b[0m  {} — hash mismatch ({})",
+                                name, size_str
+                            );
                         } else {
                             println!("  FAIL  {} — hash mismatch ({})", name, size_str);
                         }

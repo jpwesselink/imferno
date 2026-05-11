@@ -586,10 +586,7 @@ pub fn format_report(report: &ImfReport, color: bool) -> String {
             let location = if let Some(ref c) = issue.location.cpl_id {
                 let s = c.to_string();
                 let short_id = &s[..s.len().min(8)];
-                let detail = match (
-                    &issue.location.cpl_filename,
-                    &issue.location.cpl_title,
-                ) {
+                let detail = match (&issue.location.cpl_filename, &issue.location.cpl_title) {
                     (Some(fname), Some(title)) => {
                         format!(" [CPL:{} {} {}]", short_id, fname, title)
                     }
@@ -940,10 +937,7 @@ fn format_issues_text(out: &mut String, v: &ValidationReport, color: bool) {
         let location = if let Some(ref c) = issue.location.cpl_id {
             let s = c.to_string();
             let short_id = &s[..s.len().min(8)];
-            let detail = match (
-                &issue.location.cpl_filename,
-                &issue.location.cpl_title,
-            ) {
+            let detail = match (&issue.location.cpl_filename, &issue.location.cpl_title) {
                 (Some(fname), Some(title)) => {
                     format!(" [CPL:{} {} {}]", short_id, fname, title)
                 }

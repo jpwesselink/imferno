@@ -13,6 +13,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 use imferno_core::diagnostics::codes::ValidationCode;
+#[allow(deprecated)]
 use imferno_core::package::{
     build_report, format_report, validate as validate_package, ImfReport, Imferno, RulesConfig,
     ValidationOptions,
@@ -85,9 +86,10 @@ pub fn list_rules_js() -> serde_json::Value {
 }
 
 // =============================================================================
-// Build report (string-based) — same API as @imferno/wasm
+// Build report (string-based) — DEPRECATED, use validate() instead
 // =============================================================================
 
+#[allow(deprecated)]
 #[napi(js_name = "buildReport")]
 pub fn build_report_js(
     files: HashMap<String, String>,
@@ -114,9 +116,10 @@ pub fn build_report_js(
 }
 
 // =============================================================================
-// Build report (path-based) — NAPI-only
+// Build report (path-based) — DEPRECATED, use validatePath() instead
 // =============================================================================
 
+#[allow(deprecated)]
 #[napi(js_name = "buildReportFromPath")]
 pub fn build_report_from_path(
     path: String,
@@ -151,6 +154,7 @@ pub fn build_report_from_path(
 // Format report — pretty-print an ImfReport as a human-readable string
 // =============================================================================
 
+#[allow(deprecated)]
 #[napi(js_name = "formatReport")]
 pub fn format_report_js(report: serde_json::Value) -> napi::Result<String> {
     let imf_report: ImfReport = serde_json::from_value(report)
@@ -244,6 +248,7 @@ pub fn validate_path_js(
 // URI-based variants (file://, s3://, bare paths)
 // =============================================================================
 
+#[allow(deprecated)]
 #[napi(js_name = "buildReportFromUri")]
 pub fn build_report_from_uri(
     uri: String,

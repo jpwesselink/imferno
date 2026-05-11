@@ -1,7 +1,12 @@
-//! Unified IMF report — the single JSON document for UI consumption
+//! Unified IMF report — the single JSON document for UI consumption.
 //!
 //! Combines package metadata, validation, and structural analysis into one structure.
 //! Also provides `format_report()` for pretty-printing to a terminal.
+//!
+//! Note: `ImfReport`, `build_report()`, and `format_report()` are deprecated in
+//! favour of `ValidationResult` / `validate()` / `format_validation_result()`.
+
+#![allow(deprecated)] // This module defines and uses the deprecated types internally.
 
 use crate::assetmap::ImfUuid;
 use crate::cpl::{EssenceDescriptor, SequenceAccess};
@@ -16,6 +21,11 @@ use ts_rs::TS;
 
 // ── Report structs ───────────────────────────────────────────────────────────
 
+#[deprecated(
+    since = "2.3.0",
+    note = "Use `ValidationResult` from `validate()` / `Imferno::parse_and_validate()` instead. \
+            ImfReport is a lossy summary that drops essence descriptors, locales, and other parsed data."
+)]
 #[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -343,7 +353,12 @@ fn collect_track_file_ids(cpl: &crate::cpl::CompositionPlaylist) -> Vec<String> 
     ids
 }
 
-/// Build a full ImfReport from a package, with optional ancestor package for supplemental IMPs
+/// Build a full ImfReport from a package, with optional ancestor package for supplemental IMPs.
+#[deprecated(
+    since = "2.3.0",
+    note = "Use `validate()` or `Imferno::parse_and_validate()` instead, which return a \
+            `ValidationResult` with the full parsed package."
+)]
 pub fn build_report(
     package: &super::Imferno,
     options: &super::ValidationOptions,
@@ -491,6 +506,10 @@ fn c_dim(s: &str, on: bool) -> String {
 // ── format_report ────────────────────────────────────────────────────────────
 
 /// Render an `ImfReport` as a human-readable, optionally ANSI-coloured string.
+#[deprecated(
+    since = "2.3.0",
+    note = "Use `format_validation_result()` instead, which renders the full `ValidationResult`."
+)]
 pub fn format_report(report: &ImfReport, color: bool) -> String {
     let mut out = String::new();
     let pkg = &report.package;

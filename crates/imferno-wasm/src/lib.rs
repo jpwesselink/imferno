@@ -7,6 +7,7 @@
 //! - [`build_report`] — parse and validate an IMF package from in-memory files.
 //! - [`format_report`] — render an [`ImfReport`] as a human-readable string.
 
+#[allow(deprecated)]
 use imferno_core::package::{
     build_report, format_report, validate as validate_package, ImfReport, Imferno, RulesConfig,
     ValidationOptions,
@@ -55,6 +56,7 @@ pub fn get_version() -> String {
 /// - `coreSpec`: `"auto"` | `"v2013"` | `"v2016"` | `"v2020"`
 /// - `app2eSpec`: `"auto"` | `"none"` | `"v2020"` | `"v2021"` | `"v2023"`
 /// - `rules`: ESLint-style rules configuration object
+#[allow(deprecated)]
 #[wasm_bindgen(js_name = "buildReport")]
 pub fn build_report_js(
     #[wasm_bindgen(js_name = "files")] files_js: JsValue,
@@ -88,6 +90,7 @@ pub fn build_report_js(
 ///
 /// Pass the object returned by `buildReport()` (or any valid `ImfReport` JSON).
 /// Returns the same output as `imferno report` on the CLI.
+#[allow(deprecated)]
 #[wasm_bindgen(js_name = "formatReport")]
 pub fn format_report_js(
     #[wasm_bindgen(js_name = "report")] report_js: JsValue,

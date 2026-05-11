@@ -17,6 +17,7 @@ use thiserror::Error;
 pub mod codes;
 pub mod report;
 
+#[allow(deprecated)]
 pub use self::report::{
     build_report, format_report, format_validation_result, FormatOptions, ImfReport, ReportFormat,
 };
@@ -4026,6 +4027,7 @@ mod tests {
         );
     }
 
+    #[allow(deprecated)]
     #[test]
     fn sequence_language_extracted_from_descriptors() {
         let test_path = test_data("MERIDIAN_Netflix_Photon_161006");

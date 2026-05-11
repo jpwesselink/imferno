@@ -5,12 +5,12 @@
 <title>Validation - imferno</title>
 <script src="/imferno/beta/version-switcher.js" defer>
   <script>{;const saved = localStorage.getItem('rspress-theme-appearance');const preferDark = window.matchMedia('(prefers-color-scheme: dark)').matches;const isDark = !saved || saved === 'auto' ? preferDark : saved === 'dark';document.documentElement.classList.toggle('dark', isDark);document.documentElement.classList.toggle('rp-dark', isDark);document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';}</script>
-<link href="/imferno/beta/static/css/styles.b55360dd05.css" rel="stylesheet">
+<link href="/imferno/beta/static/css/styles.ad0ef275a7.css" rel="stylesheet">
 <script defer src="/imferno/beta/static/js/styles.323d5a3306.js"></script>
 <script defer src="/imferno/beta/static/js/lib-react.9857043546.js"></script>
 <script defer src="/imferno/beta/static/js/lib-router.4b692fc036.js"></script>
 <script defer src="/imferno/beta/static/js/401.2efd370486.js"></script>
-<script defer src="/imferno/beta/static/js/index.308131c23f.js"></script>
+<script defer src="/imferno/beta/static/js/index.83dcd5d0fb.js"></script>
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="generator" content="Rspress v2.0.11">
 <meta property="og:type" content="website">
@@ -30,7 +30,7 @@
 <li>CPL structure conforms to ST 2067-2 and ST 2067-3 Core Constraints</li>
 </ul>
 <p><strong>Application profile validation</strong> — ST 2067-21 App2E, ST 2067-201 IAB, ST 2067-202 ISXD</p>
-<p><strong>Hash validation</strong> — SHA-1/SHA-256 against PKL declarations (slow; not available in WASM)</p>
+<p><strong>Hash validation</strong> — SHA-1/SHA-256 against PKL declarations (on by default; use <code>--skip-hashes</code> to opt out; not available in WASM)</p>
 <h2 class="rp-toc-include" id="compliance-flags"><a href="#compliance-flags" class="rp-header-anchor rp-link" aria-hidden="true">#</a>Compliance flags</h2>
 <ul>
 <li><code>is_compliant</code> — <code>false</code> when <code>critical</code> or <code>errors</code> is non-empty</li>
@@ -38,11 +38,11 @@
 </ul>
 <h2 class="rp-toc-include" id="usage"><a href="#usage" class="rp-header-anchor rp-link" aria-hidden="true">#</a>Usage</h2>
 <h3 class="rp-toc-include" id="cli"><a href="#cli" class="rp-header-anchor rp-link" aria-hidden="true">#</a>CLI</h3>
-<div class="rp-codeblock language-sh"><div class="rp-codeblock__content"><div class="rp-codeblock__content__scroll-container rp-scrollbar rp-scrollbar--always"><pre class="shiki css-variables" style="background-color:var(--shiki-background);color:var(--shiki-foreground)" tabindex="0" data-lang="sh"><code><span class="line"><span style="color:var(--shiki-token-comment)"># Structural validation, human-readable</span></span>
+<div class="rp-codeblock language-sh"><div class="rp-codeblock__content"><div class="rp-codeblock__content__scroll-container rp-scrollbar rp-scrollbar--always"><pre class="shiki css-variables" style="background-color:var(--shiki-background);color:var(--shiki-foreground)" tabindex="0" data-lang="sh"><code><span class="line"><span style="color:var(--shiki-token-comment)"># Validate (hashes verified by default)</span></span>
 <span class="line"><span style="color:var(--shiki-token-function)">imferno</span><span style="color:var(--shiki-token-string)"> validate</span><span style="color:var(--shiki-token-string)"> /path/to/your.imp</span></span>
 <span class="line"></span>
-<span class="line"><span style="color:var(--shiki-token-comment)"># With hash verification</span></span>
-<span class="line"><span style="color:var(--shiki-token-function)">imferno</span><span style="color:var(--shiki-token-string)"> validate</span><span style="color:var(--shiki-token-string)"> /path/to/your.imp</span><span style="color:var(--shiki-token-string)"> --verify-hashes</span></span>
+<span class="line"><span style="color:var(--shiki-token-comment)"># Skip hash verification for faster validation</span></span>
+<span class="line"><span style="color:var(--shiki-token-function)">imferno</span><span style="color:var(--shiki-token-string)"> validate</span><span style="color:var(--shiki-token-string)"> /path/to/your.imp</span><span style="color:var(--shiki-token-string)"> --skip-hashes</span></span>
 <span class="line"></span>
 <span class="line"><span style="color:var(--shiki-token-comment)"># JSON output (full ValidationReport)</span></span>
 <span class="line"><span style="color:var(--shiki-token-function)">imferno</span><span style="color:var(--shiki-token-string)"> validate</span><span style="color:var(--shiki-token-string)"> /path/to/your.imp</span><span style="color:var(--shiki-token-string)"> --format</span><span style="color:var(--shiki-token-string)"> json</span></span>

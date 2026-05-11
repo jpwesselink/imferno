@@ -4027,6 +4027,7 @@ mod tests {
         );
     }
 
+    #[allow(deprecated)]
     #[test]
     fn sequence_language_extracted_from_descriptors() {
         let test_path = test_data("MERIDIAN_Netflix_Photon_161006");

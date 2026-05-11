@@ -12,12 +12,19 @@
 
       const links = [];
 
-      // Stable releases - only show major versions (vX.0.0)
+      // Stable releases - one button per major, showing the highest version
       if (versions.stable?.length) {
-        const majors = versions.stable.filter((s) => {
+        const byMajor = {};
+        for (const s of versions.stable) {
           const m = s.version.match(/^v?(\d+)\.(\d+)\.(\d+)$/);
-          return m && m[2] === "0" && m[3] === "0";
-        });
+          if (!m) continue;
+          const major = m[1];
+          const num = Number(m[1]) * 1e6 + Number(m[2]) * 1e3 + Number(m[3]);
+          if (!byMajor[major] || num > byMajor[major].num) {
+            byMajor[major] = { ...s, num };
+          }
+        }
+        const majors = Object.values(byMajor).sort((a, b) => b.num - a.num);
         if (majors.length) {
           links.push(`<span class="label">Stable:</span>`);
           links.push(

@@ -236,7 +236,22 @@ export default function IMFPackageViewer({data}: {data: any}) {
           <div className={`text-[11px] font-semibold uppercase tracking-wider mb-2 ${v.valid?"text-green-600":"text-red-600"}`}>Validated by Imferno</div>
           {v.valid?<p className="text-xs text-zinc-500 leading-relaxed">Package structure validated successfully.</p>:(
             <div className="flex flex-col gap-1.5">
-              {(v.issues||[]).map((issue: any,i: number)=><div key={i} className="flex items-start gap-2 text-xs text-red-600 leading-relaxed"><span className="flex-shrink-0 mt-0.5 opacity-60"><I.AlertTriangle/></span><span>{typeof issue==="string"?issue:issue.message||JSON.stringify(issue)}</span></div>)}
+              {(v.issues||[]).map((issue: any,i: number)=>{
+                const sev = (issue.severity||"").toLowerCase();
+                const sevColor = sev === "critical" || sev === "error" ? "text-red-600" : sev === "warning" ? "text-amber-600" : "text-zinc-400";
+                const sevLabel = sev === "critical" ? "critical" : sev === "error" ? "error" : sev === "warning" ? "warning" : "info";
+                const SevIcon = sev === "critical" || sev === "error" ? I.AlertTriangle : sev === "warning" ? I.AlertTriangle : I.Check;
+                const cplShort = issue.cplId ? issue.cplId.substring(0, 8) : null;
+                return <div key={i} className="flex items-start gap-2 text-xs leading-relaxed">
+                  <span className={`flex-shrink-0 mt-0.5 opacity-60 ${sevColor}`}><SevIcon/></span>
+                  <div>
+                    <span className={`font-semibold ${sevColor}`}>{sevLabel}</span>
+                    {issue.code && <span className="font-mono text-zinc-500 ml-1.5">{issue.code}</span>}
+                    {cplShort && <span className="text-zinc-400 ml-1.5">[CPL:{cplShort}]</span>}
+                    <div className="text-zinc-600 mt-0.5">{typeof issue==="string"?issue:issue.message||JSON.stringify(issue)}</div>
+                  </div>
+                </div>;
+              })}
             </div>
           )}
         </div>

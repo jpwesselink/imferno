@@ -55,10 +55,6 @@
   },
   "prs": [
     {
-      "label": "#45 feat/napi-list-rules",
-      "path": "/pr-45/"
-    },
-    {
       "label": "#46 feat/cli-hash-default-and-cpl-location",
       "path": "/pr-46/"
     }

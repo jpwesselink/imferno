@@ -57,6 +57,11 @@
     "label": "beta (2.3.1)",
     "path": "/beta/"
   },
-  "prs": [],
+  "prs": [
+    {
+      "label": "#49 fix/playground-issue-display",
+      "path": "/pr-49/"
+    }
+  ],
   "latest": "/v2.3.0/"
 }

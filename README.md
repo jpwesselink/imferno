@@ -55,47 +55,42 @@ cargo add imferno-core
 ### CLI
 
 ```bash
-# Validate an IMF package
+# Validate an IMF package (hashes verified by default)
 imferno validate ./my-imp
 
-# Export a full report (JSON)
-imferno export ./my-imp
+# JSON output
+imferno validate ./my-imp --format json
 
-# Inspect package structure
-imferno inspect ./my-imp
+# Skip hash verification for faster validation
+imferno validate ./my-imp --skip-hashes
+
+# Override rule severity
+imferno validate ./my-imp --rule SegmentDuration=off
 ```
 
 ### Node.js (native bindings)
 
 ```javascript
-const { validatePath } = require('@imferno/node');
+import { validatePath, formatReport } from '@imferno/node';
 
-const { report, cpls, assetMap } = validatePath('./my-imp');
+const result = validatePath('./my-imp');
+console.log(result.validation.is_compliant);
+console.log(formatReport(result));
 ```
 
 ### Browser / WASM
 
 ```javascript
-import { validate } from '@imferno/wasm';
+import { validate, formatReport } from '@imferno/wasm';
 
-const { report, cpls, assetMap } = await validate({
+const result = await validate({
   'ASSETMAP.xml': assetmapXml,
   'PKL_abc.xml': pklXml,
   'CPL_def.xml': cplXml,
 });
-```
 
-### JSON Schema validation
-
-```javascript
-import Ajv from 'ajv';
-import { imfReport } from '@imferno/schema';
-
-const ajv = new Ajv();
-const validate = ajv.compile(imfReport);
-
-const data = JSON.parse(imfernoExportOutput);
-if (!validate(data)) console.error(validate.errors);
+console.log(result.validation.is_compliant);
+console.log(formatReport(result));
 ```
 
 ### Rust
@@ -104,9 +99,9 @@ if (!validate(data)) console.error(validate.errors);
 use imferno_core::package::{read_dir, Imferno, ValidationOptions};
 
 let files = read_dir("./my-imp")?;
-let report = Imferno::parse_and_validate(files, &ValidationOptions::default());
+let result = Imferno::parse_and_validate(files, &ValidationOptions::default());
 
-for issue in &report.errors {
+for issue in &result.errors {
     eprintln!("[{}] {}", issue.code, issue.message);
 }
 ```
@@ -144,7 +139,7 @@ The CLI accepts the same URI forms:
 ```bash
 imferno validate /path/to/imp
 imferno validate file:///path/to/imp
-imferno --features aws-s3 validate s3://my-bucket/path/to/imp/
+imferno validate s3://my-bucket/path/to/imp/
 ```
 
 ## Standards coverage

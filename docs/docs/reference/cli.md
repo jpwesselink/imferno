@@ -1,6 +1,6 @@
 ---
 title: CLI Reference
-description: "imferno CLI — validate, export, and report on IMF packages."
+description: "imferno CLI — validate IMF packages against SMPTE ST 2067."
 ---
 
 ## Install
@@ -42,8 +42,9 @@ imferno validate s3://my-bucket/path/to/imp/
 
 | Option | Description |
 |--------|-------------|
-| `--verify-hashes` | Verify SHA-1/SHA-256 hashes against PKL (parallel) |
+| `--skip-hashes` | Skip SHA-1/SHA-256 hash verification (hashes are verified by default) |
 | `--hash-concurrency <N>` | Number of files to hash in parallel (default: 8) |
+| `--rule <RULE=SEVERITY>` | Inline rule severity override (repeatable). Severity: `off`, `info`, `warn`, `error`, `critical` |
 | `--format <FORMAT>` | Output format: `summary` (default), `markdown`, `csv`, `json` |
 | `--core-spec <SPEC>` | Core spec version: `auto` (default), `v2013`, `v2016`, `v2020` |
 | `--app2e-spec <SPEC>` | App profile: `auto` (default), `none`, `v2020`, `v2021`, `v2023` |
@@ -66,11 +67,14 @@ imferno validate ./my-imp --format csv
 # JSON — full ValidationResult (package + validation)
 imferno validate ./my-imp --format json --exit-zero
 
-# Full validation with hash verification (8 files in parallel)
-imferno validate ./my-imp --verify-hashes
+# Skip hash verification for faster validation
+imferno validate ./my-imp --skip-hashes
 
 # Hash with 16 concurrent files (useful for network storage)
-imferno validate ./my-imp --verify-hashes --hash-concurrency 16
+imferno validate ./my-imp --hash-concurrency 16
+
+# Override rule severity inline
+imferno validate ./my-imp --rule SegmentDuration=off --rule FileNotFound=critical
 
 # Force specific spec versions
 imferno validate ./my-imp --core-spec v2020 --app2e-spec v2023

@@ -81,7 +81,7 @@ AWS_REGION=auto
 
 Only the IMF manifest XMLs (`ASSETMAP.xml`, `PKL_*.xml`, `CPL_*.xml`,
 `VOLINDEX.xml`, etc.) are fetched over the network. MXF essence files are
-**not** downloaded — IMF validation in v1.0 is XML-only on cloud backends.
+**not** downloaded.
 
 ### Options
 

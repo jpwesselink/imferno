@@ -16,7 +16,7 @@ Validation returns a `ValidationReport` — a structured result with issues sort
 
 **Application profile validation** — ST 2067-21 App2E, ST 2067-201 IAB, ST 2067-202 ISXD
 
-**Hash validation** — SHA-1/SHA-256 against PKL declarations (slow; not available in WASM)
+**Hash validation** — SHA-1/SHA-256 against PKL declarations (on by default; use `--skip-hashes` to opt out; not available in WASM)
 
 ## Compliance flags
 
@@ -28,11 +28,11 @@ Validation returns a `ValidationReport` — a structured result with issues sort
 ### CLI
 
 ```sh
-# Structural validation, human-readable
+# Validate (hashes verified by default)
 imferno validate /path/to/your.imp
 
-# With hash verification
-imferno validate /path/to/your.imp --verify-hashes
+# Skip hash verification for faster validation
+imferno validate /path/to/your.imp --skip-hashes
 
 # JSON output (full ValidationReport)
 imferno validate /path/to/your.imp --format json

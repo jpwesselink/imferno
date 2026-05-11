@@ -20,14 +20,14 @@ imferno validate /path/to/your.imp
 # JSON output
 imferno validate /path/to/your.imp --format json
 
-# Verify SHA-1 hashes against PKL
-imferno validate /path/to/your.imp --verify-hashes
+# Skip hash verification (hashes are verified by default)
+imferno validate /path/to/your.imp --skip-hashes
+
+# Override rule severity inline
+imferno validate /path/to/your.imp --rule SegmentDuration=off
 
 # Custom rules config
 imferno validate /path/to/your.imp --rules-config rules.json
-
-# Export a full report (JSON)
-imferno export /path/to/your.imp
 ```
 
 See the [CLI Reference](/reference/cli/) for all commands and options.

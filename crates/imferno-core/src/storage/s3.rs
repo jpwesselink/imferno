@@ -4,6 +4,7 @@
 //! tokio runtime. Construction is async; the resulting handle is sync.
 
 use super::{Entry, Scheme, Storage, StorageError, StorageUri};
+use aws_sdk_s3::config::{Credentials, Region};
 use aws_sdk_s3::Client;
 use std::sync::Arc;
 use tokio::runtime::Runtime;
@@ -33,6 +34,57 @@ impl S3Storage {
         let client = runtime.block_on(async {
             let cfg = aws_config::load_defaults(aws_config::BehaviorVersion::latest()).await;
             Client::new(&cfg)
+        });
+        Ok(Self {
+            client,
+            runtime: Arc::new(runtime),
+        })
+    }
+
+    /// Construct from explicit static credentials.
+    ///
+    /// Used when the caller (typically Studio) has already resolved
+    /// per-source credentials — SSO STS triples, customer-supplied
+    /// access keys, or assume-role outputs — and wants the engine to
+    /// authenticate with those, not whatever happens to be in the
+    /// environment. `region` and `endpoint` are optional; supply
+    /// `endpoint` for non-AWS S3 (MinIO, R2, Wasabi).
+    pub fn from_explicit_creds(
+        access_key_id: String,
+        secret_access_key: String,
+        session_token: Option<String>,
+        region: Option<String>,
+        endpoint: Option<String>,
+    ) -> Result<Self, StorageError> {
+        let runtime = Runtime::new()
+            .map_err(|e| StorageError::Backend(format!("failed to start tokio runtime: {e}")))?;
+        let creds = Credentials::new(
+            access_key_id,
+            secret_access_key,
+            session_token,
+            None,
+            "imferno-explicit",
+        );
+        let region_for_default = region.clone();
+        let endpoint_for_path_style = endpoint.is_some();
+        let client = runtime.block_on(async move {
+            let mut loader = aws_config::defaults(aws_config::BehaviorVersion::latest())
+                .credentials_provider(creds);
+            if let Some(r) = region_for_default {
+                loader = loader.region(Region::new(r));
+            }
+            if let Some(ep) = endpoint {
+                loader = loader.endpoint_url(ep);
+            }
+            let cfg = loader.load().await;
+            // Force path-style addressing only when an endpoint override
+            // is set (MinIO / R2 / fake-gcs-style hosts that don't
+            // understand virtual-host bucket DNS). Real AWS S3 stays on
+            // virtual-host addressing for correct regional routing.
+            let s3_cfg = aws_sdk_s3::config::Builder::from(&cfg)
+                .force_path_style(endpoint_for_path_style)
+                .build();
+            Client::from_conf(s3_cfg)
         });
         Ok(Self {
             client,

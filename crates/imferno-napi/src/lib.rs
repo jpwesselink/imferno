@@ -196,7 +196,7 @@ pub fn build_report_from_uri(
     options: Option<serde_json::Value>,
 ) -> napi::Result<serde_json::Value> {
     let opts = parse_options(options.as_ref())?;
-    let files = read_uri(&uri)?;
+    let files = read_uri(&uri, opts.credentials.as_ref())?;
 
     let validation_options = ValidationOptions {
         rules: opts.rules,
@@ -222,7 +222,7 @@ pub fn validate_uri_js(
     options: Option<serde_json::Value>,
 ) -> napi::Result<serde_json::Value> {
     let opts = parse_options(options.as_ref())?;
-    let files = read_uri(&uri)?;
+    let files = read_uri(&uri, opts.credentials.as_ref())?;
 
     let validation_options = ValidationOptions {
         rules: opts.rules,
@@ -237,7 +237,10 @@ pub fn validate_uri_js(
         .map_err(|e| napi::Error::from_reason(format!("Serialization error: {}", e)))
 }
 
-fn read_uri(uri: &str) -> napi::Result<HashMap<String, String>> {
+fn read_uri(
+    uri: &str,
+    credentials: Option<&S3CredentialsInput>,
+) -> napi::Result<HashMap<String, String>> {
     use imferno_core::package::read_xml_files;
     use imferno_core::storage::fs::FsStorage;
     use imferno_core::storage::{Scheme, StorageUri};
@@ -247,6 +250,8 @@ fn read_uri(uri: &str) -> napi::Result<HashMap<String, String>> {
 
     match parsed.scheme {
         Scheme::File => {
+            // credentials are silently ignored for fs:// URIs.
+            let _ = credentials;
             let storage = FsStorage::new();
             read_xml_files(&parsed, &storage)
                 .map_err(|e| napi::Error::from_reason(format!("Failed to read URI: {}", e)))
@@ -254,13 +259,24 @@ fn read_uri(uri: &str) -> napi::Result<HashMap<String, String>> {
         Scheme::S3 => {
             #[cfg(feature = "aws-s3")]
             {
-                let storage = imferno_core::storage::s3::S3Storage::from_default()
-                    .map_err(|e| napi::Error::from_reason(format!("S3 init: {}", e)))?;
+                let storage = match credentials {
+                    Some(c) => imferno_core::storage::s3::S3Storage::from_explicit_creds(
+                        c.access_key_id.clone(),
+                        c.secret_access_key.clone(),
+                        c.session_token.clone(),
+                        c.region.clone(),
+                        c.endpoint.clone(),
+                    )
+                    .map_err(|e| napi::Error::from_reason(format!("S3 init: {}", e)))?,
+                    None => imferno_core::storage::s3::S3Storage::from_default()
+                        .map_err(|e| napi::Error::from_reason(format!("S3 init: {}", e)))?,
+                };
                 read_xml_files(&parsed, &storage)
                     .map_err(|e| napi::Error::from_reason(format!("Failed to read S3 URI: {}", e)))
             }
             #[cfg(not(feature = "aws-s3"))]
             {
+                let _ = credentials;
                 Err(napi::Error::from_reason(
                     "s3:// URIs require building imferno-napi with the aws-s3 feature".to_string(),
                 ))
@@ -278,6 +294,17 @@ struct ParsedOptions {
     core_spec: Option<CoreSpecTarget>,
     app_specs: Option<Vec<AppSpecTarget>>,
     skip_disk_checks: bool,
+    credentials: Option<S3CredentialsInput>,
+}
+
+#[derive(Clone, Debug)]
+#[cfg_attr(not(feature = "aws-s3"), allow(dead_code))]
+struct S3CredentialsInput {
+    access_key_id: String,
+    secret_access_key: String,
+    session_token: Option<String>,
+    region: Option<String>,
+    endpoint: Option<String>,
 }
 
 fn parse_options(options: Option<&serde_json::Value>) -> napi::Result<ParsedOptions> {
@@ -287,6 +314,7 @@ fn parse_options(options: Option<&serde_json::Value>) -> napi::Result<ParsedOpti
             core_spec: None,
             app_specs: None,
             skip_disk_checks: false,
+            credentials: None,
         });
     };
 
@@ -315,10 +343,53 @@ fn parse_options(options: Option<&serde_json::Value>) -> napi::Result<ParsedOpti
         .and_then(|v| v.as_bool())
         .unwrap_or(false);
 
+    // Optional explicit S3 credentials (skipped here for non-s3 URIs;
+    // read_uri ignores the field unless the scheme is s3).
+    let credentials = match opts.get("credentials") {
+        None => None,
+        Some(v) if v.is_null() => None,
+        Some(v) => Some(parse_s3_credentials(v)?),
+    };
+
     Ok(ParsedOptions {
         rules,
         core_spec,
         app_specs,
         skip_disk_checks,
+        credentials,
+    })
+}
+
+fn parse_s3_credentials(value: &serde_json::Value) -> napi::Result<S3CredentialsInput> {
+    let access_key_id = value
+        .get("accessKeyId")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| napi::Error::from_reason("credentials.accessKeyId is required".to_string()))?
+        .to_string();
+    let secret_access_key = value
+        .get("secretAccessKey")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| {
+            napi::Error::from_reason("credentials.secretAccessKey is required".to_string())
+        })?
+        .to_string();
+    let session_token = value
+        .get("sessionToken")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+    let region = value
+        .get("region")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+    let endpoint = value
+        .get("endpoint")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+    Ok(S3CredentialsInput {
+        access_key_id,
+        secret_access_key,
+        session_token,
+        region,
+        endpoint,
     })
 }

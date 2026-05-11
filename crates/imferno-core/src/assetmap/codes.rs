@@ -27,7 +27,7 @@ use crate::diagnostics::{Category, Severity};
 
 /// Validation codes defined by SMPTE ST 2067-2:2020 for package-level checks
 /// (AssetMap, PKL, file integrity).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, strum::EnumIter)]
 pub enum St2067_2_2020 {
     /// AssetMap document is invalid or cannot be parsed.
     AssetMap,

@@ -1,6 +1,6 @@
 [package]
 name = "imferno-core"
-version = "2.2.0"
+version = "2.3.0"
 edition = "2021"
 description = "SMPTE ST 2067 IMF parser and validator"
 license = "MIT"
@@ -29,6 +29,7 @@ sha2         = { workspace = true }
 base64       = { workspace = true }
 chrono       = { workspace = true }
 url          = { workspace = true }
+strum        = { workspace = true }
 wasm-bindgen = { workspace = true, optional = true }
 ts-rs        = { version = "9.0",  optional = true }
 tsify        = { version = "0.4",  optional = true }

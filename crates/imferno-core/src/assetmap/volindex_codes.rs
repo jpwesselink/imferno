@@ -4,7 +4,7 @@ use crate::diagnostics::codes::ValidationCode;
 use crate::diagnostics::{Category, Severity};
 
 /// Validation codes defined by SMPTE ST 429-9:2014 (Volume Index & AssetMap).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, strum::EnumIter)]
 pub enum St429_9_2014 {
     /// No volume-index document found in the package root.
     VolindexMissing,

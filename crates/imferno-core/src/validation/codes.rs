@@ -18,7 +18,7 @@ macro_rules! impl_into_string {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// Validation codes defined by SMPTE ST 2067-21:2020 (Application Profile #2E).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, strum::EnumIter)]
 pub enum St2067_21_2020 {
     /// Application identifier in CPL ExtensionProperties does not match the expected App2E URI.
     AppIdMismatch,
@@ -60,7 +60,7 @@ impl_into_string!(St2067_21_2020);
 /// - Variants ending in `Unknown` check for unrecognized UL values (wrong value).
 /// - Variants starting with `Required` check for missing mandatory fields.
 /// - Plain variants (e.g. `ColorPrimaries`) check field presence at §6.2.1.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, strum::EnumIter)]
 pub enum St2067_21_2023 {
     // ── §5.2 Frame rates and resolutions ─────────────────────────────────────
     /// Frame rate is not in the permitted set for App2E.
@@ -535,7 +535,7 @@ impl_into_string!(St2067_21_2023);
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// Validation codes defined by SMPTE ST 2067-21:2025 (App2E, timed-text additions).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, strum::EnumIter)]
 pub enum St2067_21_2025 {
     /// Timed text track designated as Forced Narrative (FN) does not comply with §5.6.
     FNTimedText,

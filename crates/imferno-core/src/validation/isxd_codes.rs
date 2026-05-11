@@ -33,7 +33,7 @@ macro_rules! define_isxd_enum {
     ($name:ident, $prefix:literal) => {
         /// ISXD Plug-in validation codes, edition
         #[doc = $prefix]
-        #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, strum::EnumIter)]
         pub enum $name {
             /// ISXDDataEssenceDescriptor: ContainerConstraintsSubDescriptor shall be present (§5).
             SubDescriptorMissing,

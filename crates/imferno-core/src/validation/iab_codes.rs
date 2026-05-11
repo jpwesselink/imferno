@@ -71,7 +71,7 @@ macro_rules! define_iab_enum {
     ($name:ident, $prefix:literal) => {
         /// IAB Level 0 Plug-in validation codes, edition
         #[doc = $prefix]
-        #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, strum::EnumIter)]
         pub enum $name {
             /// IABEssenceDescriptor: Codec item shall not be present (§5.9).
             CodecForbidden,

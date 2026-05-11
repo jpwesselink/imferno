@@ -55,6 +55,7 @@ export const {
   validate,
   validatePath,
   validateUri,
+  listRules,
 } = nativeModule;
 
 export { codes } from "./codes.mjs";

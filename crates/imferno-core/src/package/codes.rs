@@ -21,7 +21,7 @@ use crate::diagnostics::{Category, Severity};
 /// These are not normative violations — they reflect structural observations
 /// that the tool surfaces as informational findings.  Code strings use the
 /// `IMFERNO:` namespace prefix to distinguish them from spec codes.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, strum::EnumIter)]
 pub enum ImfernoCode {
     /// An asset is present in the AssetMap but has no CPL Virtual Track
     /// reference and no SCM declaration.  Likely a sidecar essence (e.g.

@@ -43,7 +43,7 @@ pub enum St2067_3Code {
 macro_rules! define_st2067_3_enum {
     ($name:ident, $prefix:literal) => {
         #[allow(non_camel_case_types)]
-        #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, strum::EnumIter)]
         pub enum $name {
             ContentKindUnknown,
             SourceEncodingNoEssenceDescriptorList,

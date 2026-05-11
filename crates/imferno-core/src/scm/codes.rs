@@ -4,7 +4,7 @@ use crate::diagnostics::codes::ValidationCode;
 use crate::diagnostics::{Category, Severity};
 
 /// Validation codes for ST 2067-9:2018 Sidecar Composition Map constraints.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, strum::EnumIter)]
 pub enum St2067_9_2018 {
     /// SCM XML document is not well-formed or cannot be parsed (§6.1).
     MalformedXml,

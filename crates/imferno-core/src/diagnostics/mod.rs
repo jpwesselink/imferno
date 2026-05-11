@@ -90,6 +90,12 @@ pub struct Location {
     pub file: Option<PathBuf>,
     /// CPL UUID if applicable
     pub cpl_id: Option<ImfUuid>,
+    /// CPL filename if applicable
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cpl_filename: Option<String>,
+    /// CPL content title if applicable
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cpl_title: Option<String>,
     /// Segment index (0-based)
     pub segment: Option<usize>,
     /// Sequence UUID if applicable
@@ -116,6 +122,16 @@ impl Location {
 
     pub fn with_cpl(mut self, cpl_id: ImfUuid) -> Self {
         self.cpl_id = Some(cpl_id);
+        self
+    }
+
+    pub fn with_cpl_filename(mut self, filename: impl Into<String>) -> Self {
+        self.cpl_filename = Some(filename.into());
+        self
+    }
+
+    pub fn with_cpl_title(mut self, title: impl Into<String>) -> Self {
+        self.cpl_title = Some(title.into());
         self
     }
 

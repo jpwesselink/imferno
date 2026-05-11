@@ -81,8 +81,9 @@ jobs:
             echo "version=${DISPATCH_VERSION#v}" >> "$GITHUB_OUTPUT"
             echo "docs_version=${DISPATCH_VERSION}" >> "$GITHUB_OUTPUT"
           else
+            NEXT_PATCH=$(echo "$CARGO_VERSION" | awk -F. '{print $1"."$2"."$3+1}')
             echo "subdir=beta" >> "$GITHUB_OUTPUT"
-            echo "label=beta (${CARGO_VERSION})" >> "$GITHUB_OUTPUT"
+            echo "label=beta (${NEXT_PATCH})" >> "$GITHUB_OUTPUT"
             echo "type=beta" >> "$GITHUB_OUTPUT"
             echo "docs_version=beta" >> "$GITHUB_OUTPUT"
           fi

@@ -12,32 +12,33 @@
 
       const links = [];
 
-      // Stable releases
+      // Stable releases - one button per major, showing the highest version
       if (versions.stable?.length) {
-        links.push(`<span class="label">Stable:</span>`);
-        links.push(
-          versions.stable
-            .map((s) => `<a href="${BASE}${s.path}">${s.version}</a>`)
-            .join('<span class="separator">·</span>')
-        );
+        const byMajor = {};
+        for (const s of versions.stable) {
+          const m = s.version.match(/^v?(\d+)\.(\d+)\.(\d+)$/);
+          if (!m) continue;
+          const major = m[1];
+          const num = Number(m[1]) * 1e6 + Number(m[2]) * 1e3 + Number(m[3]);
+          if (!byMajor[major] || num > byMajor[major].num) {
+            byMajor[major] = { ...s, num };
+          }
+        }
+        const majors = Object.values(byMajor).sort((a, b) => b.num - a.num);
+        if (majors.length) {
+          links.push(`<span class="label">Stable:</span>`);
+          links.push(
+            majors
+              .map((s) => `<a href="${BASE}${s.path}">${s.version}</a>`)
+              .join('<span class="separator">·</span>')
+          );
+        }
       }
 
       // Beta
       if (versions.beta) {
         links.push(
           `<span class="separator">|</span><span class="label">Beta:</span><a href="${BASE}${versions.beta.path}">${versions.beta.label}</a>`
-        );
-      }
-
-      // PRs
-      if (versions.prs?.length) {
-        links.push(
-          `<span class="separator">|</span><span class="label">PRs:</span>`
-        );
-        links.push(
-          versions.prs
-            .map((p) => `<a href="${BASE}${p.path}">${p.label}</a>`)
-            .join('<span class="separator">·</span>')
         );
       }
 

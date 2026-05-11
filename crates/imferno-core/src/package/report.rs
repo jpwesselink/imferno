@@ -585,7 +585,16 @@ pub fn format_report(report: &ImfReport, color: bool) -> String {
             };
             let location = if let Some(ref c) = issue.location.cpl_id {
                 let s = c.to_string();
-                c_dim(&format!(" [CPL:{}]", &s[..s.len().min(8)]), color)
+                let short_id = &s[..s.len().min(8)];
+                let detail = match (&issue.location.cpl_filename, &issue.location.cpl_title) {
+                    (Some(fname), Some(title)) => {
+                        format!(" [CPL:{} {} {}]", short_id, fname, title)
+                    }
+                    (Some(fname), None) => format!(" [CPL:{} {}]", short_id, fname),
+                    (None, Some(title)) => format!(" [CPL:{} {}]", short_id, title),
+                    (None, None) => format!(" [CPL:{}]", short_id),
+                };
+                c_dim(&detail, color)
             } else if let Some(ref f) = issue.location.file {
                 let fname = f.file_name().and_then(|n| n.to_str()).unwrap_or("?");
                 c_dim(&format!(" [{}]", fname), color)
@@ -927,7 +936,16 @@ fn format_issues_text(out: &mut String, v: &ValidationReport, color: bool) {
         };
         let location = if let Some(ref c) = issue.location.cpl_id {
             let s = c.to_string();
-            c_dim(&format!(" [CPL:{}]", &s[..s.len().min(8)]), color)
+            let short_id = &s[..s.len().min(8)];
+            let detail = match (&issue.location.cpl_filename, &issue.location.cpl_title) {
+                (Some(fname), Some(title)) => {
+                    format!(" [CPL:{} {} {}]", short_id, fname, title)
+                }
+                (Some(fname), None) => format!(" [CPL:{} {}]", short_id, fname),
+                (None, Some(title)) => format!(" [CPL:{} {}]", short_id, title),
+                (None, None) => format!(" [CPL:{}]", short_id),
+            };
+            c_dim(&detail, color)
         } else if let Some(ref f) = issue.location.file {
             let fname = f.file_name().and_then(|n| n.to_str()).unwrap_or("?");
             c_dim(&format!(" [{}]", fname), color)

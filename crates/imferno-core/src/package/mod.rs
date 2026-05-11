@@ -605,6 +605,7 @@ impl Imferno {
             |cpl| validate_cpl_with_registry(cpl, &registry),
             skip_disk,
         );
+        let report = self.enrich_cpl_locations(report);
         report.apply_rules(&options.rules)
     }
 
@@ -626,7 +627,54 @@ impl Imferno {
         let report = self.validate_package_with_hashes_with_cpl_validator(|cpl| {
             validate_cpl_with_registry(cpl, &registry)
         });
+        let report = self.enrich_cpl_locations(report);
         report.apply_rules(&options.rules)
+    }
+
+    /// Enrich all validation issues that have a `cpl_id` with the CPL's
+    /// filename and content title. This is called once after validation so
+    /// that every issue gets human-readable CPL context regardless of where
+    /// it was emitted.
+    fn enrich_cpl_locations(&self, mut report: ValidationReport) -> ValidationReport {
+        // Build lookup: cpl_id -> (filename, title)
+        let mut cpl_info: std::collections::HashMap<ImfUuid, (Option<String>, String)> =
+            std::collections::HashMap::new();
+        for (uuid, cpl) in &self.composition_playlists {
+            let filename = self
+                .asset_paths
+                .get(uuid)
+                .and_then(|p| p.file_name())
+                .and_then(|n| n.to_str())
+                .map(|s| s.to_string());
+            cpl_info.insert(*uuid, (filename, cpl.content_title.to_string()));
+        }
+
+        let enrich = |issue: &mut ValidationIssue| {
+            if let Some(ref cpl_id) = issue.location.cpl_id {
+                if let Some((filename, title)) = cpl_info.get(cpl_id) {
+                    if issue.location.cpl_filename.is_none() {
+                        issue.location.cpl_filename = filename.clone();
+                    }
+                    if issue.location.cpl_title.is_none() {
+                        issue.location.cpl_title = Some(title.clone());
+                    }
+                }
+            }
+        };
+
+        for issue in &mut report.critical {
+            enrich(issue);
+        }
+        for issue in &mut report.errors {
+            enrich(issue);
+        }
+        for issue in &mut report.warnings {
+            enrich(issue);
+        }
+        for issue in &mut report.info {
+            enrich(issue);
+        }
+        report
     }
 
     /// Parse an IMF package from an in-memory filename→XML string map.

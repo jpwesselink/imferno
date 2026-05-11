@@ -83,9 +83,9 @@ enum Commands {
         #[arg(value_name = "PATH")]
         path: PathBuf,
 
-        /// Verify SHA-1/SHA-256 hashes of all assets against PKL
+        /// Skip SHA-1/SHA-256 hash verification of assets against PKL
         #[arg(long)]
-        verify_hashes: bool,
+        skip_hashes: bool,
 
         /// Number of files to hash in parallel (default: 8)
         #[arg(long, default_value = "8")]
@@ -171,7 +171,7 @@ async fn main() -> Result<()> {
     match cli.command {
         Commands::Validate {
             path,
-            verify_hashes,
+            skip_hashes,
             hash_concurrency,
             format,
             core_spec,
@@ -183,7 +183,7 @@ async fn main() -> Result<()> {
         } => {
             cmd_validate(
                 &path,
-                verify_hashes,
+                !skip_hashes,
                 hash_concurrency,
                 format,
                 core_spec,
@@ -341,10 +341,14 @@ async fn cmd_validate(
                 ]);
 
                 let bar_width = 20;
+                let name_width = 30;
 
                 let glow = chromakopia::animate::glow_effect(fire.clone());
-                let mut last_lines = 0;
+                // Lock the display line count once we see the first file.
+                // This prevents the display from jumping when new files register.
+                let mut locked_line_count: Option<usize> = None;
                 let mut frame: usize = 0;
+                let mut first_frame = true;
                 loop {
                     if s.load(std::sync::atomic::Ordering::Relaxed) {
                         break;
@@ -352,6 +356,27 @@ async fn cmd_validate(
                     frame += 1;
 
                     let snap = t.snapshot();
+                    if snap.is_empty() {
+                        tokio::time::sleep(std::time::Duration::from_millis(80)).await;
+                        continue;
+                    }
+
+                    // Lock line count on first non-empty snapshot.
+                    // 1 line for header + 1 per file.
+                    let total_lines = if let Some(n) = locked_line_count {
+                        n
+                    } else {
+                        // Wait one extra tick to let all files register
+                        if first_frame {
+                            first_frame = false;
+                            tokio::time::sleep(std::time::Duration::from_millis(80)).await;
+                            continue;
+                        }
+                        let n = 1 + snap.len();
+                        locked_line_count = Some(n);
+                        n
+                    };
+
                     let total_done: u64 = snap.iter().map(|(_, d, _, _)| *d).sum();
                     let total_size: u64 = snap.iter().map(|(_, _, s, _)| *s).sum();
                     let overall = if total_size > 0 {
@@ -362,8 +387,8 @@ async fn cmd_validate(
                     let pct = (overall * 100.0).min(100.0) as usize;
 
                     // Move cursor up to overwrite previous output
-                    if last_lines > 0 {
-                        eprint!("\x1b[{}A", last_lines);
+                    if frame > 2 {
+                        eprint!("\x1b[{}A", total_lines);
                     }
 
                     // Overall progress line
@@ -374,10 +399,12 @@ async fn cmd_validate(
                         pct, done_mb, total_mb,
                     );
 
-                    // Per-file lines: fixed-width name | bar | size
-                    let mut lines = 1;
-                    let name_width = 30;
-                    for (name, bytes_done, size, status) in &snap {
+                    // Per-file lines with fixed-width output to prevent jitter
+                    let file_count = snap.len();
+                    for (i, (name, bytes_done, size, status)) in snap.iter().enumerate() {
+                        if i >= total_lines - 1 {
+                            break;
+                        }
                         let short_name = if name.chars().count() > name_width {
                             let half = (name_width - 1) / 2;
                             let start: String = name.chars().take(half).collect();
@@ -397,7 +424,7 @@ async fn cmd_validate(
                         } else {
                             format!("{:<width$}", name, width = name_width)
                         };
-                        let size_str = format_size(*size);
+                        let size_str = format!("{:>8}", format_size(*size));
                         let make_bar = |pct: f64, full_green: bool| -> String {
                             let filled = (pct * bar_width as f64) as usize;
                             let filled_str: String = "█".repeat(filled);
@@ -408,10 +435,8 @@ async fn cmd_validate(
                                     filled_str, empty_str
                                 )
                             } else if filled > 0 {
-                                // Reverse → glow → reverse: glow moves right
                                 let rev: String = filled_str.chars().rev().collect();
                                 let glowed = glow(&rev, frame);
-                                // Reverse the ANSI-colored string by splitting on reset
                                 let colored: String = {
                                     let parts: Vec<&str> = glowed.split("\x1b[0m").collect();
                                     let mut reversed = Vec::new();
@@ -428,17 +453,20 @@ async fn cmd_validate(
                                 format!("\x1b[38;5;238m{}\x1b[0m", empty_str)
                             }
                         };
+                        // Use fixed-width status labels so line length never changes
                         match status {
                             HashFileStatus::Done => {
+                                let bar = make_bar(1.0, true);
                                 eprintln!(
-                                    "\x1b[2K  \x1b[32m[ matched ]\x1b[0m {} {:>8}",
-                                    short_name, size_str,
+                                    "\x1b[2K  \x1b[32m✓\x1b[0m {} {} {}",
+                                    short_name, size_str, bar,
                                 );
                             }
                             HashFileStatus::Failed => {
+                                let bar = make_bar(1.0, false);
                                 eprintln!(
-                                    "\x1b[2K  \x1b[31m[mismatch]\x1b[0m {} {:>8}",
-                                    short_name, size_str,
+                                    "\x1b[2K  \x1b[31m✗\x1b[0m {} {} {}",
+                                    short_name, size_str, bar,
                                 );
                             }
                             HashFileStatus::Hashing => {
@@ -448,19 +476,23 @@ async fn cmd_validate(
                                     0.0
                                 };
                                 let bar = make_bar(file_pct, false);
-                                let done_str = format_size(*bytes_done);
                                 eprintln!(
-                                    "\x1b[2K  [ hashing ] {} {:>8} {} {}",
-                                    short_name, size_str, bar, done_str,
+                                    "\x1b[2K    {} {} {}",
+                                    short_name, size_str, bar,
                                 );
                             }
                             HashFileStatus::Waiting => {
-                                eprintln!("\x1b[2K  [  queued ] {} {:>8}", short_name, size_str,);
+                                eprintln!(
+                                    "\x1b[2K    {} {}",
+                                    short_name, size_str,
+                                );
                             }
                         }
-                        lines += 1;
                     }
-                    last_lines = lines;
+                    // Pad remaining lines if snapshot is smaller than locked count
+                    for _ in file_count..(total_lines - 1) {
+                        eprintln!("\x1b[2K");
+                    }
                     tokio::time::sleep(std::time::Duration::from_millis(80)).await;
                 }
             }))
@@ -497,8 +529,42 @@ async fn cmd_validate(
                 )
             })
             .collect();
-        if hash_errs.is_empty() && !matches!(format, OutputFormat::Json) {
-            println!("  ok  All PKL file hashes verified");
+        if !matches!(format, OutputFormat::Json) {
+            let snap = tracker.snapshot();
+            let total = snap.len();
+            let verified = snap
+                .iter()
+                .filter(|(_, _, _, s)| matches!(s, HashFileStatus::Done))
+                .count();
+            let failed = snap
+                .iter()
+                .filter(|(_, _, _, s)| matches!(s, HashFileStatus::Failed))
+                .count();
+            for (name, _, size, status) in &snap {
+                let size_str = format_size(*size);
+                match status {
+                    HashFileStatus::Done => {
+                        if color {
+                            println!("  \x1b[32mok\x1b[0m  {} — SHA-1 verified ({})", name, size_str);
+                        } else {
+                            println!("  ok  {} — SHA-1 verified ({})", name, size_str);
+                        }
+                    }
+                    HashFileStatus::Failed => {
+                        if color {
+                            println!("  \x1b[31mFAIL\x1b[0m  {} — hash mismatch ({})", name, size_str);
+                        } else {
+                            println!("  FAIL  {} — hash mismatch ({})", name, size_str);
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            if failed == 0 {
+                println!("  ok  {}/{} asset hashes verified", verified, total);
+            } else {
+                println!("  FAIL  {}/{} verified, {} failed", verified, total, failed);
+            }
         }
         for err in &hash_errs {
             result.validation.add(ValidationIssue::new(

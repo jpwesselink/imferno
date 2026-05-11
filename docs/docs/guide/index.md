@@ -48,7 +48,7 @@ NAPI gives you native speed without a child-process boundary.
 | Package | When to reach for it |
 |---|---|
 | [`imferno`](https://www.npmjs.com/package/imferno) (npm) | Drop-in CLI: `npm install -g imferno` ships prebuilt binaries for Linux/macOS/Windows on x64 + arm64. Perfect for CI and shell scripts that don't want a Rust toolchain. |
-| [`@imferno/node`](https://www.npmjs.com/package/@imferno/node) | Native NAPI bindings — call `validatePath` / `validateUri` / `buildReport` from JS/TS in-process. Filesystem access, hash verification, S3 input (with the `aws-s3` build). The fastest way to validate from a Node server. |
+| [`@imferno/node`](https://www.npmjs.com/package/@imferno/node) | Native NAPI bindings - call `validatePath` / `validateUri` / `validate` from JS/TS in-process. Filesystem access, hash verification, S3 input (with the `aws-s3` build). The fastest way to validate from a Node server. |
 
 ### Browser / WebAssembly
 

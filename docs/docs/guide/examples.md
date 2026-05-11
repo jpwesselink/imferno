@@ -16,12 +16,12 @@ npm install @imferno/node
 ### Code
 
 ```typescript
-import { buildReportFromPath, formatReport, codes } from "@imferno/node";
+import { validatePath, codes } from "@imferno/node";
 import { resolve } from "node:path";
 
 const impPath = resolve("./my-package");
 
-const report = buildReportFromPath(impPath, {
+const result = validatePath(impPath, {
   rules: {
     // Promote checksum mismatches to critical
     [codes.ST2067_2_2020.ChecksumMismatch]: "critical",
@@ -30,29 +30,29 @@ const report = buildReportFromPath(impPath, {
   },
 });
 
-console.log("Compliant:", report.validation.is_compliant);
-console.log("Errors:", report.validation.errors.length);
-console.log("Warnings:", report.validation.warnings.length);
+console.log("Compliant:", result.validation.is_compliant);
+console.log("Errors:", result.validation.errors.length);
+console.log("Warnings:", result.validation.warnings.length);
 
-for (const issue of report.validation.errors) {
+for (const issue of result.validation.errors) {
   console.log(`  ${issue.code}: ${issue.message}`);
 }
 
-// Pretty-print the full report
-console.log(formatReport(report));
+// Access the full parsed package
+console.log("CPLs:", Object.keys(result.package.compositionPlaylists).length);
 
-process.exit(report.validation.is_compliant ? 0 : 1);
+process.exit(result.validation.is_compliant ? 0 : 1);
 ```
 
 ### What's happening
 
-1. **`buildReportFromPath(path, options?)`** reads an IMF package directory from disk, parses all XML files, and runs validation against every applicable SMPTE spec.
+1. **`validatePath(path, options?)`** reads an IMF package directory from disk, parses all XML files, and runs validation against every applicable SMPTE spec.
 
-2. **`codes`** gives you typed constants for all 250+ validation rules — autocomplete in your editor, no typos.
+2. **`codes`** gives you typed constants for all 250+ validation rules - autocomplete in your editor, no typos.
 
-3. **`report.validation`** contains `is_compliant`, `errors`, `warnings`, `info`, and `critical` arrays. Each issue has a `code`, `message`, `severity`, and `location`.
+3. **`result.validation`** contains `is_compliant`, `errors`, `warnings`, `info`, and `critical` arrays. Each issue has a `code`, `message`, `severity`, and `location`.
 
-4. **`formatReport(report)`** renders the report as a human-readable string, the same output as `imferno report` on the CLI.
+4. **`result.package`** is the full parsed `Imferno` struct with composition playlists, packing lists, asset map, and all essence descriptors.
 
 5. The process exits with code 1 if the package is non-compliant, making it easy to use in CI pipelines.
 

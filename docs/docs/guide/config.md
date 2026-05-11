@@ -75,9 +75,9 @@ const result = await validate(files, {
 ### Node.js
 
 ```typescript
-import { buildReportFromPath, codes } from '@imferno/node';
+import { validatePath, codes } from '@imferno/node';
 
-const report = buildReportFromPath('./my-imp', {
+const result = validatePath('./my-imp', {
     rules: {
         [codes.ST2067_21_2023.AppIdMismatch]: 'error',
         [codes.Imferno.UnreferencedAsset]: 'off',
@@ -134,9 +134,9 @@ const result = await validate(files, {
 ### Node.js
 
 ```typescript
-import { buildReportFromPath } from '@imferno/node';
+import { validatePath } from '@imferno/node';
 
-const report = buildReportFromPath('./my-imp', {
+const result = validatePath('./my-imp', {
     coreSpec: 'v2020',
     app2eSpec: 'v2023',
 });

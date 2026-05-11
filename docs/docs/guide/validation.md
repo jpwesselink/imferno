@@ -93,16 +93,16 @@ See the [Rust API Reference](/reference/rust/) for the full API surface.
 ### WASM
 
 ```typescript
-import { buildReport } from '@imferno/wasm';
+import { validate } from '@imferno/wasm';
 
-const report = await buildReport({
+const result = await validate({
     'ASSETMAP.xml': assetmapXml,
     'PKL_abc.xml': pklXml,
     'CPL_def.xml': cplXml,
 });
 
-console.log(report.validation.is_compliant);
-console.log(report.validation.errors);
+console.log(result.validation.is_compliant);
+console.log(result.validation.errors);
 ```
 
 See the [WASM API Reference](/reference/wasm/) for the full API surface.
@@ -112,18 +112,18 @@ See the [WASM API Reference](/reference/wasm/) for the full API surface.
 #### Validate on disk
 
 ```javascript
-import { buildReportFromPath } from '@imferno/node';
+import { validatePath } from '@imferno/node';
 
-const report = buildReportFromPath('./my-imp');
-console.log(report.validation.is_compliant);
+const result = validatePath('./my-imp');
+console.log(result.validation.is_compliant);
 ```
 
 #### Validate from strings
 
 ```javascript
-import { buildReport } from '@imferno/node';
+import { validate } from '@imferno/node';
 
-const report = buildReport({
+const result = validate({
     'ASSETMAP.xml': assetmapXml,
     'PKL_abc.xml': pklXml,
     'CPL_def.xml': cplXml,

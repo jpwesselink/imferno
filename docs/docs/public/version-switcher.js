@@ -3,7 +3,7 @@
 
   async function init() {
     try {
-      const res = await fetch(`${BASE}/versions.json`);
+      const res = await fetch(`${BASE}/versions.json?_=${Date.now()}`, { cache: "no-store" });
       if (!res.ok) return;
       const versions = await res.json();
 

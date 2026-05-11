@@ -26,8 +26,11 @@ imferno validate s3://my-bucket/path/to/imp/
 # Validate with JSON output
 imferno validate ./my-imp --format json
 
-# Verify SHA-1 hashes against PKL
-imferno validate ./my-imp --verify-hashes
+# Skip hash verification (hashes are verified by default)
+imferno validate ./my-imp --skip-hashes
+
+# Override rule severity inline
+imferno validate ./my-imp --rule SegmentDuration=off --rule FileNotFound=critical
 
 # Use a custom rules config
 imferno validate ./my-imp --rules-config rules.json

@@ -27,7 +27,7 @@ import { buildReportFromPath } from "@imferno/node";
 
 const report = buildReportFromPath("./my-imp");
 
-console.log("Compliant:", report.validation.isCompliant);
+console.log("Compliant:", report.validation.is_compliant);
 console.log("Errors:", report.validation.errors.length);
 console.log("Warnings:", report.validation.warnings.length);
 console.log("CPLs:", report.package.cplCount);
@@ -101,9 +101,16 @@ console.log(getVersion()); // e.g. "2.0.0"
 
 | Function | Description |
 |----------|-------------|
-| `buildReport(files, options?)` | Validate from in-memory XML strings |
-| `buildReportFromPath(path, options?)` | Validate an IMF package directory on disk |
-| `formatReport(report)` | Pretty-print an `ImfReport` as a human-readable string |
+| `validate(files, options?)` | Validate from in-memory XML strings (returns `ValidationResult`) |
+| `validatePath(path, options?)` | Validate a package directory on disk (returns `ValidationResult`) |
+| `validateUri(uri, options?)` | Validate via URI: `file://`, bare path, or `s3://` (returns `ValidationResult`) |
+| `parsePackage(files)` | Parse without validation (returns full `Imferno` struct) |
+| `parsePackageFromPath(path)` | Parse from disk without validation |
+| `buildReport(files, options?)` | Legacy: validate from strings (returns `ImfReport`) |
+| `buildReportFromPath(path, options?)` | Legacy: validate from disk (returns `ImfReport`) |
+| `buildReportFromUri(uri, options?)` | Legacy: validate via URI (returns `ImfReport`) |
+| `formatReport(report)` | Pretty-print a report as a human-readable string |
+| `listRules()` | Get the full catalogue of validation rule codes |
 | `getVersion()` | Get the library version |
 
 ### Options
@@ -115,51 +122,26 @@ console.log(getVersion()); // e.g. "2.0.0"
 | `skipDiskChecks` | `boolean` | Skip file manifest and MXF checks (`buildReportFromPath` only) |
 | `rules` | `Record<string, "error" \| "warn" \| "info" \| "off">` | ESLint-style per-rule severity overrides |
 
-> **Note:** Hash verification (`verifyHashes`) is not currently exposed via NAPI.
+### Return types
 
-### ImfReport shape
-
-The returned object has this top-level structure (all keys are camelCase):
+`validate()` / `validatePath()` / `validateUri()` return a `ValidationResult`:
 
 ```json
 {
-  "package": {
-    "assetMapId": "...",
-    "volumeIndex": 1,
-    "assetCount": 12,
-    "cplCount": 1,
-    "pklCount": 1,
-    "issueDate": "2024-01-15T12:00:00Z",
-    "issuer": "...",
-    "creator": "...",
-    "scmCount": 0,
-    "sidecarCount": 0,
-    "unreferencedAssets": []
-  },
-  "cpls": [
-    {
-      "id": "urn:uuid:...",
-      "title": "My Composition",
-      "applicationProfile": "App2E_2021",
-      "editRate": "24000/1001",
-      "segmentCount": 1,
-      "isSupplemental": false,
-      "sequences": [],
-      "markers": []
-    }
-  ],
+  "package": { /* full parsed Imferno struct */ },
   "validation": {
-    "isCompliant": true,
-    "isPlayable": true,
+    "is_compliant": true,
+    "is_playable": true,
     "profile": "SMPTE",
     "critical": [],
     "errors": [],
     "warnings": [],
-    "info": [],
-    "timestamp": "2024-01-15T12:00:00Z"
+    "info": []
   }
 }
 ```
+
+`buildReport()` / `buildReportFromPath()` / `buildReportFromUri()` return a legacy `ImfReport` summary. For new code, prefer the `validate*` functions.
 
 ## License
 

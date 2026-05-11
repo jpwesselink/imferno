@@ -38,7 +38,7 @@ pub fn get_version() -> String {
 // =============================================================================
 
 /// Returns the engine's full catalogue of validation rule codes, one entry per
-/// per-spec enum variant. Used by Imferno Studio's settings UI to render a
+/// per-spec enum variant. Useful for building settings UIs that render a
 /// configurable severity dropdown per rule. The shape is stable JSON, so
 /// downstream callers can store severity overrides keyed by `code`.
 #[napi(js_name = "listRules")]

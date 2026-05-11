@@ -17,14 +17,17 @@ npx imferno@latest validate ./my-imf-package
 ## Usage
 
 ```bash
-# Validate an IMF package
+# Validate an IMF package (hashes verified by default)
 imferno validate ./path/to/imf/package
 
 # Show detailed CPL information
 imferno cpl ./path/to/imf/package
 
-# Export a full report
-imferno export ./path/to/imf/package
+# JSON output
+imferno validate ./path/to/imf/package --format json
+
+# Skip hash verification
+imferno validate ./path/to/imf/package --skip-hashes
 
 # Show version
 imferno --version

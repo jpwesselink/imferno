@@ -30,6 +30,9 @@ Create a `rules.json`:
 
 ```sh
 imferno validate ./my-package --rules-config rules.json
+
+# Or inline (repeatable)
+imferno validate ./my-package --rule SegmentDuration=off --rule FileNotFound=critical
 ```
 
 ### Rust
@@ -37,7 +40,7 @@ imferno validate ./my-package --rules-config rules.json
 Every validation code has a typed enum variant — no raw strings needed:
 
 ```rust
-use imferno_core::codes::St2067_2_2020;
+use imferno_core::assetmap::codes::St2067_2_2020;
 use imferno_core::diagnostics::rules::{RulesConfig, RuleSeverity};
 use imferno_core::package::{Imferno, ValidationOptions, read_dir};
 
@@ -102,7 +105,8 @@ imferno validate ./my-package --app2e-spec none
 ### Rust
 
 ```rust
-use imferno_core::package::{ValidationOptions, CoreSpecTarget, AppSpecTarget};
+use imferno_core::validation::{CoreSpecTarget, AppSpecTarget};
+use imferno_core::package::ValidationOptions;
 
 let options = ValidationOptions {
     core_spec: Some(CoreSpecTarget::St2067_2_2020),

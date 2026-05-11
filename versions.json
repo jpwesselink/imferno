@@ -61,6 +61,10 @@
     {
       "label": "#49 fix/playground-issue-display",
       "path": "/pr-49/"
+    },
+    {
+      "label": "#50 chore/deprecate-legacy-report",
+      "path": "/pr-50/"
     }
   ],
   "latest": "/v2.3.0/"

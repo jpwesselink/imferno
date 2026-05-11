@@ -57,11 +57,6 @@
     "label": "beta (2.3.0)",
     "path": "/beta/"
   },
-  "prs": [
-    {
-      "label": "#46 feat/cli-hash-default-and-cpl-location",
-      "path": "/pr-46/"
-    }
-  ],
+  "prs": [],
   "latest": "/v2.3.0/"
 }

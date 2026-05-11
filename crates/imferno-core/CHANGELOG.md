@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.4.0](https://github.com/jpwesselink/imferno/compare/imferno-core-v2.3.0...imferno-core-v2.4.0) - 2026-05-11
+
+### Added
+
+- hash verification on by default, per-file output, CPL location enrichment
+
+### Other
+
+- Merge pull request #46 from jpwesselink/feat/cli-hash-default-and-cpl-location
+- rustfmt
+
 ## [2.1.0](https://github.com/jpwesselink/imferno/compare/imferno-core-v2.0.0...imferno-core-v2.1.0) - 2026-04-29
 
 ### Added

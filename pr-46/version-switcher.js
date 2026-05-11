@@ -12,32 +12,26 @@
 
       const links = [];
 
-      // Stable releases
+      // Stable releases - only show major versions (vX.0.0)
       if (versions.stable?.length) {
-        links.push(`<span class="label">Stable:</span>`);
-        links.push(
-          versions.stable
-            .map((s) => `<a href="${BASE}${s.path}">${s.version}</a>`)
-            .join('<span class="separator">·</span>')
-        );
+        const majors = versions.stable.filter((s) => {
+          const m = s.version.match(/^v?(\d+)\.(\d+)\.(\d+)$/);
+          return m && m[2] === "0" && m[3] === "0";
+        });
+        if (majors.length) {
+          links.push(`<span class="label">Stable:</span>`);
+          links.push(
+            majors
+              .map((s) => `<a href="${BASE}${s.path}">${s.version}</a>`)
+              .join('<span class="separator">·</span>')
+          );
+        }
       }
 
       // Beta
       if (versions.beta) {
         links.push(
           `<span class="separator">|</span><span class="label">Beta:</span><a href="${BASE}${versions.beta.path}">${versions.beta.label}</a>`
-        );
-      }
-
-      // PRs
-      if (versions.prs?.length) {
-        links.push(
-          `<span class="separator">|</span><span class="label">PRs:</span>`
-        );
-        links.push(
-          versions.prs
-            .map((p) => `<a href="${BASE}${p.path}">${p.label}</a>`)
-            .join('<span class="separator">·</span>')
         );
       }
 

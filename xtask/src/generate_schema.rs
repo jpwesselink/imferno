@@ -1,3 +1,4 @@
+#![allow(deprecated)]
 use schemars::schema_for;
 use std::fs;
 use std::path::PathBuf;

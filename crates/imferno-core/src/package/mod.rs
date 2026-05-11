@@ -17,6 +17,7 @@ use thiserror::Error;
 pub mod codes;
 pub mod report;
 
+#[allow(deprecated)]
 pub use self::report::{
     build_report, format_report, format_validation_result, FormatOptions, ImfReport, ReportFormat,
 };

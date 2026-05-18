@@ -21,6 +21,26 @@ use ts_rs::TS;
 
 // ── Report structs ───────────────────────────────────────────────────────────
 
+/// Legacy report summary. Deprecated since v2.3.0.
+///
+/// Use [`ValidationResult`] from [`validate()`](crate::package::validate)
+/// or [`Imferno::parse_and_validate()`] instead. `ImfReport` is a lossy
+/// summary that drops essence descriptors, locales, content versions, and
+/// other parsed data from the package.
+///
+/// # Migration
+///
+/// Before:
+/// ```ignore
+/// let report = build_report(&package, &options, None)?;
+/// for cpl in &report.cpls { /* ... */ }
+/// ```
+///
+/// After:
+/// ```ignore
+/// let result = package.validate(&options);
+/// for (id, cpl) in &package.composition_playlists { /* ... */ }
+/// ```
 #[deprecated(
     since = "2.3.0",
     note = "Use `ValidationResult` from `validate()` / `Imferno::parse_and_validate()` instead. \

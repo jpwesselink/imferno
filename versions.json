@@ -61,6 +61,11 @@
     "label": "beta (2.4.1)",
     "path": "/beta/"
   },
-  "prs": [],
+  "prs": [
+    {
+      "label": "#53 fix/imfreport-migration-docs",
+      "path": "/pr-53/"
+    }
+  ],
   "latest": "/v2.4.0/"
 }

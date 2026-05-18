@@ -44,9 +44,9 @@ const samplesToTC = (samples: number | null | undefined, er: string) => { if(sam
 const durationToTC = (count: number | null | undefined, er: string) => { if(count==null||!er)return"\u2014"; return +er.trim().split(/\s+/)[0]>=8000?samplesToTC(count,er):framesToTC(count,er); };
 const toSeconds = (count: number | null | undefined, er: string) => { if(count==null||!er)return 0; const p=er.trim().split(/\s+/),n=+p[0],d=p[1]?+p[1]:1; return(!n||!d)?0:count/(n/d); };
 
-const bv: Record<string, string> = {default:"bg-zinc-100 text-zinc-500",blue:"bg-blue-500/10 text-blue-500 border border-blue-500/20",purple:"bg-purple-500/10 text-purple-500 border border-purple-500/20",green:"bg-green-500/10 text-green-500 border border-green-500/20",amber:"bg-yellow-500/10 text-yellow-600 border border-yellow-500/20",red:"bg-red-500/10 text-red-500 border border-red-500/20",pink:"bg-pink-500/10 text-pink-500 border border-pink-500/20",outline:"bg-transparent text-zinc-600 border border-zinc-200"};
+const bv: Record<string, string> = {default:"bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400",blue:"bg-blue-500/10 text-blue-500 border border-blue-500/20",purple:"bg-purple-500/10 text-purple-500 border border-purple-500/20",green:"bg-green-500/10 text-green-500 border border-green-500/20",amber:"bg-yellow-500/10 text-yellow-600 border border-yellow-500/20",red:"bg-red-500/10 text-red-500 border border-red-500/20",pink:"bg-pink-500/10 text-pink-500 border border-pink-500/20",outline:"bg-transparent text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700"};
 const Badge = ({children,variant="default",className=""}: {children: React.ReactNode; variant?: string; className?: string}) => <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium leading-[18px] whitespace-nowrap ${bv[variant]||bv.default} ${className}`}>{children}</span>;
-const Th = ({children}: {children: React.ReactNode}) => <th className="px-3 py-2 text-left text-[10px] font-semibold text-zinc-400 uppercase tracking-wider border-b border-zinc-200">{children}</th>;
+const Th = ({children}: {children: React.ReactNode}) => <th className="px-3 py-2 text-left text-[10px] font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider border-b border-zinc-200 dark:border-zinc-700">{children}</th>;
 
 const SequenceTimeline = ({sequences,maxDuration,tracks,editRate}: any) => {
   const [expanded,setExpanded] = useState<Set<any>>(new Set());
@@ -83,12 +83,12 @@ const SequenceTimeline = ({sequences,maxDuration,tracks,editRate}: any) => {
         const fillPct=maxDuration>0?Math.max((totalSec/maxDuration)*100,2):100, isOpen=expanded.has(seq.id||i), seqId=seq.id||i;
         return (
           <div key={seqId}>
-            <div onClick={()=>toggle(seqId)} className="flex items-center gap-2 cursor-pointer rounded py-0.5 hover:bg-zinc-50 transition-colors">
+            <div onClick={()=>toggle(seqId)} className="flex items-center gap-2 cursor-pointer rounded py-0.5 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
               <div className="w-48 flex-shrink-0 flex items-center gap-1.5 pl-1">
                 <span className={`flex transition-transform duration-200 ${isOpen?"":"-rotate-90"}`} style={{color:c.fill}}><I.ChevronDown width={12} height={12}/></span>
                 <span className="text-[11px] font-semibold truncate" style={{color:c.fill}}>{buildLabel(seq)}</span>
               </div>
-              <div className="flex-1 h-5 bg-zinc-100 rounded overflow-hidden border border-zinc-200/50 relative">
+              <div className="flex-1 h-5 bg-zinc-100 dark:bg-zinc-800 rounded overflow-hidden border border-zinc-200/50 dark:border-zinc-700/50 relative">
                 <div className="h-full rounded relative flex" style={{width:`${fillPct}%`}}>
                   {seq.sequenceResources.map((res: any,ri: number)=>{const td=seq.sequenceResources.reduce((s: number,r: any)=>s+toSeconds(r.sourceDuration,r.editRate||editRate),0),rs=toSeconds(res.sourceDuration,res.editRate||editRate),pct=td>0?(rs/td)*100:100;
                     return <div key={ri} className="h-full relative flex items-center" style={{width:`${Math.max(pct,6)}%`,minWidth:"20px",background:c.fillBg,borderLeft:ri===0?`2.5px solid ${c.fill}`:`1px solid ${c.fill}40`}}>
@@ -97,22 +97,22 @@ const SequenceTimeline = ({sequences,maxDuration,tracks,editRate}: any) => {
                   })}
                 </div>
               </div>
-              <div className="w-12 flex-shrink-0 text-right pr-2 text-[10px] font-mono text-zinc-400">Seq {seq.sequenceNumber??"\u2014"}</div>
+              <div className="w-12 flex-shrink-0 text-right pr-2 text-[10px] font-mono text-zinc-400 dark:text-zinc-500">Seq {seq.sequenceNumber??"\u2014"}</div>
             </div>
             {isOpen && (
-              <div className="ml-[198px] mr-[60px] mt-0.5 mb-1.5 border border-zinc-200 rounded-md overflow-hidden text-[11px]">
-                <table className="w-full border-collapse"><thead><tr className="bg-zinc-50">
-                  {["#","Offset","Track File","Duration","Entry Point","Encoding"].map(h=><th key={h} className="px-2.5 py-1 text-left text-[10px] font-semibold text-zinc-400 uppercase tracking-wider border-b border-zinc-200">{h}</th>)}
+              <div className="ml-[198px] mr-[60px] mt-0.5 mb-1.5 border border-zinc-200 dark:border-zinc-700 rounded-md overflow-hidden text-[11px]">
+                <table className="w-full border-collapse"><thead><tr className="bg-zinc-50 dark:bg-zinc-800/50">
+                  {["#","Offset","Track File","Duration","Entry Point","Encoding"].map(h=><th key={h} className="px-2.5 py-1 text-left text-[10px] font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider border-b border-zinc-200 dark:border-zinc-700">{h}</th>)}
                 </tr></thead><tbody>
                   {resourceRows(seq).map((res: any,ri: number)=>{const rr=res.editRate||editRate; return(
                     <React.Fragment key={res.id||ri}>
-                      <tr className="border-b border-zinc-100 last:border-0 hover:bg-zinc-50/50">
-                        <td className="px-2.5 py-1 font-mono text-zinc-400"><span className="px-1.5 py-px rounded text-[10px] font-semibold" style={{background:c.fillBg,color:c.fill}}>R{ri+1}</span></td>
+                      <tr className="border-b border-zinc-100 dark:border-zinc-800 last:border-0 hover:bg-zinc-50/50 dark:hover:bg-zinc-800/30">
+                        <td className="px-2.5 py-1 font-mono text-zinc-400 dark:text-zinc-500"><span className="px-1.5 py-px rounded text-[10px] font-semibold" style={{background:c.fillBg,color:c.fill}}>R{ri+1}</span></td>
                         <td className="px-2.5 py-1 font-mono">{durationToTC(res._offset,rr)}</td>
-                        <td className="px-2.5 py-1 font-mono text-zinc-400"><CopyUuid value={res.trackFileId}/></td>
-                        <td className="px-2.5 py-1 font-mono">{durationToTC(res.sourceDuration,rr)}{res.intrinsicDuration!=null&&res.sourceDuration!==res.intrinsicDuration&&<span className="text-zinc-400 text-[10px]"> / {durationToTC(res.intrinsicDuration,rr)}</span>}</td>
-                        <td className="px-2.5 py-1 font-mono text-zinc-400">{res.entryPoint!=null?durationToTC(res.entryPoint,rr):"\u2014"}</td>
-                        <td className="px-2.5 py-1 font-mono text-[10px] text-zinc-400"><CopyUuid value={res.sourceEncoding}/></td>
+                        <td className="px-2.5 py-1 font-mono text-zinc-400 dark:text-zinc-500"><CopyUuid value={res.trackFileId}/></td>
+                        <td className="px-2.5 py-1 font-mono">{durationToTC(res.sourceDuration,rr)}{res.intrinsicDuration!=null&&res.sourceDuration!==res.intrinsicDuration&&<span className="text-zinc-400 dark:text-zinc-500 text-[10px]"> / {durationToTC(res.intrinsicDuration,rr)}</span>}</td>
+                        <td className="px-2.5 py-1 font-mono text-zinc-400 dark:text-zinc-500">{res.entryPoint!=null?durationToTC(res.entryPoint,rr):"\u2014"}</td>
+                        <td className="px-2.5 py-1 font-mono text-[10px] text-zinc-400 dark:text-zinc-500"><CopyUuid value={res.sourceEncoding}/></td>
                       </tr>
                     </React.Fragment>);})}
                 </tbody></table>
@@ -130,19 +130,19 @@ const TrackTable = ({tracks}: any) => {
   if(!all.length)return null;
   const cc: any={VIDEO:"blue",AUDIO:"purple",SUBTITLES:"green",CAPTIONS:"amber",FORCED_NARRATIVE:"amber"};
   return (
-    <div className="border border-zinc-200 rounded-lg overflow-hidden text-xs">
+    <div className="border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden text-xs">
       <table className="w-full border-collapse">
-        <thead><tr className="bg-zinc-50">{["#","Type","Codec / Format","Details","Language","Fragment","Track ID","Seq Track"].map(h=><Th key={h}>{h}</Th>)}</tr></thead>
+        <thead><tr className="bg-zinc-50 dark:bg-zinc-800/50">{["#","Type","Codec / Format","Details","Language","Fragment","Track ID","Seq Track"].map(h=><Th key={h}>{h}</Th>)}</tr></thead>
         <tbody>{all.map((t: any,i: number)=>(
-          <tr key={`${t._cat}-${t.trackNumber}-${i}`} className="border-b border-zinc-100 last:border-0 hover:bg-zinc-50 transition-colors">
-            <td className="px-3 py-1.5 font-mono text-zinc-400">{t.trackNumber}</td>
+          <tr key={`${t._cat}-${t.trackNumber}-${i}`} className="border-b border-zinc-100 dark:border-zinc-800 last:border-0 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
+            <td className="px-3 py-1.5 font-mono text-zinc-400 dark:text-zinc-500">{t.trackNumber}</td>
             <td className="px-3 py-1.5"><Badge variant={cc[t._cat]||"default"}>{t._cat==="FORCED_NARRATIVE"?"FN":t._cat}</Badge></td>
             <td className="px-3 py-1.5">{t._cat==="VIDEO"?<span className="flex items-center gap-1.5"><span className="font-medium">{t.width}\u00d7{t.height}</span><Badge variant="outline">{t.quality}</Badge><Badge variant={t.dynamicRange?.includes("HDR")||t.dynamicRange?.includes("DOLBY")?"pink":"outline"}>{dynRangeLabel(t.dynamicRange)}</Badge></span>:t._cat==="AUDIO"?<span className="flex items-center gap-1.5"><span className="font-medium">{audioTypeLabel(t.type)}</span>{t.mcaTagName?<Badge variant="outline">{t.mcaTagName}</Badge>:t.channelCount>0?<Badge variant="outline">{t.channelCount===6?"5.1":t.channelCount===8?"7.1":`${t.channelCount}ch`}</Badge>:null}{t.atmosType&&<Badge variant="purple">{t.atmosType}</Badge>}</span>:<span className="font-medium">TTML</span>}</td>
-            <td className="px-3 py-1.5 text-zinc-500">{t._cat==="AUDIO"?contentKindLabel(t.audioContentKind):"\u2014"}</td>
+            <td className="px-3 py-1.5 text-zinc-500 dark:text-zinc-400">{t._cat==="AUDIO"?contentKindLabel(t.audioContentKind):"\u2014"}</td>
             <td className="px-3 py-1.5">{t.language?<span className="inline-flex items-center gap-1"><I.Globe/>{t.language.toUpperCase()}</span>:"\u2014"}</td>
-            <td className="px-3 py-1.5 font-mono text-[11px] text-zinc-500">{t.fragmentDuration||"\u2014"}</td>
-            <td className="px-3 py-1.5 font-mono text-[11px] text-zinc-400"><CopyUuid value={t.trackIdentifier}/></td>
-            <td className="px-3 py-1.5 font-mono text-[11px] text-zinc-400"><CopyUuid value={t.sequenceTrackId}/></td>
+            <td className="px-3 py-1.5 font-mono text-[11px] text-zinc-500 dark:text-zinc-400">{t.fragmentDuration||"\u2014"}</td>
+            <td className="px-3 py-1.5 font-mono text-[11px] text-zinc-400 dark:text-zinc-500"><CopyUuid value={t.trackIdentifier}/></td>
+            <td className="px-3 py-1.5 font-mono text-[11px] text-zinc-400 dark:text-zinc-500"><CopyUuid value={t.sequenceTrackId}/></td>
           </tr>))}</tbody>
       </table>
     </div>
@@ -158,9 +158,9 @@ const CplCard = ({cpl,isOpen,onToggle}: any) => {
   const segIds=[...new Set((sa.sequences||[]).map((s: any)=>s.segmentId).filter(Boolean))];
 
   return (
-    <div className={`border rounded-xl overflow-hidden bg-white transition-all duration-200 ${isOpen?"border-zinc-300 shadow-sm ring-1 ring-zinc-200/50":"border-zinc-200 hover:border-zinc-300"}`}>
-      <button onClick={onToggle} className="w-full flex items-center gap-3 px-4 py-3.5 text-left hover:bg-zinc-50 transition-colors">
-        <span className={`flex transition-transform duration-200 ${isOpen?"":"-rotate-90"} ${isOpen?"text-amber-600":"text-zinc-400"}`}><I.ChevronDown/></span>
+    <div className={`border rounded-xl overflow-hidden bg-white dark:bg-zinc-900 transition-all duration-200 ${isOpen?"border-zinc-300 dark:border-zinc-600 shadow-sm ring-1 ring-zinc-200/50 dark:ring-zinc-700/50":"border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600"}`}>
+      <button onClick={onToggle} className="w-full flex items-center gap-3 px-4 py-3.5 text-left hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
+        <span className={`flex transition-transform duration-200 ${isOpen?"":"-rotate-90"} ${isOpen?"text-amber-600":"text-zinc-400 dark:text-zinc-500"}`}><I.ChevronDown/></span>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             {sa.contentKind&&<Badge variant={k.badge}>{k.icon} {sa.contentKind}</Badge>}
@@ -173,31 +173,31 @@ const CplCard = ({cpl,isOpen,onToggle}: any) => {
             {cpl.applicationProfile&&<Badge variant="outline">{cpl.applicationProfile}</Badge>}
             <Badge variant="outline"><I.Layers/> {cpl.segmentCount??0} segment{(cpl.segmentCount??0)!==1?"s":""}</Badge>
           </div>
-          <div className="mt-1.5 text-xs font-mono text-zinc-400 truncate">{cpl.title}</div>
+          <div className="mt-1.5 text-xs font-mono text-zinc-400 dark:text-zinc-500 truncate">{cpl.title}</div>
         </div>
-        <div className="flex gap-1 flex-shrink-0 items-center text-[11px] text-zinc-400">
+        <div className="flex gap-1 flex-shrink-0 items-center text-[11px] text-zinc-400 dark:text-zinc-500">
           <span className="flex items-center gap-0.5"><I.Layers/> {sa.sequences?.length||0} seq</span>
         </div>
       </button>
       {isOpen&&(
-        <div className="border-t border-zinc-200">
-          <div className="flex gap-1 bg-zinc-100 rounded-lg p-1 mx-4 mt-3 mb-1 w-fit">
-            {tabs.map(tab=><button key={tab.id} onClick={()=>setActiveTab(tab.id)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${activeTab===tab.id?"bg-white text-zinc-900 shadow-sm":"text-zinc-500 hover:text-zinc-700"}`}>{tab.icon} {tab.label}</button>)}
+        <div className="border-t border-zinc-200 dark:border-zinc-700">
+          <div className="flex gap-1 bg-zinc-100 dark:bg-zinc-800 rounded-lg p-1 mx-4 mt-3 mb-1 w-fit">
+            {tabs.map(tab=><button key={tab.id} onClick={()=>setActiveTab(tab.id)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${activeTab===tab.id?"bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-sm":"text-zinc-500 dark:text-zinc-400 hover:text-zinc-700"}`}>{tab.icon} {tab.label}</button>)}
           </div>
           <div className="p-4">
             {activeTab==="timeline"&&<SequenceTimeline sequences={sa.sequences} maxDuration={maxDuration} tracks={sa.tracks} editRate={sa.editRate}/>}
             {activeTab==="tracks"&&sa.tracks&&<TrackTable tracks={sa.tracks}/>}
             {activeTab==="markers"&&(cpl.markers?.length>0?(
-              <div className="border border-zinc-200 rounded-lg overflow-hidden text-xs"><table className="w-full border-collapse"><thead><tr className="bg-zinc-50">{["Label","Offset","Scope"].map(h=><Th key={h}>{h}</Th>)}</tr></thead><tbody>
-                {cpl.markers.map((m: any,i: number)=><tr key={i} className="border-b border-zinc-100 last:border-0 hover:bg-zinc-50"><td className="px-3 py-1.5 font-medium">{m.label||"\u2014"}</td><td className="px-3 py-1.5 font-mono text-zinc-500">{m.offset??"\u2014"}</td><td className="px-3 py-1.5 text-zinc-500">{m.scope||"\u2014"}</td></tr>)}
+              <div className="border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden text-xs"><table className="w-full border-collapse"><thead><tr className="bg-zinc-50 dark:bg-zinc-800/50">{["Label","Offset","Scope"].map(h=><Th key={h}>{h}</Th>)}</tr></thead><tbody>
+                {cpl.markers.map((m: any,i: number)=><tr key={i} className="border-b border-zinc-100 dark:border-zinc-800 last:border-0 hover:bg-zinc-50 dark:hover:bg-zinc-800/50"><td className="px-3 py-1.5 font-medium">{m.label||"\u2014"}</td><td className="px-3 py-1.5 font-mono text-zinc-500 dark:text-zinc-400">{m.offset??"\u2014"}</td><td className="px-3 py-1.5 text-zinc-500 dark:text-zinc-400">{m.scope||"\u2014"}</td></tr>)}
               </tbody></table></div>
-            ):<p className="text-xs text-zinc-400 text-center py-8">No markers defined in this CPL.</p>)}
+            ):<p className="text-xs text-zinc-400 dark:text-zinc-500 text-center py-8">No markers defined in this CPL.</p>)}
             {activeTab==="metadata"&&(
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {[{l:"CPL UUID",v:(cpl.id||"").replace("urn:uuid:",""),m:true},...(sa.contentTitle?[{l:"Content Title",v:sa.contentTitle}]:[]),{l:"Edit Rate",v:sa.editRate||"\u2014"},{l:"Frame Rate",v:sa.frameRate?`${sa.frameRate} fps`:"\u2014"},{l:"Type",v:cpl.isSupplemental?"Supplemental":"Original Version"},...(cpl.applicationProfile?[{l:"Application Profile",v:cpl.applicationProfile}]:[]),...(cpl.segmentCount!=null?[{l:"Segments",v:cpl.segmentCount}]:[]),...(segIds.length>0?[{l:"Segment ID",v:segIds.map((id: string)=>id.substring(0,8)+"\u2026").join(", "),m:true}]:[]),...(cpl.timecodeStart?[{l:"Timecode Start",v:cpl.timecodeStart,m:true}]:[]),{l:"Audio Languages",v:sa.audioLanguages?.map((l: string)=>l.toUpperCase()).join(", ")||"\u2014"},{l:"Subtitle Languages",v:sa.subtitleLanguages?.map((l: string)=>l.toUpperCase()).join(", ")||"\u2014"},{l:"Forced Narrative",v:sa.forcedNarrativeLanguages?.map((l: string)=>l.toUpperCase()).join(", ")||"\u2014"}].map((item: any)=>(
-                  <div key={item.l} className="px-3 py-2.5 rounded-lg bg-zinc-50 border border-zinc-100">
-                    <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 mb-1">{item.l}</div>
-                    <div className={`text-xs font-medium text-zinc-900 break-all ${item.m?"font-mono":""}`}>{item.v}</div>
+                  <div key={item.l} className="px-3 py-2.5 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-100 dark:border-zinc-800">
+                    <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-1">{item.l}</div>
+                    <div className={`text-xs font-medium text-zinc-900 dark:text-zinc-100 break-all ${item.m?"font-mono":""}`}>{item.v}</div>
                   </div>
                 ))}
               </div>
@@ -218,27 +218,27 @@ export default function IMFPackageViewer({data}: {data: any}) {
   const toggleCpl=(id: string)=>{setOpenCpls(p=>{const n=new Set(p);n.has(id)?n.delete(id):n.add(id);return n;});};
   const expandAll=()=>setOpenCpls(new Set(data?.cpls?.map((c: any)=>c.id)||[]));
   const collapseAll=()=>setOpenCpls(new Set());
-  if(!data?.package) return <div className="flex flex-col items-center justify-center py-16 px-6 gap-3 text-zinc-400"><I.Package/><p className="text-sm font-medium">No package loaded</p></div>;
+  if(!data?.package) return <div className="flex flex-col items-center justify-center py-16 px-6 gap-3 text-zinc-400 dark:text-zinc-500"><I.Package/><p className="text-sm font-medium">No package loaded</p></div>;
   const v=data.validation;
   return (
-    <div className="w-full bg-white rounded-2xl px-6 py-6 text-zinc-900" style={{fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"}}>
+    <div className="w-full bg-white dark:bg-zinc-900 rounded-2xl px-6 py-6 text-zinc-900 dark:text-zinc-100" style={{fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"}}>
       <div className="flex items-start justify-between mb-6 gap-4 flex-wrap">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg bg-amber-600 text-white flex items-center justify-center"><I.Package/></div>
-          <div><h1 className="text-lg font-bold leading-tight">IMF Package</h1><p className="text-xs text-zinc-400 font-mono">{(data.package.assetMapId||"").replace("urn:uuid:","")}</p></div>
+          <div><h1 className="text-lg font-bold leading-tight">IMF Package</h1><p className="text-xs text-zinc-400 dark:text-zinc-500 font-mono">{(data.package.assetMapId||"").replace("urn:uuid:","")}</p></div>
         </div>
         {v&&<button onClick={()=>setShowValidation(s=>!s)} className={`flex items-center gap-2 px-3.5 py-2 rounded-lg border font-semibold text-[13px] leading-none transition-all cursor-pointer ${v.valid?"bg-green-500/5 text-green-600 border-green-500/25 hover:bg-green-500/10":"bg-red-500/5 text-red-600 border-red-500/25 hover:bg-red-500/10"}`}>
           {v.valid?<I.Check/>:<I.AlertTriangle/>}{v.valid?"Valid":`${v.issues?.length||0} Issues`}<span className={`flex opacity-60 transition-transform duration-200 ${showValidation?"":"-rotate-90"}`}><I.ChevronDown/></span>
         </button>}
       </div>
       {showValidation&&v&&(
-        <div className={`mb-4 px-4 py-3.5 rounded-lg border ${v.valid?"bg-green-50/50 border-green-500/15":"bg-red-50/50 border-red-500/15"}`}>
+        <div className={`mb-4 px-4 py-3.5 rounded-lg border ${v.valid?"bg-green-50/50 dark:bg-green-950/30 border-green-500/15":"bg-red-50/50 dark:bg-red-950/30 border-red-500/15"}`}>
           <div className={`text-[11px] font-semibold uppercase tracking-wider mb-2 ${v.valid?"text-green-600":"text-red-600"}`}>Validated by Imferno</div>
-          {v.valid?<p className="text-xs text-zinc-500 leading-relaxed">Package structure validated successfully.</p>:(
+          {v.valid?<p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">Package structure validated successfully.</p>:(
             <div className="flex flex-col gap-1.5">
               {(v.issues||[]).map((issue: any,i: number)=>{
                 const sev = (issue.severity||"").toLowerCase();
-                const sevColor = sev === "critical" || sev === "error" ? "text-red-600" : sev === "warning" ? "text-amber-600" : "text-zinc-400";
+                const sevColor = sev === "critical" || sev === "error" ? "text-red-600" : sev === "warning" ? "text-amber-600" : "text-zinc-400 dark:text-zinc-500";
                 const sevLabel = sev === "critical" ? "critical" : sev === "error" ? "error" : sev === "warning" ? "warning" : "info";
                 const SevIcon = sev === "critical" || sev === "error" ? I.AlertTriangle : sev === "warning" ? I.AlertTriangle : I.Check;
                 const cplShort = issue.cplId ? issue.cplId.substring(0, 8) : null;
@@ -246,9 +246,9 @@ export default function IMFPackageViewer({data}: {data: any}) {
                   <span className={`flex-shrink-0 mt-0.5 opacity-60 ${sevColor}`}><SevIcon/></span>
                   <div>
                     <span className={`font-semibold ${sevColor}`}>{sevLabel}</span>
-                    {issue.code && <span className="font-mono text-zinc-500 ml-1.5">{issue.code}</span>}
-                    {cplShort && <span className="text-zinc-400 ml-1.5">[CPL:{cplShort}]</span>}
-                    <div className="text-zinc-600 mt-0.5">{typeof issue==="string"?issue:issue.message||JSON.stringify(issue)}</div>
+                    {issue.code && <span className="font-mono text-zinc-500 dark:text-zinc-400 ml-1.5">{issue.code}</span>}
+                    {cplShort && <span className="text-zinc-400 dark:text-zinc-500 ml-1.5">[CPL:{cplShort}]</span>}
+                    <div className="text-zinc-600 dark:text-zinc-400 mt-0.5">{typeof issue==="string"?issue:issue.message||JSON.stringify(issue)}</div>
                   </div>
                 </div>;
               })}
@@ -258,17 +258,17 @@ export default function IMFPackageViewer({data}: {data: any}) {
       )}
       <div className="grid grid-cols-3 gap-2 mb-5">
         {[{l:"CPLs",v:data.package.cplCount},{l:"Assets",v:data.package.assetCount},{l:"PKLs",v:data.package.pklCount}].map(s=>(
-          <div key={s.l} className="px-3 py-2.5 rounded-lg border border-zinc-200 bg-white">
-            <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 mb-0.5">{s.l}</div>
+          <div key={s.l} className="px-3 py-2.5 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900">
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-0.5">{s.l}</div>
             <div className="text-sm font-semibold">{s.v}</div>
           </div>
         ))}
       </div>
       <div className="flex items-center justify-between mb-2.5">
-        <h2 className="text-sm font-semibold flex items-center gap-1.5"><span className="text-amber-600"><I.Layers/></span> Composition Playlists <span className="font-normal text-zinc-400">({data.cpls?.length||0})</span></h2>
+        <h2 className="text-sm font-semibold flex items-center gap-1.5"><span className="text-amber-600"><I.Layers/></span> Composition Playlists <span className="font-normal text-zinc-400 dark:text-zinc-500">({data.cpls?.length||0})</span></h2>
         <div className="flex gap-1">
-          <button onClick={expandAll} className="px-2.5 py-1 text-[11px] font-medium border border-zinc-200 rounded-md bg-white text-zinc-400 hover:bg-zinc-50 hover:text-amber-600 cursor-pointer transition-colors">Expand All</button>
-          <button onClick={collapseAll} className="px-2.5 py-1 text-[11px] font-medium border border-zinc-200 rounded-md bg-white text-zinc-400 hover:bg-zinc-50 hover:text-amber-600 cursor-pointer transition-colors">Collapse</button>
+          <button onClick={expandAll} className="px-2.5 py-1 text-[11px] font-medium border border-zinc-200 dark:border-zinc-700 rounded-md bg-white dark:bg-zinc-900 text-zinc-400 dark:text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 hover:text-amber-600 cursor-pointer transition-colors">Expand All</button>
+          <button onClick={collapseAll} className="px-2.5 py-1 text-[11px] font-medium border border-zinc-200 dark:border-zinc-700 rounded-md bg-white dark:bg-zinc-900 text-zinc-400 dark:text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 hover:text-amber-600 cursor-pointer transition-colors">Collapse</button>
         </div>
       </div>
       <div className="flex flex-col gap-3">{(data.cpls||[]).map((cpl: any)=><CplCard key={cpl.id} cpl={cpl} isOpen={openCpls.has(cpl.id)} onToggle={()=>toggleCpl(cpl.id)}/>)}</div>

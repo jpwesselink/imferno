@@ -181,12 +181,87 @@ function debugString(val) {
     // TODO we could test for more things here, like `Set`s and `Map`s.
     return className;
 }
+/**
+ * Initialize the WASM module
+ */
+export function init() {
+    wasm.init();
+}
 
 function takeFromExternrefTable0(idx) {
     const value = wasm.__wbindgen_export_4.get(idx);
     wasm.__externref_table_dealloc(idx);
     return value;
 }
+/**
+ * Format a previously built `ImfReport` as a human-readable string.
+ *
+ * Pass the object returned by `buildReport()` (or any valid `ImfReport` JSON).
+ * Returns the same output as `imferno report` on the CLI.
+ * @param {any} report
+ * @returns {string}
+ */
+export function formatReport(report) {
+    let deferred2_0;
+    let deferred2_1;
+    try {
+        const ret = wasm.formatReport(report);
+        var ptr1 = ret[0];
+        var len1 = ret[1];
+        if (ret[3]) {
+            ptr1 = 0; len1 = 0;
+            throw takeFromExternrefTable0(ret[2]);
+        }
+        deferred2_0 = ptr1;
+        deferred2_1 = len1;
+        return getStringFromWasm0(ptr1, len1);
+    } finally {
+        wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
+    }
+}
+
+/**
+ * Build a structured report from an IMF package.
+ *
+ * Pass all XML files as a plain JS object where each key is the filename
+ * and each value is the file's text content.
+ *
+ * Returns an `ImfReport` containing package metadata, CPL analysis, and
+ * validation results. This is the same JSON that the CLI `export` command produces.
+ *
+ * Options (all optional):
+ * - `coreSpec`: `"auto"` | `"v2013"` | `"v2016"` | `"v2020"`
+ * - `app2eSpec`: `"auto"` | `"none"` | `"v2020"` | `"v2021"` | `"v2023"`
+ * - `rules`: ESLint-style rules configuration object
+ * @param {any} files
+ * @param {any} options
+ * @returns {any}
+ */
+export function buildReport(files, options) {
+    const ret = wasm.buildReport(files, options);
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return takeFromExternrefTable0(ret[0]);
+}
+
+/**
+ * Get library version
+ * @returns {string}
+ */
+export function getVersion() {
+    let deferred1_0;
+    let deferred1_1;
+    try {
+        const ret = wasm.getVersion();
+        deferred1_0 = ret[0];
+        deferred1_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+    }
+}
+
 /**
  * Parse an IMF package from in-memory files, returning the full parsed package.
  *
@@ -220,82 +295,6 @@ export function validate(files, options) {
         throw takeFromExternrefTable0(ret[1]);
     }
     return takeFromExternrefTable0(ret[0]);
-}
-
-/**
- * Build a structured report from an IMF package.
- *
- * Pass all XML files as a plain JS object where each key is the filename
- * and each value is the file's text content.
- *
- * Returns an `ImfReport` containing package metadata, CPL analysis, and
- * validation results. This is the same JSON that the CLI `export` command produces.
- *
- * Options (all optional):
- * - `coreSpec`: `"auto"` | `"v2013"` | `"v2016"` | `"v2020"`
- * - `app2eSpec`: `"auto"` | `"none"` | `"v2020"` | `"v2021"` | `"v2023"`
- * - `rules`: ESLint-style rules configuration object
- * @param {any} files
- * @param {any} options
- * @returns {any}
- */
-export function buildReport(files, options) {
-    const ret = wasm.buildReport(files, options);
-    if (ret[2]) {
-        throw takeFromExternrefTable0(ret[1]);
-    }
-    return takeFromExternrefTable0(ret[0]);
-}
-
-/**
- * Format a previously built `ImfReport` as a human-readable string.
- *
- * Pass the object returned by `buildReport()` (or any valid `ImfReport` JSON).
- * Returns the same output as `imferno report` on the CLI.
- * @param {any} report
- * @returns {string}
- */
-export function formatReport(report) {
-    let deferred2_0;
-    let deferred2_1;
-    try {
-        const ret = wasm.formatReport(report);
-        var ptr1 = ret[0];
-        var len1 = ret[1];
-        if (ret[3]) {
-            ptr1 = 0; len1 = 0;
-            throw takeFromExternrefTable0(ret[2]);
-        }
-        deferred2_0 = ptr1;
-        deferred2_1 = len1;
-        return getStringFromWasm0(ptr1, len1);
-    } finally {
-        wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
-    }
-}
-
-/**
- * Get library version
- * @returns {string}
- */
-export function getVersion() {
-    let deferred1_0;
-    let deferred1_1;
-    try {
-        const ret = wasm.getVersion();
-        deferred1_0 = ret[0];
-        deferred1_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
-    } finally {
-        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
-    }
-}
-
-/**
- * Initialize the WASM module
- */
-export function init() {
-    wasm.init();
 }
 
 const EXPECTED_RESPONSE_TYPES = new Set(['basic', 'cors', 'default']);
@@ -429,7 +428,7 @@ function __wbg_get_imports() {
         const ret = arg0.length;
         return ret;
     };
-    imports.wbg.__wbg_log_be5b2b60a5a1079e = function(arg0, arg1) {
+    imports.wbg.__wbg_log_81f91b0fd43793bd = function(arg0, arg1) {
         console.log(getStringFromWasm0(arg0, arg1));
     };
     imports.wbg.__wbg_new0_b0a0a38c201e6df5 = function() {

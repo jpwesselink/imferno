@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* rspress uses `html.rp-dark` for dark mode; map Tailwind's `dark:` variant to it */
+@custom-variant dark (&:where(.rp-dark, .rp-dark *));
+
 :root {
   --rp-c-brand: #f97316;
   --rp-c-brand-light: #fb923c;

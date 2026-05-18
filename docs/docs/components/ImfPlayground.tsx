@@ -50,12 +50,6 @@ function detectKind(name: string): FileKind | 'unknown' {
     return 'unknown';
 }
 
-function formatBytes(n: number): string {
-    if (n < 1024) return `${n} B`;
-    if (n < 1_048_576) return `${(n / 1024).toFixed(1)} KB`;
-    return `${(n / 1_048_576).toFixed(1)} MB`;
-}
-
 function makeUid() {
     return Math.random().toString(36).slice(2);
 }
@@ -67,29 +61,52 @@ function makeUid() {
 // Imferno top-level fields are camelCase (serde rename_all = "camelCase").
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+// Helper: try both PascalCase (actual JSON) and camelCase (fallback) keys
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function pick(obj: any, ...keys: string[]): any {
+    if (!obj) return null;
+    for (const k of keys) {
+        if (obj[k] != null) return obj[k];
+    }
+    return null;
+}
+
 function langFromDescriptor(ed: any): string | null {
-    const wave = ed?.wavePcmDescriptor;
-    const sf = wave?.subDescriptors?.soundfieldGroupLabelSubDescriptor;
-    if (sf?.rfc5646SpokenLanguage) return String(sf.rfc5646SpokenLanguage);
+    const wave = pick(ed, 'wavePCMDescriptor', 'wavePcmDescriptor');
+    const waveSubs = pick(wave, 'SubDescriptors', 'subDescriptors');
+    const sf = pick(waveSubs, 'SoundfieldGroupLabelSubDescriptor', 'soundfieldGroupLabelSubDescriptor');
+    const sfLang = pick(sf, 'RFC5646SpokenLanguage', 'rfc5646SpokenLanguage');
+    if (sfLang) return String(sfLang);
     const tt = ed?.dcTimedTextDescriptor;
-    const ttLangs = tt?.rfc5646LanguageTagList;
+    const ttLangs = pick(tt, 'RFC5646LanguageTagList', 'rfc5646LanguageTagList');
     if (Array.isArray(ttLangs) && ttLangs.length > 0) return String(ttLangs[0]);
     const iab = ed?.iabEssenceDescriptor;
-    const iabSf = iab?.subDescriptors?.iabSoundfieldLabelSubDescriptor;
-    if (iabSf?.rfc5646SpokenLanguage) return String(iabSf.rfc5646SpokenLanguage);
+    const iabSubs = pick(iab, 'SubDescriptors', 'subDescriptors');
+    const iabSf = pick(iabSubs, 'IABSoundfieldLabelSubDescriptor', 'iabSoundfieldLabelSubDescriptor');
+    const iabLang = pick(iabSf, 'RFC5646SpokenLanguage', 'rfc5646SpokenLanguage');
+    if (iabLang) return String(iabLang);
     return null;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function channelsFromDescriptor(ed: any): number | null {
-    return ed?.wavePcmDescriptor?.channelCount ?? ed?.iabEssenceDescriptor?.channelCount ?? null;
+    const wave = pick(ed, 'wavePCMDescriptor', 'wavePcmDescriptor');
+    const waveCh = pick(wave, 'ChannelCount', 'channelCount');
+    if (waveCh != null) return Number(waveCh);
+    const iabCh = pick(ed?.iabEssenceDescriptor, 'ChannelCount', 'channelCount');
+    if (iabCh != null) return Number(iabCh);
+    return null;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function soundfieldFromDescriptor(ed: any): string | null {
-    const sf = ed?.wavePcmDescriptor?.subDescriptors?.soundfieldGroupLabelSubDescriptor;
-    if (sf?.mcaTagSymbol) return String(sf.mcaTagSymbol);
-    if (sf?.mcaTagName) return String(sf.mcaTagName);
+    const wave = pick(ed, 'wavePCMDescriptor', 'wavePcmDescriptor');
+    const waveSubs = pick(wave, 'SubDescriptors', 'subDescriptors');
+    const sf = pick(waveSubs, 'SoundfieldGroupLabelSubDescriptor', 'soundfieldGroupLabelSubDescriptor');
+    const sym = pick(sf, 'MCATagSymbol', 'mcaTagSymbol');
+    if (sym) return String(sym);
+    const name = pick(sf, 'MCATagName', 'mcaTagName');
+    if (name) return String(name);
     if (ed?.iabEssenceDescriptor) return 'Atmos';
     return null;
 }
@@ -279,69 +296,6 @@ function mapValidateResult(result: any): any {
     };
 }
 
-// ─── file card ────────────────────────────────────────────────────────────────
-
-const KIND_LABEL: Record<FileKind, string> = {
-    volindex: 'VOLINDEX',
-    assetmap: 'ASSETMAP',
-    cpl: 'CPL',
-    pkl: 'PKL',
-    opl: 'OPL',
-};
-
-function FileCard({ file, onRemove }: { file: UploadedFile; onRemove: () => void }) {
-    return (
-        <div style={{
-            borderRadius: '12px',
-            border: '1px solid var(--sl-color-hairline, #2e2e32)',
-            background: 'var(--hp-card-bg, #202127)',
-            overflow: 'hidden',
-        }}>
-            <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '10px',
-                padding: '10px 16px',
-            }}>
-                {file.kind !== 'unknown' ? (
-                    <span style={{
-                        fontSize: '11px',
-                        fontFamily: 'monospace',
-                        fontWeight: 600,
-                        padding: '2px 8px',
-                        borderRadius: '4px',
-                        background: 'rgba(194,97,38,0.2)',
-                        color: 'var(--sl-color-accent, #f97316)',
-                        flexShrink: 0,
-                    }}>
-                        {KIND_LABEL[file.kind]}
-                    </span>
-                ) : (
-                    <span style={{ fontSize: '11px', color: 'var(--sl-color-gray-4, #6a6a71)', fontStyle: 'italic', flexShrink: 0 }}>unknown</span>
-                )}
-                <span style={{ fontSize: '13px', color: 'var(--sl-color-text, #dfdfd6)', fontWeight: 500, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {file.name}
-                </span>
-                <span style={{ fontSize: '11px', color: 'var(--sl-color-gray-4, #6a6a71)', flexShrink: 0 }}>{formatBytes(file.size)}</span>
-                <button
-                    onClick={onRemove}
-                    aria-label="Remove"
-                    style={{
-                        background: 'none',
-                        border: 'none',
-                        cursor: 'pointer',
-                        color: 'var(--sl-color-gray-4, #6a6a71)',
-                        fontSize: '16px',
-                        lineHeight: 1,
-                        padding: '0 2px',
-                        flexShrink: 0,
-                    }}
-                >×</button>
-            </div>
-        </div>
-    );
-}
-
 // ─── main component ───────────────────────────────────────────────────────────
 
 export default function ImfPlayground() {
@@ -352,6 +306,7 @@ export default function ImfPlayground() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [packageData, setPackageData] = useState<any | null>(null);
     const [parseError, setParseError] = useState<string | null>(null);
+    const [skippedCount, setSkippedCount] = useState<number>(0);
     const [rulesConfig, setRulesConfig] = useState<Record<string, RuleSeverity>>({
         'ST2067-2:2020:8.3/FileNotFound': 'info',
     });
@@ -389,9 +344,14 @@ export default function ImfPlayground() {
     }, [rulesConfig]);
 
     const processFiles = useCallback(async (fileList: FileList | File[]) => {
-        const list = Array.from(fileList).filter(
+        const all = Array.from(fileList);
+        const list = all.filter(
             (f) => f.name.toLowerCase().endsWith('.xml') && f.size <= MAX_BYTES,
         );
+        const skipped = all.filter(
+            (f) => !f.name.toLowerCase().endsWith('.xml') && !f.name.startsWith('.'),
+        );
+        setSkippedCount(skipped.length);
         if (list.length === 0) return;
 
         const entries: UploadedFile[] = list.map((f) => ({
@@ -444,13 +404,6 @@ export default function ImfPlayground() {
         if (e.target.files) processFiles(e.target.files);
         e.target.value = '';
     }, [processFiles]);
-
-    const removeFile = useCallback((uid: string) => {
-        setFiles((prev) => prev.filter((f) => f.uid !== uid));
-        setPackageData(null);
-        setParseError(null);
-        xmlMapRef.current = {};
-    }, []);
 
     return (
         <section className="not-content" style={{ paddingBottom: 0 }}>
@@ -604,6 +557,21 @@ export default function ImfPlayground() {
 
             {files.length > 0 && (
                 <>
+                    {/* Skipped non-XML files notice */}
+                    {skippedCount > 0 && (
+                        <div style={{
+                            marginBottom: '12px',
+                            padding: '8px 12px',
+                            borderRadius: '8px',
+                            background: 'rgba(148,163,184,0.1)',
+                            border: '1px solid rgba(148,163,184,0.2)',
+                            fontSize: '12px',
+                            color: '#94a3b8',
+                        }}>
+                            Ignored {skippedCount} non-XML file{skippedCount === 1 ? '' : 's'} (MXF essence is not needed for validation; only manifest XMLs are read).
+                        </div>
+                    )}
+
                     {/* Parse error */}
                     {parseError && (
                         <div style={{
@@ -628,13 +596,6 @@ export default function ImfPlayground() {
                             <IMFPackageViewer data={packageData} />
                         </div>
                     )}
-
-                    {/* Individual file cards */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                        {files.map((f) => (
-                            <FileCard key={f.uid} file={f} onRemove={() => removeFile(f.uid)} />
-                        ))}
-                    </div>
                 </>
             )}
         </section>

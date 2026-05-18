@@ -22,8 +22,8 @@ export default function Homepage() {
     script.type = 'module';
     script.textContent = `
       try {
-        const mod = await import('${base}wasm/imferno_wasm.js');
-        await mod.default();
+        const mod = await import('${base}wasm/imferno_wasm.js?v=${Date.now()}');
+        await mod.default('${base}wasm/imferno_wasm_bg.wasm?v=${Date.now()}');
         window.__imfWasm = mod;
       } catch (e) {
         window.__imfWasmError = String(e);

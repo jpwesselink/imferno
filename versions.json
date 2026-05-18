@@ -61,11 +61,6 @@
     "label": "beta (2.4.1)",
     "path": "/beta/"
   },
-  "prs": [
-    {
-      "label": "#52 fix/packageviewer-dark-mode",
-      "path": "/pr-52/"
-    }
-  ],
+  "prs": [],
   "latest": "/v2.4.0/"
 }

@@ -29,4 +29,25 @@ pub trait ValidationCode {
     fn default_severity(&self) -> Severity;
     /// The category bucket this code belongs to.
     fn category(&self) -> Category;
+
+    /// One-line snippet illustrating what a violation looks like in
+    /// the source artefact. Defaults to `None`; per-code
+    /// implementations override.
+    ///
+    /// Authoring guidance: prefer a minimal XML / value fragment over
+    /// prose, so operators can scan and recognize the pattern.
+    fn example(&self) -> Option<&'static str> {
+        None
+    }
+
+    /// Concrete fix instruction. Defaults to `None`; per-code
+    /// implementations override.
+    ///
+    /// Authoring guidance: imperative voice, single action when
+    /// possible ("Add a `CompositionTimecode/TimecodeStartAddress`
+    /// element matching format `HH:MM:SS:FF`"), spec section reference
+    /// in parentheses for the operator to look up.
+    fn remediation(&self) -> Option<&'static str> {
+        None
+    }
 }

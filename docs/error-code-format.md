@@ -68,22 +68,18 @@ The line range MAY be kept as a `displayHint` on the issue (for
 human-readable debugging), but the canonical machine identifier is
 the structural form.
 
-For XSD codes that pre-date this convention and haven't been
-migrated, the human-readable line range MAY be retained but the
-canonical XSD file SHOULD be hash-pinned in this document:
+### Migration status
 
-| Code prefix          | XSD file                           | sha256 |
-|----------------------|------------------------------------|--------|
-| `ST2067-2:2013:XSD-` | `2067-2-2013-CPL.xsd`              | _TODO — fill in when migrating._ |
-| `ST2067-2:2016:XSD-` | `2067-2-2016-CPL.xsd`              | _TODO_ |
-| `ST2067-2:2020:XSD-` | `2067-2-2020-CPL.xsd`              | _TODO_ |
-| `ST2067-3:2013:XSD-` | `2067-3-2013-PKL.xsd`              | _TODO_ |
-| `ST2067-3:2016:XSD-` | `2067-3-2016-PKL.xsd`              | _TODO_ |
-| `ST2067-3:2020:XSD-` | `2067-3-2020-PKL.xsd`              | _TODO_ |
+| Spec / family       | Status |
+|---------------------|--------|
+| ST 2067-2 Core (CPL XSD constraints) | **Migrated** — `XSD-66/IssueDate`, `XSD-88/EditRate`, `XSD-121-127/CompositionTimecode-*` are now `XSD/CompositionPlaylist/*` and `XSD/CompositionTimecode/*` respectively. |
+| ST 2067-3 (PKL XSD constraints)      | Not yet — no line-range codes currently in use. |
+| Other specs                          | None of the remaining catalogues currently use line-range XSD codes. |
 
-The hash pin makes a line-range code unambiguous even decades from
-now: `XSD-121-127` against the listed sha256 always means the same
-seven lines.
+If new XSD line-range codes get introduced before the structural-id
+migration is fully formalized, the canonical XSD file SHOULD be
+hash-pinned in this table so the line range is unambiguous against a
+specific schema release.
 
 ## Cross-edition applicability
 

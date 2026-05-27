@@ -8094,21 +8094,21 @@ mod tests {
         assert!(
             issues
                 .iter()
-                .any(|i| i.code.contains("CompositionTimecode-DropFrame")),
+                .any(|i| i.code.contains("CompositionTimecode/DropFrame")),
             "Missing TimecodeDropFrame should be flagged: {:#?}",
             issues,
         );
         assert!(
             issues
                 .iter()
-                .any(|i| i.code.contains("CompositionTimecode-StartAddress")),
+                .any(|i| i.code.contains("CompositionTimecode/StartAddress")),
             "Missing TimecodeStartAddress should be flagged: {:#?}",
             issues,
         );
         assert!(
             !issues
                 .iter()
-                .any(|i| i.code.contains("CompositionTimecode-Rate")),
+                .any(|i| i.code.contains("CompositionTimecode/Rate")),
             "Present TimecodeRate should not be flagged: {:#?}",
             issues,
         );
@@ -8426,7 +8426,7 @@ mod tests {
         let v = CoreConstraints2020;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            !issues.iter().any(|i| i.code.contains("RateMismatch")),
+            !issues.iter().any(|i| i.code.contains("Rate-Mismatch")),
             "Matching TimecodeRate and EditRate should not be flagged: {:#?}",
             issues,
         );
@@ -8445,7 +8445,7 @@ mod tests {
         let v = CoreConstraints2020;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| i.code.contains("RateMismatch")),
+            issues.iter().any(|i| i.code.contains("Rate-Mismatch")),
             "Mismatched TimecodeRate and EditRate should be flagged: {:#?}",
             issues,
         );
@@ -8464,7 +8464,7 @@ mod tests {
         let v = CoreConstraints2020;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            !issues.iter().any(|i| i.code.contains("RateMismatch")),
+            !issues.iter().any(|i| i.code.contains("Rate-Mismatch")),
             "TimecodeRate 24 should match EditRate 24000/1001 (23.976 fps): {:#?}",
             issues,
         );
@@ -9924,7 +9924,7 @@ mod tests {
         assert!(
             issues
                 .iter()
-                .any(|i| i.code.contains("CompositionTimecode-Rate-Zero")),
+                .any(|i| i.code.contains("CompositionTimecode/Rate-Zero")),
             "TimecodeRate of 0 should be flagged: {:#?}",
             issues,
         );
@@ -9942,7 +9942,7 @@ mod tests {
         assert!(
             !issues
                 .iter()
-                .any(|i| i.code.contains("CompositionTimecode-Rate-Zero")),
+                .any(|i| i.code.contains("CompositionTimecode/Rate-Zero")),
             "Positive TimecodeRate should be accepted: {:#?}",
             issues,
         );
@@ -9962,7 +9962,7 @@ mod tests {
         assert!(
             issues
                 .iter()
-                .any(|i| i.code.contains("CompositionTimecode-StartAddress-Format")),
+                .any(|i| i.code.contains("CompositionTimecode/StartAddress-Format")),
             "Invalid TimecodeStartAddress format should be flagged: {:#?}",
             issues,
         );
@@ -9980,7 +9980,7 @@ mod tests {
         assert!(
             !issues
                 .iter()
-                .any(|i| i.code.contains("CompositionTimecode-StartAddress-Format")),
+                .any(|i| i.code.contains("CompositionTimecode/StartAddress-Format")),
             "Valid TimecodeStartAddress should be accepted: {:#?}",
             issues,
         );

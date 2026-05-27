@@ -1,0 +1,117 @@
+{
+  "comment": "Map from vendored XSD basename to the matching SMPTE prose PDF on pub.smpte.org. Edition-aligned: the PDF year matches the XSD year. Paywalled entries (no free PDF at /pub/) have prose_url set to null and are emitted as stub docs.",
+  "specs": {
+    "imf-core-constraints-20130620.xsd": {
+      "spec": "ST 2067-2",
+      "edition": "2013",
+      "title": "IMF Core Constraints",
+      "namespace": "http://www.smpte-ra.org/schemas/2067-2/2013",
+      "prose_url": "https://pub.smpte.org/doc/st2067-2/20130829-pub/st2067-2-2013.pdf",
+      "catalogue_files": ["crates/imferno-core/src/assetmap/codes.rs"]
+    },
+    "st2067-2a-2016.xsd": {
+      "spec": "ST 2067-2",
+      "edition": "2016",
+      "title": "IMF Core Constraints",
+      "namespace": "http://www.smpte-ra.org/schemas/2067-2/2016",
+      "prose_url": "https://pub.smpte.org/doc/st2067-2/20160518-pub/st2067-2-2016.pdf",
+      "catalogue_files": ["crates/imferno-core/src/assetmap/codes.rs"]
+    },
+    "st2067-2a-2020.xsd": {
+      "spec": "ST 2067-2",
+      "edition": "2020",
+      "title": "IMF Core Constraints",
+      "namespace": "http://www.smpte-ra.org/schemas/2067-2/2020",
+      "prose_url": "https://pub.smpte.org/doc/st2067-2/20200407-pub/st2067-2-2020.pdf",
+      "catalogue_files": ["crates/imferno-core/src/assetmap/codes.rs"]
+    },
+    "imf-cpl.xsd": {
+      "spec": "ST 2067-3",
+      "edition": "2013",
+      "title": "Composition Playlist",
+      "namespace": "http://www.smpte-ra.org/schemas/2067-3/2013",
+      "prose_url": "https://pub.smpte.org/doc/st2067-3/20130221-pub/st2067-3-2013.pdf",
+      "catalogue_files": ["crates/imferno-core/src/cpl/codes.rs"]
+    },
+    "st2067-3a-2016.xsd": {
+      "spec": "ST 2067-3",
+      "edition": "2016",
+      "title": "Composition Playlist",
+      "namespace": "http://www.smpte-ra.org/schemas/2067-3/2016",
+      "prose_url": "https://pub.smpte.org/doc/st2067-3/20160518-pub/st2067-3-2016.pdf",
+      "catalogue_files": ["crates/imferno-core/src/cpl/codes.rs"]
+    },
+    "st2067-3a-2020.xsd": {
+      "spec": "ST 2067-3",
+      "edition": "2020",
+      "title": "Composition Playlist",
+      "namespace": "http://www.smpte-ra.org/schemas/2067-3/2020",
+      "prose_url": "https://pub.smpte.org/doc/st2067-3/20200407-pub/st2067-3-2020.pdf",
+      "catalogue_files": ["crates/imferno-core/src/cpl/codes.rs"]
+    },
+    "st2067-21a-2016.xsd": {
+      "spec": "ST 2067-21",
+      "edition": "2016",
+      "title": "Application #2E",
+      "namespace": "http://www.smpte-ra.org/schemas/2067-21/2016",
+      "prose_url": "https://pub.smpte.org/doc/st2067-21/20160518-pub/st2067-21-2016.pdf",
+      "catalogue_files": ["crates/imferno-core/src/validation/codes.rs"]
+    },
+    "st2067-100a-2014.xsd": {
+      "spec": "ST 2067-100",
+      "edition": "2014",
+      "title": "Output Profile List",
+      "namespace": "http://www.smpte-ra.org/schemas/2067-100/2014",
+      "prose_url": "https://pub.smpte.org/doc/st2067-100/20141212-pub/st2067-100-2014.pdf",
+      "catalogue_files": []
+    },
+    "st2067-102a-2014.xsd": {
+      "spec": "ST 2067-102",
+      "edition": "2014",
+      "title": "OPL Common Macros",
+      "namespace": "http://www.smpte-ra.org/schemas/2067-102/2014",
+      "prose_url": "https://pub.smpte.org/doc/st2067-102/20141212-pub/st2067-102-2014.pdf",
+      "catalogue_files": []
+    },
+    "st2067-103b-2014.xsd": {
+      "spec": "ST 2067-103",
+      "edition": "2014",
+      "title": "OPL",
+      "namespace": "http://www.smpte-ra.org/schemas/2067-103/2014",
+      "prose_url": "https://pub.smpte.org/doc/st2067-103/20141212-pub/st2067-103-2014.pdf",
+      "catalogue_files": []
+    },
+    "SMPTE-429-8-PKL-2007.xsd": {
+      "spec": "ST 429-8",
+      "edition": "2007",
+      "title": "Packing List",
+      "namespace": "http://www.smpte-ra.org/schemas/429-8/2007/PKL",
+      "prose_url": "https://pub.smpte.org/doc/st429-8/20070625-pub/st0429-8-2007.pdf",
+      "catalogue_files": []
+    },
+    "ST429-14-2014.xsd": {
+      "spec": "ST 429-14",
+      "edition": "2014",
+      "title": "Auxiliary Data",
+      "namespace": null,
+      "prose_url": "https://pub.smpte.org/doc/st429-14/20140513-pub/st0429-14-2014.pdf",
+      "catalogue_files": []
+    },
+    "st430-1-2017-kdm.xsd": {
+      "spec": "ST 430-1",
+      "edition": "2017",
+      "title": "KDM",
+      "namespace": null,
+      "prose_url": "https://pub.smpte.org/doc/st430-1/20170112-pub/st0430-1-2017.pdf",
+      "catalogue_files": []
+    },
+    "st430-3-2012.xsd": {
+      "spec": "ST 430-3",
+      "edition": "2012",
+      "title": "ETM",
+      "namespace": null,
+      "prose_url": "https://pub.smpte.org/doc/st430-3/20120822-pub/st0430-3-2012.pdf",
+      "catalogue_files": []
+    }
+  }
+}

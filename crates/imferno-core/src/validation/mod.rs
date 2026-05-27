@@ -2510,7 +2510,7 @@ impl App2E2021 {
                     ValidationIssue::new(
                         Severity::Error,
                         Category::Video,
-                        St2067_21_2023::ColorPrimaries.code().to_string(),
+                        St2067_21_2023::ColorPrimariesMissing.code().to_string(),
                         "ColorPrimaries shall be present (Table 8)",
                     )
                     .with_location(loc.clone()),
@@ -2539,7 +2539,7 @@ impl App2E2021 {
                     ValidationIssue::new(
                         Severity::Error,
                         Category::Video,
-                        St2067_21_2023::TransferCharacteristic.code().to_string(),
+                        St2067_21_2023::TransferCharacteristicMissing.code().to_string(),
                         "TransferCharacteristic shall be present (Table 8)",
                     )
                     .with_location(loc.clone()),
@@ -2976,7 +2976,7 @@ impl App2E2021 {
                     ValidationIssue::new(
                         Severity::Error,
                         Category::Video,
-                        St2067_21_2023::ColorPrimaries.code().to_string(),
+                        St2067_21_2023::ColorPrimariesMissing.code().to_string(),
                         "ColorPrimaries shall be present (Table 8)",
                     )
                     .with_location(loc.clone()),
@@ -3005,7 +3005,7 @@ impl App2E2021 {
                     ValidationIssue::new(
                         Severity::Error,
                         Category::Video,
-                        St2067_21_2023::TransferCharacteristic.code().to_string(),
+                        St2067_21_2023::TransferCharacteristicMissing.code().to_string(),
                         "TransferCharacteristic shall be present (Table 8)",
                     )
                     .with_location(loc.clone()),
@@ -3032,7 +3032,7 @@ impl App2E2021 {
                     ValidationIssue::new(
                         Severity::Error,
                         Category::Video,
-                        St2067_21_2023::CodingEquations.code().to_string(),
+                        St2067_21_2023::CodingEquationsMissing.code().to_string(),
                         "CodingEquations shall be present for Y'C'BC'R (Table 8)",
                     )
                     .with_location(loc.clone()),

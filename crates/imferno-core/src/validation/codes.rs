@@ -59,7 +59,10 @@ impl_into_string!(St2067_21_2020);
 /// Variant naming notes:
 /// - Variants ending in `Unknown` check for unrecognized UL values (wrong value).
 /// - Variants starting with `Required` check for missing mandatory fields.
-/// - Plain variants (e.g. `ColorPrimaries`) check field presence at §6.2.1.
+/// - `*Missing` variants (e.g. `ColorPrimariesMissing`) check field presence at §6.2.1.
+/// - `*Unknown` variants (e.g. `ColorPrimariesUnknown`) check value validity at §6.2.2/3/4.
+/// - Plain variants in §6.2.1 check value-validity for fields whose presence
+///   is enforced elsewhere (e.g. `FieldDominance`, `FrameLayout`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, strum::EnumIter)]
 pub enum St2067_21_2023 {
     // ── §5.2 Frame rates and resolutions ─────────────────────────────────────
@@ -108,9 +111,9 @@ pub enum St2067_21_2023 {
     /// Alpha transparency mode is not permitted in App2E.
     AlphaTransparency,
     /// `CodingEquations` field is absent from the picture descriptor (§6.2.1 Table 8).
-    CodingEquations,
+    CodingEquationsMissing,
     /// `ColorPrimaries` field is absent from the picture descriptor (§6.2.1 Table 8).
-    ColorPrimaries,
+    ColorPrimariesMissing,
     /// `FieldDominance` value is not permitted for the declared `FrameLayout`.
     FieldDominance,
     /// `FrameLayout` value is not in the permitted set for App2E.
@@ -134,7 +137,7 @@ pub enum St2067_21_2023 {
     /// `StoredF2Offset` is not zero as required for interlaced content.
     StoredF2Offset,
     /// `TransferCharacteristic` field is absent from the picture descriptor (§6.2.1 Table 8).
-    TransferCharacteristic,
+    TransferCharacteristicMissing,
 
     // ── §6.2.2 Transfer characteristic value ────────────────────────────────
     /// `TransferCharacteristic` UL is present but not a recognized value (§6.2.2).
@@ -269,8 +272,8 @@ impl ValidationCode for St2067_21_2023 {
             Self::RequiredChannelCount => "ST2067-21:2023:6.5/Required-ChannelCount",
             Self::RequiredQuantizationBits => "ST2067-21:2023:6.5/Required-QuantizationBits",
             Self::AlphaTransparency => "ST2067-21:2023:6.2.1/AlphaTransparency",
-            Self::CodingEquations => "ST2067-21:2023:6.2.1/CodingEquations",
-            Self::ColorPrimaries => "ST2067-21:2023:6.2.1/ColorPrimaries",
+            Self::CodingEquationsMissing => "ST2067-21:2023:6.2.1/CodingEquationsMissing",
+            Self::ColorPrimariesMissing => "ST2067-21:2023:6.2.1/ColorPrimariesMissing",
             Self::FieldDominance => "ST2067-21:2023:6.2.1/FieldDominance",
             Self::FrameLayout => "ST2067-21:2023:6.2.1/FrameLayout",
             Self::FrameLayoutInterlaced => "ST2067-21:2023:6.2.1/FrameLayoutInterlaced",
@@ -282,10 +285,10 @@ impl ValidationCode for St2067_21_2023 {
             Self::SampledXOffset => "ST2067-21:2023:6.2.1/SampledXOffset",
             Self::SampledYOffset => "ST2067-21:2023:6.2.1/SampledYOffset",
             Self::StoredF2Offset => "ST2067-21:2023:6.2.1/StoredF2Offset",
-            Self::TransferCharacteristic => "ST2067-21:2023:6.2.1/TransferCharacteristic",
-            Self::TransferCharacteristicUnknown => "ST2067-21:2023:6.2.2/TransferCharacteristic",
-            Self::CodingEquationsUnknown => "ST2067-21:2023:6.2.3/CodingEquations",
-            Self::ColorPrimariesUnknown => "ST2067-21:2023:6.2.4/ColorPrimaries",
+            Self::TransferCharacteristicMissing => "ST2067-21:2023:6.2.1/TransferCharacteristicMissing",
+            Self::TransferCharacteristicUnknown => "ST2067-21:2023:6.2.2/TransferCharacteristicUnknown",
+            Self::CodingEquationsUnknown => "ST2067-21:2023:6.2.3/CodingEquationsUnknown",
+            Self::ColorPrimariesUnknown => "ST2067-21:2023:6.2.4/ColorPrimariesUnknown",
             Self::J2KRequired => "ST2067-21:2023:6.2.5/J2KRequired",
             Self::AlphaMaxRef => "ST2067-21:2023:6.3/AlphaMaxRef",
             Self::AlphaMinRef => "ST2067-21:2023:6.3/AlphaMinRef",
@@ -346,8 +349,8 @@ impl ValidationCode for St2067_21_2023 {
             Self::RequiredChannelCount => "WavePCM descriptor is missing the required ChannelCount field.",
             Self::RequiredQuantizationBits => "WavePCM descriptor is missing the required QuantizationBits field.",
             Self::AlphaTransparency => "Alpha transparency mode is not permitted in App2E.",
-            Self::CodingEquations => "CodingEquations field is absent from the picture descriptor (Table 8).",
-            Self::ColorPrimaries => "ColorPrimaries field is absent from the picture descriptor (Table 8).",
+            Self::CodingEquationsMissing => "CodingEquations field is absent from the picture descriptor (Table 8).",
+            Self::ColorPrimariesMissing => "ColorPrimaries field is absent from the picture descriptor (Table 8).",
             Self::FieldDominance => "FieldDominance value is not permitted for the declared FrameLayout.",
             Self::FrameLayout => "FrameLayout value is not in the permitted set for App2E.",
             Self::FrameLayoutInterlaced => "FrameLayout declares interlaced content, which is not permitted in App2E.",
@@ -359,7 +362,7 @@ impl ValidationCode for St2067_21_2023 {
             Self::SampledXOffset => "SampledXOffset must be zero.",
             Self::SampledYOffset => "SampledYOffset must be zero.",
             Self::StoredF2Offset => "StoredF2Offset must be zero.",
-            Self::TransferCharacteristic => "TransferCharacteristic field is absent from the picture descriptor (Table 8).",
+            Self::TransferCharacteristicMissing => "TransferCharacteristic field is absent from the picture descriptor (Table 8).",
             Self::TransferCharacteristicUnknown => "TransferCharacteristic UL is present but not a recognized value.",
             Self::CodingEquationsUnknown => "CodingEquations UL is present but not a recognized value.",
             Self::ColorPrimariesUnknown => "ColorPrimaries UL is present but not a recognized value.",
@@ -472,8 +475,8 @@ impl St2067_21_2023 {
         Self::RequiredChannelCount,
         Self::RequiredQuantizationBits,
         Self::AlphaTransparency,
-        Self::CodingEquations,
-        Self::ColorPrimaries,
+        Self::CodingEquationsMissing,
+        Self::ColorPrimariesMissing,
         Self::FieldDominance,
         Self::FrameLayout,
         Self::FrameLayoutInterlaced,
@@ -485,7 +488,7 @@ impl St2067_21_2023 {
         Self::SampledXOffset,
         Self::SampledYOffset,
         Self::StoredF2Offset,
-        Self::TransferCharacteristic,
+        Self::TransferCharacteristicMissing,
         Self::TransferCharacteristicUnknown,
         Self::CodingEquationsUnknown,
         Self::ColorPrimariesUnknown,

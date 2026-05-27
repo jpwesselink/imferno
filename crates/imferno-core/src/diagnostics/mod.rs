@@ -47,14 +47,22 @@ pub enum Category {
     Asset,
     /// Timing, frame rate, and duration issues
     Timing,
-    /// Encoding and codec issues
+    /// Codec-level encoding issues (J2K profiles, JPEG-XS, AAC params,
+    /// PCM bit depth, etc.). For *container*-level concerns (MXF
+    /// wrapping, partition layout) use `Container`.
     Encoding,
+    /// MXF / wrapping container constraints — distinct from `Encoding`
+    /// which covers the codec carried inside the container.
+    Container,
     /// Audio configuration issues
     Audio,
     /// Video configuration issues
     Video,
     /// Subtitle and caption issues
     Subtitle,
+    /// Data essence (ISXD, dynamic metadata sidecars, ancillary data
+    /// tracks). NOT for *metadata about* essence — that's `Metadata`.
+    Data,
     /// Metadata and labeling issues
     Metadata,
     /// Security and DRM issues
@@ -72,9 +80,11 @@ impl fmt::Display for Category {
             Category::Asset => write!(f, "Asset"),
             Category::Timing => write!(f, "Timing"),
             Category::Encoding => write!(f, "Encoding"),
+            Category::Container => write!(f, "Container"),
             Category::Audio => write!(f, "Audio"),
             Category::Video => write!(f, "Video"),
             Category::Subtitle => write!(f, "Subtitle"),
+            Category::Data => write!(f, "Data"),
             Category::Metadata => write!(f, "Metadata"),
             Category::Security => write!(f, "Security"),
             Category::StudioSpecific(studio) => write!(f, "{} Specific", studio),

@@ -78,7 +78,9 @@ macro_rules! define_isxd_enum {
                 }
             }
             fn category(&self) -> Category {
-                Category::Audio
+                // ISXD carries dynamic data essence (sidecar metadata
+                // streams). Not audio — the previous tagging was wrong.
+                Category::Data
             }
         }
 

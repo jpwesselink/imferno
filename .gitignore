@@ -4,8 +4,9 @@
 # Fixture media (large production IMF packages)
 fixture/
 
-# SMPTE specs and registers (copyrighted / large)
-specs/
+# Large / copyrighted SMPTE registers go elsewhere — see specs/README.md.
+# specs/ itself is checked in: the SMPTE XSDs are BSD-licensed
+# (redistribution permitted with the copyright notice retained).
 
 # Rust
 /target

@@ -134,17 +134,15 @@ turn it into a tool.
 **Action**: add to every row:
 - **`Example violation`** — a one-line snippet showing what triggers
   the rule.
-- **`Remediation hint`** — concrete fix instruction, e.g. "Add a
-  `CompositionTimecode/TimecodeStartAddress` element matching format
-  `HH:MM:SS:FF`" or "Re-encode the audio at 48 kHz."
 
-**Strategic note**: this is the highest-leverage documentation work
-available. It converts the catalogue from "documentation of what
-Imferno checks" into "the public reference for what to do when X
-breaks." That's the asset that matters more than the engine.
+**Out of scope here**: per-code remediation guidance ("how to fix
+it"). Authoring accurate, spec-grounded fix instructions across the
+full catalogue is its own project — and a candidate commercial
+product distinct from the open-source engine — so the engine
+catalogue intentionally stops at description + example.
 
-**Acceptance**: every catalogue row has populated example + remediation
-columns; the published table renders them inline.
+**Acceptance**: every catalogue row has a populated `example` column;
+the published table renders it inline.
 
 ---
 
@@ -161,9 +159,8 @@ When items 4, 5, 6 land, the studio side benefits from:
   needed unless we want to surface the structural id as a
   click-through.
 - **#6** — Studio's report-detail page renders issue `message` only;
-  it could surface the `remediation hint` alongside if the engine
-  starts emitting it on each issue. Trivial UI addition once the
-  field exists.
+  once `example` is populated, the report could surface the example
+  fragment alongside to help operators recognize the violation.
 
 None of these block the engine work — they're cleanup the studio
 should do in lockstep with the engine releases.

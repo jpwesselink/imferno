@@ -126,28 +126,6 @@ impl ValidationCode for ImfernoCode {
         })
     }
 
-    fn remediation(&self) -> Option<&'static str> {
-        Some(match self {
-            Self::UnreferencedAsset =>
-                "Either reference the asset from a CPL Virtual Track / SCM declaration, or remove it from the AssetMap if it doesn't belong in this package.",
-            Self::UnlistedEssence =>
-                "Add the file to ASSETMAP.xml as an <Asset> (with a stable UUID and chunk path) or remove it from the package directory.",
-            Self::ParseError =>
-                "Open ASSETMAP.xml in an XML-aware editor and fix the structural error. The validator's `error` field carries the parser's exact line/column.",
-            Self::PklParseError =>
-                "Repair the PKL_<uuid>.xml referenced by ASSETMAP. The validator's `error` field carries the parser's exact failure reason.",
-            Self::XmlAssetParseError =>
-                "Confirm the file is actually a CPL/OPL/SCM and that its namespace matches a supported edition. If it's a different XML asset type, omit the .xml suffix or relocate it outside the package.",
-            Self::XmlReadError =>
-                "Check filesystem permissions and storage availability for the package root. Re-stage the package if the underlying medium is unreliable.",
-            Self::ReadDirError =>
-                "Verify the package root exists and is readable. If using object storage, check credentials and prefix permissions.",
-            Self::DirEntryError =>
-                "Inspect the package directory for broken symlinks or files with permission errors and remove them.",
-            Self::PathTraversal =>
-                "Rewrite the offending <Chunk><Path> so it stays within the package root. Path-traversal escapes are rejected by conforming readers and are a security boundary in Imferno.",
-        })
-    }
 }
 
 impl ImfernoCode {

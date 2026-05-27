@@ -180,6 +180,52 @@ macro_rules! define_iab_enum {
             fn category(&self) -> Category {
                 Category::Audio
             }
+            fn example(&self) -> Option<&'static str> {
+                Some(match self {
+                    Self::CodecForbidden =>
+                        "IABEssenceDescriptor with a non-empty Codec UL — ST 2067-201 forbids the item entirely.",
+                    Self::ElectrospatialFormulationForbidden =>
+                        "IABEssenceDescriptor sets ElectrospatialFormulation; the item shall be absent.",
+                    Self::QuantizationBitsMissing =>
+                        "IABEssenceDescriptor with no QuantizationBits item.",
+                    Self::QuantizationBitsInvalid =>
+                        "IABEssenceDescriptor with QuantizationBits = 16 instead of 24.",
+                    Self::ContainerFormatMissing =>
+                        "IABEssenceDescriptor with no ContainerFormat (EssenceContainer) UL.",
+                    Self::EssenceContainerInvalid =>
+                        "IABEssenceDescriptor with ContainerFormat = `0d010301.020c0900` (WAV) instead of the IAB frame-wrapped UL.",
+                    Self::AudioSamplingRateMissing =>
+                        "IABEssenceDescriptor with no AudioSampleRate.",
+                    Self::AudioSamplingRateInvalid =>
+                        "IABEssenceDescriptor with AudioSampleRate = 96000/1 instead of 48000/1.",
+                    Self::SoundCompressionMissing =>
+                        "IABEssenceDescriptor with no SoundCompression UL.",
+                    Self::SoundCompressionInvalid =>
+                        "IABEssenceDescriptor with SoundCompression = uncompressed PCM UL instead of the IAB compression UL.",
+                    Self::ChannelCountNotZero =>
+                        "IABEssenceDescriptor with ChannelCount = 2 — the 2019 edition mandates the distinguished value 0.",
+                    Self::SubDescriptorMissing =>
+                        "IABEssenceDescriptor with no IABSoundfieldLabelSubDescriptor in its SubDescriptors strong-ref list.",
+                    Self::MCATagSymbolMissing =>
+                        "IABSoundfieldLabelSubDescriptor with no MCATagSymbol item.",
+                    Self::MCATagSymbolInvalid =>
+                        "IABSoundfieldLabelSubDescriptor with MCATagSymbol = \"71\" instead of \"IAB\".",
+                    Self::MCATagNameMissing =>
+                        "IABSoundfieldLabelSubDescriptor with no MCATagName item.",
+                    Self::MCATagNameInvalid =>
+                        "IABSoundfieldLabelSubDescriptor with MCATagName = \"Immersive Audio Bitstream\" instead of \"IAB\".",
+                    Self::MCALabelDictionaryIDMissing =>
+                        "IABSoundfieldLabelSubDescriptor with no MCALabelDictionaryID UL.",
+                    Self::MCALabelDictionaryIDInvalid =>
+                        "IABSoundfieldLabelSubDescriptor with MCALabelDictionaryID set to a 5.1 surround UL instead of the IAB label UL.",
+                    Self::MainAudioMissing =>
+                        "Segment contains an IABSequence but no MainAudioSequence — required pairing per §6.2.",
+                    Self::IABSequenceNoResources =>
+                        "An IABSequence with an empty `<ResourceList>`.",
+                    Self::IABSequenceSourceEncodingInvalid =>
+                        "An IABSequence Resource whose SourceEncoding references a WAVEPCMDescriptor instead of an IABEssenceDescriptor.",
+                })
+            }
         }
 
         impl $name {

@@ -96,20 +96,6 @@ macro_rules! define_isxd_enum {
                         "Two Resources in the same ISXDSequence point at descriptors whose <NamespaceURI> differs.",
                 })
             }
-            fn remediation(&self) -> Option<&'static str> {
-                Some(match self {
-                    Self::SubDescriptorMissing =>
-                        "Add a `ContainerConstraintsSubDescriptor` child element to the `ISXDDataEssenceDescriptor` (ST 2067-202 §5).",
-                    Self::NamespaceUriMissing =>
-                        "Add a `<NamespaceURI>` child to the `ISXDDataEssenceDescriptor` identifying the data essence's payload namespace (ST 2067-202 §5).",
-                    Self::ISXDSequenceNoResources =>
-                        "Every `ISXDSequence` must contain at least one `Resource`. Add a Resource referencing an `ISXDDataEssenceDescriptor` (ST 2067-202 §6).",
-                    Self::ISXDSequenceSourceEncodingInvalid =>
-                        "Update the Resource's `<SourceEncoding>` UUID to point at an `ISXDDataEssenceDescriptor` in the EssenceDescriptorList (ST 2067-202 §6).",
-                    Self::NamespaceUriMismatch =>
-                        "Align the `<NamespaceURI>` values across all descriptors referenced by Resources in a single `ISXDSequence`; an ISXD virtual track may carry only one payload namespace (ST 2067-202 §6).",
-                })
-            }
         }
 
         impl $name {

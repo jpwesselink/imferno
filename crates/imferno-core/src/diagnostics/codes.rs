@@ -39,15 +39,4 @@ pub trait ValidationCode {
     fn example(&self) -> Option<&'static str> {
         None
     }
-
-    /// Concrete fix instruction. Defaults to `None`; per-code
-    /// implementations override.
-    ///
-    /// Authoring guidance: imperative voice, single action when
-    /// possible ("Add a `CompositionTimecode/TimecodeStartAddress`
-    /// element matching format `HH:MM:SS:FF`"), spec section reference
-    /// in parentheses for the operator to look up.
-    fn remediation(&self) -> Option<&'static str> {
-        None
-    }
 }

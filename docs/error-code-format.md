@@ -141,13 +141,12 @@ In addition to the code itself, every catalogue row exposes:
 | `default_severity`| yes      | See above. |
 | `category`        | yes      | `Structure | Schema | Reference | Asset | Timing | Encoding | Container | Audio | Video | Subtitle | Data | Metadata | Security | StudioSpecific(name)`. |
 | `example`         | should   | A one-line snippet showing what triggers the rule. |
-| `remediation`     | should   | A concrete fix instruction. |
 | `appliesTo`       | optional | Editions this code is valid for (when using applicability ranges per above). |
 | `displayHint`     | optional | Human-readable hint, e.g. XSD line range. |
 
-`example` and `remediation` are tracked as item #6 in
-[`catalogue-todos.md`](./catalogue-todos.md) — the trait surface
-exists; population is in progress.
+Per-code remediation guidance is intentionally **not** carried in the
+engine catalogue. Authoring accurate, spec-grounded fix instructions
+is a separate body of work; see `catalogue-todos.md` for context.
 
 ## Versioning policy
 

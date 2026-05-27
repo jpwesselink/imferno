@@ -45,6 +45,18 @@ impl ValidationCode for St377_1_2011 {
             Self::NoEssenceContainers | Self::Op1a => Category::Encoding,
         }
     }
+    fn example(&self) -> Option<&'static str> {
+        Some(match self {
+            Self::NotMxf =>
+                "An asset declared in the PKL with MIME `application/mxf` whose header doesn't carry the MXF run-in / partition pack key.",
+            Self::ParseError =>
+                "An MXF file that was truncated mid-transfer; the footer partition is missing or the RIP is unreadable.",
+            Self::NoEssenceContainers =>
+                "An MXF file whose header metadata declares no EssenceContainer ULs — the body has no decodable essence.",
+            Self::Op1a =>
+                "An MXF file whose Preface declares OperationalPattern OP-Atom or OP-3a instead of OP-1a.",
+        })
+    }
 }
 
 impl St377_1_2011 {

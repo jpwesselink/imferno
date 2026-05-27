@@ -42,6 +42,12 @@ impl ValidationCode for St2067_21_2020 {
     fn category(&self) -> Category {
         Category::Metadata
     }
+    fn example(&self) -> Option<&'static str> {
+        Some(match self {
+            Self::AppIdMismatch =>
+                "CPL ExtensionProperties contains `<ApplicationIdentification>http://www.smpte-ra.org/schemas/2067-20/2013</ApplicationIdentification>` (App #2) instead of the App #2E URI.",
+        })
+    }
 }
 
 impl St2067_21_2020 {

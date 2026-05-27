@@ -34,6 +34,22 @@ impl ValidationCode for St429_9_2014 {
     fn category(&self) -> Category {
         Category::Structure
     }
+    fn example(&self) -> Option<&'static str> {
+        Some(match self {
+            Self::VolindexMissing =>
+                "Package root contains ASSETMAP.xml and CPL/PKL XMLs but no VOLINDEX.xml.",
+            Self::MalformedXml =>
+                "<VolumeIndex>1<!-- truncated --> — VOLINDEX.xml ends mid-element.",
+        })
+    }
+    fn remediation(&self) -> Option<&'static str> {
+        Some(match self {
+            Self::VolindexMissing =>
+                "Add a VOLINDEX.xml at the package root declaring the volume index. For single-volume packages: `<VolumeIndex xmlns=\"http://www.smpte-ra.org/schemas/429-9/2007/AM\"><Index>1</Index></VolumeIndex>` (ST 429-9 §7).",
+            Self::MalformedXml =>
+                "Repair VOLINDEX.xml so it parses as well-formed XML — the validator's `error` field carries the parser's line/column.",
+        })
+    }
 }
 
 impl St429_9_2014 {

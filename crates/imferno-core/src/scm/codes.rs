@@ -71,6 +71,48 @@ impl ValidationCode for St2067_9_2018 {
     fn category(&self) -> Category {
         Category::Reference
     }
+
+    fn example(&self) -> Option<&'static str> {
+        Some(match self {
+            Self::MalformedXml =>
+                "SCM_<uuid>.xml ends mid-element or has mismatched tags.",
+            Self::SidecarAssetReferencedByVirtualTrack =>
+                "A CPL <Resource><TrackFileId> points at a sidecar asset declared in an SCM document.",
+            Self::DuplicateAssetId =>
+                "Two <SidecarAsset> entries in one SCM share the same <Id>urn:uuid:abc…</Id>.",
+            Self::SignerWithoutSignature =>
+                "<Signer>…</Signer> appears but no sibling <Signature> follows.",
+            Self::SignatureWithoutSigner =>
+                "<Signature>…</Signature> appears without a preceding <Signer>.",
+            Self::SidecarAssetNotFound =>
+                "<SidecarAsset><Id>urn:uuid:abc…</Id> references a UUID that is not present in ASSETMAP.xml.",
+            Self::CplNotFound =>
+                "<AssociatedCPLList><CPLId>urn:uuid:xyz…</CPLId> points at a CPL that isn't in the package.",
+            Self::DuplicateCplId =>
+                "An <AssociatedCPLList> contains the same <CPLId>urn:uuid:xyz…</CPLId> twice.",
+        })
+    }
+
+    fn remediation(&self) -> Option<&'static str> {
+        Some(match self {
+            Self::MalformedXml =>
+                "Repair the SCM XML so it parses as well-formed XML. The validator's `error` field carries the parser's exact line/column (ST 2067-9 §6.1).",
+            Self::SidecarAssetReferencedByVirtualTrack =>
+                "Sidecar assets are explicitly excluded from CPL Virtual Tracks. Either remove the asset from the CPL (it belongs only in the SCM) or move it out of the SidecarAssetList (ST 2067-9 §5).",
+            Self::DuplicateAssetId =>
+                "Each <SidecarAsset> within an SCM must have a unique <Id>. Remove the duplicate entry or assign a fresh UUID (ST 2067-9 §7.2.3).",
+            Self::SignerWithoutSignature =>
+                "Either remove the <Signer> element, or add the corresponding <Signature> over the SCM body (ST 2067-9 §7.2.4).",
+            Self::SignatureWithoutSigner =>
+                "Either remove the <Signature> element, or add the corresponding <Signer> identifying the signing identity (ST 2067-9 §7.2.5).",
+            Self::SidecarAssetNotFound =>
+                "Add the missing asset to ASSETMAP.xml as an <Asset> with the matching UUID, or remove the dangling <SidecarAsset> entry (ST 2067-9 §7.3.1).",
+            Self::CplNotFound =>
+                "Either add the referenced CPL to the package (and to ASSETMAP) or remove the dangling <CPLId> from the AssociatedCPLList (ST 2067-9 §7.3.1.1).",
+            Self::DuplicateCplId =>
+                "Each <CPLId> within an AssociatedCPLList must appear at most once. Remove the duplicate (ST 2067-9 §7.3.1.1).",
+        })
+    }
 }
 
 impl St2067_9_2018 {

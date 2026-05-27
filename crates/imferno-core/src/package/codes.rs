@@ -102,6 +102,52 @@ impl ValidationCode for ImfernoCode {
     fn category(&self) -> Category {
         Category::Structure
     }
+
+    fn example(&self) -> Option<&'static str> {
+        Some(match self {
+            Self::UnreferencedAsset =>
+                "ASSETMAP lists urn:uuid:abc… as an Asset, but no CPL Virtual Track resource and no SCM Asset entry references it.",
+            Self::UnlistedEssence =>
+                "BONUS_AUDIO.mxf sits next to ASSETMAP.xml on disk but does not appear in any <Asset> entry of ASSETMAP.xml.",
+            Self::ParseError =>
+                "Top-level error parsing ASSETMAP.xml — e.g. missing root <AssetMap> element or truncated stream.",
+            Self::PklParseError =>
+                "PKL_<uuid>.xml is referenced from ASSETMAP but is malformed XML or violates the PKL schema.",
+            Self::XmlAssetParseError =>
+                "An asset listed with a .xml suffix doesn't parse as CPL, OPL, or SCM (likely a misnamed file or a sidecar XML).",
+            Self::XmlReadError =>
+                "ASSETMAP.xml exists in the manifest but couldn't be opened (permission denied, network read failure, etc.).",
+            Self::ReadDirError =>
+                "The package root directory could not be enumerated (permission denied or path missing).",
+            Self::DirEntryError =>
+                "A specific directory entry returned an error during scanning (often a broken symlink).",
+            Self::PathTraversal =>
+                "<Chunk><Path>../../etc/passwd</Path></Chunk> — the asset path resolves outside the package root.",
+        })
+    }
+
+    fn remediation(&self) -> Option<&'static str> {
+        Some(match self {
+            Self::UnreferencedAsset =>
+                "Either reference the asset from a CPL Virtual Track / SCM declaration, or remove it from the AssetMap if it doesn't belong in this package.",
+            Self::UnlistedEssence =>
+                "Add the file to ASSETMAP.xml as an <Asset> (with a stable UUID and chunk path) or remove it from the package directory.",
+            Self::ParseError =>
+                "Open ASSETMAP.xml in an XML-aware editor and fix the structural error. The validator's `error` field carries the parser's exact line/column.",
+            Self::PklParseError =>
+                "Repair the PKL_<uuid>.xml referenced by ASSETMAP. The validator's `error` field carries the parser's exact failure reason.",
+            Self::XmlAssetParseError =>
+                "Confirm the file is actually a CPL/OPL/SCM and that its namespace matches a supported edition. If it's a different XML asset type, omit the .xml suffix or relocate it outside the package.",
+            Self::XmlReadError =>
+                "Check filesystem permissions and storage availability for the package root. Re-stage the package if the underlying medium is unreliable.",
+            Self::ReadDirError =>
+                "Verify the package root exists and is readable. If using object storage, check credentials and prefix permissions.",
+            Self::DirEntryError =>
+                "Inspect the package directory for broken symlinks or files with permission errors and remove them.",
+            Self::PathTraversal =>
+                "Rewrite the offending <Chunk><Path> so it stays within the package root. Path-traversal escapes are rejected by conforming readers and are a security boundary in Imferno.",
+        })
+    }
 }
 
 impl ImfernoCode {

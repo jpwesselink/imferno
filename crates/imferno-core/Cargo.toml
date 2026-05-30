@@ -44,3 +44,8 @@ aws-config = { workspace = true, optional = true }
 [dev-dependencies]
 pretty_assertions = { workspace = true }
 tempfile          = { workspace = true }
+xmloxide          = "0.4"
+
+[[example]]
+name = "xsd_validate_spike"
+path = "examples/xsd_validate_spike.rs"

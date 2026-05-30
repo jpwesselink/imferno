@@ -485,71 +485,9 @@ impl std::fmt::Display for ColorSystem {
 // Mirrors Photon's `IMFCoreConstraintsValidator` abstract base class.
 // ═════════════════════════════════════════════════════════════════════════════
 
-/// Validate xs:dateTime format (simplified check without chrono dependency).
-/// Accepts: YYYY-MM-DDThh:mm:ss, YYYY-MM-DDThh:mm:ss.f, with optional Z or +/-hh:mm timezone.
-fn is_valid_xs_datetime(s: &str) -> bool {
-    // Minimum valid: 2024-01-01T00:00:00 (19 chars)
-    if s.len() < 19 {
-        return false;
-    }
-    // Check basic structure: digits, dashes, T, colons
-    let bytes = s.as_bytes();
-    bytes[4] == b'-'
-        && bytes[7] == b'-'
-        && bytes[10] == b'T'
-        && bytes[13] == b':'
-        && bytes[16] == b':'
-        && bytes[0..4].iter().all(|b| b.is_ascii_digit())
-        && bytes[5..7].iter().all(|b| b.is_ascii_digit())
-        && bytes[8..10].iter().all(|b| b.is_ascii_digit())
-        && bytes[11..13].iter().all(|b| b.is_ascii_digit())
-        && bytes[14..16].iter().all(|b| b.is_ascii_digit())
-        && bytes[17..19].iter().all(|b| b.is_ascii_digit())
-}
-
-/// Validates SMPTE timecode address format per st2067-3a-2016.xsd `TimecodeType`.
-///
-/// Pattern: `[0-2][0-9](sep)[0-5][0-9](sep)[0-5][0-9](sep)[0-5][0-9]`
-/// where sep ∈ { : / ; , . + - }
-fn is_valid_timecode_address(s: &str) -> bool {
-    let b = s.as_bytes();
-    if b.len() != 11 {
-        return false;
-    }
-    let sep = |c: u8| matches!(c, b':' | b'/' | b';' | b',' | b'.' | b'+' | b'-');
-    b[0].is_ascii_digit()
-        && b[0] <= b'2'
-        && b[1].is_ascii_digit()
-        && sep(b[2])
-        && b[3].is_ascii_digit()
-        && b[3] <= b'5'
-        && b[4].is_ascii_digit()
-        && sep(b[5])
-        && b[6].is_ascii_digit()
-        && b[6] <= b'5'
-        && b[7].is_ascii_digit()
-        && sep(b[8])
-        && b[9].is_ascii_digit()
-        && b[10].is_ascii_digit()
-}
-
-/// Validates `TotalRunningTime` format per st2067-3a-2016.xsd.
-///
-/// Pattern: `[0-9][0-9]:[0-5][0-9]:[0-5][0-9]`  (HH:MM:SS, exactly 8 chars)
-fn is_valid_total_running_time(s: &str) -> bool {
-    let b = s.as_bytes();
-    b.len() == 8
-        && b[0].is_ascii_digit()
-        && b[1].is_ascii_digit()
-        && b[2] == b':'
-        && b[3].is_ascii_digit()
-        && b[3] <= b'5'
-        && b[4].is_ascii_digit()
-        && b[5] == b':'
-        && b[6].is_ascii_digit()
-        && b[6] <= b'5'
-        && b[7].is_ascii_digit()
-}
+// xs:dateTime, TimecodeType pattern, and TotalRunningTime regex helpers were
+// gutted along with their XSD-overlap emission sites — see the runtime-XSD
+// architecture spike (uppsala-based) for the replacement path.
 
 /// Validates xs:anyURI: must not contain ASCII whitespace.
 ///
@@ -559,112 +497,9 @@ fn is_valid_any_uri(s: &str) -> bool {
     !s.chars().any(|c| c.is_ascii_whitespace())
 }
 
-/// XSD SequenceType: ResourceList must have at least one Resource.
-fn validate_resource_list_non_empty(
-    cpl: &CompositionPlaylist,
-    code: fn(CoreConstraintsCode) -> &'static str,
-    issues: &mut Vec<ValidationIssue>,
-) {
-    use crate::cpl::SequenceAccess;
-
-    for (seg_idx, segment) in cpl.segment_list.segments.iter().enumerate() {
-        let sl = &segment.sequence_list;
-
-        fn check_seq<S: SequenceAccess>(
-            seqs: &[S],
-            track_type: &str,
-            cpl_id: crate::assetmap::ImfUuid,
-            seg_idx: usize,
-            code: fn(CoreConstraintsCode) -> &'static str,
-            issues: &mut Vec<ValidationIssue>,
-        ) {
-            for seq in seqs {
-                if seq.resource_list().resources.is_empty() {
-                    issues.push(
-                        ValidationIssue::new(
-                            Severity::Error,
-                            Category::Structure,
-                            code(CoreConstraintsCode::ResourceListEmpty),
-                            format!(
-                                "{} {} in Segment {} has an empty ResourceList",
-                                track_type,
-                                seq.id(),
-                                seg_idx + 1,
-                            ),
-                        )
-                        .with_location(Location::new().with_cpl(cpl_id).with_segment(seg_idx)),
-                    );
-                }
-            }
-        }
-
-        let cpl_id = cpl.id;
-        check_seq(
-            &sl.main_image_sequences,
-            "MainImageSequence",
-            cpl_id,
-            seg_idx,
-            code,
-            issues,
-        );
-        check_seq(
-            &sl.main_audio_sequences,
-            "MainAudioSequence",
-            cpl_id,
-            seg_idx,
-            code,
-            issues,
-        );
-        check_seq(
-            &sl.subtitles_sequences,
-            "SubtitlesSequence",
-            cpl_id,
-            seg_idx,
-            code,
-            issues,
-        );
-        check_seq(
-            &sl.marker_sequences,
-            "MarkerSequence",
-            cpl_id,
-            seg_idx,
-            code,
-            issues,
-        );
-        check_seq(
-            &sl.hearing_impaired_captions_sequences,
-            "HearingImpairedCaptionsSequence",
-            cpl_id,
-            seg_idx,
-            code,
-            issues,
-        );
-        check_seq(
-            &sl.forced_narrative_sequences,
-            "ForcedNarrativeSequence",
-            cpl_id,
-            seg_idx,
-            code,
-            issues,
-        );
-        check_seq(
-            &sl.iab_sequences,
-            "IABSequence",
-            cpl_id,
-            seg_idx,
-            code,
-            issues,
-        );
-        check_seq(
-            &sl.isxd_sequences,
-            "ISXDSequence",
-            cpl_id,
-            seg_idx,
-            code,
-            issues,
-        );
-    }
-}
+// `validate_resource_list_non_empty` was gutted — XSD-overlap check
+// (CoreConstraintsCode::ResourceListEmpty mirrors xs:sequence + minOccurs=1
+// on the Resource element). Replacement comes via runtime-XSD validation.
 
 /// Shared core structure checks applied by all spec versions.
 fn validate_core_structure(
@@ -674,188 +509,18 @@ fn validate_core_structure(
 ) {
     let loc = Location::new().with_cpl(cpl.id);
 
-    // ContentTitle must be non-empty
-    if cpl.content_title.text.trim().is_empty() {
-        issues.push(
-            ValidationIssue::new(
-                Severity::Error,
-                Category::Metadata,
-                code(CoreConstraintsCode::ContentTitle),
-                "ContentTitle shall not be empty",
-            )
-            .with_location(loc.clone()),
-        );
-    }
+    // ───────────────────────────────────────────────────────────────────────────
+    // XSD-overlap structural checks (ContentTitle, TotalRunningTime, SegmentList,
+    // Segment-has-sequences, EditRate, IssueDate, IssueDate format,
+    // CompositionTimecode completeness + TimecodeRate>0 + TimecodeStartAddress
+    // format) were gutted. They mirrored constraints already expressed in the
+    // SMPTE XSDs and will be re-emitted by the runtime-XSD validation path
+    // (see spike branch) via a translator that maps schema diagnostics back
+    // into the CoreConstraintsCode catalogue.
+    // ───────────────────────────────────────────────────────────────────────────
 
-    // XSD: TotalRunningTime pattern [0-9][0-9]:[0-5][0-9]:[0-5][0-9]
-    if let Some(ref trt) = cpl.total_running_time {
-        if !is_valid_total_running_time(trt) {
-            issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Metadata,
-                    code(CoreConstraintsCode::TotalRunningTimeFormat),
-                    format!(
-                        "TotalRunningTime '{}' does not match required format HH:MM:SS \
-                         (pattern [0-9][0-9]:[0-5][0-9]:[0-5][0-9])",
-                        trt,
-                    ),
-                )
-                .with_location(loc.clone()),
-            );
-        }
-    }
-
-    // SegmentList must have at least one Segment
-    if cpl.segment_list.segments.is_empty() {
-        issues.push(
-            ValidationIssue::new(
-                Severity::Critical,
-                Category::Structure,
-                code(CoreConstraintsCode::SegmentList),
-                "SegmentList shall contain at least one Segment",
-            )
-            .with_location(loc.clone()),
-        );
-    }
-
-    // Each Segment must have at least one sequence
-    for (i, segment) in cpl.segment_list.segments.iter().enumerate() {
-        let seg_loc = Location::new().with_cpl(cpl.id).with_segment(i);
-
-        let sl = &segment.sequence_list;
-        let has_sequences = !sl.main_image_sequences.is_empty()
-            || !sl.main_audio_sequences.is_empty()
-            || !sl.subtitles_sequences.is_empty()
-            || !sl.marker_sequences.is_empty()
-            || !sl.hearing_impaired_captions_sequences.is_empty()
-            || !sl.forced_narrative_sequences.is_empty()
-            || !sl.iab_sequences.is_empty()
-            || !sl.isxd_sequences.is_empty();
-
-        if !has_sequences {
-            issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Structure,
-                    code(CoreConstraintsCode::Segment),
-                    format!("Segment {} contains no sequences", i + 1),
-                )
-                .with_location(seg_loc),
-            );
-        }
-    }
-
-    // XSD §88: EditRate is required on the composition
-    if cpl.edit_rate.is_none() {
-        issues.push(
-            ValidationIssue::new(
-                Severity::Error,
-                Category::Structure,
-                code(CoreConstraintsCode::EditRate),
-                "CPL EditRate is required per XSD schema (st2067-3a §88)",
-            )
-            .with_location(loc.clone()),
-        );
-    }
-
-    // XSD §66: IssueDate must be a valid xs:dateTime
-    if cpl.issue_date.is_empty() {
-        issues.push(
-            ValidationIssue::new(
-                Severity::Error,
-                Category::Metadata,
-                code(CoreConstraintsCode::IssueDate),
-                "CPL IssueDate shall not be empty",
-            )
-            .with_location(loc.clone()),
-        );
-    } else if !is_valid_xs_datetime(&cpl.issue_date) {
-        issues.push(
-            ValidationIssue::new(
-                Severity::Warning,
-                Category::Metadata,
-                code(CoreConstraintsCode::IssueDateFormat),
-                format!(
-                    "IssueDate '{}' is not a valid xs:dateTime format (expected YYYY-MM-DDThh:mm:ss[.f][Z|+hh:mm])",
-                    cpl.issue_date,
-                ),
-            )
-            .with_location(loc.clone()),
-        );
-    }
-
-    // XSD §121-127: CompositionTimecode completeness (if present, all sub-fields required)
-    if let Some(ref tc) = cpl.composition_timecode {
-        let tc_loc = loc.clone();
-        if tc.timecode_drop_frame.is_none() {
-            issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Structure,
-                    code(CoreConstraintsCode::CompositionTimecodeDropFrame),
-                    "CompositionTimecode.TimecodeDropFrame is required when CompositionTimecode is present",
-                )
-                .with_location(tc_loc.clone()),
-            );
-        }
-        if tc.timecode_rate.is_none() {
-            issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Structure,
-                    code(CoreConstraintsCode::CompositionTimecodeRate),
-                    "CompositionTimecode.TimecodeRate is required when CompositionTimecode is present",
-                )
-                .with_location(tc_loc.clone()),
-            );
-        }
-        if tc.timecode_start_address.is_none() {
-            issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Structure,
-                    code(CoreConstraintsCode::CompositionTimecodeStartAddress),
-                    "CompositionTimecode.TimecodeStartAddress is required when CompositionTimecode is present",
-                )
-                .with_location(tc_loc.clone()),
-            );
-        }
-        // XSD xs:positiveInteger: TimecodeRate must be > 0
-        if let Some(rate) = tc.timecode_rate {
-            if rate == 0 {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Timing,
-                        code(CoreConstraintsCode::CompositionTimecodeRateZero),
-                        "CompositionTimecode.TimecodeRate shall be a positive integer (xs:positiveInteger); 0 is not valid",
-                    )
-                    .with_location(tc_loc.clone()),
-                );
-            }
-        }
-        // XSD TimecodeType pattern: HH:MM:SS:FF with separator in { : / ; , . + - }
-        if let Some(ref addr) = tc.timecode_start_address {
-            if !is_valid_timecode_address(addr) {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Timing,
-                        code(CoreConstraintsCode::CompositionTimecodeStartAddressFormat),
-                        format!(
-                            "TimecodeStartAddress '{}' does not match SMPTE timecode format \
-                             HH:MM:SS:FF (separators: : / ; , . + -)",
-                            addr,
-                        ),
-                    )
-                    .with_location(tc_loc),
-                );
-            }
-        }
-    }
-
-    // XSD §121-127: CompositionTimecode.TimecodeRate should match CPL EditRate
+    // Cross-field semantic check: TimecodeRate must equal rounded CPL EditRate.
+    // KEPT — XSD cannot express this; it's prose-only (cross-field invariant).
     if let (Some(ref tc), Some(ref er)) = (&cpl.composition_timecode, &cpl.edit_rate) {
         if let Some(tc_rate) = tc.timecode_rate {
             // EditRate as integer fps (for non-drop-frame comparison)
@@ -881,26 +546,11 @@ fn validate_core_structure(
         }
     }
 
-    // XSD: LocaleList must have at least one Locale (minOccurs=1)
-    if let Some(ref ll) = cpl.locale_list {
-        if ll.locales.is_empty() {
-            issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Structure,
-                    code(CoreConstraintsCode::LocaleListNonEmpty),
-                    "LocaleList shall contain at least one Locale (XSD minOccurs=1)",
-                )
-                .with_location(loc.clone()),
-            );
-        }
-    }
+    // LocaleListNonEmpty + ResourceListEmpty were gutted — both are XSD-overlap
+    // (xs:sequence + minOccurs=1 on Locale / Resource elements respectively).
 
     // ST 2067-3 constraints delegated to st2067-3 crate (§5.5.1.2, §6.4.2, §6.11, §6.12, §7.3, §7.4)
     issues.extend(crate::cpl::validate_cpl_constraints(cpl));
-
-    // XSD SequenceType: ResourceList must have at least one Resource
-    validate_resource_list_non_empty(cpl, code, issues);
 
     // UUID uniqueness
     validate_uuid_uniqueness(cpl, code, issues);
@@ -5098,6 +4748,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "XSD-overlap check gutted; runtime-XSD validator will re-emit"]
     fn core_flags_empty_content_title() {
         let mut cpl = minimal_cpl();
         cpl.content_title.text = "".to_string();
@@ -5110,6 +4761,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "XSD-overlap check gutted; runtime-XSD validator will re-emit"]
     fn core_flags_empty_segment_list() {
         let mut cpl = minimal_cpl();
         cpl.segment_list.segments.clear();
@@ -5122,6 +4774,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "XSD-overlap check gutted; runtime-XSD validator will re-emit"]
     fn core_flags_segment_with_no_sequences() {
         let cpl = minimal_cpl(); // has one segment with empty sequence list
         let v = CoreConstraints2020;
@@ -7992,26 +7645,14 @@ mod tests {
     }
 
     // ── XSD structural validation tests ─────────────────────────────────────
-
-    /// XSD: is_valid_xs_datetime accepts standard formats.
-    #[test]
-    fn xs_datetime_valid_formats() {
-        assert!(is_valid_xs_datetime("2024-01-01T00:00:00Z"));
-        assert!(is_valid_xs_datetime("2024-01-01T00:00:00"));
-        assert!(is_valid_xs_datetime("2024-01-01T12:30:45.123Z"));
-        assert!(is_valid_xs_datetime("2024-01-01T12:30:45+05:30"));
-    }
-
-    #[test]
-    fn xs_datetime_invalid_formats() {
-        assert!(!is_valid_xs_datetime(""));
-        assert!(!is_valid_xs_datetime("2024"));
-        assert!(!is_valid_xs_datetime("not-a-date"));
-        assert!(!is_valid_xs_datetime("01-01-2024T00:00:00"));
-    }
+    // Helper-direct tests (xs_datetime_valid/invalid_formats, timecode_address_*,
+    // total_running_time_*) were deleted along with the helper functions
+    // they exercised — these were pure XSD-overlap checks now slated for
+    // runtime-XSD validation.
 
     /// XSD §88: EditRate is required on the composition.
     #[test]
+    #[ignore = "XSD-overlap check gutted; runtime-XSD validator will re-emit"]
     fn core_flags_missing_edit_rate() {
         let cpl = minimal_cpl(); // edit_rate is None
         let v = CoreConstraints2020;
@@ -8050,6 +7691,7 @@ mod tests {
 
     /// XSD: IssueDate format validation.
     #[test]
+    #[ignore = "XSD-overlap check gutted; runtime-XSD validator will re-emit"]
     fn core_warns_invalid_issue_date_format() {
         let mut cpl = minimal_cpl();
         cpl.issue_date = "not-a-date".to_string();
@@ -8064,6 +7706,7 @@ mod tests {
 
     /// XSD: Empty IssueDate flags error.
     #[test]
+    #[ignore = "XSD-overlap check gutted; runtime-XSD validator will re-emit"]
     fn core_flags_empty_issue_date() {
         let mut cpl = minimal_cpl();
         cpl.issue_date = "".to_string();
@@ -8080,6 +7723,7 @@ mod tests {
 
     /// XSD §121-127: CompositionTimecode completeness.
     #[test]
+    #[ignore = "XSD-overlap check gutted; runtime-XSD validator will re-emit"]
     fn core_flags_incomplete_composition_timecode() {
         use crate::cpl::CompositionTimecode;
 
@@ -8116,6 +7760,7 @@ mod tests {
 
     /// XSD SequenceType: ResourceList must not be empty.
     #[test]
+    #[ignore = "XSD-overlap check gutted; runtime-XSD validator will re-emit"]
     fn core_flags_empty_resource_list() {
         let mut cpl = minimal_cpl();
         cpl.segment_list.segments[0]
@@ -9833,39 +9478,9 @@ mod tests {
     }
 
     // ── XSD constraint helpers ────────────────────────────────────────────────
-
-    #[test]
-    fn helper_timecode_address_valid() {
-        assert!(is_valid_timecode_address("00:00:00:00"));
-        assert!(is_valid_timecode_address("23:59:59:29"));
-        assert!(is_valid_timecode_address("10;00;00;00")); // semicolons (drop-frame)
-        assert!(is_valid_timecode_address("01/02/03/04"));
-    }
-
-    #[test]
-    fn helper_timecode_address_invalid() {
-        assert!(!is_valid_timecode_address("00:00:00")); // too short (HH:MM:SS)
-        assert!(!is_valid_timecode_address("00:00:00:00:00")); // too long
-        assert!(!is_valid_timecode_address("30:00:00:00")); // hour > 29
-        assert!(!is_valid_timecode_address("00:60:00:00")); // minute > 59
-        assert!(!is_valid_timecode_address("00:00:60:00")); // second > 59
-        assert!(!is_valid_timecode_address("ab:cd:ef:gh")); // non-digit
-    }
-
-    #[test]
-    fn helper_total_running_time_valid() {
-        assert!(is_valid_total_running_time("00:00:00"));
-        assert!(is_valid_total_running_time("99:59:59"));
-        assert!(is_valid_total_running_time("02:30:00"));
-    }
-
-    #[test]
-    fn helper_total_running_time_invalid() {
-        assert!(!is_valid_total_running_time("2:30:00")); // wrong digit count
-        assert!(!is_valid_total_running_time("02:60:00")); // minute > 59
-        assert!(!is_valid_total_running_time("02:30:60")); // second > 59
-        assert!(!is_valid_total_running_time("02:30:00:00")); // too long
-    }
+    // helper_timecode_address_* and helper_total_running_time_* were deleted
+    // along with the helper functions they exercised (gutted as part of the
+    // runtime-XSD migration). Only is_valid_any_uri remains.
 
     #[test]
     fn helper_any_uri_valid() {
@@ -9885,6 +9500,7 @@ mod tests {
     // ── XSD: TotalRunningTime pattern ────────────────────────────────────────
 
     #[test]
+    #[ignore = "XSD-overlap check gutted; runtime-XSD validator will re-emit"]
     fn core_flags_invalid_total_running_time() {
         let mut cpl = minimal_cpl();
         cpl.total_running_time = Some("2:30:00".to_string()); // missing leading zero
@@ -9913,6 +9529,7 @@ mod tests {
     // ── XSD: TimecodeRate > 0 ────────────────────────────────────────────────
 
     #[test]
+    #[ignore = "XSD-overlap check gutted; runtime-XSD validator will re-emit"]
     fn core_flags_timecode_rate_zero() {
         let mut cpl = minimal_cpl();
         cpl.composition_timecode = Some(CompositionTimecode {
@@ -9951,6 +9568,7 @@ mod tests {
     // ── XSD: TimecodeStartAddress format ─────────────────────────────────────
 
     #[test]
+    #[ignore = "XSD-overlap check gutted; runtime-XSD validator will re-emit"]
     fn core_flags_invalid_timecode_start_address() {
         let mut cpl = minimal_cpl();
         cpl.composition_timecode = Some(CompositionTimecode {
@@ -10029,6 +9647,7 @@ mod tests {
     // ── XSD: LocaleList non-empty ─────────────────────────────────────────────
 
     #[test]
+    #[ignore = "XSD-overlap check gutted; runtime-XSD validator will re-emit"]
     fn core_flags_empty_locale_list() {
         let mut cpl = minimal_cpl();
         cpl.locale_list = Some(LocaleList { locales: vec![] });

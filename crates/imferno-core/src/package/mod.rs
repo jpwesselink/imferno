@@ -2021,6 +2021,36 @@ impl Imferno {
                     report.add(issue);
                 }
 
+                // Photon-parity ST 2067-2 §5.3 audio MCA checks. Run
+                // the regxml pipeline on the MXF to get typed header
+                // metadata, then apply the audio descriptor rules.
+                // Failure to convert is surfaced as a Warning rather
+                // than Error — partition-pack diagnostics above
+                // already cover the structural concern, and we don't
+                // want to double-report.
+                #[cfg(not(target_arch = "wasm32"))]
+                {
+                    let opts = regxml::MxfFragmentOptions {
+                        partition: regxml::PartitionTarget::Header,
+                        ..Default::default()
+                    };
+                    match crate::mxf::metadata::parse_mxf_to_regxml(path, opts) {
+                        Ok(regxml) => {
+                            for issue in crate::mxf::audio_mca::check_audio_mca(&regxml, path) {
+                                let issue =
+                                    issue.with_context("asset_uuid", asset.id.to_string());
+                                report.add(issue);
+                            }
+                        }
+                        Err(e) => {
+                            report.add(
+                                crate::mxf::metadata::regxml_error_issue(path, &e)
+                                    .with_context("asset_uuid", asset.id.to_string()),
+                            );
+                        }
+                    }
+                }
+
                 match crate::mxf::parse_mxf_header_info(path) {
                     Ok(info) => {
                         // Parse the operational pattern UL back to bytes to check OP variant.

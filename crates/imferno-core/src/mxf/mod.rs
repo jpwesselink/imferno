@@ -20,6 +20,12 @@ pub mod essence;
 /// to RegXML for typed essence-rule application. Native-only.
 #[cfg(not(target_arch = "wasm32"))]
 pub mod metadata;
+/// ST 2067-2 §5.3 audio MCA rules applied against the RegXML output
+/// of `mxf::metadata`. Photon-parity: WAVE PCM requirement, sample
+/// rate / quant-bits whitelist, channel-label count match,
+/// SoundFieldGroupLabel singleton. Native-only.
+#[cfg(not(target_arch = "wasm32"))]
+pub mod audio_mca;
 
 use std::io::Read;
 use std::path::Path;

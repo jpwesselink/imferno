@@ -12,45 +12,37 @@ use std::io::Cursor;
 use std::path::Path;
 use std::sync::OnceLock;
 
-use regxml::{MxfFragmentBuilder, MxfFragmentOptions, MxfFragmentError};
-use regxml_dict::{MetaDictionary, MetaDictionaryCollection};
+use regxml::{MxfFragmentBuilder, MxfFragmentError, MxfFragmentOptions};
+use regxml_dict::{importer::import_registers, MetaDictionary};
 
 use crate::diagnostics::{Category, Location, Severity, ValidationIssue};
 
-// ── Embedded SMPTE metadictionaries ─────────────────────────────────────────
+// ── Embedded SMPTE registers ────────────────────────────────────────────────
 //
-// Pre-compiled metadictionary XMLs sourced from regxmllib-rs's
-// `resources/regxml-dicts/`. The three baseline namespaces cover the
-// vast majority of MXF descriptor / sub-descriptor types encountered
-// in IMF deliveries:
-//
-// - 335-2012 — SMPTE Elements Register
-// - 2003-2012 — SMPTE Element Container UL Register
-// - 395-2014 — SMPTE Groups & Types extension for ST 377-4 audio
-//
-// Vendored with the regxmllib-rs author's permission (it's their crate
-// + their data); same MIT license terms as the rest of imferno-core.
+// The Elements / Groups / Types registers are the SMPTE source-of-truth
+// for AAF-class definitions used by MXF header metadata. Vendored from
+// regxmllib-rs's `crates/regxmllib-cli/registers/`. Together they total
+// ~5.5 MB which is meaningful payload — but they're the only complete
+// definition source `MxfFragmentBuilder` accepts. The Labels register
+// is omitted here because `MxfFragmentBuilder` doesn't consume it
+// (only optional `AuidNamer` does); save the binary footprint.
 
-const DICT_335: &[u8] = include_bytes!("../../resources/regxml-dicts/www-smpte-ra-org-reg-335-2012.xml");
-const DICT_2003: &[u8] = include_bytes!("../../resources/regxml-dicts/www-smpte-ra-org-reg-2003-2012.xml");
-const DICT_395: &[u8] = include_bytes!("../../resources/regxml-dicts/www-smpte-ra-org-reg-395-2014.xml");
+const REG_ELEMENTS: &[u8] = include_bytes!("../../resources/registers/Elements.xml");
+const REG_GROUPS: &[u8] = include_bytes!("../../resources/registers/Groups.xml");
+const REG_TYPES: &[u8] = include_bytes!("../../resources/registers/Types.xml");
 
-/// Lazily-initialised metadictionary collection. Built once on first
-/// use, shared by every caller for the lifetime of the process.
+/// Lazily-initialised metadictionary. Built once on first use from
+/// `import_registers`, shared by every caller for the lifetime of the
+/// process.
 ///
-/// Returns `None` only if one of the embedded dictionary XMLs fails to
-/// parse — which is a build-time consistency error that would already
-/// have surfaced via integration tests, so callers can treat `None` as
+/// Returns `None` only if `import_registers` fails — which is a
+/// build-time consistency error that would already have surfaced via
+/// integration tests, so callers can treat `None` as
 /// "engine misconfigured".
-pub fn dictionaries() -> Option<&'static MetaDictionaryCollection> {
-    static CELL: OnceLock<Option<MetaDictionaryCollection>> = OnceLock::new();
+pub fn dictionaries() -> Option<&'static MetaDictionary> {
+    static CELL: OnceLock<Option<MetaDictionary>> = OnceLock::new();
     CELL.get_or_init(|| {
-        let mut coll = MetaDictionaryCollection::new();
-        for bytes in [DICT_335, DICT_2003, DICT_395] {
-            let dict = MetaDictionary::from_xml(bytes).ok()?;
-            coll.add(dict).ok()?;
-        }
-        Some(coll)
+        import_registers(&[REG_ELEMENTS, REG_GROUPS, REG_TYPES]).ok()
     })
     .as_ref()
 }

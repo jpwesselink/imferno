@@ -14,7 +14,9 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use imferno_core::xsd::{validate_against_composite_schema, validate_against_schema};
+use imferno_core::xsd::{
+    validate_against_composite_schema, validate_against_schema, validate_cpl_xml,
+};
 
 fn repo_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -217,6 +219,60 @@ fn composite_schema_catches_dcml_typed_violations() {
         }),
         "bad UUIDType must classify as Pattern/TypeInvalid: {issues:#?}"
     );
+}
+
+/// Top-level wiring: `validate_cpl_xml` runs XSD + semantic in order,
+/// chains the results. On a clean fixture both layers contribute zero
+/// issues (or only known prose-only ones).
+#[test]
+fn validate_cpl_xml_runs_both_layers_clean_fixture() {
+    let primary = repo_root().join("specs/imf-cpl.xsd");
+    let specs = repo_root().join("specs");
+    let fixture = repo_root().join(
+        "test-data/Application2Extended/CPL_0eb3d1b9-b77b-4d3f-bbe5-7c69b15dca85.xml",
+    );
+    let cpl_xml = fs::read_to_string(&fixture).unwrap();
+    let issues = validate_cpl_xml(&cpl_xml, &primary, &specs);
+    // XSD layer should contribute 0 (clean fixture); semantic layer
+    // may contribute some prose-only findings depending on the
+    // catalogue's coverage of this fixture. Either way, no XSD/* codes.
+    let xsd_codes: Vec<_> = issues.iter().filter(|i| i.code.starts_with("XSD/")).collect();
+    assert!(
+        xsd_codes.is_empty(),
+        "clean fixture should produce no XSD/* issues; got:\n{xsd_codes:#?}"
+    );
+}
+
+/// Top-level wiring: a CPL that fails both XSD (bad xs:dateTime) AND
+/// semantics (whatever the catalogue catches on top) should produce a
+/// concatenated list — XSD findings first, semantic after.
+#[test]
+fn validate_cpl_xml_chains_xsd_then_semantic() {
+    let primary = repo_root().join("specs/imf-cpl.xsd");
+    let specs = repo_root().join("specs");
+    let bad_xml = r#"<CompositionPlaylist xmlns="http://www.smpte-ra.org/schemas/2067-3/2013">
+        <Id>urn:uuid:00000000-0000-0000-0000-000000000001</Id>
+        <IssueDate>not-a-date</IssueDate>
+        <ContentTitle>X</ContentTitle>
+        <EditRate>24 1</EditRate>
+        <SegmentList><Segment>
+            <Id>urn:uuid:00000000-0000-0000-0000-000000000002</Id>
+            <SequenceList/>
+        </Segment></SegmentList>
+    </CompositionPlaylist>"#;
+    let issues = validate_cpl_xml(bad_xml, &primary, &specs);
+    assert!(
+        issues.iter().any(|i| i.code == "XSD/TypeInvalid"),
+        "should include XSD/TypeInvalid for bad date: {issues:#?}"
+    );
+    // Ordering: first XSD/*, then anything else (parse error or semantic)
+    let first_non_xsd =
+        issues.iter().position(|i| !i.code.starts_with("XSD/"));
+    let last_xsd =
+        issues.iter().rposition(|i| i.code.starts_with("XSD/"));
+    if let (Some(fns), Some(lx)) = (first_non_xsd, last_xsd) {
+        assert!(lx < fns, "XSD issues should precede non-XSD issues");
+    }
 }
 
 /// The message body should carry uppsala's line/column for any

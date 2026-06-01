@@ -154,6 +154,46 @@ pub fn validate_against_composite_schema(
         .collect()
 }
 
+/// Top-level CPL validation: runs the composite XSD pass over the raw
+/// XML and then the existing semantic validator over the parsed
+/// `CompositionPlaylist`. Returns the concatenated issues with XSD
+/// findings first (so operators see structural problems before
+/// semantic ones that may have been induced by them).
+///
+/// If parsing fails, returns the parse failure as a single Critical
+/// issue and skips semantic validation. XSD findings are still
+/// returned regardless of parse outcome — the schema-level validator
+/// doesn't need the parsed AST.
+///
+/// `primary_xsd_path` should point at the CPL XSD that matches the
+/// instance's namespace (e.g. `specs/imf-cpl.xsd` for the 2013
+/// namespace). `specs_dir` is the base path used to resolve schema
+/// imports (typically the same `specs/` directory).
+pub fn validate_cpl_xml(
+    raw_xml: &str,
+    primary_xsd_path: &Path,
+    specs_dir: &Path,
+) -> Vec<ValidationIssue> {
+    let mut issues =
+        validate_against_composite_schema(raw_xml, primary_xsd_path, specs_dir, None);
+
+    match crate::cpl::parse_cpl(raw_xml) {
+        Ok(cpl) => {
+            issues.extend(crate::validation::validate_cpl(&cpl));
+        }
+        Err(e) => {
+            issues.push(ValidationIssue::new(
+                Severity::Critical,
+                Category::Structure,
+                "IMFERNO:Package/ParseError",
+                format!("CPL XML failed to parse: {e:?}"),
+            ));
+        }
+    }
+
+    issues
+}
+
 /// Inject `schemaLocation="dcml-types-stub.xsd"` into the `<xs:import>`
 /// for the ST 433 dcml namespace. Idempotent (no-op if a schemaLocation
 /// is already present).

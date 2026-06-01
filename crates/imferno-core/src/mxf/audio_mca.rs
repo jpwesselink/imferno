@@ -175,7 +175,163 @@ pub fn check_audio_mca(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
         );
     }
 
+    // ST 377-4 §6.3.2 — each AudioChannelLabelSubDescriptor's
+    // SoundfieldGroupLinkID MUST equal the SoundfieldGroup's MCALinkID
+    // so the channel's group membership is unambiguous. Photon flags
+    // mismatches at IMFConstraints.java L267-275.
+    if let Some(sg_link) = extract_field(regxml, "MCALinkID") {
+        // Walk every SoundfieldGroupLinkID and confirm it matches the
+        // SoundfieldGroup's MCALinkID (the first MCALinkID in the
+        // RegXML emit-order is the SoundfieldGroup's, since that
+        // descriptor is emitted before its channel children).
+        for sf_link in extract_all_fields(regxml, "SoundfieldGroupLinkID") {
+            if sf_link.trim() != sg_link.trim() {
+                issues.push(
+                    ValidationIssue::new(
+                        Severity::Error,
+                        Category::Audio,
+                        "ST377-4:2012:6.3.2/SoundfieldGroupLinkIDMismatch",
+                        format!(
+                            "MXF {} carries an AudioChannelLabelSubDescriptor with \
+                             SoundfieldGroupLinkID '{}' that doesn't match the SoundfieldGroup \
+                             MCALinkID '{}' (ST 377-4 §6.3.2).",
+                            path.display(),
+                            sf_link.trim(),
+                            sg_link.trim(),
+                        ),
+                    )
+                    .with_location(Location::new().with_file(path.to_path_buf())),
+                );
+                break; // one diagnostic is enough; aggregation collapses repeats
+            }
+        }
+    }
+
+    // ST 2067-2 §5.3.6.2 — every channel ID 1..ChannelCount must have
+    // an AudioChannelLabelSubDescriptor. The actual MCAChannelID
+    // field carries the channel index for each label. Photon flag at
+    // IMFConstraints.java L226-231.
+    if let Some(cc) = channel_count {
+        let channel_ids: std::collections::HashSet<u32> = extract_all_fields(regxml, "MCAChannelID")
+            .into_iter()
+            .filter_map(|s| s.trim().parse::<u32>().ok())
+            .collect();
+        for expected in 1..=cc {
+            if !channel_ids.contains(&expected) {
+                issues.push(
+                    ValidationIssue::new(
+                        Severity::Error,
+                        Category::Audio,
+                        "ST2067-2:2016:5.3.6.2/MCAChannelIDMissing",
+                        format!(
+                            "MXF {} declares ChannelCount = {} but no \
+                             AudioChannelLabelSubDescriptor carries MCAChannelID = {} — \
+                             every channel 1..N must have a label per ST 2067-2 §5.3.6.2.",
+                            path.display(),
+                            cc,
+                            expected,
+                        ),
+                    )
+                    .with_location(Location::new().with_file(path.to_path_buf())),
+                );
+            }
+        }
+    }
+
+    // ST 2067-2 §5.3.6.5 — Netflix-grade audio MCA: SoundfieldGroup
+    // SHALL carry MCATitle, MCATitleVersion, MCAAudioContentKind,
+    // MCAAudioElementKind. Photon emits these as NON_FATAL
+    // (= Warning) since not every IMF profile requires them, but
+    // Netflix's delivery pipeline (the primary IMF audience) does.
+    if soundfield_count > 0 {
+        for required in &[
+            "MCATitle",
+            "MCATitleVersion",
+            "MCAAudioContentKind",
+            "MCAAudioElementKind",
+        ] {
+            if !regxml.contains(&format!(":{required}")) {
+                issues.push(
+                    ValidationIssue::new(
+                        Severity::Warning,
+                        Category::Audio,
+                        format!("ST2067-2:2016:5.3.6.5/SoundfieldGroupMissing/{required}"),
+                        format!(
+                            "MXF {} SoundfieldGroupLabelSubDescriptor is missing {} — \
+                             ST 2067-2 §5.3.6.5 recommends this field for Netflix-grade \
+                             delivery.",
+                            path.display(),
+                            required,
+                        ),
+                    )
+                    .with_location(Location::new().with_file(path.to_path_buf())),
+                );
+            }
+        }
+    }
+
     issues
+}
+
+/// Extract the text content of every occurrence of a SMPTE field
+/// element (`extract_field` returns only the first). Used for fields
+/// that legitimately repeat per channel — e.g. `MCAChannelID`,
+/// `SoundfieldGroupLinkID`.
+///
+/// Walks every `:<LocalName>` occurrence and probes whether it is the
+/// open or close form via the preceding character. Handles open tags
+/// with attributes (e.g. `<ns2:Foo xmlns:ns2="…">`) which the simple
+/// `:Foo>` substring probe misses.
+fn extract_all_fields(xml: &str, local_name: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    let probe = format!(":{local_name}");
+    let close_form = format!(":{local_name}>");
+    let mut cursor = 0;
+    while let Some(rel) = xml[cursor..].find(&probe) {
+        let abs = cursor + rel;
+        // Boundary check: the char *after* the local name must be a
+        // legal tag terminator. Otherwise we hit a name with this as
+        // a prefix (e.g. `:MCAChannel` matched on `:MCAChannelID`).
+        let next = xml.as_bytes().get(abs + probe.len()).copied();
+        if !matches!(next, Some(b'>') | Some(b' ') | Some(b'/') | Some(b'\t') | Some(b'\n')) {
+            cursor = abs + probe.len();
+            continue;
+        }
+        // Walk back to the nearest `<` and decide open vs close.
+        let Some(tag_start) = xml[..abs].rfind('<') else {
+            break;
+        };
+        let is_close = xml[tag_start..].starts_with("</");
+        if is_close {
+            cursor = abs + close_form.len();
+            continue;
+        }
+        // Open tag — body starts after this tag's `>` (which may be
+        // far past the local name if attributes are present).
+        let Some(open_end_rel) = xml[abs..].find('>') else {
+            break;
+        };
+        let body_start = abs + open_end_rel + 1;
+        // Find the next close form `…:LocalName>` after the body.
+        let Some(close_rel) = xml[body_start..].find(&close_form) else {
+            break;
+        };
+        let close_abs = body_start + close_rel;
+        // Confirm it's actually a closing tag (preceded by `</`).
+        let Some(close_tag_start) = xml[..close_abs].rfind('<') else {
+            break;
+        };
+        if !xml[close_tag_start..].starts_with("</") {
+            cursor = close_abs + close_form.len();
+            continue;
+        }
+        // Body ends where the close tag STARTS (the `<` of `</…>`),
+        // not where the `:LocalName>` substring lives mid-close-tag.
+        let body = xml[body_start..close_tag_start].trim();
+        out.push(body.to_string());
+        cursor = close_abs + close_form.len();
+    }
+    out
 }
 
 /// Extract the text content of the first occurrence of a SMPTE field
@@ -294,14 +450,125 @@ mod tests {
     }
 
     #[test]
-    fn audio1_clean_fixture_passes_all_audio_mca_checks() {
+    fn audio1_clean_fixture_passes_all_error_level_audio_mca_checks() {
+        // audio1.mxf is a well-formed PCM stereo fixture for Error-level
+        // §5.3 / ST 377-4 checks (WAVEPCM, sample rate, quant bits,
+        // channel-label count, soundfield-group count, MCALinkID
+        // presence, SoundfieldGroupLinkID match, MCAChannelID coverage).
+        //
+        // It legitimately lacks Netflix-grade Warning fields (MCATitle
+        // et al. per §5.3.6.5) since it's a regxmllib test asset, not a
+        // Netflix delivery. So we filter to Error severity here —
+        // Warnings are allowed and tested separately in
+        // `audio1_fires_warnings_for_missing_netflix_grade_mca_fields`.
         let (xml, path) = audio1_regxml();
         let issues = check_audio_mca(&xml, &path);
+        let errors: Vec<_> = issues
+            .iter()
+            .filter(|i| i.severity == Severity::Error || i.severity == Severity::Critical)
+            .collect();
         assert!(
-            issues.is_empty(),
-            "audio1.mxf is a well-formed PCM stereo fixture and should pass all §5.3 checks. \
-             Got: {:#?}",
+            errors.is_empty(),
+            "audio1.mxf should pass all Error-level §5.3 checks. Got Errors: {:#?}",
+            errors
+        );
+    }
+
+    #[test]
+    fn audio1_fires_warnings_for_missing_netflix_grade_mca_fields() {
+        // audio1.mxf doesn't carry MCATitle / MCATitleVersion /
+        // MCAAudioContentKind / MCAAudioElementKind — these are
+        // Netflix-grade requirements per §5.3.6.5 and fire as
+        // Warnings on this fixture.
+        let (xml, path) = audio1_regxml();
+        let issues = check_audio_mca(&xml, &path);
+        for field in &["MCATitle", "MCATitleVersion", "MCAAudioContentKind", "MCAAudioElementKind"] {
+            assert!(
+                issues
+                    .iter()
+                    .any(|i| i.code.contains(&format!("SoundfieldGroupMissing/{field}"))),
+                "expected SoundfieldGroupMissing/{field} warning on audio1.mxf, got: {:#?}",
+                issues
+            );
+        }
+    }
+
+    #[test]
+    fn extract_all_fields_returns_every_occurrence() {
+        let xml = r#"
+            <ns1:MCAChannelID>1</ns1:MCAChannelID>
+            <ns1:MCAChannelID>2</ns1:MCAChannelID>
+            <ns1:MCAChannelID>3</ns1:MCAChannelID>
+        "#;
+        let vs = extract_all_fields(xml, "MCAChannelID");
+        assert_eq!(vs, vec!["1", "2", "3"]);
+    }
+
+    #[test]
+    fn flags_soundfield_group_link_id_mismatch() {
+        let xml = r#"<ns1:WAVEPCMDescriptor>
+            <ns2:AudioSampleRate>48000/1</ns2:AudioSampleRate>
+            <ns2:QuantizationBits>24</ns2:QuantizationBits>
+            <ns2:ChannelCount>1</ns2:ChannelCount>
+            <ns1:SoundfieldGroupLabelSubDescriptor>
+                <ns2:MCALinkID>urn:uuid:11111111-0000-0000-0000-000000000001</ns2:MCALinkID>
+            </ns1:SoundfieldGroupLabelSubDescriptor>
+            <ns1:AudioChannelLabelSubDescriptor>
+                <ns2:MCALinkID>urn:uuid:99999999-0000-0000-0000-000000000099</ns2:MCALinkID>
+                <ns2:MCAChannelID>1</ns2:MCAChannelID>
+                <ns2:SoundfieldGroupLinkID>urn:uuid:99999999-0000-0000-0000-000000000099</ns2:SoundfieldGroupLinkID>
+            </ns1:AudioChannelLabelSubDescriptor>
+        </ns1:WAVEPCMDescriptor>"#;
+        let issues = check_audio_mca(xml, std::path::Path::new("/synth.mxf"));
+        assert!(
             issues
+                .iter()
+                .any(|i| i.code.contains("SoundfieldGroupLinkIDMismatch")),
+            "expected SoundfieldGroupLinkIDMismatch, got: {:#?}",
+            issues
+        );
+    }
+
+    #[test]
+    fn flags_missing_mca_channel_id_in_range() {
+        // ChannelCount=3 but only MCAChannelID=1 and 3 present — id 2 missing.
+        let xml = r#"<ns1:WAVEPCMDescriptor>
+            <ns2:AudioSampleRate>48000/1</ns2:AudioSampleRate>
+            <ns2:QuantizationBits>24</ns2:QuantizationBits>
+            <ns2:ChannelCount>3</ns2:ChannelCount>
+            <ns1:SoundfieldGroupLabelSubDescriptor>
+                <ns2:MCALinkID>urn:uuid:11111111-0000-0000-0000-000000000001</ns2:MCALinkID>
+            </ns1:SoundfieldGroupLabelSubDescriptor>
+            <ns1:AudioChannelLabelSubDescriptor>
+                <ns2:MCALinkID>urn:uuid:11111111-0000-0000-0000-000000000001</ns2:MCALinkID>
+                <ns2:MCAChannelID>1</ns2:MCAChannelID>
+                <ns2:SoundfieldGroupLinkID>urn:uuid:11111111-0000-0000-0000-000000000001</ns2:SoundfieldGroupLinkID>
+            </ns1:AudioChannelLabelSubDescriptor>
+            <ns1:AudioChannelLabelSubDescriptor>
+                <ns2:MCALinkID>urn:uuid:11111111-0000-0000-0000-000000000001</ns2:MCALinkID>
+                <ns2:MCAChannelID>3</ns2:MCAChannelID>
+                <ns2:SoundfieldGroupLinkID>urn:uuid:11111111-0000-0000-0000-000000000001</ns2:SoundfieldGroupLinkID>
+            </ns1:AudioChannelLabelSubDescriptor>
+            <ns1:AudioChannelLabelSubDescriptor>
+                <ns2:MCALinkID>urn:uuid:11111111-0000-0000-0000-000000000001</ns2:MCALinkID>
+                <ns2:MCAChannelID>3</ns2:MCAChannelID>
+                <ns2:SoundfieldGroupLinkID>urn:uuid:11111111-0000-0000-0000-000000000001</ns2:SoundfieldGroupLinkID>
+            </ns1:AudioChannelLabelSubDescriptor>
+        </ns1:WAVEPCMDescriptor>"#;
+        let issues = check_audio_mca(xml, std::path::Path::new("/synth.mxf"));
+        let missing_ids: Vec<_> = issues
+            .iter()
+            .filter(|i| i.code.contains("MCAChannelIDMissing"))
+            .collect();
+        assert!(
+            !missing_ids.is_empty(),
+            "expected MCAChannelIDMissing for id 2, got: {:#?}",
+            issues
+        );
+        assert!(
+            missing_ids.iter().any(|i| i.message.contains("MCAChannelID = 2")),
+            "expected diagnostic to name channel id 2, got: {:#?}",
+            missing_ids
         );
     }
 

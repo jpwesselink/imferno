@@ -195,8 +195,11 @@ fn composite_schema_still_catches_builtin_type_violations() {
 /// observed. When uppsala lands imported-type-facet enforcement, this
 /// test should be un-ignored and the assertion swapped to expect the
 /// violation to fire.
+/// Closed by uppsala fork patch 2 (xmlns-aware QName prefix resolution).
+/// `dcml:UUIDType`'s URN pattern now fires for imported-namespace types
+/// just like built-in types do — confirming SMPTE-spec-compliant
+/// validation reaches every constraint expressible in the XSD layer.
 #[test]
-#[ignore = "uppsala v0.4.0 doesn't apply imported-namespace type facets; document via failing test"]
 fn composite_schema_catches_dcml_typed_violations() {
     let primary = repo_root().join("specs/imf-cpl.xsd");
     let specs = repo_root().join("specs");

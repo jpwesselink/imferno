@@ -116,9 +116,16 @@ pub fn validate_against_composite_schema_str(
         Ok(d) => d,
         Err(e) => return vec![parse_failure_issue("xsd-schema", e, cpl_id)],
     };
+    // uppsala's `from_schema_with_base_path` interprets `base_path` as a
+    // *file* path and takes its parent to resolve `schemaLocation` URIs.
+    // Synthesise a virtual file inside `specs_dir` so that `parent()`
+    // returns `specs_dir` itself — otherwise relative imports resolve
+    // one directory too high and uppsala silently `continue`s past the
+    // missing file (dropping the import without an error).
+    let virtual_base = specs_dir.join("__primary.xsd");
     let validator = match uppsala::XsdValidator::from_schema_with_base_path(
         &schema_doc,
-        Some(specs_dir),
+        Some(&virtual_base),
     ) {
         Ok(v) => v,
         Err(e) => return vec![schema_build_failure_issue(e, cpl_id)],
@@ -223,9 +230,14 @@ pub fn validate_against_composite_schema(
         Ok(d) => d,
         Err(e) => return vec![parse_failure_issue("xsd-schema", e, cpl_id)],
     };
+    // See `validate_against_composite_schema_str` for why we synthesise
+    // a virtual file path inside `specs_dir` rather than passing the
+    // directory directly: uppsala treats the arg as a file and takes
+    // `.parent()` on it.
+    let virtual_base = specs_dir.join("__primary.xsd");
     let validator = match uppsala::XsdValidator::from_schema_with_base_path(
         &schema_doc,
-        Some(specs_dir),
+        Some(&virtual_base),
     ) {
         Ok(v) => v,
         Err(e) => return vec![schema_build_failure_issue(e, cpl_id)],

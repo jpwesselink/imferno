@@ -119,7 +119,8 @@ pub enum ScmParseError {
 pub fn parse_scm(xml: &str) -> Result<SidecarCompositionMap, ScmParseError> {
     let raw: raw::SidecarCompositionMap = quick_xml::de::from_str(xml)?;
 
-    let id = ImfUuid::parse(&raw.id)
+    // XSD-strict: SMPTE dcml:UUIDType requires the `urn:uuid:` prefix.
+    let id = ImfUuid::parse_urn(&raw.id)
         .map_err(|e| ScmParseError::InvalidUuid(raw.id.clone(), e.to_string()))?;
 
     let sidecar_assets = raw
@@ -128,7 +129,7 @@ pub fn parse_scm(xml: &str) -> Result<SidecarCompositionMap, ScmParseError> {
         .unwrap_or_default()
         .into_iter()
         .map(|a| {
-            let asset_id = ImfUuid::parse(&a.id)
+            let asset_id = ImfUuid::parse_urn(&a.id)
                 .map_err(|e| ScmParseError::InvalidUuid(a.id.clone(), e.to_string()))?;
             let cpl_ids = a
                 .associated_cpl_list
@@ -136,7 +137,7 @@ pub fn parse_scm(xml: &str) -> Result<SidecarCompositionMap, ScmParseError> {
                 .cpl_ids
                 .into_iter()
                 .map(|s| {
-                    ImfUuid::parse(&s)
+                    ImfUuid::parse_urn(&s)
                         .map_err(|e| ScmParseError::InvalidUuid(s.clone(), e.to_string()))
                 })
                 .collect::<Result<Vec<_>, ScmParseError>>()?;

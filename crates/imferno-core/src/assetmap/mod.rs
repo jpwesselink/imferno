@@ -152,8 +152,32 @@ pub struct ImfUuid(pub Uuid);
 
 impl ImfUuid {
     /// Parse from `urn:uuid:...` or a bare UUID string.
+    ///
+    /// Lenient: accepts both forms. Useful for callers that get UUIDs
+    /// from non-XML sources (JSON APIs, manual construction, test
+    /// fixtures) where the URN prefix may legitimately be absent.
+    ///
+    /// XML deserialization should prefer [`parse_urn`](Self::parse_urn)
+    /// since the SMPTE dcml:UUIDType XSD pattern explicitly requires
+    /// the `urn:uuid:` prefix.
     pub fn parse(s: &str) -> Result<Self, ImfTypeError> {
         let bare = s.strip_prefix("urn:uuid:").unwrap_or(s);
+        Uuid::parse_str(bare)
+            .map(ImfUuid)
+            .map_err(|_| ImfTypeError::InvalidUuid(s.to_string()))
+    }
+
+    /// Strict parse: requires the `urn:uuid:` prefix per
+    /// SMPTE ST 433 dcml:UUIDType (xs:anyURI restricted to
+    /// `urn:uuid:[hex]{8}-[hex]{4}-[hex]{4}-[hex]{4}-[hex]{12}`).
+    ///
+    /// Used by the XML deserializer so CPL/PKL/SCM instances with bare
+    /// UUIDs (lacking the URN prefix) fail at parse time — matching
+    /// what an XSD-strict validator would catch.
+    pub fn parse_urn(s: &str) -> Result<Self, ImfTypeError> {
+        let bare = s
+            .strip_prefix("urn:uuid:")
+            .ok_or_else(|| ImfTypeError::InvalidUuid(s.to_string()))?;
         Uuid::parse_str(bare)
             .map(ImfUuid)
             .map_err(|_| ImfTypeError::InvalidUuid(s.to_string()))
@@ -180,6 +204,18 @@ impl Serialize for ImfUuid {
 impl<'de> Deserialize<'de> for ImfUuid {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         let s = String::deserialize(d)?;
+        // Lenient: accepts both `urn:uuid:...` and bare UUIDs.
+        //
+        // XSD-strict UUID validation (rejecting bare UUIDs in CPL/PKL/SCM
+        // XML per SMPTE dcml:UUIDType) cannot happen here without also
+        // rejecting bare UUIDs in JSON wire format — same `Deserialize`
+        // impl handles both formats, and JSON intentionally uses bare
+        // UUIDs (see `uuid_roundtrip_serde` test). Making this strict
+        // would break the JSON API contract.
+        //
+        // The runtime XSD validator (`crate::xsd`) is the right layer
+        // for XSD-strict UUID checking. See the documented uppsala
+        // v0.4.0 limitation for the current gap.
         ImfUuid::parse(&s).map_err(serde::de::Error::custom)
     }
 }

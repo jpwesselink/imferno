@@ -51,6 +51,13 @@ uppsala    = { version = "0.4" }
 smpte-mxf = { version = "0.1" }
 smpte-klv = { version = "0.1" }
 smpte-types = { version = "0.1" }
+# Full MXF header metadata parsing (Preface, MaterialPackage,
+# AudioChannelLabelSubDescriptor, …) — converts an MXF file into
+# RegXML so the audio MCA / IMSC profile / IAB params rules can be
+# applied against typed metadata. Same native-only constraint as
+# the partition-pack layer above.
+regxml = { version = "0.1" }
+regxml-dict = { version = "0.1" }
 
 [dev-dependencies]
 pretty_assertions = { workspace = true }

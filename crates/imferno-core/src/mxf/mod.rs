@@ -15,6 +15,11 @@ pub mod codes;
 /// `target_arch = "wasm32"`.
 #[cfg(not(target_arch = "wasm32"))]
 pub mod essence;
+/// MXF header-metadata extraction via `regxml` — converts the full
+/// Preface tree (MaterialPackage, descriptors, MCA sub-descriptors)
+/// to RegXML for typed essence-rule application. Native-only.
+#[cfg(not(target_arch = "wasm32"))]
+pub mod metadata;
 
 use std::io::Read;
 use std::path::Path;

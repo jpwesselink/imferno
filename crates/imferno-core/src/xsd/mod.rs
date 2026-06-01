@@ -38,6 +38,8 @@
 //! `validate_against_composite_schema`) or accept the lax-validation
 //! gap for elements whose types come from the unresolved import.
 
+use std::path::Path;
+
 use crate::diagnostics::codes::ValidationCode;
 use crate::diagnostics::{Category, Location, Severity, ValidationIssue};
 
@@ -88,6 +90,105 @@ pub fn validate_against_schema(
         .into_iter()
         .map(|err| translate(err, cpl_id))
         .collect()
+}
+
+/// Validate an XML instance against a primary XSD that imports other
+/// SMPTE namespaces, resolving imports against a vendored schema
+/// directory.
+///
+/// This closes the lax-validation gap that `validate_against_schema`
+/// has on namespace-only `xs:import` directives. SMPTE XSDs declare
+/// `<xs:import namespace=".../dcmlTypes/"/>` with no `schemaLocation`,
+/// which uppsala (and every other XSD validator) silently skips —
+/// elements typed against `dcml:UUIDType` etc. then aren't validated.
+///
+/// This entry point injects `schemaLocation` hints for the imports we
+/// have vendored stubs for (currently: the dcml types stub at
+/// `specs/dcml-types-stub.xsd`), then calls uppsala's
+/// `XsdValidator::from_schema_with_base_path` so the imports resolve
+/// against `specs_dir`.
+///
+/// `primary_xsd_path` is read from disk to set the schema's base for
+/// import resolution.
+///
+/// **Known uppsala v0.4.0 limitation**: pattern/restriction facets on
+/// types imported from another namespace are loaded but not applied
+/// during instance validation. So a `dcml:UUIDType`-typed element will
+/// accept any string under the composite path, even though the stub
+/// defines a UUID-URN regex. Built-in types (xs:dateTime, xs:integer
+/// etc.) are unaffected and validate normally. See the integration
+/// tests under `tests/xsd_runtime.rs` for the failing-as-of-v0.4.0
+/// case (marked `#[ignore]`).
+pub fn validate_against_composite_schema(
+    instance_xml: &str,
+    primary_xsd_path: &Path,
+    specs_dir: &Path,
+    cpl_id: Option<crate::assetmap::ImfUuid>,
+) -> Vec<ValidationIssue> {
+    let primary_xsd = match std::fs::read_to_string(primary_xsd_path) {
+        Ok(s) => s,
+        Err(e) => {
+            return vec![parse_failure_issue("primary-xsd", e, cpl_id)];
+        }
+    };
+    let injected = inject_dcml_schema_location(&primary_xsd);
+    let schema_doc = match uppsala::parse(&injected) {
+        Ok(d) => d,
+        Err(e) => return vec![parse_failure_issue("xsd-schema", e, cpl_id)],
+    };
+    let validator = match uppsala::XsdValidator::from_schema_with_base_path(
+        &schema_doc,
+        Some(specs_dir),
+    ) {
+        Ok(v) => v,
+        Err(e) => return vec![schema_build_failure_issue(e, cpl_id)],
+    };
+    let instance_doc = match uppsala::parse(instance_xml) {
+        Ok(d) => d,
+        Err(e) => return vec![parse_failure_issue("xml-instance", e, cpl_id)],
+    };
+    validator
+        .validate(&instance_doc)
+        .into_iter()
+        .map(|err| translate(err, cpl_id))
+        .collect()
+}
+
+/// Inject `schemaLocation="dcml-types-stub.xsd"` into the `<xs:import>`
+/// for the ST 433 dcml namespace. Idempotent (no-op if a schemaLocation
+/// is already present).
+fn inject_dcml_schema_location(xsd_src: &str) -> String {
+    const DCML_NS: &str = "http://www.smpte-ra.org/schemas/433/2008/dcmlTypes/";
+    const STUB_PATH: &str = "dcml-types-stub.xsd";
+
+    // Find the <xs:import …> element targeting the dcml namespace and
+    // append a schemaLocation attribute if one isn't already there.
+    // Handles both self-closing (/>) and open (>) tag terminators.
+    let needle = format!(r#"<xs:import namespace="{DCML_NS}""#);
+    let Some(start) = xsd_src.find(&needle) else {
+        return xsd_src.to_string();
+    };
+    let tail = &xsd_src[start + needle.len()..];
+    // Find the end of the start tag.
+    let Some(end_rel) = tail.find('>') else {
+        return xsd_src.to_string();
+    };
+    let tag_body = &tail[..end_rel]; // attributes between namespace="..." and >
+    if tag_body.contains("schemaLocation") {
+        return xsd_src.to_string(); // already has one
+    }
+    // Strip the trailing "/" if self-closing so we can reinsert it.
+    let (attr_body, terminator) = if tag_body.trim_end().ends_with('/') {
+        let trimmed = tag_body.trim_end();
+        (&trimmed[..trimmed.len() - 1], "/>")
+    } else {
+        (tag_body, ">")
+    };
+    let before_tag_end = &xsd_src[..start + needle.len()];
+    let after_tag = &tail[end_rel + 1..];
+    format!(
+        r#"{before_tag_end}{attr_body} schemaLocation="{STUB_PATH}"{terminator}{after_tag}"#
+    )
 }
 
 /// Map a single uppsala diagnostic to a catalogue `ValidationIssue`.

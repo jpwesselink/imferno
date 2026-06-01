@@ -100,6 +100,7 @@ pub fn build_report_js(
         rules: opts.rules,
         core_spec: opts.core_spec,
         app_specs: opts.app_specs,
+        aggregate_repeats: opts.aggregate_repeats,
         // Hash verification not yet exposed via NAPI; skip disk checks for in-memory files.
         verify_hashes: None,
         skip_disk_checks: true,
@@ -135,6 +136,7 @@ pub fn build_report_from_path(
         rules: opts.rules,
         core_spec: opts.core_spec,
         app_specs: opts.app_specs,
+        aggregate_repeats: opts.aggregate_repeats,
         // Hash verification not yet exposed via NAPI options.
         verify_hashes: None,
         skip_disk_checks: opts.skip_disk_checks,
@@ -208,6 +210,7 @@ pub fn validate_js(
         rules: opts.rules,
         core_spec: opts.core_spec,
         app_specs: opts.app_specs,
+        aggregate_repeats: opts.aggregate_repeats,
         verify_hashes: None,
         skip_disk_checks: true,
     };
@@ -234,6 +237,7 @@ pub fn validate_path_js(
         rules: opts.rules,
         core_spec: opts.core_spec,
         app_specs: opts.app_specs,
+        aggregate_repeats: opts.aggregate_repeats,
         // Hash verification not yet exposed via NAPI options.
         verify_hashes: None,
         skip_disk_checks: opts.skip_disk_checks,
@@ -261,6 +265,7 @@ pub fn build_report_from_uri(
         rules: opts.rules,
         core_spec: opts.core_spec,
         app_specs: opts.app_specs,
+        aggregate_repeats: opts.aggregate_repeats,
         verify_hashes: None,
         skip_disk_checks: opts.skip_disk_checks,
     };
@@ -287,6 +292,7 @@ pub fn validate_uri_js(
         rules: opts.rules,
         core_spec: opts.core_spec,
         app_specs: opts.app_specs,
+        aggregate_repeats: opts.aggregate_repeats,
         verify_hashes: None,
         skip_disk_checks: opts.skip_disk_checks,
     };
@@ -352,6 +358,7 @@ struct ParsedOptions {
     rules: RulesConfig,
     core_spec: Option<CoreSpecTarget>,
     app_specs: Option<Vec<AppSpecTarget>>,
+    aggregate_repeats: bool,
     skip_disk_checks: bool,
     credentials: Option<S3CredentialsInput>,
 }
@@ -372,6 +379,7 @@ fn parse_options(options: Option<&serde_json::Value>) -> napi::Result<ParsedOpti
             rules: Default::default(),
             core_spec: None,
             app_specs: None,
+            aggregate_repeats: false,
             skip_disk_checks: false,
             credentials: None,
         });
@@ -402,6 +410,11 @@ fn parse_options(options: Option<&serde_json::Value>) -> napi::Result<ParsedOpti
         .and_then(|v| v.as_bool())
         .unwrap_or(false);
 
+    let aggregate_repeats = opts
+        .get("aggregateRepeats")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+
     // Optional explicit S3 credentials (skipped here for non-s3 URIs;
     // read_uri ignores the field unless the scheme is s3).
     let credentials = match opts.get("credentials") {
@@ -414,6 +427,7 @@ fn parse_options(options: Option<&serde_json::Value>) -> napi::Result<ParsedOpti
         rules,
         core_spec,
         app_specs,
+        aggregate_repeats,
         skip_disk_checks,
         credentials,
     })

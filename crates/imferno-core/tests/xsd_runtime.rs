@@ -94,7 +94,7 @@ fn synthetic_broken_cpls_fire_expected_codes() {
     let issues = validate_against_schema(missing_issue_date, &schema_xml, None);
     assert!(!issues.is_empty(), "missing IssueDate must fire at least one issue");
     assert!(
-        issues.iter().any(|i| i.code == "XSD/ElementMissing"),
+        issues.iter().any(|i| i.code.starts_with("XSD/ElementMissing")),
         "missing IssueDate must classify as XSD/ElementMissing: {issues:#?}"
     );
 
@@ -110,7 +110,7 @@ fn synthetic_broken_cpls_fire_expected_codes() {
     </CompositionPlaylist>"#;
     let issues = validate_against_schema(bad_date, &schema_xml, None);
     assert!(
-        issues.iter().any(|i| i.code == "XSD/TypeInvalid"),
+        issues.iter().any(|i| i.code.starts_with("XSD/TypeInvalid")),
         "bad xs:dateTime must classify as XSD/TypeInvalid: {issues:#?}"
     );
 
@@ -131,7 +131,7 @@ fn synthetic_broken_cpls_fire_expected_codes() {
     // and includes at least one of those two.
     assert!(
         issues.iter().any(|i| {
-            i.code == "XSD/ElementMissing" || i.code == "XSD/UnexpectedElement"
+            i.code.starts_with("XSD/ElementMissing") || i.code.starts_with("XSD/UnexpectedElement")
         }),
         "out-of-order must classify as ElementMissing or UnexpectedElement: {issues:#?}"
     );
@@ -181,7 +181,7 @@ fn composite_schema_still_catches_builtin_type_violations() {
     </CompositionPlaylist>"#;
     let issues = validate_against_composite_schema(bad_date, &primary, &specs, None);
     assert!(
-        issues.iter().any(|i| i.code == "XSD/TypeInvalid"),
+        issues.iter().any(|i| i.code.starts_with("XSD/TypeInvalid")),
         "bad xs:dateTime under composite must classify as TypeInvalid: {issues:#?}"
     );
 }
@@ -217,7 +217,7 @@ fn composite_schema_catches_dcml_typed_violations() {
     let issues = validate_against_composite_schema(bad_uuid, &primary, &specs, None);
     assert!(
         issues.iter().any(|i| {
-            i.code == "XSD/PatternInvalid" || i.code == "XSD/TypeInvalid"
+            i.code.starts_with("XSD/PatternInvalid") || i.code.starts_with("XSD/TypeInvalid")
         }),
         "bad UUIDType must classify as Pattern/TypeInvalid: {issues:#?}"
     );
@@ -264,7 +264,7 @@ fn validate_cpl_xml_chains_xsd_then_semantic() {
     </CompositionPlaylist>"#;
     let issues = validate_cpl_xml(bad_xml, &primary, &specs);
     assert!(
-        issues.iter().any(|i| i.code == "XSD/TypeInvalid"),
+        issues.iter().any(|i| i.code.starts_with("XSD/TypeInvalid")),
         "should include XSD/TypeInvalid for bad date: {issues:#?}"
     );
     // Ordering: first XSD/*, then anything else (parse error or semantic)
@@ -305,7 +305,7 @@ fn parse_then_validate_runs_xsd_prepass_via_source_xml() {
         issues
     );
     assert!(
-        xsd_issues.iter().any(|i| i.code == "XSD/TypeInvalid"),
+        xsd_issues.iter().any(|i| i.code.starts_with("XSD/TypeInvalid")),
         "bad xs:dateTime should fire XSD/TypeInvalid: {xsd_issues:#?}"
     );
 }
@@ -329,7 +329,7 @@ fn diagnostic_messages_include_position_when_available() {
     let issues = validate_against_schema(bad_date, &schema_xml, None);
     let type_invalid = issues
         .iter()
-        .find(|i| i.code == "XSD/TypeInvalid")
+        .find(|i| i.code.starts_with("XSD/TypeInvalid"))
         .expect("expected an XSD/TypeInvalid issue");
     assert!(
         type_invalid.message.contains("line") && type_invalid.message.contains("column"),

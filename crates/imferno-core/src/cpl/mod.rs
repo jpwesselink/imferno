@@ -1213,8 +1213,8 @@ impl schemars::JsonSchema for LanguageString {
 #[cfg_attr(feature = "wasm", derive(Tsify))]
 #[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
 pub struct LocaleList {
-    #[cfg_attr(not(feature = "wasm"), serde(rename = "Locale"))]
-    #[cfg_attr(feature = "wasm", serde(rename = "locales", alias = "Locale"))]
+    #[cfg_attr(not(feature = "wasm"), serde(rename = "Locale", default))]
+    #[cfg_attr(feature = "wasm", serde(rename = "locales", alias = "Locale", default))]
     pub locales: Vec<Locale>,
 }
 
@@ -2492,8 +2492,8 @@ pub struct ContentVersion {
 #[cfg_attr(feature = "wasm", derive(Tsify))]
 #[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
 pub struct SegmentList {
-    #[cfg_attr(not(feature = "wasm"), serde(rename = "Segment"))]
-    #[cfg_attr(feature = "wasm", serde(rename = "segments", alias = "Segment"))]
+    #[cfg_attr(not(feature = "wasm"), serde(rename = "Segment", default))]
+    #[cfg_attr(feature = "wasm", serde(rename = "segments", alias = "Segment", default))]
     pub segments: Vec<Segment>,
 }
 

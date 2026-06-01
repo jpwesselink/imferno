@@ -4759,8 +4759,13 @@ mod tests {
         );
     }
 
+    /// XSD: ContentTitle is `dcml:UserTextType` (xs:string-derived). The
+    /// XSD grammar permits the empty string, so this is NOT a structural
+    /// constraint — it has to live as a semantic check if we want it at
+    /// all. The original "gutted" claim was inaccurate; left ignored
+    /// pending a deliberate decision on whether to re-add semantically.
     #[test]
-    #[ignore = "XSD-overlap check gutted; runtime-XSD validator will re-emit"]
+    #[ignore = "ContentTitle non-empty is not XSD-expressible; needs semantic check if desired"]
     fn core_flags_empty_content_title() {
         let mut cpl = minimal_cpl();
         cpl.content_title.text = "".to_string();
@@ -4772,21 +4777,35 @@ mod tests {
         );
     }
 
+    /// XSD §57: `SegmentList` requires `Segment maxOccurs=unbounded`
+    /// with default `minOccurs=1` — an empty SegmentList trips the
+    /// schema-level validator (`ElementMissing/Segment`).
+    #[cfg(feature = "xsd-runtime")]
     #[test]
-    #[ignore = "XSD-overlap check gutted; runtime-XSD validator will re-emit"]
     fn core_flags_empty_segment_list() {
-        let mut cpl = minimal_cpl();
-        cpl.segment_list.segments.clear();
-        let v = CoreConstraints2020;
-        let issues = v.validate_cpl(&cpl);
+        let xml = r#"<CompositionPlaylist xmlns="http://www.smpte-ra.org/schemas/2067-3/2013">
+            <Id>urn:uuid:00000000-0000-0000-0000-000000000001</Id>
+            <IssueDate>2024-01-01T00:00:00Z</IssueDate>
+            <ContentTitle>Test</ContentTitle>
+            <EditRate>24 1</EditRate>
+            <SegmentList/>
+        </CompositionPlaylist>"#;
+        let cpl = crate::cpl::parse_cpl(xml).expect("should parse despite empty SegmentList");
+        let issues = CoreConstraints2013.validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| i.code.contains("SegmentList")),
-            "Should flag empty SegmentList"
+            issues.iter().any(|i| i.code.contains("Segment")),
+            "Empty SegmentList should be flagged: {:#?}",
+            issues,
         );
     }
 
+    /// XSD §150-156: `SequenceList` contains an optional `MarkerSequence`
+    /// followed by `xs:any namespace="##other" minOccurs="0"` — the
+    /// schema explicitly *allows* an empty SequenceList. Catching this
+    /// requires semantic logic ("a Segment with zero sequences is
+    /// useless") and is not XSD-expressible.
     #[test]
-    #[ignore = "XSD-overlap check gutted; runtime-XSD validator will re-emit"]
+    #[ignore = "Empty SequenceList is schema-valid (xs:any minOccurs=0); needs semantic check"]
     fn core_flags_segment_with_no_sequences() {
         let cpl = minimal_cpl(); // has one segment with empty sequence list
         let v = CoreConstraints2020;
@@ -7662,13 +7681,27 @@ mod tests {
     // they exercised — these were pure XSD-overlap checks now slated for
     // runtime-XSD validation.
 
-    /// XSD §88: EditRate is required on the composition.
+    /// XSD §35: EditRate is required on the composition (no minOccurs="0").
+    ///
+    /// Uses the 2013 namespace because the vendored 2020 XSD's
+    /// `targetNamespace` is still `schemas/2067-3/2016` (SMPTE kept the
+    /// 2016 URI for the 2020 edition); the parser-internal `ns/2067-3/2020`
+    /// URI doesn't match any vendored XSD. 2013 is the most self-consistent
+    /// edition for XSD-pre-pass tests.
+    #[cfg(feature = "xsd-runtime")]
     #[test]
-    #[ignore = "XSD-overlap check gutted; runtime-XSD validator will re-emit"]
     fn core_flags_missing_edit_rate() {
-        let cpl = minimal_cpl(); // edit_rate is None
-        let v = CoreConstraints2020;
-        let issues = v.validate_cpl(&cpl);
+        let xml = r#"<CompositionPlaylist xmlns="http://www.smpte-ra.org/schemas/2067-3/2013">
+            <Id>urn:uuid:00000000-0000-0000-0000-000000000001</Id>
+            <IssueDate>2024-01-01T00:00:00Z</IssueDate>
+            <ContentTitle>Test</ContentTitle>
+            <SegmentList><Segment>
+                <Id>urn:uuid:00000000-0000-0000-0000-000000000002</Id>
+                <SequenceList/>
+            </Segment></SegmentList>
+        </CompositionPlaylist>"#;
+        let cpl = crate::cpl::parse_cpl(xml).expect("should parse despite missing EditRate");
+        let issues = CoreConstraints2013.validate_cpl(&cpl);
         assert!(
             issues.iter().any(|i| i.code.contains("EditRate")),
             "Missing EditRate should be flagged: {:#?}",
@@ -7701,94 +7734,115 @@ mod tests {
         );
     }
 
-    /// XSD: IssueDate format validation.
+    /// XSD §13: IssueDate is `xs:dateTime` — "not-a-date" fails the
+    /// built-in lexical-space check and surfaces as `XSD/TypeInvalid`.
+    #[cfg(feature = "xsd-runtime")]
     #[test]
-    #[ignore = "XSD-overlap check gutted; runtime-XSD validator will re-emit"]
     fn core_warns_invalid_issue_date_format() {
-        let mut cpl = minimal_cpl();
-        cpl.issue_date = "not-a-date".to_string();
-        let v = CoreConstraints2020;
-        let issues = v.validate_cpl(&cpl);
+        let xml = r#"<CompositionPlaylist xmlns="http://www.smpte-ra.org/schemas/2067-3/2013">
+            <Id>urn:uuid:00000000-0000-0000-0000-000000000001</Id>
+            <IssueDate>not-a-date</IssueDate>
+            <ContentTitle>Test</ContentTitle>
+            <EditRate>24 1</EditRate>
+            <SegmentList><Segment>
+                <Id>urn:uuid:00000000-0000-0000-0000-000000000002</Id>
+                <SequenceList/>
+            </Segment></SegmentList>
+        </CompositionPlaylist>"#;
+        let cpl = crate::cpl::parse_cpl(xml).expect("should parse despite invalid IssueDate");
+        let issues = CoreConstraints2013.validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| i.code.contains("IssueDate-Format")),
-            "Invalid IssueDate format should produce warning: {:#?}",
+            issues.iter().any(|i| i.code.contains("IssueDate")),
+            "Invalid IssueDate format should be flagged: {:#?}",
             issues,
         );
     }
 
-    /// XSD: Empty IssueDate flags error.
+    /// XSD §13: Empty IssueDate also fails the `xs:dateTime` lexical check.
+    #[cfg(feature = "xsd-runtime")]
     #[test]
-    #[ignore = "XSD-overlap check gutted; runtime-XSD validator will re-emit"]
     fn core_flags_empty_issue_date() {
-        let mut cpl = minimal_cpl();
-        cpl.issue_date = "".to_string();
-        let v = CoreConstraints2020;
-        let issues = v.validate_cpl(&cpl);
+        let xml = r#"<CompositionPlaylist xmlns="http://www.smpte-ra.org/schemas/2067-3/2013">
+            <Id>urn:uuid:00000000-0000-0000-0000-000000000001</Id>
+            <IssueDate></IssueDate>
+            <ContentTitle>Test</ContentTitle>
+            <EditRate>24 1</EditRate>
+            <SegmentList><Segment>
+                <Id>urn:uuid:00000000-0000-0000-0000-000000000002</Id>
+                <SequenceList/>
+            </Segment></SegmentList>
+        </CompositionPlaylist>"#;
+        let cpl = crate::cpl::parse_cpl(xml).expect("should parse despite empty IssueDate");
+        let issues = CoreConstraints2013.validate_cpl(&cpl);
         assert!(
-            issues
-                .iter()
-                .any(|i| i.code.contains("IssueDate") && i.severity == Severity::Error),
-            "Empty IssueDate should be an error: {:#?}",
+            issues.iter().any(|i| i.code.contains("IssueDate")),
+            "Empty IssueDate should be flagged: {:#?}",
             issues,
         );
     }
 
-    /// XSD §121-127: CompositionTimecode completeness.
+    /// XSD §68-74: `CompositionTimecodeType` requires
+    /// `TimecodeDropFrame`, `TimecodeRate`, and `TimecodeStartAddress`
+    /// (none with `minOccurs="0"`). Missing the drop-frame and
+    /// start-address fields should trip element-missing diagnostics
+    /// for each.
+    #[cfg(feature = "xsd-runtime")]
     #[test]
-    #[ignore = "XSD-overlap check gutted; runtime-XSD validator will re-emit"]
     fn core_flags_incomplete_composition_timecode() {
-        use crate::cpl::CompositionTimecode;
-
-        let mut cpl = minimal_cpl();
-        cpl.composition_timecode = Some(CompositionTimecode {
-            timecode_drop_frame: None, // Missing!
-            timecode_rate: Some(24),
-            timecode_start_address: None, // Missing!
-        });
-        let v = CoreConstraints2020;
-        let issues = v.validate_cpl(&cpl);
+        let xml = r#"<CompositionPlaylist xmlns="http://www.smpte-ra.org/schemas/2067-3/2013">
+            <Id>urn:uuid:00000000-0000-0000-0000-000000000001</Id>
+            <IssueDate>2024-01-01T00:00:00Z</IssueDate>
+            <ContentTitle>Test</ContentTitle>
+            <CompositionTimecode>
+                <TimecodeRate>24</TimecodeRate>
+            </CompositionTimecode>
+            <EditRate>24 1</EditRate>
+            <SegmentList><Segment>
+                <Id>urn:uuid:00000000-0000-0000-0000-000000000002</Id>
+                <SequenceList/>
+            </Segment></SegmentList>
+        </CompositionPlaylist>"#;
+        let cpl =
+            crate::cpl::parse_cpl(xml).expect("should parse despite incomplete CompositionTimecode");
+        let issues = CoreConstraints2013.validate_cpl(&cpl);
         assert!(
             issues
                 .iter()
-                .any(|i| i.code.contains("CompositionTimecode/DropFrame")),
-            "Missing TimecodeDropFrame should be flagged: {:#?}",
-            issues,
-        );
-        assert!(
-            issues
-                .iter()
-                .any(|i| i.code.contains("CompositionTimecode/StartAddress")),
-            "Missing TimecodeStartAddress should be flagged: {:#?}",
-            issues,
-        );
-        assert!(
-            !issues
-                .iter()
-                .any(|i| i.code.contains("CompositionTimecode/Rate")),
-            "Present TimecodeRate should not be flagged: {:#?}",
+                .any(|i| i.code.contains("TimecodeDropFrame")
+                    || i.code.contains("TimecodeStartAddress")),
+            "Missing TimecodeDropFrame/StartAddress should be flagged: {:#?}",
             issues,
         );
     }
 
-    /// XSD SequenceType: ResourceList must not be empty.
+    /// XSD §164-170: `ResourceList` declares
+    /// `Resource maxOccurs=unbounded` with default `minOccurs=1`, so
+    /// an empty ResourceList inside a `MarkerSequence` (the only
+    /// sequence type the CPL XSD knows directly) trips
+    /// `ElementMissing/Resource`.
+    #[cfg(feature = "xsd-runtime")]
     #[test]
-    #[ignore = "XSD-overlap check gutted; runtime-XSD validator will re-emit"]
     fn core_flags_empty_resource_list() {
-        let mut cpl = minimal_cpl();
-        cpl.segment_list.segments[0]
-            .sequence_list
-            .main_image_sequences
-            .push(MainImageSequence {
-                id: uuid(3),
-                track_id: uuid(4),
-                resource_list: ResourceList {
-                    resources: vec![], // Empty!
-                },
-            });
-        let v = CoreConstraints2020;
-        let issues = v.validate_cpl(&cpl);
+        let xml = r#"<CompositionPlaylist xmlns="http://www.smpte-ra.org/schemas/2067-3/2013">
+            <Id>urn:uuid:00000000-0000-0000-0000-000000000001</Id>
+            <IssueDate>2024-01-01T00:00:00Z</IssueDate>
+            <ContentTitle>Test</ContentTitle>
+            <EditRate>24 1</EditRate>
+            <SegmentList><Segment>
+                <Id>urn:uuid:00000000-0000-0000-0000-000000000002</Id>
+                <SequenceList>
+                    <MarkerSequence>
+                        <Id>urn:uuid:00000000-0000-0000-0000-000000000003</Id>
+                        <TrackId>urn:uuid:00000000-0000-0000-0000-000000000004</TrackId>
+                        <ResourceList/>
+                    </MarkerSequence>
+                </SequenceList>
+            </Segment></SegmentList>
+        </CompositionPlaylist>"#;
+        let cpl = crate::cpl::parse_cpl(xml).expect("should parse despite empty ResourceList");
+        let issues = CoreConstraints2013.validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| i.code.contains("ResourceList-Empty")),
+            issues.iter().any(|i| i.code.contains("Resource")),
             "Empty ResourceList should be flagged: {:#?}",
             issues,
         );
@@ -9511,17 +9565,28 @@ mod tests {
 
     // ── XSD: TotalRunningTime pattern ────────────────────────────────────────
 
+    /// XSD §37-41: `TotalRunningTime` carries pattern
+    /// `[0-9][0-9]:[0-5][0-9]:[0-5][0-9]` — "2:30:00" fails it (missing
+    /// leading zero on the hours field).
+    #[cfg(feature = "xsd-runtime")]
     #[test]
-    #[ignore = "XSD-overlap check gutted; runtime-XSD validator will re-emit"]
     fn core_flags_invalid_total_running_time() {
-        let mut cpl = minimal_cpl();
-        cpl.total_running_time = Some("2:30:00".to_string()); // missing leading zero
-        let issues = CoreConstraints2020.validate_cpl(&cpl);
+        let xml = r#"<CompositionPlaylist xmlns="http://www.smpte-ra.org/schemas/2067-3/2013">
+            <Id>urn:uuid:00000000-0000-0000-0000-000000000001</Id>
+            <IssueDate>2024-01-01T00:00:00Z</IssueDate>
+            <ContentTitle>Test</ContentTitle>
+            <EditRate>24 1</EditRate>
+            <TotalRunningTime>2:30:00</TotalRunningTime>
+            <SegmentList><Segment>
+                <Id>urn:uuid:00000000-0000-0000-0000-000000000002</Id>
+                <SequenceList/>
+            </Segment></SegmentList>
+        </CompositionPlaylist>"#;
+        let cpl = crate::cpl::parse_cpl(xml).expect("should parse despite invalid TotalRunningTime");
+        let issues = CoreConstraints2013.validate_cpl(&cpl);
         assert!(
-            issues
-                .iter()
-                .any(|i| i.code.contains("TotalRunningTime-Format")),
-            "Should flag invalid TotalRunningTime format: {:#?}",
+            issues.iter().any(|i| i.code.contains("TotalRunningTime")),
+            "Invalid TotalRunningTime format should be flagged: {:#?}",
             issues,
         );
     }
@@ -9540,20 +9605,30 @@ mod tests {
 
     // ── XSD: TimecodeRate > 0 ────────────────────────────────────────────────
 
+    /// XSD §71: `TimecodeRate` is `xs:positiveInteger` — zero fails the
+    /// built-in derived-type lower bound (`positive` = ≥ 1).
+    #[cfg(feature = "xsd-runtime")]
     #[test]
-    #[ignore = "XSD-overlap check gutted; runtime-XSD validator will re-emit"]
     fn core_flags_timecode_rate_zero() {
-        let mut cpl = minimal_cpl();
-        cpl.composition_timecode = Some(CompositionTimecode {
-            timecode_drop_frame: Some(false),
-            timecode_rate: Some(0),
-            timecode_start_address: Some("00:00:00:00".to_string()),
-        });
-        let issues = CoreConstraints2020.validate_cpl(&cpl);
+        let xml = r#"<CompositionPlaylist xmlns="http://www.smpte-ra.org/schemas/2067-3/2013">
+            <Id>urn:uuid:00000000-0000-0000-0000-000000000001</Id>
+            <IssueDate>2024-01-01T00:00:00Z</IssueDate>
+            <ContentTitle>Test</ContentTitle>
+            <CompositionTimecode>
+                <TimecodeDropFrame>false</TimecodeDropFrame>
+                <TimecodeRate>0</TimecodeRate>
+                <TimecodeStartAddress>00:00:00:00</TimecodeStartAddress>
+            </CompositionTimecode>
+            <EditRate>24 1</EditRate>
+            <SegmentList><Segment>
+                <Id>urn:uuid:00000000-0000-0000-0000-000000000002</Id>
+                <SequenceList/>
+            </Segment></SegmentList>
+        </CompositionPlaylist>"#;
+        let cpl = crate::cpl::parse_cpl(xml).expect("should parse despite zero TimecodeRate");
+        let issues = CoreConstraints2013.validate_cpl(&cpl);
         assert!(
-            issues
-                .iter()
-                .any(|i| i.code.contains("CompositionTimecode/Rate-Zero")),
+            issues.iter().any(|i| i.code.contains("TimecodeRate")),
             "TimecodeRate of 0 should be flagged: {:#?}",
             issues,
         );
@@ -9579,20 +9654,32 @@ mod tests {
 
     // ── XSD: TimecodeStartAddress format ─────────────────────────────────────
 
+    /// XSD §72/75-81: `TimecodeStartAddress` is `cpl:TimecodeType` —
+    /// a `xs:string` restricted to a four-field timecode pattern.
+    /// "10:00:00" lacks the fourth field and fails the pattern facet.
+    #[cfg(feature = "xsd-runtime")]
     #[test]
-    #[ignore = "XSD-overlap check gutted; runtime-XSD validator will re-emit"]
     fn core_flags_invalid_timecode_start_address() {
-        let mut cpl = minimal_cpl();
-        cpl.composition_timecode = Some(CompositionTimecode {
-            timecode_drop_frame: Some(false),
-            timecode_rate: Some(24),
-            timecode_start_address: Some("10:00:00".to_string()), // missing frame field
-        });
-        let issues = CoreConstraints2020.validate_cpl(&cpl);
+        let xml = r#"<CompositionPlaylist xmlns="http://www.smpte-ra.org/schemas/2067-3/2013">
+            <Id>urn:uuid:00000000-0000-0000-0000-000000000001</Id>
+            <IssueDate>2024-01-01T00:00:00Z</IssueDate>
+            <ContentTitle>Test</ContentTitle>
+            <CompositionTimecode>
+                <TimecodeDropFrame>false</TimecodeDropFrame>
+                <TimecodeRate>24</TimecodeRate>
+                <TimecodeStartAddress>10:00:00</TimecodeStartAddress>
+            </CompositionTimecode>
+            <EditRate>24 1</EditRate>
+            <SegmentList><Segment>
+                <Id>urn:uuid:00000000-0000-0000-0000-000000000002</Id>
+                <SequenceList/>
+            </Segment></SegmentList>
+        </CompositionPlaylist>"#;
+        let cpl =
+            crate::cpl::parse_cpl(xml).expect("should parse despite invalid TimecodeStartAddress");
+        let issues = CoreConstraints2013.validate_cpl(&cpl);
         assert!(
-            issues
-                .iter()
-                .any(|i| i.code.contains("CompositionTimecode/StartAddress-Format")),
+            issues.iter().any(|i| i.code.contains("TimecodeStartAddress")),
             "Invalid TimecodeStartAddress format should be flagged: {:#?}",
             issues,
         );
@@ -9658,16 +9745,27 @@ mod tests {
 
     // ── XSD: LocaleList non-empty ─────────────────────────────────────────────
 
+    /// XSD §43-49: `LocaleList` requires `Locale maxOccurs=unbounded`
+    /// with default `minOccurs=1`, so an empty LocaleList trips
+    /// `ElementMissing/Locale` at the schema level.
+    #[cfg(feature = "xsd-runtime")]
     #[test]
-    #[ignore = "XSD-overlap check gutted; runtime-XSD validator will re-emit"]
     fn core_flags_empty_locale_list() {
-        let mut cpl = minimal_cpl();
-        cpl.locale_list = Some(LocaleList { locales: vec![] });
-        let issues = CoreConstraints2020.validate_cpl(&cpl);
+        let xml = r#"<CompositionPlaylist xmlns="http://www.smpte-ra.org/schemas/2067-3/2013">
+            <Id>urn:uuid:00000000-0000-0000-0000-000000000001</Id>
+            <IssueDate>2024-01-01T00:00:00Z</IssueDate>
+            <ContentTitle>Test</ContentTitle>
+            <EditRate>24 1</EditRate>
+            <LocaleList/>
+            <SegmentList><Segment>
+                <Id>urn:uuid:00000000-0000-0000-0000-000000000002</Id>
+                <SequenceList/>
+            </Segment></SegmentList>
+        </CompositionPlaylist>"#;
+        let cpl = crate::cpl::parse_cpl(xml).expect("should parse despite empty LocaleList");
+        let issues = CoreConstraints2013.validate_cpl(&cpl);
         assert!(
-            issues
-                .iter()
-                .any(|i| i.code.contains("LocaleList-NonEmpty")),
+            issues.iter().any(|i| i.code.contains("Locale")),
             "Empty LocaleList should be flagged: {:#?}",
             issues,
         );

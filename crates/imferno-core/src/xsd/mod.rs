@@ -332,6 +332,15 @@ pub fn translate(
     if let Some(id) = cpl_id {
         loc = loc.with_cpl(id);
     }
+    // When the patched uppsala fork populated element_path, append it to
+    // the catalogue code so downstream code-string substring matches can
+    // discriminate per-element (e.g. "XSD/ElementMissing/EditRate" vs the
+    // generic "XSD/ElementMissing"). Falls back to the bare code when no
+    // path is available (e.g. root-element-missing errors).
+    let code: String = match &err.element_path {
+        Some(path) if !path.is_empty() => format!("{}/{}", kind.code(), path),
+        _ => kind.code().to_string(),
+    };
     // Until `Location` grows line/column fields, we fold the position
     // into the human-readable message body so the information isn't lost.
     let message = match (err.line, err.column) {
@@ -339,7 +348,7 @@ pub fn translate(
         (Some(line), None) => format!("{} (at line {line})", err.message),
         _ => err.message,
     };
-    ValidationIssue::new(kind.default_severity(), kind.category(), kind.code(), message)
+    ValidationIssue::new(kind.default_severity(), kind.category(), code, message)
         .with_location(loc)
 }
 

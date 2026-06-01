@@ -51,6 +51,16 @@ pub enum St2067_2_2020 {
     IoError,
     /// EssenceDescriptorList element is required per ST 2067-2:2020 §6.4.2.
     EssenceDescriptorList,
+    /// PKL document namespace is not one of the published SMPTE PKL
+    /// namespace URIs — breaks interop with conformant validators.
+    PklUnknownNamespace,
+    /// AssetMap declares no asset as a PackingList — ST 429-9 §6.3
+    /// requires every package to have at least one PKL identified
+    /// by `<PackingList>true</PackingList>`.
+    AssetMapHasNoPackingList,
+    /// A PKL document was parsed but its Id is not declared in the
+    /// AssetMap as a `PackingList`-flagged asset (ST 429-9 §6.3).
+    PklIdNotInAssetMap,
 }
 
 impl ValidationCode for St2067_2_2020 {
@@ -67,6 +77,9 @@ impl ValidationCode for St2067_2_2020 {
             Self::DuplicateUuid => "ST2067-2:2020:7/DuplicateUuid",
             Self::IoError => "IMF:General/IoError",
             Self::EssenceDescriptorList => "ST2067-2:2020:6.4.2/EssenceDescriptorList",
+            Self::PklUnknownNamespace => "ST2067-2:2020:9/PklUnknownNamespace",
+            Self::AssetMapHasNoPackingList => "ST429-9:2014:6.3/AssetMapHasNoPackingList",
+            Self::PklIdNotInAssetMap => "ST429-9:2014:6.3/PklIdNotInAssetMap",
         }
     }
     fn description(&self) -> &'static str {
@@ -86,11 +99,20 @@ impl ValidationCode for St2067_2_2020 {
             Self::EssenceDescriptorList => {
                 "EssenceDescriptorList element is required per ST 2067-2:2020 §6.4.2."
             }
+            Self::PklUnknownNamespace => {
+                "PKL document namespace is not one of the published SMPTE PKL namespaces."
+            }
+            Self::AssetMapHasNoPackingList => {
+                "AssetMap declares no asset as a PackingList (ST 429-9 §6.3)."
+            }
+            Self::PklIdNotInAssetMap => {
+                "PKL document Id is not declared as a PackingList asset in the AssetMap."
+            }
         }
     }
     fn default_severity(&self) -> Severity {
         match self {
-            Self::AssetMap | Self::NoCpls => Severity::Critical,
+            Self::AssetMap | Self::NoCpls | Self::AssetMapHasNoPackingList => Severity::Critical,
             _ => Severity::Error,
         }
     }
@@ -100,11 +122,15 @@ impl ValidationCode for St2067_2_2020 {
             | Self::AssetMapMalformedXml
             | Self::PklMalformedXml
             | Self::NoCpls
-            | Self::EssenceDescriptorList => Category::Structure,
+            | Self::EssenceDescriptorList
+            | Self::PklUnknownNamespace
+            | Self::AssetMapHasNoPackingList => Category::Structure,
             Self::SizeMismatch | Self::FileNotFound | Self::IoError | Self::ChecksumMismatch => {
                 Category::Asset
             }
-            Self::UnresolvedUuid | Self::DuplicateUuid => Category::Reference,
+            Self::UnresolvedUuid | Self::DuplicateUuid | Self::PklIdNotInAssetMap => {
+                Category::Reference
+            }
         }
     }
 }
@@ -122,6 +148,9 @@ impl St2067_2_2020 {
         Self::DuplicateUuid,
         Self::IoError,
         Self::EssenceDescriptorList,
+        Self::PklUnknownNamespace,
+        Self::AssetMapHasNoPackingList,
+        Self::PklIdNotInAssetMap,
     ];
 }
 

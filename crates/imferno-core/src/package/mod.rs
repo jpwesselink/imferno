@@ -145,6 +145,19 @@ pub enum FileValidationError {
     },
     /// Same asset UUID appears more than once in a single PKL (ST 2067-2 §9).
     DuplicatePklAssetId { uuid: String, pkl_id: String },
+    /// PKL document carries a namespace URI we don't recognise. Per
+    /// ST 429-8 (the canonical PKL standard) and ST 2067-2:2016, the
+    /// only acceptable values are the published namespaces; an
+    /// unrecognised one breaks downstream tool interoperability.
+    UnknownPklNamespace { pkl_id: String, namespace: String },
+    /// The AssetMap has no asset carrying `<PackingList>true</PackingList>`,
+    /// so no PKL document is declared. ST 429-9 §6.3 requires the
+    /// AssetMap to identify which assets are PKLs.
+    AssetMapHasNoPackingList,
+    /// A PKL document was parsed but its Id does not appear as a
+    /// `PackingList`-flagged asset in the AssetMap. ST 429-9 §6.3
+    /// requires every PKL to be declared in the AssetMap.
+    PklIdNotInAssetMap { pkl_id: String },
 }
 
 impl FileValidationError {
@@ -156,6 +169,12 @@ impl FileValidationError {
             Self::HashMismatch { uuid, .. } => uuid,
             Self::Io { uuid, .. } => uuid,
             Self::DuplicatePklAssetId { uuid, .. } => uuid,
+            // The variants below are package-scope, not asset-scope —
+            // the relevant identifier is the PKL document or "—" when
+            // no document is involved at all.
+            Self::UnknownPklNamespace { pkl_id, .. } => pkl_id,
+            Self::PklIdNotInAssetMap { pkl_id } => pkl_id,
+            Self::AssetMapHasNoPackingList => "—",
         }
     }
 }
@@ -222,6 +241,26 @@ impl std::fmt::Display for FileValidationError {
             }
             Self::DuplicatePklAssetId { uuid, pkl_id } => {
                 write!(f, "Duplicate asset UUID {} in PKL {}", uuid, pkl_id)
+            }
+            Self::UnknownPklNamespace { pkl_id, namespace } => {
+                write!(
+                    f,
+                    "PKL {} carries an unrecognised namespace URI: {}",
+                    pkl_id, namespace
+                )
+            }
+            Self::AssetMapHasNoPackingList => {
+                write!(
+                    f,
+                    "AssetMap declares no PKL (no asset has <PackingList>true</PackingList>)"
+                )
+            }
+            Self::PklIdNotInAssetMap { pkl_id } => {
+                write!(
+                    f,
+                    "PKL document {} is not declared as a PackingList asset in the AssetMap",
+                    pkl_id
+                )
             }
         }
     }
@@ -317,6 +356,35 @@ impl From<&FileValidationError> for ValidationIssue {
                 format!("Duplicate asset UUID {} in PKL {}", uuid, pkl_id),
             )
             .with_context("asset_uuid", uuid.clone())
+            .with_context("pkl_id", pkl_id.clone()),
+            FileValidationError::UnknownPklNamespace { pkl_id, namespace } => ValidationIssue::new(
+                Severity::Error,
+                Category::Structure,
+                codes::St2067_2_2020::PklUnknownNamespace,
+                format!(
+                    "PKL {} carries unrecognised namespace '{}' — not in the published \
+                     SMPTE PKL namespace set",
+                    pkl_id, namespace
+                ),
+            )
+            .with_context("pkl_id", pkl_id.clone())
+            .with_context("namespace", namespace.clone()),
+            FileValidationError::AssetMapHasNoPackingList => ValidationIssue::new(
+                Severity::Critical,
+                Category::Structure,
+                codes::St2067_2_2020::AssetMapHasNoPackingList,
+                "AssetMap declares no PKL (no asset has <PackingList>true</PackingList>)"
+                    .to_string(),
+            ),
+            FileValidationError::PklIdNotInAssetMap { pkl_id } => ValidationIssue::new(
+                Severity::Error,
+                Category::Reference,
+                codes::St2067_2_2020::PklIdNotInAssetMap,
+                format!(
+                    "PKL document {} is not declared as a PackingList asset in the AssetMap",
+                    pkl_id
+                ),
+            )
             .with_context("pkl_id", pkl_id.clone()),
         }
     }
@@ -1435,9 +1503,11 @@ impl Imferno {
     /// - §9: No duplicate asset UUIDs within a single PKL
     /// - §7/9: Every PKL asset UUID exists in the AssetMap
     pub fn validate_pkl_constraints(&self) -> Vec<FileValidationError> {
+        use crate::assetmap::PklNamespace;
         let mut errors = Vec::new();
 
-        // Build AssetMap UUID set
+        // Build AssetMap UUID set + PackingList-flagged subset for the
+        // ST 429-9 §6.3 cross-doc checks.
         let assetmap_ids: std::collections::HashSet<ImfUuid> = self
             .asset_map
             .asset_list
@@ -1445,8 +1515,43 @@ impl Imferno {
             .iter()
             .map(|a| a.id)
             .collect();
+        let assetmap_pkl_ids: std::collections::HashSet<ImfUuid> = self
+            .asset_map
+            .asset_list
+            .assets
+            .iter()
+            .filter(|a| a.packing_list.unwrap_or(false))
+            .map(|a| a.id)
+            .collect();
+
+        // ST 429-9 §6.3: AssetMap must identify at least one PKL via
+        // `<PackingList>true</PackingList>`. Fire whenever the AssetMap
+        // has no such flag — this is true regardless of whether any
+        // PKL files happen to be present on disk (the AssetMap is
+        // authoritative on what the package is supposed to contain).
+        if assetmap_pkl_ids.is_empty() {
+            errors.push(FileValidationError::AssetMapHasNoPackingList);
+        }
 
         for pkl in self.packing_lists.values() {
+            // ST 2067-2 §9: PKL namespace must be one of the published
+            // SMPTE PKL namespace URIs. `PklNamespace::Unknown` is the
+            // parser's sentinel for "not in the recognised set".
+            if let PklNamespace::Unknown(uri) = &pkl.namespace {
+                errors.push(FileValidationError::UnknownPklNamespace {
+                    pkl_id: pkl.id.to_string(),
+                    namespace: uri.clone(),
+                });
+            }
+
+            // ST 429-9 §6.3: every PKL document's Id must appear as a
+            // PackingList-flagged asset in the AssetMap.
+            if !assetmap_pkl_ids.contains(&pkl.id) {
+                errors.push(FileValidationError::PklIdNotInAssetMap {
+                    pkl_id: pkl.id.to_string(),
+                });
+            }
+
             // ST 2067-2 §9: Check for duplicate asset IDs within this PKL
             let mut seen_ids: std::collections::HashSet<ImfUuid> = std::collections::HashSet::new();
             for asset in &pkl.asset_list.assets {
@@ -3235,6 +3340,180 @@ mod tests {
         );
     }
 
+    /// ST 2067-2 §9: PKL with an unrecognised namespace URI is flagged.
+    /// Photon-parity rule (matches the namespace whitelist at
+    /// `PackingList.java:83-84`).
+    #[test]
+    fn test_pkl_constraints_flags_unknown_namespace() {
+        use tempfile::TempDir;
+        let dir = TempDir::new().unwrap();
+        let root = dir.path();
+        std::fs::write(
+            root.join("VOLINDEX.xml"),
+            r#"<?xml version="1.0"?><VolumeIndex xmlns="http://www.smpte-ra.org/schemas/429-9/2007/AM"><Index>1</Index></VolumeIndex>"#,
+        )
+        .unwrap();
+        let pkl_xml = r#"<?xml version="1.0"?>
+<PackingList xmlns="urn:not-a-real-pkl-namespace">
+<Id>urn:uuid:aaaaaaaa-0000-0000-0000-000000000001</Id>
+<IssueDate>2024-01-01T00:00:00Z</IssueDate>
+<AssetList>
+  <Asset>
+    <Id>urn:uuid:bbbbbbbb-0000-0000-0000-000000000002</Id>
+    <Hash>2jmj7l5rSw0yVb/vlWAYkK/YBwk=</Hash>
+    <Size>999</Size>
+    <Type>application/mxf</Type>
+  </Asset>
+</AssetList>
+</PackingList>"#;
+        std::fs::write(root.join("PKL.xml"), pkl_xml).unwrap();
+        let assetmap_xml = r#"<?xml version="1.0"?>
+<AssetMap xmlns="http://www.smpte-ra.org/schemas/429-9/2007/AM">
+<Id>urn:uuid:dddddddd-0000-0000-0000-000000000004</Id>
+<Creator>test</Creator><VolumeCount>1</VolumeCount>
+<IssueDate>2024-01-01T00:00:00Z</IssueDate><Issuer>test</Issuer>
+<AssetList>
+  <Asset>
+    <Id>urn:uuid:aaaaaaaa-0000-0000-0000-000000000001</Id>
+    <PackingList>true</PackingList>
+    <ChunkList><Chunk><Path>PKL.xml</Path></Chunk></ChunkList>
+  </Asset>
+  <Asset>
+    <Id>urn:uuid:bbbbbbbb-0000-0000-0000-000000000002</Id>
+    <ChunkList><Chunk><Path>some.mxf</Path></Chunk></ChunkList>
+  </Asset>
+</AssetList></AssetMap>"#;
+        std::fs::write(root.join("ASSETMAP.xml"), assetmap_xml).unwrap();
+        let package = Imferno::parse(read_dir(root).unwrap()).expect("parse");
+        let errors = package.validate_pkl_constraints();
+        assert!(
+            errors
+                .iter()
+                .any(|e| matches!(e, FileValidationError::UnknownPklNamespace { .. })),
+            "Expected UnknownPklNamespace, got: {:?}",
+            errors.iter().map(|e| e.to_string()).collect::<Vec<_>>()
+        );
+    }
+
+    /// ST 429-9 §6.3: AssetMap with no `<PackingList>true</PackingList>`
+    /// asset must be flagged when a PKL document exists in the package.
+    /// Photon-parity (matches `IMPValidator.validatePKLAndAssetMap`).
+    #[test]
+    fn test_pkl_constraints_flags_assetmap_with_no_packinglist() {
+        use tempfile::TempDir;
+        let dir = TempDir::new().unwrap();
+        let root = dir.path();
+        std::fs::write(
+            root.join("VOLINDEX.xml"),
+            r#"<?xml version="1.0"?><VolumeIndex xmlns="http://www.smpte-ra.org/schemas/429-9/2007/AM"><Index>1</Index></VolumeIndex>"#,
+        )
+        .unwrap();
+        let pkl_xml = r#"<?xml version="1.0"?>
+<PackingList xmlns="http://www.smpte-ra.org/schemas/429-8/2007/PKL">
+<Id>urn:uuid:aaaaaaaa-0000-0000-0000-000000000001</Id>
+<IssueDate>2024-01-01T00:00:00Z</IssueDate>
+<AssetList>
+  <Asset>
+    <Id>urn:uuid:bbbbbbbb-0000-0000-0000-000000000002</Id>
+    <Hash>2jmj7l5rSw0yVb/vlWAYkK/YBwk=</Hash>
+    <Size>999</Size>
+    <Type>application/mxf</Type>
+  </Asset>
+</AssetList>
+</PackingList>"#;
+        std::fs::write(root.join("PKL.xml"), pkl_xml).unwrap();
+        // AssetMap omits the PackingList flag on every asset.
+        let assetmap_xml = r#"<?xml version="1.0"?>
+<AssetMap xmlns="http://www.smpte-ra.org/schemas/429-9/2007/AM">
+<Id>urn:uuid:dddddddd-0000-0000-0000-000000000004</Id>
+<Creator>test</Creator><VolumeCount>1</VolumeCount>
+<IssueDate>2024-01-01T00:00:00Z</IssueDate><Issuer>test</Issuer>
+<AssetList>
+  <Asset>
+    <Id>urn:uuid:aaaaaaaa-0000-0000-0000-000000000001</Id>
+    <ChunkList><Chunk><Path>PKL.xml</Path></Chunk></ChunkList>
+  </Asset>
+  <Asset>
+    <Id>urn:uuid:bbbbbbbb-0000-0000-0000-000000000002</Id>
+    <ChunkList><Chunk><Path>some.mxf</Path></Chunk></ChunkList>
+  </Asset>
+</AssetList></AssetMap>"#;
+        std::fs::write(root.join("ASSETMAP.xml"), assetmap_xml).unwrap();
+        let package = Imferno::parse(read_dir(root).unwrap()).expect("parse");
+        let errors = package.validate_pkl_constraints();
+        assert!(
+            errors
+                .iter()
+                .any(|e| matches!(e, FileValidationError::AssetMapHasNoPackingList)),
+            "Expected AssetMapHasNoPackingList, got: {:?}",
+            errors.iter().map(|e| e.to_string()).collect::<Vec<_>>()
+        );
+        // `PklIdNotInAssetMap` doesn't fire here because the package
+        // pipeline only loads PKL files when the AssetMap flags them —
+        // so `self.packing_lists` is empty in this scenario. That
+        // check is exercised separately in
+        // `test_pkl_constraints_flags_pkl_id_mismatch`.
+    }
+
+    /// ST 429-9 §6.3: when a PKL is loaded (via a flagged AssetMap
+    /// asset) but the PKL document's internal Id differs from the
+    /// AssetMap asset Id, flag the mismatch. Constructs a fixture
+    /// where the AssetMap declares one Id but the PKL XML carries a
+    /// different one inside.
+    #[test]
+    fn test_pkl_constraints_flags_pkl_id_mismatch() {
+        use tempfile::TempDir;
+        let dir = TempDir::new().unwrap();
+        let root = dir.path();
+        std::fs::write(
+            root.join("VOLINDEX.xml"),
+            r#"<?xml version="1.0"?><VolumeIndex xmlns="http://www.smpte-ra.org/schemas/429-9/2007/AM"><Index>1</Index></VolumeIndex>"#,
+        )
+        .unwrap();
+        // PKL Id `99999999-...` is intentionally different from the
+        // AssetMap asset Id `aaaaaaaa-...` that flags it.
+        let pkl_xml = r#"<?xml version="1.0"?>
+<PackingList xmlns="http://www.smpte-ra.org/schemas/429-8/2007/PKL">
+<Id>urn:uuid:99999999-0000-0000-0000-000000000099</Id>
+<IssueDate>2024-01-01T00:00:00Z</IssueDate>
+<AssetList>
+  <Asset>
+    <Id>urn:uuid:bbbbbbbb-0000-0000-0000-000000000002</Id>
+    <Hash>2jmj7l5rSw0yVb/vlWAYkK/YBwk=</Hash>
+    <Size>999</Size>
+    <Type>application/mxf</Type>
+  </Asset>
+</AssetList>
+</PackingList>"#;
+        std::fs::write(root.join("PKL.xml"), pkl_xml).unwrap();
+        let assetmap_xml = r#"<?xml version="1.0"?>
+<AssetMap xmlns="http://www.smpte-ra.org/schemas/429-9/2007/AM">
+<Id>urn:uuid:dddddddd-0000-0000-0000-000000000004</Id>
+<Creator>test</Creator><VolumeCount>1</VolumeCount>
+<IssueDate>2024-01-01T00:00:00Z</IssueDate><Issuer>test</Issuer>
+<AssetList>
+  <Asset>
+    <Id>urn:uuid:aaaaaaaa-0000-0000-0000-000000000001</Id>
+    <PackingList>true</PackingList>
+    <ChunkList><Chunk><Path>PKL.xml</Path></Chunk></ChunkList>
+  </Asset>
+  <Asset>
+    <Id>urn:uuid:bbbbbbbb-0000-0000-0000-000000000002</Id>
+    <ChunkList><Chunk><Path>some.mxf</Path></Chunk></ChunkList>
+  </Asset>
+</AssetList></AssetMap>"#;
+        std::fs::write(root.join("ASSETMAP.xml"), assetmap_xml).unwrap();
+        let package = Imferno::parse(read_dir(root).unwrap()).expect("parse");
+        let errors = package.validate_pkl_constraints();
+        assert!(
+            errors
+                .iter()
+                .any(|e| matches!(e, FileValidationError::PklIdNotInAssetMap { pkl_id } if pkl_id.contains("99999999"))),
+            "Expected PklIdNotInAssetMap for 99999999, got: {:?}",
+            errors.iter().map(|e| e.to_string()).collect::<Vec<_>>()
+        );
+    }
+
     /// SMPTE ST 2067-2 §9: PKL constraints validation passes on well-formed MERIDIAN.
     #[test]
     fn test_pkl_constraints_pass_on_meridian() {
@@ -3837,6 +4116,10 @@ mod tests {
     // ST 429-9 — VolindexMissing and MalformedXml
     // ═════════════════════════════════════════════════════════════════════════
 
+    /// Minimal AssetMap with a PackingList-flagged asset. ST 429-9 §6.3
+    /// requires every AssetMap to identify at least one PKL via
+    /// `<PackingList>true</PackingList>` — fixtures that don't include
+    /// one trip the new AssetMapHasNoPackingList check.
     const MINIMAL_ASSETMAP: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
 <AssetMap xmlns="http://www.smpte-ra.org/schemas/429-9/2007/AM">
   <Id>urn:uuid:dddddddd-0000-0000-0000-000000000001</Id>
@@ -3845,6 +4128,11 @@ mod tests {
   <IssueDate>2024-01-01T00:00:00Z</IssueDate>
   <Issuer>test</Issuer>
   <AssetList>
+    <Asset>
+      <Id>urn:uuid:aaaaaaaa-0000-0000-0000-000000000001</Id>
+      <PackingList>true</PackingList>
+      <ChunkList><Chunk><Path>PKL.xml</Path></Chunk></ChunkList>
+    </Asset>
     <Asset>
       <Id>urn:uuid:eeeeeeee-0000-0000-0000-000000000001</Id>
       <ChunkList><Chunk><Path>dummy.mxf</Path></Chunk></ChunkList>

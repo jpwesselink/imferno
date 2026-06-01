@@ -238,6 +238,55 @@ pub fn check_audio_mca(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
         }
     }
 
+    // ST 2067-2 §5.3.4.2 — ChannelAssignment UL must be one of the
+    // SMPTE 428-12 MCA channel-layout ULs (prefix
+    // `urn:smpte:ul:060e2b34.0401010d.04020210.…`). Anything else
+    // breaks downstream channel-layout-aware tooling.
+    if let Some(ca) = extract_field(regxml, "ChannelAssignment") {
+        let ca = ca.trim();
+        // Tolerate the variable byte-7 (registry version) by checking
+        // both the documented `0401010d` form and any future
+        // `0401010X` revision, plus the structural body bytes that
+        // identify ST 428-12 MCA layouts.
+        let prefix_ok = ca.starts_with("urn:smpte:ul:060e2b34.0401010")
+            && ca.contains(".04020210.");
+        if !prefix_ok {
+            issues.push(
+                ValidationIssue::new(
+                    Severity::Error,
+                    Category::Audio,
+                    "ST2067-2:2016:5.3.4.2/ChannelAssignmentNotMCA",
+                    format!(
+                        "MXF {} declares ChannelAssignment = {} — ST 2067-2 §5.3.4.2 \
+                         requires a SMPTE 428-12 MCA channel-layout UL.",
+                        path.display(),
+                        ca
+                    ),
+                )
+                .with_location(Location::new().with_file(path.to_path_buf())),
+            );
+        }
+    }
+
+    // ST 2067-2 §5.3 — sound essence SHOULD carry an RFC-5646 spoken
+    // language tag (`RFC5646SpokenLanguage`). Netflix-grade pipelines
+    // require it for routing; Photon emits as NON_FATAL.
+    if !regxml.contains(":RFC5646SpokenLanguage") {
+        issues.push(
+            ValidationIssue::new(
+                Severity::Warning,
+                Category::Audio,
+                "ST2067-2:2016:5.3/RFC5646SpokenLanguageMissing",
+                format!(
+                    "MXF {} sound descriptor is missing RFC5646SpokenLanguage — ST 2067-2 \
+                     §5.3 recommends declaring the spoken-language BCP-47 tag.",
+                    path.display(),
+                ),
+            )
+            .with_location(Location::new().with_file(path.to_path_buf())),
+        );
+    }
+
     // ST 2067-2 §5.3.6.5 — Netflix-grade audio MCA: SoundfieldGroup
     // SHALL carry MCATitle, MCATitleVersion, MCAAudioContentKind,
     // MCAAudioElementKind. Photon emits these as NON_FATAL
@@ -695,6 +744,44 @@ mod tests {
         assert!(
             issues.iter().any(|i| i.code.contains("MCALinkIDMissing")),
             "expected MCALinkIDMissing, got: {:#?}",
+            issues
+        );
+    }
+
+    #[test]
+    fn flags_non_mca_channel_assignment_ul() {
+        let xml = r#"<ns1:WAVEPCMDescriptor>
+            <ns2:AudioSampleRate>48000/1</ns2:AudioSampleRate>
+            <ns2:QuantizationBits>24</ns2:QuantizationBits>
+            <ns2:ChannelCount>1</ns2:ChannelCount>
+            <ns2:ChannelAssignment>urn:smpte:ul:060e2b34.0401010d.04020110.04010000</ns2:ChannelAssignment>
+            <ns1:SoundfieldGroupLabelSubDescriptor>
+                <ns2:MCALinkID>urn:uuid:11111111-0000-0000-0000-000000000001</ns2:MCALinkID>
+            </ns1:SoundfieldGroupLabelSubDescriptor>
+            <ns1:AudioChannelLabelSubDescriptor>
+                <ns2:MCALinkID>urn:uuid:11111111-0000-0000-0000-000000000001</ns2:MCALinkID>
+                <ns2:MCAChannelID>1</ns2:MCAChannelID>
+                <ns2:SoundfieldGroupLinkID>urn:uuid:11111111-0000-0000-0000-000000000001</ns2:SoundfieldGroupLinkID>
+            </ns1:AudioChannelLabelSubDescriptor>
+        </ns1:WAVEPCMDescriptor>"#;
+        let issues = check_audio_mca(xml, std::path::Path::new("/synth.mxf"));
+        assert!(
+            issues.iter().any(|i| i.code.contains("ChannelAssignmentNotMCA")),
+            "expected ChannelAssignmentNotMCA, got: {:#?}",
+            issues
+        );
+    }
+
+    #[test]
+    fn fires_warning_when_rfc5646_spoken_language_missing() {
+        // audio1 lacks RFC5646SpokenLanguage — should fire a Warning.
+        let (xml, path) = audio1_regxml();
+        let issues = check_audio_mca(&xml, &path);
+        assert!(
+            issues
+                .iter()
+                .any(|i| i.code.contains("RFC5646SpokenLanguageMissing")),
+            "expected RFC5646SpokenLanguageMissing on audio1, got: {:#?}",
             issues
         );
     }

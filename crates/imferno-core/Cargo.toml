@@ -44,7 +44,10 @@ uppsala    = { version = "0.4" }
 # MXF essence-header parsing — pure-Rust port of the SMPTE-reference
 # regxmllib, verified semantically identical to the Java implementation
 # across 75 real-world IMF MXFs. Drives the Photon-parity essence checks
-# under `crate::mxf::regxml_validation`.
+# under `crate::mxf::essence`. Native targets only — MXF binaries don't
+# reach the wasm validator (browser callers upload XML, not full assets),
+# so we keep the wasm bundle lean by excluding these from that target.
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 smpte-mxf = { version = "0.1" }
 smpte-klv = { version = "0.1" }
 smpte-types = { version = "0.1" }

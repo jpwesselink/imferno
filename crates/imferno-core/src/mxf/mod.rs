@@ -9,6 +9,11 @@
 //! this phase — CPL EssenceDescriptors are the primary source of format info.
 
 pub mod codes;
+/// MXF essence-header validation backed by `smpte-mxf`. Native-only —
+/// the wasm validator never sees MXF binaries (browser callers upload
+/// the XML side of an IMF package), so this module isn't compiled for
+/// `target_arch = "wasm32"`.
+#[cfg(not(target_arch = "wasm32"))]
 pub mod essence;
 
 use std::io::Read;

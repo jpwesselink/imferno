@@ -507,6 +507,17 @@ fn validate_core_structure(
     code: fn(CoreConstraintsCode) -> &'static str,
     issues: &mut Vec<ValidationIssue>,
 ) {
+    // Runtime XSD pre-pass: when source_xml is available (parse_cpl
+    // populated it) and the xsd-runtime feature is enabled, run the
+    // schema-level validator first so structural diagnostics fire
+    // before the semantic checks that may have been induced by them.
+    // No-op when the feature is off OR source_xml is None (e.g., the
+    // CPL was constructed manually in tests).
+    #[cfg(feature = "xsd-runtime")]
+    {
+        issues.extend(crate::xsd::validate_parsed_cpl(cpl));
+    }
+
     let loc = Location::new().with_cpl(cpl.id);
 
     // ───────────────────────────────────────────────────────────────────────────

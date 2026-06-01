@@ -38,7 +38,8 @@
 //! `validate_against_composite_schema`) or accept the lax-validation
 //! gap for elements whose types come from the unresolved import.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
 
 use crate::diagnostics::codes::ValidationCode;
 use crate::diagnostics::{Category, Location, Severity, ValidationIssue};
@@ -46,6 +47,91 @@ use crate::diagnostics::{Category, Location, Severity, ValidationIssue};
 pub mod codes;
 
 use codes::XsdConstraintCode;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Embedded XSDs — vendored under specs/ and baked in at compile time so the
+// runtime XSD validator is self-contained.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const IMF_CPL_2013_XSD: &str = include_str!("../../../../specs/imf-cpl.xsd");
+const IMF_CPL_2016_XSD: &str = include_str!("../../../../specs/st2067-3a-2016.xsd");
+const IMF_CPL_2020_XSD: &str = include_str!("../../../../specs/st2067-3a-2020.xsd");
+const DCML_TYPES_STUB_XSD: &str = include_str!("../../../../specs/dcml-types-stub.xsd");
+
+/// Lazy-init temp dir containing the dcml-types stub so uppsala's
+/// `from_schema_with_base_path` can resolve the imported dcml schema.
+/// Shared across all calls; the dir lives for the process lifetime.
+fn dcml_specs_dir() -> &'static Path {
+    static CELL: OnceLock<PathBuf> = OnceLock::new();
+    CELL.get_or_init(|| {
+        let dir = std::env::temp_dir().join("imferno-xsd-specs");
+        std::fs::create_dir_all(&dir).expect("create imferno-xsd-specs temp dir");
+        std::fs::write(dir.join("dcml-types-stub.xsd"), DCML_TYPES_STUB_XSD)
+            .expect("write dcml-types-stub.xsd");
+        dir
+    })
+    .as_path()
+}
+
+/// Run the runtime-XSD validator against a parsed `CompositionPlaylist`.
+///
+/// Returns empty if `cpl.source_xml` is None (parser didn't preserve it, or
+/// the CPL was constructed manually) or if `cpl.namespace` is one we don't
+/// have a vendored primary schema for.
+///
+/// This is the unified entry point: callers using `validate_cpl(&cpl)` get
+/// schema-level diagnostics here just like callers using `validate_cpl_xml`
+/// did via the raw-XML path.
+pub fn validate_parsed_cpl(cpl: &crate::cpl::CompositionPlaylist) -> Vec<ValidationIssue> {
+    let Some(source_xml) = &cpl.source_xml else {
+        return Vec::new();
+    };
+    let primary_xsd = match &cpl.namespace {
+        crate::cpl::CplNamespace::Smpte2067_3_2013 => IMF_CPL_2013_XSD,
+        crate::cpl::CplNamespace::Smpte2067_3_2016 => IMF_CPL_2016_XSD,
+        crate::cpl::CplNamespace::Smpte2067_3_2020 => IMF_CPL_2020_XSD,
+        // No vendored XSD for DCI / Unknown — skip rather than fail loudly
+        _ => return Vec::new(),
+    };
+    validate_against_composite_schema_str(
+        source_xml,
+        primary_xsd,
+        dcml_specs_dir(),
+        Some(cpl.id),
+    )
+}
+
+/// Same as `validate_against_composite_schema` but takes the primary XSD as a
+/// string rather than a filesystem path. Used by `validate_parsed_cpl` so the
+/// library doesn't depend on the imferno repo layout at runtime.
+pub fn validate_against_composite_schema_str(
+    instance_xml: &str,
+    primary_xsd: &str,
+    specs_dir: &Path,
+    cpl_id: Option<crate::assetmap::ImfUuid>,
+) -> Vec<ValidationIssue> {
+    let injected = inject_dcml_schema_location(primary_xsd);
+    let schema_doc = match uppsala::parse(&injected) {
+        Ok(d) => d,
+        Err(e) => return vec![parse_failure_issue("xsd-schema", e, cpl_id)],
+    };
+    let validator = match uppsala::XsdValidator::from_schema_with_base_path(
+        &schema_doc,
+        Some(specs_dir),
+    ) {
+        Ok(v) => v,
+        Err(e) => return vec![schema_build_failure_issue(e, cpl_id)],
+    };
+    let instance_doc = match uppsala::parse(instance_xml) {
+        Ok(d) => d,
+        Err(e) => return vec![parse_failure_issue("xml-instance", e, cpl_id)],
+    };
+    validator
+        .validate(&instance_doc)
+        .into_iter()
+        .map(|err| translate(err, cpl_id))
+        .collect()
+}
 
 /// Validate an XML instance against an XSD schema.
 ///

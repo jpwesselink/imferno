@@ -14,6 +14,8 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use imferno_core::cpl::parse_cpl;
+use imferno_core::validation::validate_cpl;
 use imferno_core::xsd::{
     validate_against_composite_schema, validate_against_schema, validate_cpl_xml,
 };
@@ -273,6 +275,39 @@ fn validate_cpl_xml_chains_xsd_then_semantic() {
     if let (Some(fns), Some(lx)) = (first_non_xsd, last_xsd) {
         assert!(lx < fns, "XSD issues should precede non-XSD issues");
     }
+}
+
+/// Unified-path verification: parse a raw CPL with a deliberate XSD
+/// violation, then call the regular `validate_cpl(&parsed)` semantic
+/// entry point. The XSD pre-pass in validate_core_structure should
+/// fire and emit XSD/* codes, proving callers don't need to use the
+/// raw-XML entry point separately.
+#[test]
+fn parse_then_validate_runs_xsd_prepass_via_source_xml() {
+    let bad_xml = r#"<CompositionPlaylist xmlns="http://www.smpte-ra.org/schemas/2067-3/2013">
+        <Id>urn:uuid:00000000-0000-0000-0000-000000000001</Id>
+        <IssueDate>not-a-date</IssueDate>
+        <ContentTitle>X</ContentTitle>
+        <EditRate>24 1</EditRate>
+        <SegmentList><Segment>
+            <Id>urn:uuid:00000000-0000-0000-0000-000000000002</Id>
+            <SequenceList/>
+        </Segment></SegmentList>
+    </CompositionPlaylist>"#;
+    let cpl = parse_cpl(bad_xml).expect("should parse");
+    assert!(cpl.source_xml.is_some(), "parse_cpl must populate source_xml");
+
+    let issues = validate_cpl(&cpl);
+    let xsd_issues: Vec<_> = issues.iter().filter(|i| i.code.starts_with("XSD/")).collect();
+    assert!(
+        !xsd_issues.is_empty(),
+        "validate_cpl should now emit XSD/* codes via the runtime-XSD pre-pass; got: {:#?}",
+        issues
+    );
+    assert!(
+        xsd_issues.iter().any(|i| i.code == "XSD/TypeInvalid"),
+        "bad xs:dateTime should fire XSD/TypeInvalid: {xsd_issues:#?}"
+    );
 }
 
 /// The message body should carry uppsala's line/column for any

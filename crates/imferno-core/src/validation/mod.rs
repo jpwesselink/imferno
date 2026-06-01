@@ -4167,6 +4167,7 @@ mod tests {
             },
             has_signer: false,
             has_signature: false,
+            source_xml: None,
         }
     }
 

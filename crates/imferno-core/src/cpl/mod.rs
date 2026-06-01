@@ -2394,6 +2394,14 @@ pub struct CompositionPlaylist {
     #[serde(skip)]
     pub has_signature: bool,
 
+    /// The raw CPL XML as parsed, retained so callers running through
+    /// `validate_cpl(&cpl)` can transparently invoke the runtime-XSD
+    /// validator (which needs the unparsed source). Set by `parse_cpl()`.
+    /// `None` when the struct was built via JSON deserialization or
+    /// manual construction.
+    #[serde(skip)]
+    pub source_xml: Option<String>,
+
     #[cfg_attr(not(feature = "wasm"), serde(rename = "SegmentList"))]
     #[cfg_attr(feature = "wasm", serde(rename = "segmentList", alias = "SegmentList"))]
     #[cfg_attr(feature = "typescript", ts(rename = "segmentList"))]
@@ -2947,6 +2955,7 @@ pub fn parse_cpl_with_options(
     cpl.namespace = namespace;
     cpl.has_signer = has_signer;
     cpl.has_signature = has_signature;
+    cpl.source_xml = Some(xml_content.to_string());
     Ok(cpl)
 }
 

@@ -612,6 +612,7 @@ mod tests {
             composition_timecode: None,
             has_signer: false,
             has_signature: false,
+            source_xml: None,
             segment_list: SegmentList { segments: vec![] },
         }
     }

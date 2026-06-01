@@ -9,6 +9,9 @@ pub mod scm;
 pub mod storage;
 pub mod validation;
 
+#[cfg(feature = "xsd-runtime")]
+pub mod xsd;
+
 // Re-export the most-used diagnostic types at crate root so that
 // `crate::Severity`, `crate::ValidationReport`, etc. resolve correctly
 // (required by diagnostics/rules.rs which uses `use crate::{Severity, ValidationReport}`).

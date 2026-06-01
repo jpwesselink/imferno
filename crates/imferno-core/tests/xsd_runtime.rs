@@ -1,15 +1,11 @@
 //! Integration tests for the runtime-XSD validation path.
 //!
 //! Exercises `imferno_core::xsd::validate_against_schema` against real
-//! SMPTE CPL fixtures + synthetic broken CPLs. Gated behind the
-//! `xsd-runtime` feature so the rest of the test suite stays
-//! dependency-free.
+//! SMPTE CPL fixtures + synthetic broken CPLs.
 //!
 //! Run with:
 //!
-//!     cargo test -p imferno-core --features xsd-runtime --test xsd_runtime
-
-#![cfg(feature = "xsd-runtime")]
+//!     cargo test -p imferno-core --test xsd_runtime
 
 use std::fs;
 use std::path::{Path, PathBuf};

@@ -9,7 +9,6 @@ pub mod scm;
 pub mod storage;
 pub mod validation;
 
-#[cfg(feature = "xsd-runtime")]
 pub mod xsd;
 
 // Re-export the most-used diagnostic types at crate root so that

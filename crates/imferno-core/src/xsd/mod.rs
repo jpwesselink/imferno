@@ -1,7 +1,8 @@
 //! Runtime XSD validation via uppsala — pure-Rust XSD 1.1 validator.
 //!
 //! This module wraps uppsala's structural diagnostics into the imferno
-//! catalogue surface. Activated by the `xsd-runtime` feature.
+//! catalogue surface. Always on — SMPTE-spec-compliant validation is
+//! not optional in imferno.
 //!
 //! ## What it covers
 //!

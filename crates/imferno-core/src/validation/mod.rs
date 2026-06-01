@@ -507,16 +507,12 @@ fn validate_core_structure(
     code: fn(CoreConstraintsCode) -> &'static str,
     issues: &mut Vec<ValidationIssue>,
 ) {
-    // Runtime XSD pre-pass: when source_xml is available (parse_cpl
-    // populated it) and the xsd-runtime feature is enabled, run the
-    // schema-level validator first so structural diagnostics fire
-    // before the semantic checks that may have been induced by them.
-    // No-op when the feature is off OR source_xml is None (e.g., the
-    // CPL was constructed manually in tests).
-    #[cfg(feature = "xsd-runtime")]
-    {
-        issues.extend(crate::xsd::validate_parsed_cpl(cpl));
-    }
+    // Runtime XSD pre-pass: run the schema-level validator before the
+    // semantic checks so structural diagnostics fire first (later
+    // checks may have been induced by them). No-op only when
+    // source_xml is None (e.g., the CPL was constructed manually in
+    // tests rather than parsed from XML).
+    issues.extend(crate::xsd::validate_parsed_cpl(cpl));
 
     let loc = Location::new().with_cpl(cpl.id);
 
@@ -4780,7 +4776,6 @@ mod tests {
     /// XSD §57: `SegmentList` requires `Segment maxOccurs=unbounded`
     /// with default `minOccurs=1` — an empty SegmentList trips the
     /// schema-level validator (`ElementMissing/Segment`).
-    #[cfg(feature = "xsd-runtime")]
     #[test]
     fn core_flags_empty_segment_list() {
         let xml = r#"<CompositionPlaylist xmlns="http://www.smpte-ra.org/schemas/2067-3/2013">
@@ -7688,7 +7683,6 @@ mod tests {
     /// 2016 URI for the 2020 edition); the parser-internal `ns/2067-3/2020`
     /// URI doesn't match any vendored XSD. 2013 is the most self-consistent
     /// edition for XSD-pre-pass tests.
-    #[cfg(feature = "xsd-runtime")]
     #[test]
     fn core_flags_missing_edit_rate() {
         let xml = r#"<CompositionPlaylist xmlns="http://www.smpte-ra.org/schemas/2067-3/2013">
@@ -7736,7 +7730,6 @@ mod tests {
 
     /// XSD §13: IssueDate is `xs:dateTime` — "not-a-date" fails the
     /// built-in lexical-space check and surfaces as `XSD/TypeInvalid`.
-    #[cfg(feature = "xsd-runtime")]
     #[test]
     fn core_warns_invalid_issue_date_format() {
         let xml = r#"<CompositionPlaylist xmlns="http://www.smpte-ra.org/schemas/2067-3/2013">
@@ -7759,7 +7752,6 @@ mod tests {
     }
 
     /// XSD §13: Empty IssueDate also fails the `xs:dateTime` lexical check.
-    #[cfg(feature = "xsd-runtime")]
     #[test]
     fn core_flags_empty_issue_date() {
         let xml = r#"<CompositionPlaylist xmlns="http://www.smpte-ra.org/schemas/2067-3/2013">
@@ -7786,7 +7778,6 @@ mod tests {
     /// (none with `minOccurs="0"`). Missing the drop-frame and
     /// start-address fields should trip element-missing diagnostics
     /// for each.
-    #[cfg(feature = "xsd-runtime")]
     #[test]
     fn core_flags_incomplete_composition_timecode() {
         let xml = r#"<CompositionPlaylist xmlns="http://www.smpte-ra.org/schemas/2067-3/2013">
@@ -7820,7 +7811,6 @@ mod tests {
     /// an empty ResourceList inside a `MarkerSequence` (the only
     /// sequence type the CPL XSD knows directly) trips
     /// `ElementMissing/Resource`.
-    #[cfg(feature = "xsd-runtime")]
     #[test]
     fn core_flags_empty_resource_list() {
         let xml = r#"<CompositionPlaylist xmlns="http://www.smpte-ra.org/schemas/2067-3/2013">
@@ -9568,7 +9558,6 @@ mod tests {
     /// XSD §37-41: `TotalRunningTime` carries pattern
     /// `[0-9][0-9]:[0-5][0-9]:[0-5][0-9]` — "2:30:00" fails it (missing
     /// leading zero on the hours field).
-    #[cfg(feature = "xsd-runtime")]
     #[test]
     fn core_flags_invalid_total_running_time() {
         let xml = r#"<CompositionPlaylist xmlns="http://www.smpte-ra.org/schemas/2067-3/2013">
@@ -9607,7 +9596,6 @@ mod tests {
 
     /// XSD §71: `TimecodeRate` is `xs:positiveInteger` — zero fails the
     /// built-in derived-type lower bound (`positive` = ≥ 1).
-    #[cfg(feature = "xsd-runtime")]
     #[test]
     fn core_flags_timecode_rate_zero() {
         let xml = r#"<CompositionPlaylist xmlns="http://www.smpte-ra.org/schemas/2067-3/2013">
@@ -9657,7 +9645,6 @@ mod tests {
     /// XSD §72/75-81: `TimecodeStartAddress` is `cpl:TimecodeType` —
     /// a `xs:string` restricted to a four-field timecode pattern.
     /// "10:00:00" lacks the fourth field and fails the pattern facet.
-    #[cfg(feature = "xsd-runtime")]
     #[test]
     fn core_flags_invalid_timecode_start_address() {
         let xml = r#"<CompositionPlaylist xmlns="http://www.smpte-ra.org/schemas/2067-3/2013">
@@ -9748,7 +9735,6 @@ mod tests {
     /// XSD §43-49: `LocaleList` requires `Locale maxOccurs=unbounded`
     /// with default `minOccurs=1`, so an empty LocaleList trips
     /// `ElementMissing/Locale` at the schema level.
-    #[cfg(feature = "xsd-runtime")]
     #[test]
     fn core_flags_empty_locale_list() {
         let xml = r#"<CompositionPlaylist xmlns="http://www.smpte-ra.org/schemas/2067-3/2013">

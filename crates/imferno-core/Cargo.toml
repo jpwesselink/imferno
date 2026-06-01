@@ -41,6 +41,13 @@ tokio = { workspace = true, features = ["rt-multi-thread", "sync", "time", "macr
 aws-sdk-s3 = { workspace = true, optional = true }
 aws-config = { workspace = true, optional = true }
 uppsala    = { version = "0.4" }
+# MXF essence-header parsing — pure-Rust port of the SMPTE-reference
+# regxmllib, verified semantically identical to the Java implementation
+# across 75 real-world IMF MXFs. Drives the Photon-parity essence checks
+# under `crate::mxf::regxml_validation`.
+smpte-mxf = { version = "0.1" }
+smpte-klv = { version = "0.1" }
+smpte-types = { version = "0.1" }
 
 [dev-dependencies]
 pretty_assertions = { workspace = true }

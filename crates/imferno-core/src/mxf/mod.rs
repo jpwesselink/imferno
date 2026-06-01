@@ -9,6 +9,7 @@
 //! this phase — CPL EssenceDescriptors are the primary source of format info.
 
 pub mod codes;
+pub mod essence;
 
 use std::io::Read;
 use std::path::Path;

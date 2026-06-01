@@ -331,7 +331,7 @@ pub fn check_audio_mca(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
 /// open or close form via the preceding character. Handles open tags
 /// with attributes (e.g. `<ns2:Foo xmlns:ns2="…">`) which the simple
 /// `:Foo>` substring probe misses.
-fn extract_all_fields(xml: &str, local_name: &str) -> Vec<String> {
+pub(crate) fn extract_all_fields(xml: &str, local_name: &str) -> Vec<String> {
     let mut out = Vec::new();
     let probe = format!(":{local_name}");
     let close_form = format!(":{local_name}>");
@@ -390,7 +390,7 @@ fn extract_all_fields(xml: &str, local_name: &str) -> Vec<String> {
 ///
 /// Returns `None` if the field isn't found. Returns the trimmed text
 /// (whitespace stripped) on success.
-fn extract_field(xml: &str, local_name: &str) -> Option<String> {
+pub(crate) fn extract_field(xml: &str, local_name: &str) -> Option<String> {
     // Match `<…:Local …>BODY</…:Local>` — strip the namespace
     // prefix by scanning back from `:Local` to `<`. This handles
     // both `<ns2:ChannelCount>…</ns2:ChannelCount>` and any other
@@ -437,7 +437,7 @@ fn extract_field(xml: &str, local_name: &str) -> Option<String> {
 /// the same prefix-agnostic matching as `extract_field`. Counts open
 /// tags only (so self-closing forms are also detected if the writer
 /// emits them).
-fn count_elements(xml: &str, local_name: &str) -> usize {
+pub(crate) fn count_elements(xml: &str, local_name: &str) -> usize {
     let open_token = format!(":{local_name}");
     let mut count = 0;
     let mut search_from = 0;
@@ -768,6 +768,26 @@ mod tests {
         assert!(
             issues.iter().any(|i| i.code.contains("ChannelAssignmentNotMCA")),
             "expected ChannelAssignmentNotMCA, got: {:#?}",
+            issues
+        );
+    }
+
+    #[test]
+    fn video1_fixture_produces_zero_audio_mca_diagnostics() {
+        // video1.mxf is a CDCI/JPEG2000 video — no audio descriptor
+        // at all. The audio MCA pipeline must be silent: false-firing
+        // on video assets would dump nonsensical channel/sample-rate
+        // complaints on every video track of every IMF package.
+        let path = fixture("video1.mxf");
+        let opts = regxml::MxfFragmentOptions {
+            partition: regxml::PartitionTarget::Header,
+            ..Default::default()
+        };
+        let xml = parse_mxf_to_regxml(&path, opts).expect("video1 → RegXML");
+        let issues = check_audio_mca(&xml, &path);
+        assert!(
+            issues.is_empty(),
+            "audio MCA pipeline must be silent on video1.mxf (no audio descriptor), got: {:#?}",
             issues
         );
     }

@@ -2041,6 +2041,11 @@ impl Imferno {
                                     issue.with_context("asset_uuid", asset.id.to_string());
                                 report.add(issue);
                             }
+                            for issue in crate::mxf::timed_text::check_timed_text(&regxml, path) {
+                                let issue =
+                                    issue.with_context("asset_uuid", asset.id.to_string());
+                                report.add(issue);
+                            }
                         }
                         Err(e) => {
                             report.add(

@@ -26,6 +26,11 @@ pub mod metadata;
 /// SoundFieldGroupLabel singleton. Native-only.
 #[cfg(not(target_arch = "wasm32"))]
 pub mod audio_mca;
+/// ST 2067-2 §5.4 timed-text essence rules applied against RegXML.
+/// Photon-parity: UCSEncoding=UTF-8, NamespaceURI ∈ IMSC1, MIMEType
+/// whitelist. Native-only.
+#[cfg(not(target_arch = "wasm32"))]
+pub mod timed_text;
 
 use std::io::Read;
 use std::path::Path;

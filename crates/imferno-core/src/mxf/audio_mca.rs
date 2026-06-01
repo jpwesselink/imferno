@@ -145,6 +145,36 @@ pub fn check_audio_mca(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
         );
     }
 
+    // ST 377-4 §6.3.2 — every AudioChannelLabelSubDescriptor MUST
+    // carry an MCALinkID that points to its enclosing SoundfieldGroup,
+    // and the SoundfieldGroupLabelSubDescriptor MUST carry its own
+    // MCALinkID. We count occurrences relative to the count of each
+    // sub-descriptor type; a deficit means at least one label is
+    // missing the linking UUID Photon's audit calls out as
+    // "AudioChannelLabelSubDescriptor SoundfieldGroupLinkId ≠ null".
+    let mca_link_count = count_elements(regxml, "MCALinkID");
+    let expected_link_count = channel_labels + soundfield_count;
+    if mca_link_count < expected_link_count {
+        issues.push(
+            ValidationIssue::new(
+                Severity::Error,
+                Category::Audio,
+                "ST377-4:2012:6.3.2/MCALinkIDMissing",
+                format!(
+                    "MXF {} carries {} MCALinkID(s) but expected {} ({} channel-label + {} \
+                     soundfield-group). ST 377-4 §6.3.2 requires every MCA sub-descriptor to \
+                     carry an MCALinkID.",
+                    path.display(),
+                    mca_link_count,
+                    expected_link_count,
+                    channel_labels,
+                    soundfield_count,
+                ),
+            )
+            .with_location(Location::new().with_file(path.to_path_buf())),
+        );
+    }
+
     issues
 }
 
@@ -378,6 +408,26 @@ mod tests {
                 .iter()
                 .any(|i| i.code.contains("SoundFieldGroupLabelCount")),
             "expected SoundFieldGroupLabelCount, got: {:#?}",
+            issues
+        );
+    }
+
+    #[test]
+    fn flags_missing_mca_link_ids() {
+        // 2 channel labels + 1 soundfield group → expected 3 MCALinkIDs.
+        // This snippet has 0 → trips ST377-4 §6.3.2.
+        let xml = r#"<ns1:WAVEPCMDescriptor>
+            <ns2:AudioSampleRate>48000/1</ns2:AudioSampleRate>
+            <ns2:QuantizationBits>24</ns2:QuantizationBits>
+            <ns2:ChannelCount>2</ns2:ChannelCount>
+            <ns1:SoundfieldGroupLabelSubDescriptor/>
+            <ns1:AudioChannelLabelSubDescriptor/>
+            <ns1:AudioChannelLabelSubDescriptor/>
+        </ns1:WAVEPCMDescriptor>"#;
+        let issues = check_audio_mca(xml, std::path::Path::new("/synth.mxf"));
+        assert!(
+            issues.iter().any(|i| i.code.contains("MCALinkIDMissing")),
+            "expected MCALinkIDMissing, got: {:#?}",
             issues
         );
     }

@@ -2009,6 +2009,18 @@ impl Imferno {
                     continue; // Missing file already reported by validate_file_manifest
                 }
 
+                // Photon-parity essence checks via regxmllib-rs
+                // (smpte-mxf). Emits ST 2067-2 §5.2 / ST 377-1 §6.4
+                // and §8.3.3 diagnostics that the hand-rolled parser
+                // below doesn't cover. Native-only — the wasm build
+                // doesn't link smpte-mxf, and browser callers don't
+                // see MXF binaries anyway (they upload XML only).
+                #[cfg(not(target_arch = "wasm32"))]
+                for issue in crate::mxf::essence::validate_mxf_essence(path) {
+                    let issue = issue.with_context("asset_uuid", asset.id.to_string());
+                    report.add(issue);
+                }
+
                 match crate::mxf::parse_mxf_header_info(path) {
                     Ok(info) => {
                         // Parse the operational pattern UL back to bytes to check OP variant.

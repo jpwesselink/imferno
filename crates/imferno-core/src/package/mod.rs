@@ -607,7 +607,12 @@ impl Imferno {
             skip_disk,
         );
         let report = self.enrich_cpl_locations(report);
-        report.apply_rules(&options.rules)
+        let report = report.apply_rules(&options.rules);
+        if options.aggregate_repeats {
+            report.aggregate()
+        } else {
+            report
+        }
     }
 
     /// Validate + verify file hashes (expensive — reads every asset).
@@ -629,7 +634,12 @@ impl Imferno {
             validate_cpl_with_registry(cpl, &registry)
         });
         let report = self.enrich_cpl_locations(report);
-        report.apply_rules(&options.rules)
+        let report = report.apply_rules(&options.rules);
+        if options.aggregate_repeats {
+            report.aggregate()
+        } else {
+            report
+        }
     }
 
     /// Enrich all validation issues that have a `cpl_id` with the CPL's
@@ -2363,6 +2373,13 @@ pub struct ValidationOptions {
     pub core_spec: Option<crate::validation::CoreSpecTarget>,
     /// Application profile spec versions. `None` = auto-detect from CPL.
     pub app_specs: Option<Vec<crate::validation::AppSpecTarget>>,
+    /// When `true`, collapse repeat-offender issues (same code in the
+    /// same severity bucket) into one entry carrying the rest of their
+    /// `Location`s in `additional_instances`. Operator-facing wins:
+    /// reports stay readable on packages with thousands of similar
+    /// findings. Default `false` — preserves the legacy
+    /// one-issue-per-occurrence shape.
+    pub aggregate_repeats: bool,
     /// Path used for hash verification (only meaningful on native targets).
     /// When `Some`, hash verification is enabled; when `None` (the default), skipped.
     #[cfg(not(target_arch = "wasm32"))]

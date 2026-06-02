@@ -1,8 +1,8 @@
-//! Photon-parity ST 2067-2 §5.3 audio essence rules, evaluated against
-//! the RegXML produced by `mxf::metadata::parse_mxf_to_regxml`.
+//! ST 2067-2 §5.3 audio essence rules, evaluated against the RegXML
+//! produced by `mxf::metadata::parse_mxf_to_regxml`.
 //!
-//! These are the checks Photon enforces over the MXF audio descriptor +
-//! its MCA (Multi-Channel Audio) sub-descriptors per ST 2067-2 §5.3:
+//! Covers the MXF audio descriptor + its MCA (Multi-Channel Audio)
+//! sub-descriptors per ST 2067-2 §5.3:
 //!
 //! - **§5.3.4.1** — sound essence MUST use `WAVEPCMDescriptor`.
 //! - **§5.3.2.2** — `AudioSampleRate` ∈ {48 000, 96 000} Hz.
@@ -150,8 +150,8 @@ pub fn check_audio_mca(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
     // and the SoundfieldGroupLabelSubDescriptor MUST carry its own
     // MCALinkID. We count occurrences relative to the count of each
     // sub-descriptor type; a deficit means at least one label is
-    // missing the linking UUID Photon's audit calls out as
-    // "AudioChannelLabelSubDescriptor SoundfieldGroupLinkId ≠ null".
+    // missing the linking UUID — the SoundfieldGroupLinkID field on
+    // an AudioChannelLabelSubDescriptor must be non-null.
     let mca_link_count = count_elements(regxml, "MCALinkID");
     let expected_link_count = channel_labels + soundfield_count;
     if mca_link_count < expected_link_count {
@@ -177,8 +177,7 @@ pub fn check_audio_mca(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
 
     // ST 377-4 §6.3.2 — each AudioChannelLabelSubDescriptor's
     // SoundfieldGroupLinkID MUST equal the SoundfieldGroup's MCALinkID
-    // so the channel's group membership is unambiguous. Photon flags
-    // mismatches at IMFConstraints.java L267-275.
+    // so the channel's group membership is unambiguous.
     if let Some(sg_link) = extract_field(regxml, "MCALinkID") {
         // Walk every SoundfieldGroupLinkID and confirm it matches the
         // SoundfieldGroup's MCALinkID (the first MCALinkID in the
@@ -209,8 +208,7 @@ pub fn check_audio_mca(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
 
     // ST 2067-2 §5.3.6.2 — every channel ID 1..ChannelCount must have
     // an AudioChannelLabelSubDescriptor. The actual MCAChannelID
-    // field carries the channel index for each label. Photon flag at
-    // IMFConstraints.java L226-231.
+    // field carries the channel index for each label.
     if let Some(cc) = channel_count {
         let channel_ids: std::collections::HashSet<u32> = extract_all_fields(regxml, "MCAChannelID")
             .into_iter()
@@ -298,8 +296,9 @@ pub fn check_audio_mca(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
     }
 
     // ST 2067-2 §5.3 — sound essence SHOULD carry an RFC-5646 spoken
-    // language tag (`RFC5646SpokenLanguage`). Netflix-grade pipelines
-    // require it for routing; Photon emits as NON_FATAL.
+    // language tag (`RFC5646SpokenLanguage`). Most delivery pipelines
+    // require it for routing; emitted as Warning so operators can
+    // tighten via `RulesConfig` when their pipeline mandates it.
     if !regxml.contains(":RFC5646SpokenLanguage") {
         issues.push(
             ValidationIssue::new(
@@ -316,11 +315,11 @@ pub fn check_audio_mca(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
         );
     }
 
-    // ST 2067-2 §5.3.6.5 — Netflix-grade audio MCA: SoundfieldGroup
+    // ST 2067-2 §5.3.6.5 — delivery-grade audio MCA: SoundfieldGroup
     // SHALL carry MCATitle, MCATitleVersion, MCAAudioContentKind,
-    // MCAAudioElementKind. Photon emits these as NON_FATAL
-    // (= Warning) since not every IMF profile requires them, but
-    // Netflix's delivery pipeline (the primary IMF audience) does.
+    // MCAAudioElementKind. Emitted as Warning since not every IMF
+    // profile requires them, but mainstream delivery pipelines
+    // (Netflix etc.) do.
     if soundfield_count > 0 {
         for required in &[
             "MCATitle",

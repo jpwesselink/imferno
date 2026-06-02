@@ -1,7 +1,7 @@
-//! Photon-parity ST 2067-2 §5.4 timed-text essence rules, evaluated
-//! against the RegXML produced by `mxf::metadata::parse_mxf_to_regxml`.
+//! ST 2067-2 §5.4 timed-text essence rules, evaluated against the
+//! RegXML produced by `mxf::metadata::parse_mxf_to_regxml`.
 //!
-//! Four rules per the Photon audit:
+//! Four rules:
 //!
 //! - **§5.4 / ST 429-5** — Mapping Kind byte in the essence container
 //!   UL must be `0x13` (IMSC mapping).

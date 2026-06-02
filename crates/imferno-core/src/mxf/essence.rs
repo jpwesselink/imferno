@@ -1,18 +1,16 @@
-//! Photon-parity MXF essence-header validation, backed by `smpte-mxf`
-//! (pure-Rust port of the SMPTE-reference `regxmllib`, verified
-//! semantically identical to the Java implementation across 75
-//! real-world IMF MXFs).
+//! MXF essence-header validation backed by `smpte-mxf` (the
+//! SMPTE-reference `regxmllib` port, verified semantically identical
+//! to its Java counterpart across 75 real-world IMF MXFs).
 //!
-//! This module covers the partition-pack layer that drives
+//! This module covers the partition-pack layer that enforces
 //! ST 377-1 §8.3.3 (OP1a operational pattern) and ST 2067-5:2013
 //! §5.1.5 (partition pack exclusivity) — the foundational essence
-//! constraints Photon enforces and imferno previously did not.
+//! constraints SMPTE compliance requires.
 //!
 //! Full header-metadata-set parsing (Preface, MaterialPackage,
-//! AudioChannelLabelSubDescriptor, etc.) lives in a follow-up that
-//! pulls in the `regxml` crate; this first step is partition-only so
-//! the integration shape and dependency surface are proven before
-//! the broader essence-validation work lands.
+//! AudioChannelLabelSubDescriptor, etc.) lives in `mxf::metadata`
+//! which pulls in the `regxml` crate; this module is partition-only
+//! so the integration shape and dependency surface stay small.
 
 use std::io::{Read, Seek};
 use std::path::Path;
@@ -36,10 +34,10 @@ const OP1A_UL_BYTES: [u8; 16] = [
 /// revisions but the operational-pattern identity is byte 13-14.
 const OP_UL_MATCH_MASK: u128 = 0xffff_ffff_ff00_ffff_ffff_ffff_ffff_ff00;
 
-/// Validate an MXF file against the partition-pack-level rules Photon
-/// enforces under ST 2067-2 §5.2 and ST 377-1 §8.3.3. Returns a
-/// catalogue of `ValidationIssue`s; the caller folds them into the
-/// usual `ValidationReport`.
+/// Validate an MXF file against the partition-pack-level rules of
+/// ST 2067-2 §5.2 and ST 377-1 §8.3.3. Returns a catalogue of
+/// `ValidationIssue`s; the caller folds them into the usual
+/// `ValidationReport`.
 pub fn validate_mxf_essence(path: &Path) -> Vec<ValidationIssue> {
     let mut issues = Vec::new();
     let file = match std::fs::File::open(path) {
@@ -79,8 +77,7 @@ fn check_partition_pack(path: &Path, pack: &PartitionPack) -> Vec<ValidationIssu
     let mut issues = Vec::new();
 
     // ST 2067-5:2013 §5.1.5 / ST 377-1 §6.4: the header partition MUST
-    // be the first partition in the file. Photon equivalent:
-    // IMFConstraints.java `checkMXFPartitionPackCompliance`.
+    // be the first partition in the file.
     if !matches!(pack.kind, PartitionKind::Header) {
         issues.push(
             ValidationIssue::new(
@@ -98,9 +95,8 @@ fn check_partition_pack(path: &Path, pack: &PartitionPack) -> Vec<ValidationIssu
     }
 
     // ST 2067-2 §5.2 / ST 377-1 §8.3.3: IMF essence MXFs SHALL be
-    // OP1a. Photon equivalent: IMFConstraints.java L120-132. Compare
-    // via the UL match mask so registry-byte / version-byte revisions
-    // don't false-flag conformant files.
+    // OP1a. Compare via the UL match mask so registry-byte and
+    // version-byte revisions don't false-flag conformant files.
     let pack_op = u128::from_be_bytes(*pack.operational_pattern.as_bytes());
     let op1a = u128::from_be_bytes(OP1A_UL_BYTES);
     if (pack_op & OP_UL_MATCH_MASK) != (op1a & OP_UL_MATCH_MASK) {
@@ -120,9 +116,10 @@ fn check_partition_pack(path: &Path, pack: &PartitionPack) -> Vec<ValidationIssu
     }
 
     // ST 377-1 §8.3.3: Header partition status SHOULD be Closed +
-    // Complete in a finished IMF MXF. Photon flags Open partitions as
+    // Complete in a finished IMF MXF. We flag Open partitions as
     // warnings because some authoring pipelines ship Open intentionally
-    // for streaming-first delivery.
+    // for streaming-first delivery — operators can `Off` this rule
+    // via their `RulesConfig` if their pipeline does that legitimately.
     if matches!(
         pack.status,
         PartitionStatus::OpenIncomplete | PartitionStatus::OpenComplete

@@ -177,10 +177,10 @@ catch malformed UUIDs or non-rational EditRates without
 post-processing the parsed AST ourselves.
 
 For most real-world IMF documents this is a theoretical gap —
-mainstream IMF tooling (IMFTool, Photon, EZ-Validator) always emits
-the URN form of UUIDs and well-formed RationalTypes. But for
-strict XSD-conformance validation (e.g. a hostile or
-malformed-but-parseable input), uppsala lets it through.
+mainstream IMF tooling always emits the URN form of UUIDs and
+well-formed RationalTypes. But for strict XSD-conformance
+validation (e.g. a hostile or malformed-but-parseable input),
+uppsala lets it through.
 
 ### Workarounds attempted
 

@@ -2,7 +2,7 @@
 name = "corpus-tests"
 version = "0.1.0"
 edition = "2021"
-description = "Corpus-based regression tests ported from Netflix Photon"
+description = "Corpus-based regression tests for the imferno SMPTE IMF validator"
 publish = false
 
 [lib]

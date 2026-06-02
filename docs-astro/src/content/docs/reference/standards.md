@@ -20,7 +20,7 @@ description: Which SMPTE ST-2067 standards imferno implements and to what degree
 | ST 379-2 | MXF Generic Container | 2010 | Not implemented |
 | ST 422 | JPEG 2000 in MXF | 2014 | Not implemented |
 
-Standards not listed are not implemented and not on the roadmap. The "Not implemented" entries above are those present in the [Netflix Photon](https://github.com/Netflix/photon) reference implementation.
+Standards not listed are not implemented and not on the roadmap. The "Not implemented" entries above are the recognised gaps relative to the broader IMF ecosystem.
 
 ## Known gaps
 
@@ -30,4 +30,4 @@ Standards not listed are not implemented and not on the roadmap. The "Not implem
 
 ## Test corpus
 
-Tests run against the [Netflix Photon](https://github.com/Netflix/photon) reference corpus. Covered profiles: App2, App2E 2020/2021, App5 (IMAX), IAB, ISXD, HT (JPEG 2000 High Throughput), MERIDIAN.
+Tests run against a vendored IMF corpus covering: App2, App2E 2020/2021, App5 (IMAX), IAB, ISXD, HT (JPEG 2000 High Throughput), MERIDIAN.

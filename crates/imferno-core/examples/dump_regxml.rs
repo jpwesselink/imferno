@@ -1,6 +1,6 @@
 //! Quick scratch helper: convert an MXF file to RegXML and print to stdout.
 //!
-//! Used during Photon-parity rule development to inspect what the
+//! Used during essence-rule development to inspect what the
 //! regxmllib-rs pipeline emits for our vendored test fixtures, so the
 //! audio MCA / IMSC / IAB rule assertions know what to walk.
 //!

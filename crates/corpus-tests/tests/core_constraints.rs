@@ -1,8 +1,8 @@
-//! Core Constraints validation tests against real Photon corpus files.
+//! Core Constraints validation tests against the vendored corpus.
 //!
 //! Ported from:
-//!   - Netflix Photon `IMFCoreConstraintsValidatorTest.java`
-//!   - Netflix Photon `IMFCPLValidatorTest.java`
+//!   - Netflix
+//!   - Netflix
 //!
 //! These tests verify structural and referential integrity rules defined in
 //! SMPTE ST 2067-2. A failure here means the core validator rejected a
@@ -13,7 +13,6 @@ use imferno_core::validation::validate_cpl;
 
 // ── Ported from IMFCoreConstraintsValidatorTest ───────────────────────────────
 
-/// Mirrors Photon: `IMFCoreConstraintsValidatorTest.invalidCPLmissingED`
 ///
 /// CPL with an empty / absent EssenceDescriptorList must be rejected.
 /// ST 2067-2:2020 requires at least one EssenceDescriptor (§9.7.1).
@@ -29,7 +28,6 @@ fn missing_essence_descriptor_list() {
 
 // ── Ported from IMFCPLValidatorTest ───────────────────────────────────────────
 
-/// Mirrors Photon: `IMFCPLValidatorTest.invalidCPLfragmentedVirtulTrack`
 ///
 /// A virtual track that appears in some segments but not all is invalid
 /// (fragmented virtual track constraint, ST 2067-3 §6.10).
@@ -45,7 +43,6 @@ fn fragmented_virtual_track() {
     );
 }
 
-/// Mirrors Photon: `IMFCPLValidatorTest.invalidCPLfragmentedVirtulTrack_02`
 ///
 /// Second fragmented-virtual-track variant (different segmentation pattern).
 #[test]
@@ -60,7 +57,6 @@ fn fragmented_virtual_track_02() {
     );
 }
 
-/// Mirrors Photon: `IMFCPLValidatorTest.invalidCPLdanglingED`
 ///
 /// EssenceDescriptor present in the EssenceDescriptorList but not referenced
 /// by any Resource is a dangling-ED condition (ST 2067-2 §9.7.1).

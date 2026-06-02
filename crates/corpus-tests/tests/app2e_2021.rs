@@ -1,6 +1,5 @@
-//! App2E 2021 constraint validation tests against real Photon corpus files.
+//! App2E 2021 constraint validation tests against the vendored corpus.
 //!
-//! Ported from: Netflix Photon `IMFApp2E2021ConstraintsValidatorTest.java`
 //!
 //! These tests verify that the full validation pipeline (core constraints +
 //! App2E) correctly accepts valid CPLs and rejects invalid ones.
@@ -10,7 +9,6 @@ use imferno_core::validation::validate_cpl;
 
 // ── VALID ────────────────────────────────────────────────────────────────────
 
-/// Mirrors Photon: `IMFApp2E2021ConstraintsValidatorTest.ValidCPL`
 ///
 /// P3 D65 / PQ / JPEG 2000 HT / 10-bit RGB / FullFrame / 1920×1080.
 /// Core constraints + App2E should both pass.
@@ -27,7 +25,6 @@ fn app2e2021_valid_cpl() {
 
 // ── INVALID ───────────────────────────────────────────────────────────────────
 
-/// Mirrors Photon: `IMFApp2E2021ConstraintsValidatorTest.InvalidCPLBadFrameStructure`
 ///
 /// Interlaced frame layout is prohibited by App2E (progressive-scan only).
 #[test]
@@ -42,9 +39,8 @@ fn app2e2021_bad_frame_structure() {
     );
 }
 
-/// Mirrors Photon: `IMFApp2E2021ConstraintsValidatorTest.InvalidCPLBadCodec`
 ///
-/// Photon rejects PictureCompression UL `03010101` for this CPL.
+/// The validator rejects PictureCompression UL `03010101` for this CPL.
 /// UL `03010101` (byte[14]=01, byte[15]=01) is not a recognized BCP sub-level
 /// (valid BCP sub-levels are 0x11–0x17). It maps to `Unknown` → not J2K family → error.
 #[test]
@@ -57,7 +53,6 @@ fn app2e2021_bad_codec() {
     );
 }
 
-/// Mirrors Photon: `IMFApp2E2021ConstraintsValidatorTest.InvalidCPLBadColor`
 ///
 /// Invalid colorimetry system (mismatched CP/TC/CE triplet per Table 3).
 #[test]
@@ -70,13 +65,12 @@ fn app2e2021_bad_color() {
     );
 }
 
-/// Mirrors Photon: `IMFApp2E2021ConstraintsValidatorTest.CoreConstraintsSchemaFromApplicationIdentification`
 ///
 /// CC-Namespaces CPL uses prefixed XML namespaces (ns3/ns4/ns6) and declares an
 /// App2E application identification. Namespace stripping must succeed and
 /// App2E validation must pass.
 ///
-/// Note: Photon asserts 2 errors (namespace mismatch warnings counted as errors).
+/// Note: The reference test asserts 2 errors (namespace mismatch warnings counted as errors).
 /// Our validator models namespace mismatches as warnings, not errors, so the
 /// error list is empty.
 #[test]

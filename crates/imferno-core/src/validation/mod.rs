@@ -1,7 +1,7 @@
 //! SMPTE ST 2067 Constraints Validation Framework
 //!
-//! Implements the factory + trait pattern for normative IMF constraints validation,
-//! modeled after Netflix Photon's `ConstraintsValidator` architecture.
+//! Implements the factory + trait pattern for normative IMF constraints validation:
+//! one validator struct per SMPTE spec edition, dispatched by namespace URI.
 //!
 //! Each SMPTE spec version gets its own validator struct. The factory dispatches
 //! by namespace URI. Multiple validators run per CPL — typically one for core
@@ -57,8 +57,6 @@ use crate::diagnostics::{Category, Location, Severity, ValidationIssue};
 /// Each SMPTE spec version implements this trait. Multiple validators
 /// run per CPL — one for core constraints, one for CPL schema, and one
 /// (or more) for application profiles.
-///
-/// Modeled after Photon's `ConstraintsValidator` interface.
 pub trait ConstraintsValidator {
     /// Human-readable specification identifier, e.g. "ST 2067-2:2020 Core Constraints".
     fn spec_id(&self) -> &str;
@@ -320,8 +318,6 @@ pub fn get_validator(namespace_uri: &str) -> Option<Box<dyn ConstraintsValidator
 /// Collects namespace URIs from:
 /// 1. CPL root namespace → maps to core constraints version
 /// 2. ApplicationIdentification → maps to application profile
-///
-/// Modeled after Photon's `IMPValidator.validateComposition()` namespace collection.
 pub fn get_validators_for_cpl(cpl: &CompositionPlaylist) -> Vec<Box<dyn ConstraintsValidator>> {
     BuiltinValidatorRegistry.resolve_for_cpl(cpl)
 }
@@ -482,7 +478,7 @@ impl std::fmt::Display for ColorSystem {
 // Core Constraints — ST 2067-2
 //
 // Shared validation logic used by all core constraints versions.
-// Mirrors Photon's `IMFCoreConstraintsValidator` abstract base class.
+// ST 2067-2 core constraints — shared abstract base for 2013/2016/2020 editions.
 // ═════════════════════════════════════════════════════════════════════════════
 
 // xs:dateTime, TimecodeType pattern, and TotalRunningTime regex helpers were
@@ -1464,8 +1460,6 @@ fn validate_digital_signature_notice(
 /// An ED that exists in the EDL but is not referenced by any Resource is a
 /// "dangling" descriptor — it occupies space and implies metadata but has no
 /// corresponding essence in the composition. This is rejected by ST 2067-2.
-///
-/// Ported from: Photon `IMFCPLValidatorTest.invalidCPLdanglingED`.
 fn validate_dangling_essence_descriptors(
     cpl: &CompositionPlaylist,
     code: fn(CoreConstraintsCode) -> &'static str,
@@ -1751,7 +1745,7 @@ pub fn cdci_ref_values(color_sys: &ColorSystem, bit_depth: u32) -> Option<(u32, 
 // Validates image essence against Table 2 (allowed parameters) and
 // Table 3 (named colorimetry systems).
 //
-// Mirrors Photon's `IMFApp2EConstraintsValidator` abstract base class.
+// ST 2067-21 Application #2 / #2E — shared abstract base across editions.
 // ═════════════════════════════════════════════════════════════════════════════
 
 /// The exact ApplicationIdentification URI per ST 2067-21:2023 Table 15.
@@ -1763,8 +1757,6 @@ const APP2E_APPLICATION_IDENTIFICATION: &str = "http://www.smpte-ra.org/ns/2067-
 /// - Table 8: Generic Picture Essence Descriptor constraints (FrameLayout, etc.)
 ///
 /// Validate a J2K PictureEssenceCoding UL against the App2E profile constraints.
-///
-/// Ported from Photon `JPEG2000.java` + `IMFApp2E2021ConstraintsValidator.validateJ2KProfile()`.
 ///
 /// Rules (§6.2.5):
 /// - `Jpeg2000Ht`: allowed only when `allow_ht = true` (App2E from 2021 onward).
@@ -1801,8 +1793,9 @@ fn validate_j2k_profile(
                     .with_location(loc.clone()),
                 );
             }
-            // When allowed, no resolution bounds check for HT (Photon delegates to
-            // validateHTConstraints which checks codestream parameters, not resolution).
+            // When allowed, no resolution bounds check for HT — HT
+            // conformance lives in the codestream parameters, not the
+            // resolution envelope.
         }
         VideoCodec::Jpeg2000Imf4k => {
             // 4K IMF profile: width in (2048, 4096], height in (0, 3112]
@@ -3291,8 +3284,8 @@ const APP2E_2020_APPLICATION_IDENTIFICATION: &str = "http://www.smpte-ra.org/ns/
 
 /// ST 2067-21:2020 Application Profile #2E Validator.
 ///
-/// Identical to App2E 2021 except HT-J2K (ISO 15444-15) is **not** permitted.
-/// Per Photon `IMFApp2E2020ConstraintsValidator`, HT was only added in 2021.
+/// Identical to App2E 2021 except HT-J2K (ISO 15444-15) is **not** permitted —
+/// HT-J2K support was only added in the 2021 edition of ST 2067-21.
 pub struct App2E2020;
 
 impl ConstraintsValidator for App2E2020 {

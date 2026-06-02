@@ -485,16 +485,16 @@ pub enum VideoCodec {
 /// Bytes 13-16 of normalized UL (after common prefix 060e2b34.040101XX.04010202.)
 ///
 /// Sources: SMPTE ST 422, ST 2067-21:2023 §6.2.5 + Annex G, test corpus verification.
-/// Profile classification mirrors Photon JPEG2000.java (isIMF4KProfile / isIMF2KProfile /
-/// isBroadcastProfile / isAPP2HT). ULs not matching a recognized App2E profile stay
-/// as Jpeg2000 (generic), which the App2E validator then rejects.
+/// Profile classification follows ST 422 BCP sub-levels (4K / 2K / Broadcast /
+/// HT / App2). ULs not matching a recognised App2E profile stay as
+/// `Jpeg2000` (generic), which the App2E validator then rejects.
 const CODEC_TABLE: &[([u8; 4], VideoCodec)] = &[
     // ── JPEG 2000 generic / unspecified profile ───────────────────────────────
     // byte [14]=0x01, byte [15]=0x00 — J2K node (no specific profile sub-level)
     ([0x03, 0x01, 0x01, 0x00], VideoCodec::Jpeg2000),
-    // Note: byte [14]=0x01, byte [15]=0x01 ("Profile 0/1") is NOT a recognized BCP
-    // sub-level (valid levels are 0x11–0x17). Photon rejects it as "Invalid JPEG 2000
-    // Profile". It is intentionally absent from this table → maps to Unknown.
+    // Note: byte [14]=0x01, byte [15]=0x01 ("Profile 0/1") is NOT a recognised BCP
+    // sub-level (valid levels are 0x11–0x17). It's flagged as "Invalid JPEG 2000
+    // Profile" downstream. Intentionally absent from this table → maps to Unknown.
     //
     // ── JPEG 2000 Broadcast Contribution profile (ST 422 §A.1) ───────────────
     // byte [14]=0x01, byte [15]=0x11–0x17 (single-tile and multi-tile reversible)
@@ -561,8 +561,9 @@ const CODEC_TABLE: &[([u8; 4], VideoCodec)] = &[
     ([0x03, 0x01, 0x06, 0x14], VideoCodec::Jpeg2000Imf4k), // 4K M7S0 reversible
     ([0x03, 0x01, 0x06, 0x1a], VideoCodec::Jpeg2000Imf4k), // 4K M8S0 reversible
     //
-    // Note: byte [14]=0x07 ("8K") is not a recognized App2E profile in Photon.
-    // It is intentionally absent → maps to Unknown → fails is_jpeg2000_family().
+    // Note: byte [14]=0x07 ("8K") is not a recognised App2E JPEG 2000
+    // profile per ST 2067-21. Intentionally absent → maps to Unknown →
+    // fails is_jpeg2000_family().
     //
     // ── JPEG 2000 HT (ISO 15444-15, ST 2067-21 §6.2.5 + Annex I) ──────────
     ([0x03, 0x01, 0x08, 0x00], VideoCodec::Jpeg2000Ht), // HT-J2K generic
@@ -1144,8 +1145,8 @@ mod tests {
         assert!(vc.is_jpeg2000_family());
     }
 
-    /// UL 03010101 (Profile 0/1) is not a recognized App2E profile — maps to Unknown.
-    /// Photon rejects it as "Invalid JPEG 2000 Profile" (not a BCP sub-level 0x11-0x17).
+    /// UL 03010101 (Profile 0/1) is not a recognised App2E profile — maps to Unknown.
+    /// Downstream validators flag it as "Invalid JPEG 2000 Profile" (not a BCP sub-level 0x11-0x17).
     #[test]
     fn video_codec_jpeg2000_unrecognized_maps_to_unknown() {
         let vc = VideoCodec::from_ul("urn:smpte:ul:060e2b34.04010107.04010202.03010101");

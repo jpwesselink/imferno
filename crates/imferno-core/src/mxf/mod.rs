@@ -21,14 +21,14 @@ pub mod essence;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod metadata;
 /// ST 2067-2 §5.3 audio MCA rules applied against the RegXML output
-/// of `mxf::metadata`. Photon-parity: WAVE PCM requirement, sample
-/// rate / quant-bits whitelist, channel-label count match,
-/// SoundFieldGroupLabel singleton. Native-only.
+/// of `mxf::metadata`. WAVE PCM requirement, sample rate / quant-bits
+/// whitelist, channel-label count match, SoundfieldGroupLabel
+/// singleton. Native-only.
 #[cfg(not(target_arch = "wasm32"))]
 pub mod audio_mca;
 /// ST 2067-2 §5.4 timed-text essence rules applied against RegXML.
-/// Photon-parity: UCSEncoding=UTF-8, NamespaceURI ∈ IMSC1, MIMEType
-/// whitelist. Native-only.
+/// UCSEncoding=UTF-8, NamespaceURI ∈ IMSC1, MIMEType whitelist.
+/// Native-only.
 #[cfg(not(target_arch = "wasm32"))]
 pub mod timed_text;
 

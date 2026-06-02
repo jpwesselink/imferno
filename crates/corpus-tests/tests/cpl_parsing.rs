@@ -1,6 +1,5 @@
-//! CPL parse-fidelity tests against real Photon corpus files.
+//! CPL parse-fidelity tests against the vendored corpus.
 //!
-//! Ported from: Netflix Photon `CompositionTest.java`
 //! These tests verify that the parser correctly extracts every typed field
 //! from real-world CPL documents. A parse failure here means we broke the
 //! mapping, not just the validator.
@@ -11,12 +10,11 @@ use imferno_core::cpl::{
     ContentKind, CplNamespace, EditRate, LanguageTag, McaTagSymbol, VideoCodec,
 };
 
-// ── MERIDIAN (Netflix Photon reference package, 2013 namespace) ─────────────
+// ── MERIDIAN (Netflix reference IMF package, 2013 namespace) ────────────────
 
-/// Mirrors Photon: `CompositionTest.compositionPositiveTest`
 ///
-/// MERIDIAN is the primary Photon reference package.  Every typed field
-/// must deserialise without loss.
+/// MERIDIAN is the primary reference package in our test corpus.
+/// Every typed field must deserialise without loss.
 #[test]
 fn meridian_parses_all_fields() {
     let cpl =
@@ -121,7 +119,6 @@ fn meridian_parses_all_fields() {
     assert_eq!(region_list.regions, vec!["021"]);
 }
 
-/// Mirrors Photon: `CompositionTest.compositionPositiveTest` (namespace check)
 #[test]
 fn meridian_namespace_is_2013() {
     let cpl =
@@ -131,7 +128,6 @@ fn meridian_namespace_is_2013() {
 
 // ── IAB (Immersive Audio Bitstream) ─────────────────────────────────────────
 
-/// Mirrors Photon: `IABCompositionTest`
 #[test]
 fn iab_cpl_parses_all_descriptors() {
     let cpl = read_cpl("IAB/CompleteIMP/CPL_e0265fda-cb35-4e35-a4e4-4f44d82d2a52.xml");
@@ -192,7 +188,6 @@ fn iab_cpl_parses_all_descriptors() {
 
 // ── Netflix/Sony Plugfest 2015 (CDCI + timed text, 2016 namespace) ──────────
 
-/// Mirrors Photon: `CompositionTest.compositionWithMultipleImageResourcesPositiveTest`
 #[test]
 fn plugfest_cpl_parses_cdci_and_timed_text() {
     let cpl = read_cpl("Netflix_Sony_Plugfest_2015/CPL_BLACKL_202_HD_REC709_178_ENG_fe8cf2f4-1bcd-4145-8f72-6775af4038c4.xml");

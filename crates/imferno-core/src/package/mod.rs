@@ -2009,7 +2009,7 @@ impl Imferno {
                     continue; // Missing file already reported by validate_file_manifest
                 }
 
-                // Photon-parity essence checks via regxmllib-rs
+                // MXF essence checks via the `regxmllib-rs` family
                 // (smpte-mxf). Emits ST 2067-2 §5.2 / ST 377-1 §6.4
                 // and §8.3.3 diagnostics that the hand-rolled parser
                 // below doesn't cover. Native-only — the wasm build
@@ -2021,9 +2021,9 @@ impl Imferno {
                     report.add(issue);
                 }
 
-                // Photon-parity ST 2067-2 §5.3 audio MCA checks. Run
-                // the regxml pipeline on the MXF to get typed header
-                // metadata, then apply the audio descriptor rules.
+                // ST 2067-2 §5.3 audio MCA + §5.4 timed-text checks.
+                // Run the regxml pipeline on the MXF to get typed
+                // header metadata, then apply the descriptor rules.
                 // Failure to convert is surfaced as a Warning rather
                 // than Error — partition-pack diagnostics above
                 // already cover the structural concern, and we don't
@@ -3388,8 +3388,7 @@ mod tests {
     }
 
     /// ST 2067-2 §9: PKL with an unrecognised namespace URI is flagged.
-    /// Photon-parity rule (matches the namespace whitelist at
-    /// `PackingList.java:83-84`).
+    /// Matches the published SMPTE PKL namespace whitelist.
     #[test]
     fn test_pkl_constraints_flags_unknown_namespace() {
         use tempfile::TempDir;
@@ -3444,7 +3443,6 @@ mod tests {
 
     /// ST 429-9 §6.3: AssetMap with no `<PackingList>true</PackingList>`
     /// asset must be flagged when a PKL document exists in the package.
-    /// Photon-parity (matches `IMPValidator.validatePKLAndAssetMap`).
     #[test]
     fn test_pkl_constraints_flags_assetmap_with_no_packinglist() {
         use tempfile::TempDir;

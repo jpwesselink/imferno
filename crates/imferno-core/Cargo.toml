@@ -43,7 +43,7 @@ aws-config = { workspace = true, optional = true }
 uppsala    = { version = "0.4" }
 # MXF essence-header parsing — pure-Rust port of the SMPTE-reference
 # regxmllib, verified semantically identical to the Java implementation
-# across 75 real-world IMF MXFs. Drives the Photon-parity essence checks
+# across 75 real-world IMF MXFs. Drives the SMPTE essence-rule checks
 # under `crate::mxf::essence`. Native targets only — MXF binaries don't
 # reach the wasm validator (browser callers upload XML, not full assets),
 # so we keep the wasm bundle lean by excluding these from that target.

@@ -4,9 +4,9 @@
 //! using a SMPTE metadictionary.
 //!
 //! This is the substrate for the ST 2067-2 §5.3 (audio MCA),
-//! §5.4 (timed text / IMSC profile) and §5.5 (IAB) rules that Photon
-//! enforces against typed metadata. Native-only — wasm doesn't see
-//! MXF binaries.
+//! §5.4 (timed text / IMSC profile) and §5.5 (IAB) rules applied
+//! against typed metadata. Native-only — wasm doesn't see MXF
+//! binaries.
 
 use std::io::Cursor;
 use std::path::Path;

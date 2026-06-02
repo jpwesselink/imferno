@@ -268,6 +268,35 @@ pub fn check_audio_mca(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
         }
     }
 
+    // ST 2067-2 §5.3.3 / ST 382:2007 §10 — audio essence MUST be
+    // Wave Clip-Wrapped. The "wrapping" octet sits at byte 15
+    // (1-indexed, = index 14 zero-indexed) of the ContainerFormat UL.
+    // Confirmed by inspecting regxmllib-rs's audio1.mxf fixture, whose
+    // UL `…0d010301.02060200` has 0x02 at index 14 — clip-wrapped.
+    // Anything other than 0x02 is non-conformant for IMF audio.
+    if let Some(cf) = extract_field(regxml, "ContainerFormat") {
+        if let Some(bytes) = parse_ul_bytes(&cf) {
+            if bytes[14] != 0x02 {
+                issues.push(
+                    ValidationIssue::new(
+                        Severity::Error,
+                        Category::Container,
+                        "ST2067-2:2016:5.3.3/AudioNotClipWrapped",
+                        format!(
+                            "MXF {} audio ContainerFormat UL byte 15 = 0x{:02x} \
+                             — ST 2067-2 §5.3.3 / ST 382 §10 require Clip-Wrapped (0x02). \
+                             ContainerFormat = {}",
+                            path.display(),
+                            bytes[14],
+                            cf.trim(),
+                        ),
+                    )
+                    .with_location(Location::new().with_file(path.to_path_buf())),
+                );
+            }
+        }
+    }
+
     // ST 2067-2 §5.3 — sound essence SHOULD carry an RFC-5646 spoken
     // language tag (`RFC5646SpokenLanguage`). Netflix-grade pipelines
     // require it for routing; Photon emits as NON_FATAL.
@@ -455,6 +484,26 @@ pub(crate) fn count_elements(xml: &str, local_name: &str) -> usize {
         search_from = abs + open_token.len();
     }
     count
+}
+
+/// Decode a `urn:smpte:ul:XXXXXXXX.XXXXXXXX.XXXXXXXX.XXXXXXXX` UL into
+/// a 16-byte array. Returns `None` for any unexpected shape (URN
+/// prefix missing, wrong byte count, non-hex characters) so callers
+/// can fall through to skipping the check rather than panicking on
+/// malformed input.
+pub(crate) fn parse_ul_bytes(urn: &str) -> Option<[u8; 16]> {
+    let body = urn.trim().strip_prefix("urn:smpte:ul:")?;
+    let hex: String = body.chars().filter(|c| *c != '.').collect();
+    if hex.len() != 32 {
+        return None;
+    }
+    let mut out = [0u8; 16];
+    for (i, chunk) in hex.as_bytes().chunks(2).enumerate() {
+        let hi = (chunk[0] as char).to_digit(16)?;
+        let lo = (chunk[1] as char).to_digit(16)?;
+        out[i] = ((hi as u8) << 4) | (lo as u8);
+    }
+    Some(out)
 }
 
 fn is_acceptable_audio_rate(rate_text: &str) -> bool {
@@ -744,6 +793,50 @@ mod tests {
         assert!(
             issues.iter().any(|i| i.code.contains("MCALinkIDMissing")),
             "expected MCALinkIDMissing, got: {:#?}",
+            issues
+        );
+    }
+
+    #[test]
+    fn parse_ul_bytes_decodes_canonical_urn() {
+        // audio1.mxf's ContainerFormat: bytes by position are
+        // 06 0e 2b 34 04 01 01 01 0d 01 03 01 02 06 02 00.
+        let ul = "urn:smpte:ul:060e2b34.04010101.0d010301.02060200";
+        let bytes = parse_ul_bytes(ul).unwrap();
+        assert_eq!(bytes[0], 0x06);
+        assert_eq!(bytes[14], 0x02, "byte 15 (1-indexed) is the wrapping octet — 0x02 = clip");
+        assert_eq!(bytes[15], 0x00);
+    }
+
+    #[test]
+    fn parse_ul_bytes_rejects_malformed_input() {
+        assert!(parse_ul_bytes("not-a-urn").is_none());
+        assert!(parse_ul_bytes("urn:smpte:ul:short").is_none());
+        assert!(parse_ul_bytes("urn:smpte:ul:zzzzzzzz.zzzzzzzz.zzzzzzzz.zzzzzzzz").is_none());
+    }
+
+    #[test]
+    fn flags_audio_not_clip_wrapped() {
+        // ContainerFormat UL byte 13 = 0x01 (frame-wrapped) — must trip.
+        let xml = r#"<ns1:WAVEPCMDescriptor>
+            <ns2:AudioSampleRate>48000/1</ns2:AudioSampleRate>
+            <ns2:QuantizationBits>24</ns2:QuantizationBits>
+            <ns2:ChannelCount>1</ns2:ChannelCount>
+            <ns2:ChannelAssignment>urn:smpte:ul:060e2b34.0401010d.04020210.04010000</ns2:ChannelAssignment>
+            <ns2:ContainerFormat>urn:smpte:ul:060e2b34.04010101.0d010301.02060001</ns2:ContainerFormat>
+            <ns1:SoundfieldGroupLabelSubDescriptor>
+                <ns2:MCALinkID>urn:uuid:11111111-0000-0000-0000-000000000001</ns2:MCALinkID>
+            </ns1:SoundfieldGroupLabelSubDescriptor>
+            <ns1:AudioChannelLabelSubDescriptor>
+                <ns2:MCALinkID>urn:uuid:11111111-0000-0000-0000-000000000001</ns2:MCALinkID>
+                <ns2:MCAChannelID>1</ns2:MCAChannelID>
+                <ns2:SoundfieldGroupLinkID>urn:uuid:11111111-0000-0000-0000-000000000001</ns2:SoundfieldGroupLinkID>
+            </ns1:AudioChannelLabelSubDescriptor>
+        </ns1:WAVEPCMDescriptor>"#;
+        let issues = check_audio_mca(xml, std::path::Path::new("/synth.mxf"));
+        assert!(
+            issues.iter().any(|i| i.code.contains("AudioNotClipWrapped")),
+            "expected AudioNotClipWrapped, got: {:#?}",
             issues
         );
     }

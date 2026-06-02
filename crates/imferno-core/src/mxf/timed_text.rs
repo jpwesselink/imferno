@@ -36,6 +36,33 @@ pub fn check_timed_text(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
         return issues;
     }
 
+    // §5.4 / ST 429-5 §7 — timed-text essence container UL byte 15
+    // (Mapping Kind, 1-indexed) must be 0x13 for IMSC text. This is
+    // the same UL position the audio module checks for the wrapping
+    // octet — different value per essence type.
+    if let Some(cf) = extract_field(regxml, "ContainerFormat") {
+        if let Some(bytes) = crate::mxf::audio_mca::parse_ul_bytes(&cf) {
+            if bytes[14] != 0x13 {
+                issues.push(
+                    ValidationIssue::new(
+                        Severity::Error,
+                        Category::Container,
+                        "ST2067-2:2016:5.4/TimedTextMappingKindNot0x13",
+                        format!(
+                            "MXF {} timed-text ContainerFormat UL byte 15 = 0x{:02x} \
+                             — ST 429-5 §7 requires Mapping Kind = 0x13 for IMSC. \
+                             ContainerFormat = {}",
+                            path.display(),
+                            bytes[14],
+                            cf.trim(),
+                        ),
+                    )
+                    .with_location(Location::new().with_file(path.to_path_buf())),
+                );
+            }
+        }
+    }
+
     // §5.4 — UCSEncoding must be UTF-8.
     if let Some(enc) = extract_field(regxml, "UCSEncoding") {
         let enc = enc.trim();
@@ -127,6 +154,24 @@ mod tests {
         assert!(
             issues.is_empty(),
             "timed text pipeline must be silent on non-timed-text MXF, got: {:#?}",
+            issues
+        );
+    }
+
+    #[test]
+    fn flags_timed_text_mapping_kind_not_0x13() {
+        // ContainerFormat byte 14 (zero-indexed) = 0x12, not 0x13.
+        let xml = r#"<ns1:TimedTextDescriptor>
+            <ns2:ContainerFormat>urn:smpte:ul:060e2b34.04010101.0d010301.02061200</ns2:ContainerFormat>
+            <ns2:UCSEncoding>UTF-8</ns2:UCSEncoding>
+            <ns2:NamespaceURI>http://www.w3.org/ns/ttml/profile/imsc1/text</ns2:NamespaceURI>
+        </ns1:TimedTextDescriptor>"#;
+        let issues = check_timed_text(xml, std::path::Path::new("/synth.mxf"));
+        assert!(
+            issues
+                .iter()
+                .any(|i| i.code.contains("TimedTextMappingKindNot0x13")),
+            "expected TimedTextMappingKindNot0x13, got: {:#?}",
             issues
         );
     }

@@ -308,6 +308,28 @@ impl ValidationIssue {
         }
     }
 
+    /// Build a `ValidationIssue` directly from a typed `ValidationCode`,
+    /// reading severity + category from the catalogue rather than the
+    /// caller. Use this for any rule whose code lives in one of the
+    /// `*_codes` modules — the catalogue is the single source of truth
+    /// for severity and category. Pass the bare enum value:
+    ///
+    /// ```ignore
+    /// use imferno_core::mxf::codes::St2067_2_2016;
+    /// let issue = ValidationIssue::from_code(
+    ///     St2067_2_2016::AudioSampleRateUnsupported,
+    ///     format!("got {hz} Hz"),
+    /// );
+    /// ```
+    pub fn from_code<C>(code: C, message: impl Into<String>) -> Self
+    where
+        C: codes::ValidationCode + Into<String>,
+    {
+        let severity = code.default_severity();
+        let category = code.category();
+        Self::new(severity, category, code, message)
+    }
+
     /// Number of occurrences this issue represents. `1` for a fresh
     /// issue, `1 + additional_instances.len()` after aggregation.
     ///

@@ -22,7 +22,8 @@
 
 use std::path::Path;
 
-use crate::diagnostics::{Category, Location, Severity, ValidationIssue};
+use crate::diagnostics::{Location, ValidationIssue};
+use crate::mxf::codes::{St2067_2_2016, St377_4_2012};
 
 /// Walk a RegXML document for the WAVEPCMDescriptor and apply the
 /// audio MCA rules. Returns a list of `ValidationIssue`s the caller
@@ -46,10 +47,7 @@ pub fn check_audio_mca(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
     let has_wave_pcm = regxml.contains("WAVEPCMDescriptor");
     if has_audio_sample_rate && !has_wave_pcm {
         issues.push(
-            ValidationIssue::new(
-                Severity::Error,
-                Category::Audio,
-                "ST2067-2:2016:5.3.4.1/SoundDescriptorNotWAVEPCM",
+            ValidationIssue::from_code(St2067_2_2016::SoundDescriptorNotWAVEPCM,
                 format!(
                     "MXF {} carries audio essence but its descriptor is not a WAVEPCMDescriptor — ST 2067-2 §5.3.4.1 requires WAVE PCM",
                     path.display()
@@ -69,10 +67,7 @@ pub fn check_audio_mca(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
     if let Some(rate) = extract_field(regxml, "AudioSampleRate") {
         if !is_acceptable_audio_rate(&rate) {
             issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Audio,
-                    "ST2067-2:2016:5.3.2.2/AudioSampleRateUnsupported",
+                ValidationIssue::from_code(St2067_2_2016::AudioSampleRateUnsupported,
                     format!(
                         "MXF {} declares AudioSampleRate = {} — ST 2067-2 §5.3.2.2 requires 48000 Hz or 96000 Hz",
                         path.display(),
@@ -88,10 +83,7 @@ pub fn check_audio_mca(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
     if let Some(qb) = extract_field(regxml, "QuantizationBits") {
         if qb.trim() != "24" {
             issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Audio,
-                    "ST2067-2:2016:5.3.2.3/QuantizationBitsNot24",
+                ValidationIssue::from_code(St2067_2_2016::QuantizationBitsNot24,
                     format!(
                         "MXF {} declares QuantizationBits = {} — ST 2067-2 §5.3.2.3 requires 24-bit audio",
                         path.display(),
@@ -110,10 +102,7 @@ pub fn check_audio_mca(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
     if let Some(cc) = channel_count {
         if (channel_labels as u32) != cc {
             issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Audio,
-                    "ST2067-2:2016:5.3.6.2/ChannelLabelCountMismatch",
+                ValidationIssue::from_code(St2067_2_2016::ChannelLabelCountMismatch,
                     format!(
                         "MXF {} declares ChannelCount = {} but carries {} AudioChannelLabelSubDescriptor(s) — \
                          ST 2067-2 §5.3.6.2 requires one label per channel",
@@ -131,10 +120,7 @@ pub fn check_audio_mca(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
     let soundfield_count = count_elements(regxml, "SoundfieldGroupLabelSubDescriptor");
     if soundfield_count != 1 {
         issues.push(
-            ValidationIssue::new(
-                Severity::Error,
-                Category::Audio,
-                "ST2067-2:2016:5.3.6.3/SoundFieldGroupLabelCount",
+            ValidationIssue::from_code(St2067_2_2016::SoundFieldGroupLabelCount,
                 format!(
                     "MXF {} carries {} SoundfieldGroupLabelSubDescriptor(s) — ST 2067-2 §5.3.6.3 requires exactly one",
                     path.display(),
@@ -156,10 +142,7 @@ pub fn check_audio_mca(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
     let expected_link_count = channel_labels + soundfield_count;
     if mca_link_count < expected_link_count {
         issues.push(
-            ValidationIssue::new(
-                Severity::Error,
-                Category::Audio,
-                "ST377-4:2012:6.3.2/MCALinkIDMissing",
+            ValidationIssue::from_code(St377_4_2012::MCALinkIDMissing,
                 format!(
                     "MXF {} carries {} MCALinkID(s) but expected {} ({} channel-label + {} \
                      soundfield-group). ST 377-4 §6.3.2 requires every MCA sub-descriptor to \
@@ -186,10 +169,7 @@ pub fn check_audio_mca(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
         for sf_link in extract_all_fields(regxml, "SoundfieldGroupLinkID") {
             if sf_link.trim() != sg_link.trim() {
                 issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Audio,
-                        "ST377-4:2012:6.3.2/SoundfieldGroupLinkIDMismatch",
+                    ValidationIssue::from_code(St377_4_2012::SoundfieldGroupLinkIDMismatch,
                         format!(
                             "MXF {} carries an AudioChannelLabelSubDescriptor with \
                              SoundfieldGroupLinkID '{}' that doesn't match the SoundfieldGroup \
@@ -217,10 +197,7 @@ pub fn check_audio_mca(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
         for expected in 1..=cc {
             if !channel_ids.contains(&expected) {
                 issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Audio,
-                        "ST2067-2:2016:5.3.6.2/MCAChannelIDMissing",
+                    ValidationIssue::from_code(St2067_2_2016::MCAChannelIDMissing,
                         format!(
                             "MXF {} declares ChannelCount = {} but no \
                              AudioChannelLabelSubDescriptor carries MCAChannelID = {} — \
@@ -250,10 +227,7 @@ pub fn check_audio_mca(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
             && ca.contains(".04020210.");
         if !prefix_ok {
             issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Audio,
-                    "ST2067-2:2016:5.3.4.2/ChannelAssignmentNotMCA",
+                ValidationIssue::from_code(St2067_2_2016::ChannelAssignmentNotMCA,
                     format!(
                         "MXF {} declares ChannelAssignment = {} — ST 2067-2 §5.3.4.2 \
                          requires a SMPTE 428-12 MCA channel-layout UL.",
@@ -276,10 +250,7 @@ pub fn check_audio_mca(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
         if let Some(bytes) = parse_ul_bytes(&cf) {
             if bytes[14] != 0x02 {
                 issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Container,
-                        "ST2067-2:2016:5.3.3/AudioNotClipWrapped",
+                    ValidationIssue::from_code(St2067_2_2016::AudioNotClipWrapped,
                         format!(
                             "MXF {} audio ContainerFormat UL byte 15 = 0x{:02x} \
                              — ST 2067-2 §5.3.3 / ST 382 §10 require Clip-Wrapped (0x02). \
@@ -301,10 +272,7 @@ pub fn check_audio_mca(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
     // tighten via `RulesConfig` when their pipeline mandates it.
     if !regxml.contains(":RFC5646SpokenLanguage") {
         issues.push(
-            ValidationIssue::new(
-                Severity::Warning,
-                Category::Audio,
-                "ST2067-2:2016:5.3/RFC5646SpokenLanguageMissing",
+            ValidationIssue::from_code(St2067_2_2016::RFC5646SpokenLanguageMissing,
                 format!(
                     "MXF {} sound descriptor is missing RFC5646SpokenLanguage — ST 2067-2 \
                      §5.3 recommends declaring the spoken-language BCP-47 tag.",
@@ -321,22 +289,23 @@ pub fn check_audio_mca(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
     // profile requires them, but mainstream delivery pipelines
     // (Netflix etc.) do.
     if soundfield_count > 0 {
-        for required in &[
-            "MCATitle",
-            "MCATitleVersion",
-            "MCAAudioContentKind",
-            "MCAAudioElementKind",
+        // Pair each field name (used to grep the RegXML + render the
+        // diagnostic message) with the typed enum variant that carries
+        // its catalogue code, severity, and category.
+        for (required, code) in &[
+            ("MCATitle", St2067_2_2016::SoundfieldGroupMissingMCATitle),
+            ("MCATitleVersion", St2067_2_2016::SoundfieldGroupMissingMCATitleVersion),
+            ("MCAAudioContentKind", St2067_2_2016::SoundfieldGroupMissingMCAAudioContentKind),
+            ("MCAAudioElementKind", St2067_2_2016::SoundfieldGroupMissingMCAAudioElementKind),
         ] {
             if !regxml.contains(&format!(":{required}")) {
                 issues.push(
-                    ValidationIssue::new(
-                        Severity::Warning,
-                        Category::Audio,
-                        format!("ST2067-2:2016:5.3.6.5/SoundfieldGroupMissing/{required}"),
+                    ValidationIssue::from_code(
+                        *code,
                         format!(
                             "MXF {} SoundfieldGroupLabelSubDescriptor is missing {} — \
-                             ST 2067-2 §5.3.6.5 recommends this field for Netflix-grade \
-                             delivery.",
+                             ST 2067-2 §5.3.6.5 recommends this field for delivery-grade \
+                             audio MCA.",
                             path.display(),
                             required,
                         ),
@@ -528,6 +497,7 @@ fn is_acceptable_audio_rate(rate_text: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::diagnostics::Severity;
     use crate::mxf::metadata::parse_mxf_to_regxml;
     use std::path::PathBuf;
 

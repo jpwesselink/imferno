@@ -18,7 +18,8 @@ use std::path::Path;
 use smpte_klv::KlvStream;
 use smpte_mxf::{seek_header_partition, MxfError, PartitionKind, PartitionPack, PartitionStatus};
 
-use crate::diagnostics::{Category, Location, Severity, ValidationIssue};
+use crate::diagnostics::{Location, ValidationIssue};
+use crate::mxf::codes::{ImfernoMxf, St2067_2_2016, St377_1_2011};
 
 /// SMPTE Operational Pattern 1A UL — bytes per ST 378:2004 §6.
 ///
@@ -80,10 +81,7 @@ fn check_partition_pack(path: &Path, pack: &PartitionPack) -> Vec<ValidationIssu
     // be the first partition in the file.
     if !matches!(pack.kind, PartitionKind::Header) {
         issues.push(
-            ValidationIssue::new(
-                Severity::Error,
-                Category::Container,
-                "ST377-1:2011:6.4/NonHeaderFirstPartition",
+            ValidationIssue::from_code(St377_1_2011::NonHeaderFirstPartition,
                 format!(
                     "First partition in MXF file at {} is {:?}, not the Header partition required by ST 377-1 §6.4",
                     path.display(),
@@ -101,10 +99,7 @@ fn check_partition_pack(path: &Path, pack: &PartitionPack) -> Vec<ValidationIssu
     let op1a = u128::from_be_bytes(OP1A_UL_BYTES);
     if (pack_op & OP_UL_MATCH_MASK) != (op1a & OP_UL_MATCH_MASK) {
         issues.push(
-            ValidationIssue::new(
-                Severity::Error,
-                Category::Container,
-                "ST2067-2:2016:5.2/OperationalPatternNotOP1A",
+            ValidationIssue::from_code(St2067_2_2016::OperationalPatternNotOP1A,
                 format!(
                     "MXF file at {} uses Operational Pattern UL {} — ST 2067-2 §5.2 requires OP1a (ST 378:2004)",
                     path.display(),
@@ -125,10 +120,7 @@ fn check_partition_pack(path: &Path, pack: &PartitionPack) -> Vec<ValidationIssu
         PartitionStatus::OpenIncomplete | PartitionStatus::OpenComplete
     ) {
         issues.push(
-            ValidationIssue::new(
-                Severity::Warning,
-                Category::Container,
-                "ST377-1:2011:8.3.3/HeaderPartitionOpen",
+            ValidationIssue::from_code(St377_1_2011::HeaderPartitionOpen,
                 format!(
                     "Header partition in MXF file at {} is {:?} — finished IMF deliveries should be ClosedComplete",
                     path.display(),
@@ -143,10 +135,7 @@ fn check_partition_pack(path: &Path, pack: &PartitionPack) -> Vec<ValidationIssu
     // metadata in its header partition (header_byte_count > 0).
     if pack.header_byte_count == 0 {
         issues.push(
-            ValidationIssue::new(
-                Severity::Error,
-                Category::Container,
-                "ST377-1:2011:8.3.3/MissingHeaderMetadata",
+            ValidationIssue::from_code(St377_1_2011::MissingHeaderMetadata,
                 format!(
                     "Header partition in MXF file at {} has no header metadata (HeaderByteCount = 0) — \
                      IMF requires header metadata in the header partition",
@@ -158,10 +147,7 @@ fn check_partition_pack(path: &Path, pack: &PartitionPack) -> Vec<ValidationIssu
     }
 
     issues.push(
-        ValidationIssue::new(
-            Severity::Info,
-            Category::Container,
-            "IMFERNO:Mxf/EssenceContainersDetected",
+        ValidationIssue::from_code(ImfernoMxf::EssenceContainersDetected,
             format!(
                 "MXF file at {} declares {} essence container UL(s) in its header partition",
                 path.display(),
@@ -175,20 +161,14 @@ fn check_partition_pack(path: &Path, pack: &PartitionPack) -> Vec<ValidationIssu
 }
 
 fn open_failure_issue(path: &Path, err: &std::io::Error) -> ValidationIssue {
-    ValidationIssue::new(
-        Severity::Critical,
-        Category::Container,
-        "IMFERNO:Mxf/OpenFailed",
+    ValidationIssue::from_code(ImfernoMxf::OpenFailed,
         format!("Could not open MXF file {}: {}", path.display(), err),
     )
     .with_location(Location::new().with_file(path.to_path_buf()))
 }
 
 fn parse_failure_issue(path: &Path, err: &MxfError) -> ValidationIssue {
-    ValidationIssue::new(
-        Severity::Critical,
-        Category::Container,
-        "IMFERNO:Mxf/PartitionPackParseFailed",
+    ValidationIssue::from_code(ImfernoMxf::PartitionPackParseFailed,
         format!(
             "Failed to parse the header partition pack of {}: {}",
             path.display(),
@@ -212,6 +192,7 @@ fn format_ul(bytes: &[u8; 16]) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::diagnostics::Severity;
 
     fn write_partition_key(buf: &mut Vec<u8>, kind_byte: u8, status_byte: u8) {
         // ST 377-1 partition pack key with the partition-kind nibble

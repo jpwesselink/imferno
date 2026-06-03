@@ -18,7 +18,8 @@
 
 use std::path::Path;
 
-use crate::diagnostics::{Category, Location, Severity, ValidationIssue};
+use crate::diagnostics::{Location, ValidationIssue};
+use crate::mxf::codes::St2067_2_2016;
 
 /// Walk a RegXML document for the TimedTextDescriptor and apply the
 /// timed-text rules. Returns an empty Vec when no timed-text descriptor
@@ -44,10 +45,7 @@ pub fn check_timed_text(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
         if let Some(bytes) = crate::mxf::audio_mca::parse_ul_bytes(&cf) {
             if bytes[14] != 0x13 {
                 issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Container,
-                        "ST2067-2:2016:5.4/TimedTextMappingKindNot0x13",
+                    ValidationIssue::from_code(St2067_2_2016::TimedTextMappingKindNot0x13,
                         format!(
                             "MXF {} timed-text ContainerFormat UL byte 15 = 0x{:02x} \
                              — ST 429-5 §7 requires Mapping Kind = 0x13 for IMSC. \
@@ -68,10 +66,7 @@ pub fn check_timed_text(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
         let enc = enc.trim();
         if !enc.eq_ignore_ascii_case("UTF-8") && !enc.eq_ignore_ascii_case("UTF8") {
             issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Subtitle,
-                    "ST2067-2:2016:5.4/TimedTextUCSEncodingNotUTF8",
+                ValidationIssue::from_code(St2067_2_2016::TimedTextUCSEncodingNotUTF8,
                     format!(
                         "MXF {} TimedTextDescriptor UCSEncoding = '{}' — ST 2067-2 §5.4 requires UTF-8.",
                         path.display(),
@@ -96,10 +91,7 @@ pub fn check_timed_text(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
         ];
         if !ACCEPTABLE.iter().any(|a| ns == *a) {
             issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Subtitle,
-                    "ST2067-2:2016:5.4/TimedTextNamespaceNotIMSC",
+                ValidationIssue::from_code(St2067_2_2016::TimedTextNamespaceNotIMSC,
                     format!(
                         "MXF {} TimedTextDescriptor NamespaceURI = '{}' — ST 2067-2 §5.4 \
                          requires one of the IMSC1 profile namespaces (text or image, 1.0 or 1.1).",
@@ -120,10 +112,7 @@ pub fn check_timed_text(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
         const ACCEPTABLE: &[&str] = &["image/png", "application/x-font-opentype"];
         if !ACCEPTABLE.iter().any(|a| mime == *a) {
             issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Subtitle,
-                    "ST2067-2:2016:5.4.5/TimedTextResourceMIMETypeUnsupported",
+                ValidationIssue::from_code(St2067_2_2016::TimedTextResourceMIMETypeUnsupported,
                     format!(
                         "MXF {} TimeTextResourceSubDescriptor MIMEType = '{}' — ST 2067-2 \
                          §5.4.5/6 requires image/png or application/x-font-opentype.",

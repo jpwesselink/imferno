@@ -15,7 +15,8 @@ use std::sync::OnceLock;
 use regxml::{MxfFragmentBuilder, MxfFragmentError, MxfFragmentOptions};
 use regxml_dict::{importer::import_registers, MetaDictionary};
 
-use crate::diagnostics::{Category, Location, Severity, ValidationIssue};
+use crate::diagnostics::{Location, ValidationIssue};
+use crate::mxf::codes::ImfernoMxf;
 
 // ── Embedded SMPTE registers ────────────────────────────────────────────────
 //
@@ -79,10 +80,8 @@ pub fn parse_mxf_to_regxml(
 /// fold it into the unified `ValidationReport` alongside the
 /// partition-pack diagnostics from `mxf::essence`.
 pub fn regxml_error_issue(path: &Path, err: &MxfFragmentError) -> ValidationIssue {
-    ValidationIssue::new(
-        Severity::Warning,
-        Category::Container,
-        "IMFERNO:Mxf/RegXmlConversionFailed",
+    ValidationIssue::from_code(
+        ImfernoMxf::RegXmlConversionFailed,
         format!(
             "Could not convert MXF header metadata of {} to RegXML: {}",
             path.display(),

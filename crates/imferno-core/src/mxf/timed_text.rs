@@ -89,7 +89,7 @@ pub fn check_timed_text(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
             "http://www.w3.org/ns/ttml/profile/imsc1.1/text",
             "http://www.w3.org/ns/ttml/profile/imsc1.1/image",
         ];
-        if !ACCEPTABLE.iter().any(|a| ns == *a) {
+        if !ACCEPTABLE.contains(&ns) {
             issues.push(
                 ValidationIssue::from_code(St2067_2_2016::TimedTextNamespaceNotIMSC,
                     format!(
@@ -110,7 +110,7 @@ pub fn check_timed_text(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
     for mime in extract_all_fields(regxml, "MIMEType") {
         let mime = mime.trim();
         const ACCEPTABLE: &[&str] = &["image/png", "application/x-font-opentype"];
-        if !ACCEPTABLE.iter().any(|a| mime == *a) {
+        if !ACCEPTABLE.contains(&mime) {
             issues.push(
                 ValidationIssue::from_code(St2067_2_2016::TimedTextResourceMIMETypeUnsupported,
                     format!(

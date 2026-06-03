@@ -388,46 +388,14 @@ pub(crate) fn extract_all_fields(xml: &str, local_name: &str) -> Vec<String> {
 /// Returns `None` if the field isn't found. Returns the trimmed text
 /// (whitespace stripped) on success.
 pub(crate) fn extract_field(xml: &str, local_name: &str) -> Option<String> {
-    // Match `<…:Local …>BODY</…:Local>` — strip the namespace
-    // prefix by scanning back from `:Local` to `<`. This handles
-    // both `<ns2:ChannelCount>…</ns2:ChannelCount>` and any other
-    // prefix the writer chose.
-    let open_token = format!(":{local_name}");
-    let mut search_from = 0;
-    while let Some(rel) = xml[search_from..].find(&open_token) {
-        let abs = search_from + rel;
-        // Confirm this is a tag-open by walking back to the nearest `<`.
-        let prefix_start = xml[..abs].rfind('<')?;
-        // Reject if there's a closing-slash or it's actually a closing tag.
-        if xml[prefix_start..].starts_with("</") {
-            search_from = abs + open_token.len();
-            continue;
-        }
-        // Find the end of the open tag.
-        let tag_end = xml[abs..].find('>')?;
-        let body_start = abs + tag_end + 1;
-        // Find the matching close tag — same local name.
-        let close_marker = format!("</");
-        let mut body_end_search = body_start;
-        while let Some(close_rel) = xml[body_end_search..].find(&close_marker) {
-            let close_abs = body_end_search + close_rel;
-            let after_slash = close_abs + 2;
-            // Find the `:` after the prefix (or empty prefix).
-            let close_local_start = xml[after_slash..]
-                .find(':')
-                .map(|p| after_slash + p + 1)
-                .unwrap_or(after_slash);
-            let close_local_end = xml[close_local_start..].find('>')?;
-            let close_local = &xml[close_local_start..close_local_start + close_local_end];
-            if close_local == local_name {
-                let body = xml[body_start..close_abs].trim();
-                return Some(body.to_string());
-            }
-            body_end_search = close_abs + close_marker.len();
-        }
-        return None;
-    }
-    None
+    // `extract_all_fields` already does the heavier lifting with the
+    // boundary check `extract_field` was missing (so `:Channel`
+    // doesn't false-match on `:ChannelCount`). Reuse it and take the
+    // first hit — cheaper than maintaining two near-identical walkers,
+    // and removes a real bug where the original `extract_field`
+    // accepted prefix-only matches and then failed to find a close
+    // tag, returning `None` on perfectly valid input.
+    extract_all_fields(xml, local_name).into_iter().next()
 }
 
 /// Count the number of occurrences of an element by local name. Uses

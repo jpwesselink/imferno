@@ -321,13 +321,12 @@ impl ValidationIssue {
     ///     format!("got {hz} Hz"),
     /// );
     /// ```
-    pub fn from_code<C>(code: C, message: impl Into<String>) -> Self
-    where
-        C: codes::ValidationCode + Into<String>,
-    {
-        let severity = code.default_severity();
-        let category = code.category();
-        Self::new(severity, category, code, message)
+    pub fn from_code<C: codes::ValidationCode>(code: C, message: impl Into<String>) -> Self {
+        // `code` is consumed only via `&self`-taking methods; we never
+        // need to move it. The string code itself comes from
+        // `code.code()` which returns `&'static str`, so no `Into<String>`
+        // bound on `C` is required.
+        Self::new(code.default_severity(), code.category(), code.code(), message)
     }
 
     /// Number of occurrences this issue represents. `1` for a fresh

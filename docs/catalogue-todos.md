@@ -194,21 +194,23 @@ catalogue header.
 
 ---
 
-## 6. Add `Example violation` and `Remediation hint` columns
+## 6. Add `Example violation` column (remediation hint deferred)
 
 **Observed**: each catalogue row currently has `Code`, `Description`,
-`Default Severity`, `Category`. That's a reference. Two more columns
-turn it into a tool.
+`Default Severity`, `Category`. That's a reference. Adding an
+example column turns it into a tool.
 
 **Action**: add to every row:
 - **`Example violation`** — a one-line snippet showing what triggers
   the rule.
 
-**Out of scope here**: per-code remediation guidance ("how to fix
-it"). Authoring accurate, spec-grounded fix instructions across the
-full catalogue is its own project — and a candidate commercial
-product distinct from the open-source engine — so the engine
-catalogue intentionally stops at description + example.
+**Out of scope (permanent — confirmed 2026-06-04)**: per-code
+remediation guidance ("how to fix it"). Authoring accurate,
+spec-grounded fix instructions across the full catalogue is its own
+project — and a candidate commercial product distinct from the
+open-source engine — so the engine catalogue intentionally stops at
+description + example. **Do not add a `remediation()` method to
+`ValidationCode` or a `Remediation hint` column to the catalogue.**
 
 **Acceptance**: every catalogue row has a populated `example` column;
 the published table renders it inline.

@@ -280,6 +280,46 @@ impl ValidationCode for St2067_2_2016 {
             | Self::TimedTextMappingKindNot0x13 => Category::Container,
         }
     }
+    fn example(&self) -> Option<&'static str> {
+        Some(match self {
+            Self::OperationalPatternNotOP1A =>
+                "Header partition pack OP UL bytes 13..14 = 02 03 (OP2a) instead of OP1a (01 01)",
+            Self::SoundDescriptorNotWAVEPCM =>
+                "Audio essence descriptor is AES3PCMDescriptor instead of WAVEPCMDescriptor",
+            Self::AudioSampleRateUnsupported =>
+                "<AudioSampleRate>44100/1</AudioSampleRate>  <!-- only 48000 or 96000 allowed -->",
+            Self::QuantizationBitsNot24 =>
+                "<QuantizationBits>16</QuantizationBits>",
+            Self::ChannelLabelCountMismatch =>
+                "<ChannelCount>6</ChannelCount> but only 2 AudioChannelLabelSubDescriptor entries present",
+            Self::MCAChannelIDMissing =>
+                "ChannelCount=6 but no AudioChannelLabelSubDescriptor with MCAChannelID=4",
+            Self::SoundFieldGroupLabelCount =>
+                "WAVEPCMDescriptor with 2 SoundfieldGroupLabelSubDescriptor children (must be exactly 1)",
+            Self::AudioNotClipWrapped =>
+                "ContainerFormat UL byte 14 = 0x02 (frame-wrapped) instead of 0x06 (clip-wrapped)",
+            Self::RFC5646SpokenLanguageMissing =>
+                "No RFC5646SpokenLanguage tag on any AudioChannelLabel/SoundfieldGroupLabel sub-descriptor",
+            Self::ChannelAssignmentNotMCA =>
+                "ChannelAssignment UL outside the SMPTE 428-12 MCA label range (bytes 9..16)",
+            Self::SoundfieldGroupMissingMCATitle =>
+                "SoundfieldGroupLabelSubDescriptor with no <MCATitle> item",
+            Self::SoundfieldGroupMissingMCATitleVersion =>
+                "SoundfieldGroupLabelSubDescriptor with no <MCATitleVersion> item",
+            Self::SoundfieldGroupMissingMCAAudioContentKind =>
+                "SoundfieldGroupLabelSubDescriptor with no <MCAAudioContentKind> item",
+            Self::SoundfieldGroupMissingMCAAudioElementKind =>
+                "SoundfieldGroupLabelSubDescriptor with no <MCAAudioElementKind> item",
+            Self::TimedTextUCSEncodingNotUTF8 =>
+                "<UCSEncoding>ISO-8859-1</UCSEncoding>",
+            Self::TimedTextNamespaceNotIMSC =>
+                "<NamespaceURI>http://www.w3.org/ns/ttml</NamespaceURI>  <!-- not an IMSC1 profile URI -->",
+            Self::TimedTextResourceMIMETypeUnsupported =>
+                "<TimeTextResourceSubDescriptor><MIMEType>application/json</MIMEType></TimeTextResourceSubDescriptor>",
+            Self::TimedTextMappingKindNot0x13 =>
+                "Timed-text ContainerFormat UL byte 15 (Mapping Kind) = 0x12 instead of 0x13 (IMSC)",
+        })
+    }
 }
 
 impl St2067_2_2016 {
@@ -346,6 +386,14 @@ impl ValidationCode for St377_4_2012 {
     fn category(&self) -> Category {
         Category::Audio
     }
+    fn example(&self) -> Option<&'static str> {
+        Some(match self {
+            Self::MCALinkIDMissing =>
+                "<AudioChannelLabelSubDescriptor>…</AudioChannelLabelSubDescriptor>  <!-- no <MCALinkID> child -->",
+            Self::SoundfieldGroupLinkIDMismatch =>
+                "<AudioChannelLabelSubDescriptor><SoundfieldGroupLinkID>urn:uuid:abc…</SoundfieldGroupLinkID></AudioChannelLabelSubDescriptor>  <!-- but the parent SoundfieldGroupLabelSubDescriptor MCALinkID = urn:uuid:def… -->",
+        })
+    }
 }
 
 impl St377_4_2012 {
@@ -408,6 +456,18 @@ impl ValidationCode for ImfernoMxf {
     }
     fn category(&self) -> Category {
         Category::Container
+    }
+    fn example(&self) -> Option<&'static str> {
+        Some(match self {
+            Self::OpenFailed =>
+                "fs::File::open(\"audio1.mxf\") returned Err (file missing or unreadable)",
+            Self::PartitionPackParseFailed =>
+                "Header partition pack KLV is malformed (e.g. BER length undershoots the minimum 88-byte body)",
+            Self::RegXmlConversionFailed =>
+                "smpte-mxf could not convert header metadata to RegXML (e.g. unknown KLV set in header)",
+            Self::EssenceContainersDetected =>
+                "Header partition pack declares N essence container ULs — info notice surfaces the count for traceability",
+        })
     }
 }
 

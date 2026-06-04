@@ -67,6 +67,21 @@ impl ValidationCode for XsdConstraintCode {
     fn category(&self) -> Category {
         Category::Schema
     }
+
+    fn example(&self) -> Option<&'static str> {
+        Some(match self {
+            Self::ElementMissing =>
+                "<CompositionPlaylist>…</CompositionPlaylist>  <!-- missing required <EditRate> -->",
+            Self::UnexpectedElement =>
+                "<CompositionPlaylist><BogusTag/>…</CompositionPlaylist>  <!-- not in the schema sequence -->",
+            Self::PatternInvalid =>
+                "<Id>not-a-uuid</Id>  <!-- dcml:UUIDType pattern expects 'urn:uuid:...' -->",
+            Self::TypeInvalid =>
+                "<Size>not-a-number</Size>  <!-- declared xs:positiveInteger -->",
+            Self::SchemaConstraintFailed =>
+                "<EditRate>24 0</EditRate>  <!-- denominator violates a derived restriction -->",
+        })
+    }
 }
 
 impl XsdConstraintCode {

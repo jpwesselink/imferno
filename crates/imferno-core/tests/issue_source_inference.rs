@@ -38,6 +38,20 @@ fn check_all<C: ValidationCode>(codes: &[C], expected: IssueSource) {
     }
 }
 
+/// Every code in `codes` returns `Some(...)` from `example()` — catches
+/// new variants added without a populated example. Catalogue item 6.
+fn check_all_have_examples<C: ValidationCode>(codes: &[C]) {
+    let missing: Vec<&'static str> = codes
+        .iter()
+        .filter(|c| c.example().is_none())
+        .map(|c| c.code())
+        .collect();
+    assert!(
+        missing.is_empty(),
+        "the following codes have no example() — populate before merging: {missing:#?}"
+    );
+}
+
 #[test]
 fn xsd_codes_infer_as_xsd_layer() {
     check_all(XsdConstraintCode::ALL, IssueSource::XsdLayer);
@@ -72,6 +86,34 @@ fn previous_identical_edition_is_set_for_known_identical_pairs() {
     assert_eq!(c5.previous_identical_edition(), None);
     let c6 = St2067_201_2019::ALL[0];
     assert_eq!(c6.previous_identical_edition(), None);
+}
+
+/// Catalogue item 6: every code in every enum populates `example()`.
+/// Defaults-to-None would be silently dropped by the catalogue
+/// renderer; this pins the coverage so a new variant without an
+/// example trips the build.
+#[test]
+fn every_code_has_a_populated_example() {
+    check_all_have_examples(XsdConstraintCode::ALL);
+    check_all_have_examples(ImfernoCode::ALL);
+    check_all_have_examples(ImfernoMxf::ALL);
+    check_all_have_examples(St429_9_2014::ALL);
+    check_all_have_examples(St377_1_2011::ALL);
+    check_all_have_examples(St377_4_2012::ALL);
+    check_all_have_examples(Mxf_St2067_2_2016::ALL);
+    check_all_have_examples(St2067_2_2020::ALL);
+    check_all_have_examples(St2067_2_2013_Core::ALL);
+    check_all_have_examples(St2067_2_2016_Core::ALL);
+    check_all_have_examples(St2067_2_2020_Core::ALL);
+    check_all_have_examples(St2067_3_2013::ALL);
+    check_all_have_examples(St2067_3_2016::ALL);
+    check_all_have_examples(St2067_9_2018::ALL);
+    check_all_have_examples(St2067_21_2020::ALL);
+    check_all_have_examples(St2067_21_2023::ALL);
+    check_all_have_examples(St2067_21_2025::ALL);
+    check_all_have_examples(St2067_201_2019::ALL);
+    check_all_have_examples(St2067_201_2021::ALL);
+    check_all_have_examples(St2067_202_2022::ALL);
 }
 
 #[test]

@@ -245,6 +245,38 @@ macro_rules! define_st2067_3_enum {
             fn previous_identical_edition(&self) -> Option<&'static str> {
                 $previous
             }
+            fn example(&self) -> Option<&'static str> {
+                Some(match self {
+                    Self::ContentKindUnknown =>
+                        "<ContentKind scope=\"http://www.smpte-ra.org/schemas/2067-3/2013/content-kind\">Banana</ContentKind>",
+                    Self::SourceEncodingNoEssenceDescriptorList =>
+                        "<Resource><SourceEncoding>urn:uuid:…</SourceEncoding></Resource>  <!-- but the CPL has no <EssenceDescriptorList> -->",
+                    Self::SourceEncodingUnresolved =>
+                        "<SourceEncoding>urn:uuid:aaaa…</SourceEncoding>  <!-- no EssenceDescriptor with that Id -->",
+                    Self::EssenceDescriptorListEmpty =>
+                        "<EssenceDescriptorList></EssenceDescriptorList>",
+                    Self::ContentVersionListEmpty =>
+                        "<ContentVersionList></ContentVersionList>",
+                    Self::ContentVersionIdInvalid =>
+                        "<ContentVersion><Id></Id>…</ContentVersion>",
+                    Self::ContentVersionLabelTextMissing =>
+                        "<ContentVersion><Id>urn:uuid:…</Id></ContentVersion>  <!-- no <LabelText> -->",
+                    Self::LocaleLanguageTagInvalid =>
+                        "<Locale><LanguageList><Language>english</Language></LanguageList></Locale>  <!-- not RFC 5646 -->",
+                    Self::TrackIdNotUnique =>
+                        "<Sequence><TrackId>urn:uuid:abc…</TrackId>…</Sequence><Sequence><TrackId>urn:uuid:abc…</TrackId>…</Sequence>  <!-- same TrackId in two sequences of one segment -->",
+                    Self::MarkerOffsetOutOfRange =>
+                        "<Marker><Offset>120</Offset></Marker>  <!-- resource IntrinsicDuration=100 -->",
+                    Self::MarkerLabelUnknown =>
+                        "<Marker><Label>NotARealMarker</Label></Marker>",
+                    Self::SegmentDuration =>
+                        "Segment with MainImageSequence duration = 24f and MainAudioSequence duration = 25f",
+                    Self::ContentVersionIdDuplicate =>
+                        "<ContentVersion><Id>urn:uuid:a…</Id></ContentVersion><ContentVersion><Id>urn:uuid:a…</Id></ContentVersion>",
+                    Self::SegmentDurationIntegerEditUnits =>
+                        "Sequence duration = 12.5 edit units (must be an integer multiple of the Composition Edit Unit)",
+                })
+            }
         }
 
         impl From<$name> for String {

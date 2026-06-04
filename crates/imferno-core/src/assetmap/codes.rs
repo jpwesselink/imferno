@@ -133,6 +133,24 @@ impl ValidationCode for St2067_2_2020 {
             }
         }
     }
+    fn example(&self) -> Option<&'static str> {
+        Some(match self {
+            Self::AssetMap => "ASSETMAP.xml exists but parse_assetmap returns Err (e.g. wrong root element)",
+            Self::AssetMapMalformedXml => "ASSETMAP.xml truncated mid-element: `<AssetMap><Id>urn:uuid:…</Id>`",
+            Self::PklMalformedXml => "PKL.xml with mismatched tag: `<PackingList>…</packinglist>`",
+            Self::NoCpls => "ASSETMAP.xml with all assets flagged `<PackingList>true</PackingList>` and zero CPLs",
+            Self::SizeMismatch => "PKL `<Size>1024</Size>` but the actual file is 2048 bytes on disk",
+            Self::FileNotFound => "AssetMap `<Path>missing-track.mxf</Path>` but no such file exists in the package",
+            Self::ChecksumMismatch => "PKL `<Hash>2jmj7l5rSw0yVb/vlWAYkK/YBwk=</Hash>` (SHA-1 of empty string) on a non-empty file",
+            Self::UnresolvedUuid => "CPL TrackFileId references urn:uuid:aaa… but no PKL/AssetMap asset has that Id",
+            Self::DuplicateUuid => "Two AssetMap `<Asset><Id>urn:uuid:00…01</Id></Asset>` entries with the same Id",
+            Self::IoError => "Underlying filesystem refused the read (permissions, device error, etc.)",
+            Self::EssenceDescriptorList => "CPL with `<SourceEncoding>` references but no top-level `<EssenceDescriptorList>` element",
+            Self::PklUnknownNamespace => "PKL with `xmlns=\"http://example.org/not-a-pkl-namespace\"`",
+            Self::AssetMapHasNoPackingList => "AssetMap whose `<Asset>` entries all omit `<PackingList>true</PackingList>`",
+            Self::PklIdNotInAssetMap => "PKL `<Id>urn:uuid:abc…</Id>` not present in the AssetMap as a packing-list asset",
+        })
+    }
 }
 
 impl St2067_2_2020 {
@@ -445,6 +463,48 @@ macro_rules! define_core_constraints_enum {
             }
             fn previous_identical_edition(&self) -> Option<&'static str> {
                 $previous
+            }
+            fn example(&self) -> Option<&'static str> {
+                Some(match self {
+                    Self::ResourceListEmpty                    => "<Sequence><ResourceList></ResourceList></Sequence>",
+                    Self::ContentTitle                         => "<ContentTitle></ContentTitle>",
+                    Self::TotalRunningTimeFormat               => "<TotalRunningTime>1h23m</TotalRunningTime>",
+                    Self::SegmentList                          => "<SegmentList></SegmentList>",
+                    Self::Segment                              => "<Segment><SequenceList></SequenceList></Segment>",
+                    Self::EditRate                             => "<CompositionPlaylist>…</CompositionPlaylist>  <!-- no <EditRate> element -->",
+                    Self::IssueDate                            => "<IssueDate></IssueDate>",
+                    Self::IssueDateFormat                      => "<IssueDate>2024/01/01</IssueDate>  <!-- not xs:dateTime -->",
+                    Self::CompositionTimecodeDropFrame         => "<CompositionTimecode><TimecodeRate>24</TimecodeRate>…</CompositionTimecode>  <!-- no <TimecodeDropFrame> -->",
+                    Self::CompositionTimecodeRate              => "<CompositionTimecode><TimecodeDropFrame>false</TimecodeDropFrame>…</CompositionTimecode>  <!-- no <TimecodeRate> -->",
+                    Self::CompositionTimecodeStartAddress      => "<CompositionTimecode><TimecodeRate>24</TimecodeRate><TimecodeDropFrame>false</TimecodeDropFrame></CompositionTimecode>  <!-- no <TimecodeStartAddress> -->",
+                    Self::CompositionTimecodeRateZero          => "<TimecodeRate>0</TimecodeRate>",
+                    Self::CompositionTimecodeStartAddressFormat => "<TimecodeStartAddress>1:2:3</TimecodeStartAddress>  <!-- expected HH:MM:SS:FF -->",
+                    Self::CompositionTimecodeRateMismatch      => "CPL <EditRate>24 1</EditRate> but <TimecodeRate>25</TimecodeRate>",
+                    Self::LocaleListNonEmpty                   => "<LocaleList></LocaleList>",
+                    Self::UniqueSegmentId                      => "Two <Segment><Id>urn:uuid:abc…</Id></Segment> with the same Id",
+                    Self::UniqueEssenceDescriptorId            => "Two <EssenceDescriptor><Id>urn:uuid:abc…</Id></EssenceDescriptor> with the same Id",
+                    Self::UniqueResourceId                     => "Two <Resource><Id>urn:uuid:abc…</Id></Resource> with the same Id",
+                    Self::IntrinsicDuration                    => "<IntrinsicDuration>0</IntrinsicDuration>",
+                    Self::EntryPoint                           => "<IntrinsicDuration>100</IntrinsicDuration><EntryPoint>150</EntryPoint>",
+                    Self::SourceDuration                       => "<IntrinsicDuration>100</IntrinsicDuration><EntryPoint>50</EntryPoint><SourceDuration>80</SourceDuration>  <!-- 50+80 > 100 -->",
+                    Self::ResourceDuration                     => "<SourceDuration>-5</SourceDuration>",
+                    Self::RepeatCount                          => "<RepeatCount>0</RepeatCount>",
+                    Self::TrackFileId                          => "<Resource xsi:type=\"TrackFileResourceType\">…</Resource>  <!-- no <TrackFileId> child -->",
+                    Self::VirtualTrackContinuity               => "Two <Segment> entries, MainAudio track present in segment 0 but absent from segment 1",
+                    Self::VirtualTrackEditRate                 => "Track resources mix <EditRate>24 1</EditRate> and <EditRate>25 1</EditRate>",
+                    Self::TimedTextSampleRate                  => "<DCTimedTextDescriptor>…</DCTimedTextDescriptor>  <!-- no SampleRate -->",
+                    Self::TimedTextEmptyLanguageTag            => "<RFC5646LanguageTagList><RFC5646LanguageTag></RFC5646LanguageTag></RFC5646LanguageTagList>",
+                    Self::TimedTextMalformedLanguageTag        => "<RFC5646LanguageTag>123-en</RFC5646LanguageTag>  <!-- primary subtag must start with a letter -->",
+                    Self::AudioSampleRate                      => "<WAVEPCMDescriptor>…</WAVEPCMDescriptor>  <!-- no AudioSampleRate -->",
+                    Self::ChannelCount                         => "<WAVEPCMDescriptor><ChannelCount>0</ChannelCount></WAVEPCMDescriptor>",
+                    Self::MCASubDescriptors                    => "<WAVEPCMDescriptor>…</WAVEPCMDescriptor>  <!-- no SubDescriptors strong-ref list -->",
+                    Self::SoundfieldGroup                      => "<WAVEPCMDescriptor><SubDescriptors>…</SubDescriptors></WAVEPCMDescriptor>  <!-- but no SoundfieldGroupLabelSubDescriptor inside -->",
+                    Self::MCATagSymbol                         => "<SoundfieldGroupLabelSubDescriptor>…</SoundfieldGroupLabelSubDescriptor>  <!-- no <MCATagSymbol> -->",
+                    Self::SoundfieldChannelCount               => "<WAVEPCMDescriptor><ChannelCount>2</ChannelCount>…</WAVEPCMDescriptor> but soundfield group declares 6 channels",
+                    Self::DigitalSignature                     => "CPL declares Signer/Signature but the engine does not yet verify them (info notice)",
+                    Self::DanglingEssenceDescriptor            => "<EssenceDescriptor><Id>urn:uuid:abc…</Id></EssenceDescriptor>  <!-- no Resource references this Id -->",
+                    Self::EssenceDescriptorList                => "CPL with `<SourceEncoding>` references but no top-level `<EssenceDescriptorList>` element",
+                })
             }
         }
 

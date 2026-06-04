@@ -91,13 +91,25 @@ prefer ONE of these two patterns — don't silently duplicate:
    documents the rule once.
 2. **Per-edition codes with delta annotation** — keep distinct codes
    per edition (`ST2067-2:2013:7.2/Foo` vs `ST2067-2:2020:7.2/Foo`)
-   but annotate `sameAsPreviousEdition: true` in the catalogue when
-   the constraint hasn't changed. Consumers can collapse the
+   but annotate `sameAsPreviousEdition: <prev-prefix>` in the catalogue
+   when the constraint hasn't changed. Consumers can collapse the
    presentation.
 
-The current catalogue uses pattern 2 implicitly without the
-annotation. Adding the annotation is tracked in
-[`catalogue-todos.md`](./catalogue-todos.md) item #1.
+**Imferno uses pattern 2.** The `ValidationCode::previous_identical_edition()`
+trait method (added 2026-06-04) returns the predecessor edition's
+prefix when the catalogue is bit-for-bit identical. `listRules`
+surfaces this as a `sameAsPreviousEdition` field on each affected
+rule. Currently set on three editions whose catalogues are verified
+identical to their predecessor:
+
+| This edition         | sameAsPreviousEdition |
+|----------------------|-----------------------|
+| `ST2067-2:2016`      | `ST2067-2:2013`       |
+| `ST2067-3:2016`      | `ST2067-3:2013`       |
+| `ST2067-201:2021`    | `ST2067-201:2019`     |
+
+The cross-edition snapshot diff used to derive these is in
+[`catalogue-todos.md`](./catalogue-todos.md) Item 2.
 
 ## Application context
 

@@ -169,6 +169,29 @@ it.
 identifier; the format spec exists and is referenced from the
 catalogue header.
 
+**Status: ✅ already addressed (verified 2026-06-04).**
+- Zero line-number-pinned codes remain anywhere in
+  `crates/imferno-core/src/`. The reviewer's concern about
+  `XSD-121-127`, `XSD-66`, `XSD-88` reflects an earlier code shape
+  that no longer exists.
+- Current canonical XSD codes are structural: `XSD/ElementMissing`,
+  `XSD/UnexpectedElement`, `XSD/PatternInvalid`, `XSD/TypeInvalid`,
+  `XSD/SchemaConstraintFailed`
+  (`crates/imferno-core/src/xsd/codes.rs`).
+- Per-element refinement is done by the translator
+  (`crates/imferno-core/src/xsd/mod.rs::translate`) which appends the
+  uppsala `element_path` to produce `XSD/<Class>/<ElementName>`
+  (e.g. `XSD/ElementMissing/EditRate`,
+  `XSD/PatternInvalid/IssueDate`). This is the recommended structural
+  form.
+- The format convention is documented in
+  [`docs/error-code-format.md`](./error-code-format.md) §
+  "Stable structural identifiers for XSD-pinned codes" with a
+  migration-status table.
+- No hash-pinning has been added — moot since no codes carry line
+  ranges. The recommendation in the format doc stays as fallback
+  guidance if line ranges ever get reintroduced.
+
 ---
 
 ## 6. Add `Example violation` and `Remediation hint` columns

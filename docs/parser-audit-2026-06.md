@@ -397,11 +397,21 @@ finding ID in parentheses links back to the section above.
 > `content_version_list`, `essence_descriptor_list`, `edit_rate`,
 > `locale_list`.
 
-> **[FIX-8] OPL MacroList parser** (B5)
-> — Today `parse_opl` silently drops `MacroList` because xsi:type
-> polymorphism doesn't deserialise. Either write a custom deserializer
-> or a manual XML walk. Affects every OPL with macros (i.e. nearly all
-> real OPLs).
+> **[FIX-8 ✅ done]** OPL `<MacroList>` is now extracted via a small
+> event-driven `quick_xml::reader::Reader` walker — serde can't handle
+> the abstract `MacroType` + `xsi:type` polymorphism with vendor-
+> specific extension namespaces, so the walker runs *alongside* the
+> existing serde deserialisation of the top-level fields. Each
+> `<Macro xsi:type="...">` becomes an `OplMacro { xsi_type, name,
+> annotation, extra_fields }` where `extra_fields` is a
+> `Vec<(local_name, text)>` bag for the type-specific payload. The
+> parser knows nothing about `PresetMacroType` /
+> `AudioRoutingMixingMacroType` / etc — callers can map `xsi_type` to
+> their own enums or treat it as freeform metadata. Three regression
+> tests added (`opl_with_empty_macro_list_yields_no_macros`,
+> `opl_with_preset_macro_captures_all_fields`,
+> `opl_with_multiple_macros_captures_all_in_order`); the two
+> pre-existing fixture-backed OPL tests still pass.
 
 > **[FIX-9 partial ✅ ]** Vendored the SCM XSD
 > (`specs/st2067-9a-2018.xsd`) and added three new entry points:
@@ -572,7 +582,7 @@ landed with a regression test where applicable; full results:
 | FIX-5 | ✅ done | `parse_source` matches `source:XsdLayer` case-insensitively |
 | FIX-6 | ✅ done | XSD classifier pinned with 6 message-shape unit tests |
 | FIX-7 | ✅ done | Struct-level doc-block on `CompositionPlaylist` mapping every field to ST 2067-3 spec status |
-| FIX-8 | deferred | OPL `MacroList` xsi:type parser — large custom-deserializer task; left pending |
+| FIX-8 | ✅ done | OPL `MacroList` extracted via `quick_xml` walker into flexible `OplMacro { xsi_type, name, annotation, extra_fields }` records |
 | FIX-9 | ✅ partial | Wired OPL / SCM / DCI-PKL into the XSD pre-pass; modern-PKL / AssetMap / VolumeIndex need XSDs vendored first |
 | FIX-10 | ✅ done | `tests/parser_negative_inputs.rs` — 18 negative tests across 6 parsers |
 | FIX-11 | ✅ done | `tests/issue_source_inference.rs` pins all 17 code-enum `ALL` consts |

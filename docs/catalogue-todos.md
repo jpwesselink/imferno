@@ -47,8 +47,44 @@ between editions?" without diffing.
 - `ST 2067-201:2019` and `:2021` blocks are bit-for-bit identical.
   Is there an actual delta between those editions?
 
-**Action**: for each, decide intentional-vs-gap; fix gaps; for
-intentional sameness, annotate per Item 1.
+### Audit results (2026-06-04)
+
+Computed by diffing the per-edition prefixes inside
+`crates/imferno-core/tests/snapshots/validation-codes.txt`:
+
+| Spec family             | Pair                | Code-set diff                          |
+|-------------------------|---------------------|----------------------------------------|
+| ST 2067-2 (Core)        | 2013 vs 2016        | **0** — identical (38 codes each)      |
+| ST 2067-2 (Core)        | 2016 vs 2020        | **+11 in 2020** (AssetMap/PKL/checksum rules promoted into Core) |
+| ST 2067-3 (CPL)         | 2013 vs 2016        | **0** — identical (14 codes each)      |
+| ST 2067-201 (IAB)       | 2019 vs 2021        | **0** — identical (21 codes each)      |
+| ST 2067-21 (App2E)      | 2020 vs 2023        | 2020 = 1 code, 2023 = 70 codes         |
+
+**Per-finding verdict**:
+
+- `TimedText-MalformedLanguageTag` / `-SampleRate` / `-EmptyLanguageTag` in
+  ST 2067-2:2013 — **all three exist** in 2013. The original review
+  observation was stale; current snapshot has them.
+- ST 2067-21:2020 vs :2023 — **real coverage gap**, not duplication.
+  2020 has only `AppIdMismatch` implemented; 2023 has 70 codes covering
+  picture descriptor, audio descriptor, MCA rules. Conceptually most of
+  those should apply to 2020 documents too. Tracked as catalogue gap
+  rather than a cross-edition annotation problem.
+- ST 2067-201:2019 vs :2021 — **bit-for-bit identical confirmed**. The
+  2021 edition appears to have changed no normative content the catalogue
+  models. Candidate for the "same-as-previous-edition" annotation under
+  Item 1.
+
+**Action items derived from the audit**:
+
+- ST 2067-2:2013 ↔ 2016, ST 2067-3:2013 ↔ 2016, ST 2067-201:2019 ↔ 2021:
+  three pairs of identical code sets — perfect targets for the Item 1
+  "same-as-previous-edition" annotation. Tracked as catalogue-cleanup
+  follow-up.
+- ST 2067-2:2016 → 2020: real spec delta, no action; document the +11
+  added codes in the public catalogue (PKL/AssetMap promotion).
+- ST 2067-21:2020 sparse: file as a coverage ticket (out of scope for
+  the cross-edition cleanup pass; rules need writing, not annotating).
 
 ---
 

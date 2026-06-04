@@ -41,7 +41,17 @@ pub enum St2067_3Code {
 // ─── Per-edition enums ────────────────────────────────────────────────────────
 
 macro_rules! define_st2067_3_enum {
+    // Edition with no identical predecessor — defaults to the
+    // trait-provided `previous_identical_edition` = None.
     ($name:ident, $prefix:literal) => {
+        define_st2067_3_enum!(@inner $name, $prefix, None);
+    };
+    // Edition whose code set matches a prior edition byte-for-byte
+    // (per the snapshot diff in docs/catalogue-todos.md Item 2).
+    ($name:ident, $prefix:literal, $previous:literal) => {
+        define_st2067_3_enum!(@inner $name, $prefix, Some($previous));
+    };
+    (@inner $name:ident, $prefix:literal, $previous:expr) => {
         #[allow(non_camel_case_types)]
         #[derive(Debug, Clone, Copy, PartialEq, Eq, strum::EnumIter)]
         pub enum $name {
@@ -232,6 +242,9 @@ macro_rules! define_st2067_3_enum {
                     Self::SegmentDurationIntegerEditUnits => Category::Timing,
                 }
             }
+            fn previous_identical_edition(&self) -> Option<&'static str> {
+                $previous
+            }
         }
 
         impl From<$name> for String {
@@ -244,5 +257,7 @@ macro_rules! define_st2067_3_enum {
 
 define_st2067_3_enum!(St2067_3_2013, "ST2067-3:2013");
 // ST 2067-3:2020 reuses the 2016 namespace and the canonical XSD is byte-identical
-// to 2016, so 2016 + 2020 share this rule set.
-define_st2067_3_enum!(St2067_3_2016, "ST2067-3:2016");
+// to 2016, so 2016 + 2020 share this rule set. Also bit-for-bit identical to the
+// 2013 catalogue (audit snapshot diff, 2026-06-04), recorded via the second
+// macro arm.
+define_st2067_3_enum!(St2067_3_2016, "ST2067-3:2016", "ST2067-3:2013");

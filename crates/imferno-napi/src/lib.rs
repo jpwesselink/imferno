@@ -46,13 +46,22 @@ pub fn get_version() -> String {
 pub fn list_rules_js() -> serde_json::Value {
     fn collect<C: ValidationCode + IntoEnumIterator>(spec: &str, out: &mut Vec<serde_json::Value>) {
         for c in C::iter() {
-            out.push(json!({
+            let mut entry = json!({
                 "code": c.code(),
                 "spec": spec,
                 "description": c.description(),
                 "defaultSeverity": format!("{:?}", c.default_severity()).to_lowercase(),
                 "category": format!("{:?}", c.category()),
-            }));
+            });
+            // Cross-edition annotation: when the enum's code set is
+            // bit-for-bit identical to its predecessor (e.g. ST 2067-3:2016 → :2013),
+            // expose the predecessor's prefix so UIs can group / hide
+            // the duplicate block. Skipped when None to keep the
+            // on-wire shape backwards-compatible.
+            if let Some(prev) = c.previous_identical_edition() {
+                entry["sameAsPreviousEdition"] = json!(prev);
+            }
+            out.push(entry);
         }
     }
 

@@ -68,7 +68,16 @@ pub enum IabCode {
 // ─────────────────────────────────────────────────────────────────────────────
 
 macro_rules! define_iab_enum {
+    // No identical predecessor — trait default `None`.
     ($name:ident, $prefix:literal) => {
+        define_iab_enum!(@inner $name, $prefix, None);
+    };
+    // Identical-to-prior-edition annotation (verified via snapshot
+    // diff, docs/catalogue-todos.md Item 2).
+    ($name:ident, $prefix:literal, $previous:literal) => {
+        define_iab_enum!(@inner $name, $prefix, Some($previous));
+    };
+    (@inner $name:ident, $prefix:literal, $previous:expr) => {
         /// IAB Level 0 Plug-in validation codes, edition
         #[doc = $prefix]
         #[derive(Debug, Clone, Copy, PartialEq, Eq, strum::EnumIter)]
@@ -179,6 +188,9 @@ macro_rules! define_iab_enum {
             }
             fn category(&self) -> Category {
                 Category::Audio
+            }
+            fn previous_identical_edition(&self) -> Option<&'static str> {
+                $previous
             }
             fn example(&self) -> Option<&'static str> {
                 Some(match self {
@@ -291,4 +303,5 @@ macro_rules! define_iab_enum {
 }
 
 define_iab_enum!(St2067_201_2019, "ST2067-201:2019");
-define_iab_enum!(St2067_201_2021, "ST2067-201:2021");
+// 2021 catalogue is bit-for-bit identical to 2019 (audit, 2026-06-04).
+define_iab_enum!(St2067_201_2021, "ST2067-201:2021", "ST2067-201:2019");

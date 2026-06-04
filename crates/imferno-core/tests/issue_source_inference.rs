@@ -49,6 +49,31 @@ fn imferno_internal_codes_infer_as_engine_internal() {
     check_all(ImfernoMxf::ALL, IssueSource::EngineInternal);
 }
 
+/// Cross-edition annotation: when an enum's code set is bit-for-bit
+/// identical to its predecessor (verified by snapshot diff), it
+/// returns the predecessor's prefix from `previous_identical_edition`.
+/// Currently three pairs: ST 2067-2:2013↔2016, ST 2067-3:2013↔2016,
+/// ST 2067-201:2019↔2021. All other enums default to `None`.
+#[test]
+fn previous_identical_edition_is_set_for_known_identical_pairs() {
+    let c1 = St2067_2_2016_Core::ALL[0];
+    assert_eq!(c1.previous_identical_edition(), Some("ST2067-2:2013"));
+
+    let c2 = St2067_3_2016::ALL[0];
+    assert_eq!(c2.previous_identical_edition(), Some("ST2067-3:2013"));
+
+    let c3 = St2067_201_2021::ALL[0];
+    assert_eq!(c3.previous_identical_edition(), Some("ST2067-201:2019"));
+
+    // Sanity: the older editions don't claim a predecessor.
+    let c4 = St2067_2_2013_Core::ALL[0];
+    assert_eq!(c4.previous_identical_edition(), None);
+    let c5 = St2067_3_2013::ALL[0];
+    assert_eq!(c5.previous_identical_edition(), None);
+    let c6 = St2067_201_2019::ALL[0];
+    assert_eq!(c6.previous_identical_edition(), None);
+}
+
 #[test]
 fn spec_codes_infer_as_prose_rule() {
     check_all(St429_9_2014::ALL, IssueSource::ProseRule);

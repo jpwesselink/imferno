@@ -211,7 +211,16 @@ pub enum CoreConstraintsCode {
 }
 
 macro_rules! define_core_constraints_enum {
+    // No identical predecessor — trait default `None`.
     ($name:ident, $prefix:literal) => {
+        define_core_constraints_enum!(@inner $name, $prefix, None);
+    };
+    // Identical to a prior edition (verified via snapshot diff,
+    // docs/catalogue-todos.md Item 2).
+    ($name:ident, $prefix:literal, $previous:literal) => {
+        define_core_constraints_enum!(@inner $name, $prefix, Some($previous));
+    };
+    (@inner $name:ident, $prefix:literal, $previous:expr) => {
         /// Validation codes for Core Constraints CPL checks, edition
         #[doc = $prefix]
         #[allow(non_camel_case_types)]
@@ -434,6 +443,9 @@ macro_rules! define_core_constraints_enum {
                     _ => Category::Structure,
                 }
             }
+            fn previous_identical_edition(&self) -> Option<&'static str> {
+                $previous
+            }
         }
 
         impl $name {
@@ -533,5 +545,6 @@ macro_rules! define_core_constraints_enum {
 }
 
 define_core_constraints_enum!(St2067_2_2013_Core, "ST2067-2:2013");
-define_core_constraints_enum!(St2067_2_2016_Core, "ST2067-2:2016");
+// 2016 catalogue is bit-for-bit identical to 2013 (audit, 2026-06-04).
+define_core_constraints_enum!(St2067_2_2016_Core, "ST2067-2:2016", "ST2067-2:2013");
 define_core_constraints_enum!(St2067_2_2020_Core, "ST2067-2:2020");

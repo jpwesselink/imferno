@@ -101,14 +101,15 @@ e.g. `6.2.1/CodingEquations` (absence) and `6.2.3/CodingEquations`
 (invalid value) share a name across different sections — reads as a
 collision.
 
-**Action**: pick a naming convention and apply it consistently.
-Suggestions:
-- `…/CodingEquations-Missing` vs `…/CodingEquations-Invalid`
-- Or category prefix: `Presence/CodingEquations` vs
-  `Validity/CodingEquations`
-
-**Acceptance**: no two codes share a name across sections; the kind of
-violation is unambiguous from the code alone.
+**Status: ✅ already addressed (verified 2026-06-04)**.
+Current codes use unambiguous suffixes:
+- `ST2067-21:2023:6.2.1/CodingEquationsMissing` (presence)
+- `ST2067-21:2023:6.2.3/CodingEquationsUnknown` (validity)
+The same `-Missing` / `-Unknown` discipline is applied across the
+picture descriptor coverage. Collision sweep across the whole
+`validation/codes.rs` shows zero remaining presence-vs-validity name
+clashes (the only suffix duplication is intentional cross-edition
+identity, e.g. `AppIdMismatch` in 2020 + 2023).
 
 ---
 
@@ -120,6 +121,15 @@ violation is unambiguous from the code alone.
 - MXF-level issues currently fold into `Encoding` alongside
   codec-level issues. They're going to need their own bucket as MXF
   coverage deepens.
+
+**Status: ✅ already addressed (verified 2026-06-04)**.
+- ISXD codes now use `Category::Data` (see
+  `crates/imferno-core/src/validation/isxd_codes.rs:80`).
+- MXF codes mostly use `Category::Container` (partition packs,
+  timed-text mapping kind). Only `NoEssenceContainers` and `Op1a`
+  remain under `Category::Encoding` and that's intentional —
+  they describe operational-pattern UL declarations, not codec
+  encoding.
 
 **Action**:
 - Re-tag ISXD codes. Candidate categories: `Data`, `Metadata` (if

@@ -328,6 +328,30 @@ pub fn check_audio_mca(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
 /// open or close form via the preceding character. Handles open tags
 /// with attributes (e.g. `<ns2:Foo xmlns:ns2="…">`) which the simple
 /// `:Foo>` substring probe misses.
+///
+/// # Assumptions about the upstream RegXML serializer
+///
+/// This walker is byte-substring based, not event-driven, so it relies
+/// on the `regxml` emitter producing output that follows a few rules.
+/// They hold for `regxml` 0.x as integrated here; an upstream change
+/// that violates any of these would silently mis-parse:
+///
+/// 1. **No CDATA sections** — `<![CDATA[ ... ]]>` blocks could contain
+///    the literal `</…>` close-tag pattern and confuse the close-tag
+///    detector. RegXML emits all values as plain escaped text.
+/// 2. **No XML comments inside elements** — `<!-- … -->` could contain
+///    `<` characters that the `<`-rewind logic misinterprets as a tag.
+/// 3. **No `>` in attribute values** — the open-tag scan walks to the
+///    first `>` after the local-name match. A literal `&gt;`-escaped
+///    `>` is fine; a raw `>` inside an attribute would prematurely end
+///    the open tag.
+/// 4. **One root namespace style** — `regxml` consistently emits
+///    `<nsN:LocalName>` with a single colon, never multiple prefixes
+///    or DOM-style namespace overrides on every element.
+///
+/// If any of these change in a future `regxml` release, switch to an
+/// event-driven `quick_xml::reader::Reader` pass — `quick_xml` already
+/// powers the higher-level CPL/AssetMap deserialisers.
 pub(crate) fn extract_all_fields(xml: &str, local_name: &str) -> Vec<String> {
     let mut out = Vec::new();
     let probe = format!(":{local_name}");
@@ -630,6 +654,66 @@ mod tests {
         assert_eq!(count_elements(xml, "AudioChannelLabelSubDescriptor"), 2);
         assert_eq!(count_elements(xml, "ChannelCount"), 1);
         assert_eq!(count_elements(xml, "Channel"), 0);
+    }
+
+    // ── FIX-20: pin the documented assumptions about RegXML output ──────────
+
+    /// Open tags with attributes (e.g. `xmlns:nsN="…"`) must still match.
+    /// The walker has to skip past the attribute payload to the `>` that
+    /// terminates the open tag before scanning for the body.
+    #[test]
+    fn extract_field_handles_open_tag_with_attribute() {
+        let xml = r#"<ns2:ChannelCount xmlns:ns2="http://example/ns">2</ns2:ChannelCount>"#;
+        assert_eq!(extract_field(xml, "ChannelCount").as_deref(), Some("2"));
+    }
+
+    /// Self-closing forms must NOT register as content-bearing in
+    /// `extract_field` (no body to extract). They are however legal in
+    /// `count_elements`.
+    #[test]
+    fn extract_field_skips_self_closing_form() {
+        let xml = r#"<ns1:SoundfieldGroupLabelSubDescriptor/>
+            <ns1:ChannelCount>5</ns1:ChannelCount>"#;
+        assert_eq!(
+            extract_field(xml, "SoundfieldGroupLabelSubDescriptor"),
+            None
+        );
+        assert_eq!(extract_field(xml, "ChannelCount").as_deref(), Some("5"));
+        assert_eq!(count_elements(xml, "SoundfieldGroupLabelSubDescriptor"), 1);
+    }
+
+    /// Tag bodies surrounded by extra whitespace are trimmed.
+    #[test]
+    fn extract_field_trims_whitespace() {
+        let xml = "<ns1:ChannelCount>   42\n  </ns1:ChannelCount>";
+        assert_eq!(extract_field(xml, "ChannelCount").as_deref(), Some("42"));
+    }
+
+    /// Nested elements with the same local name are handled in order —
+    /// `extract_all_fields` returns each occurrence's body, not the
+    /// concatenated outer body.
+    #[test]
+    fn extract_all_fields_does_not_concatenate_siblings() {
+        let xml = r#"
+            <ns1:MCAChannelID>1</ns1:MCAChannelID>
+            <ns1:MCAChannelID>2</ns1:MCAChannelID>
+            <ns1:MCAChannelID>3</ns1:MCAChannelID>
+        "#;
+        assert_eq!(
+            extract_all_fields(xml, "MCAChannelID"),
+            vec!["1".to_string(), "2".to_string(), "3".to_string()]
+        );
+    }
+
+    /// Tags that share a prefix with the queried local name (e.g.
+    /// `:Channel` vs `:ChannelCount`) must not collide. This regression
+    /// pins the boundary-check on the byte after the local name.
+    #[test]
+    fn extract_field_does_not_collide_on_prefix() {
+        let xml = r#"<ns1:Channel>X</ns1:Channel>
+            <ns1:ChannelCount>2</ns1:ChannelCount>"#;
+        assert_eq!(extract_field(xml, "Channel").as_deref(), Some("X"));
+        assert_eq!(extract_field(xml, "ChannelCount").as_deref(), Some("2"));
     }
 
     #[test]

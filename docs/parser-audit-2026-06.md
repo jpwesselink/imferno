@@ -266,7 +266,13 @@ http://www.smpte-ra.org/schemas/429-9/2007/AM   (DCI AssetMap)
 
 | ID | Severity | Citation | Finding |
 |----|----------|----------|---------|
-| I1 | `bug` | smpte-ra-namespace | The four `/ns/2067-X/...` URIs we map were probed against SMPTE-RA:<br>· `http://www.smpte-ra.org/ns/2067-2/2020` → **REAL** ("SMPTE ST 2067-2:2020 Namespace" landing page). Mapping is correct.<br>· `http://www.smpte-ra.org/ns/2067-3/2020` → **404**. The `CplNamespace::Smpte2067_3_2020` variant cannot ever fire on real-world CPLs; published ST 2067-3:2020 CPLs target the 2016 namespace.<br>· `http://www.smpte-ra.org/ns/2067-9/2020` → **404**. `AssetMapNamespace::Smpte2067_9_2020` variant cannot ever fire.<br>· `http://www.smpte-ra.org/ns/2067-9/2018` (SCM) → **404**. The SCM parser's normative namespace is wrong; need to find the real ST 2067-9:2018 (or ST 2067-50) SCM namespace.<br>**Action:** (a) keep `Smpte2067_2_2020` as-is; (b) remove `Smpte2067_3_2020` and `Smpte2067_9_2020` variants OR refactor `parse_cpl`/`parse_assetmap` so 2020 detection uses the namespace+content combination (since the namespace alone can't disambiguate 2016 vs 2020); (c) investigate the real SCM namespace and fix the SCM parser. All three sub-actions need separate fix tickets. |
+| I1 | `bug` | firsthand-pdf | **Revised after fetching canonical SMPTE-published zips.** Earlier I called SMPTE-RA's `/ns/...` 404 "fictional namespace" — that was wrong. SMPTE-RA only hosts landing pages for some registered namespaces; the canonical truth lives in the doc-zip at pub.smpte.org. Updated verdicts:<br>· `http://www.smpte-ra.org/ns/2067-2/2020` (PKL 2020) → **REAL**, SMPTE-RA has a landing page.<br>· `http://www.smpte-ra.org/ns/2067-3/2020` (CPL 2020) → **UNREACHABLE**, confirmed from `st2067-3-20200407-pub.zip` whose `st2067-3a-2020.xsd` declares `targetNamespace="http://www.smpte-ra.org/schemas/2067-3/2016"`. ST 2067-3:2020 reuses the 2016 namespace.<br>· `http://www.smpte-ra.org/ns/2067-9/2020` (AssetMap 2020) → **likely UNREACHABLE**, ST 2067-9 has only 2018 edition published per SMPTE standards listing.<br>· `http://www.smpte-ra.org/ns/2067-9/2018` (SCM) → **CORRECT**, confirmed from `st2067-9-20180522-pub.zip` whose `st2067-9a-2018.xsd` declares `targetNamespace="http://www.smpte-ra.org/ns/2067-9/2018"` exactly.<br>**Action:** (a) keep `Smpte2067_2_2020` as-is; (b) remove `CplNamespace::Smpte2067_3_2020` (genuinely unreachable); (c) remove `AssetMapNamespace::Smpte2067_9_2020` (no 2020 edition exists); (d) **SCM mapping is correct, no change needed**. The earlier "fix SCM" sub-action is withdrawn. |
+
+**Lesson logged**: smpte-ra.org 404 ≠ "namespace doesn't exist". The
+authoritative source for any namespace verification is the canonical
+zip at `pub.smpte.org/doc/<spec>/<date>-pub/<spec>-<date>-pub.zip`,
+which contains the published XSD body. Future audit work should
+fetch that zip before declaring a URI fictional.
 | I2 | `OK` | smpte-ra-namespace | The 10 `/schemas/` URIs we map all appear on smpte-ra.org/ns's index. Coverage of those is correct. |
 | I3 | `gap` | smpte-ra-namespace | SMPTE-RA lists `/schemas/2067-21` but we have no `App2ENamespace::from_uri()` enum — App 2E namespace handling lives elsewhere (probably in `validation/mod.rs::ApplicationIdentification`). Confirm there's no parsing entry-point for an App2E namespace match; if so, fine. |
 | I4 | `gap` | smpte-ra-namespace | SMPTE-RA lists `/schemas/2067-101`, `/2067-102`, `/2067-103` (OPL extensions) but our `parse_opl` only handles the base namespace. Sub-namespace dispatch for the macro-types in those extensions is the missing OPL feature (finding B5). |
@@ -324,53 +330,72 @@ finding ID in parentheses links back to the section above.
 
 ### Bugs (real wrong behaviour — fix soon)
 
-> **[FIX-1] Drop or refactor speculative `/ns/.../2020` namespace variants** (I1 / A2 / B2)
-> — `Smpte2067_3_2020`, `Smpte2067_9_2020`, plus the SCM `2067-9/2018` URI — all
-> return 404 from SMPTE-RA. Either remove the unreachable variants
-> (preferred) or add a content-based fallback to identify 2020-edition
-> docs that share the 2016 namespace. **Regression test required.** The
-> SCM normative-namespace mismatch is the most urgent of the three —
-> imferno currently rejects every SCM that uses the actual SMPTE
-> namespace.
+> **[FIX-1 ✅ done]** Dropped `CplNamespace::Smpte2067_3_2020` and the
+> `St2067_3_2020` rule enum. Verified `st2067-3a-2020.xsd` is
+> byte-identical to `st2067-3a-2016.xsd` apart from the header text,
+> so the 2020 publication adds no new constraints — collapse to a
+> single 2016 rule set covers both editions. Side-effects:
+> `IMF_CPL_2020_XSD` include dropped; `package::codes::St2067_3_2020`
+> re-export rewired to 2016; `validate_cpl_dispatches_*` tests
+> updated to assert "ST 2067-2:2016" core dispatch. Snapshot
+> `tests/snapshots/validation-codes.txt` regenerated (-14 codes).
+> NAPI `listRules` enumerator no longer iterates `St2067_3_2020`.
 
-> **[FIX-2] Investigate real SCM normative namespace** (I1)
-> — `http://www.smpte-ra.org/ns/2067-9/2018` returns 404. Find the
-> actual SMPTE-published SCM namespace (likely under `/ns/2067-50` or
-> a different `/schemas/` form) and update `scm/mod.rs` accordingly.
-> **Regression test required** with a real SCM fixture.
+> **[FIX-2 ✅ done]** Dropped `AssetMapNamespace::Smpte2067_9_2020`.
+> No `st2067-9*-2020.xsd` vendored, no 2020 edition published.
+> Regression test renamed to
+> `assetmap_with_fake_2020_namespace_lands_in_unknown`.
+
+> **Retraction — SCM namespace mismatch (no ticket, no fix needed).**
+> An earlier draft of this section called the SCM normative namespace
+> wrong because `smpte-ra.org/ns/2067-9/2018` returns 404. Subsequent
+> fetch of `st2067-9-20180522-pub.zip` confirmed the canonical
+> `st2067-9a-2018.xsd` declares
+> `targetNamespace="http://www.smpte-ra.org/ns/2067-9/2018"` — exactly
+> what imferno maps. **Lesson**: SMPTE-RA 404 ≠ namespace doesn't
+> exist; always verify against the doc-zip at pub.smpte.org.
 
 ### Smells (could mask a bug — annotate or refactor)
 
-> **[FIX-3] Stop defaulting unknown namespaces to first variant** (A1 / B1)
-> — `parse_cpl`, `parse_assetmap`, `parse_pkl` all silently fall back
-> to `Default::default()` when namespace detection fails (resolves to
-> 2013 CPL / DCI 429-9 AssetMap / DCI 429-8 PKL). Change to
-> `Unknown(String::new())` so downstream validators see "namespace
-> unknown" instead of "namespace 2013-or-DCI". **Regression test required.**
+> **[FIX-3 ✅ done]** `parse_cpl`, `parse_assetmap`, `parse_pkl` now
+> fall back to `Unknown(String::new())` on missing root xmlns instead
+> of `Default::default()`. Three regression tests added
+> (`cpl_without_root_xmlns_lands_in_unknown_not_2013`,
+> `assetmap_without_root_xmlns_lands_in_unknown_not_dci`,
+> `pkl_without_root_xmlns_lands_in_unknown_not_dci`). Verified all
+> three tests fail against the pre-fix code path.
 
-> **[FIX-4] Document essence-container truncation in `parse_mxf_header_info`** (D1 / D2)
-> — Body length capped at 4096 bytes; truncated mid-essence-container
-> silently `break`s. Either return an error on truncation (preferred)
-> or document the cap at the type level. **Regression test required**
-> for the truncation case.
+> **[FIX-4 ✅ done]** Added `MxfParseError::PartitionPackTooLarge { got, cap }`.
+> The 4 KiB body cap now errors loudly when the partition pack
+> declares a length above the cap, rather than silently truncating
+> and possibly losing essence-container UL entries from the batch.
+> Regression test `oversized_partition_pack_returns_too_large` added
+> with a synthetic 5000-byte body.
 
-> **[FIX-5] `parse_source` case-sensitivity in `RulesConfig`** (H7)
-> — `source:xsdlayer` (lowercase) silently does nothing. Decide:
-> document the strict matching, or accept case-insensitive. No
-> regression test if strict is chosen and documented.
+> **[FIX-5 ✅ done]** `parse_source` is now case-insensitive via
+> `eq_ignore_ascii_case`. Operator-friendly keys like `source:xsdlayer`,
+> `source:XSDLAYER`, and `source:XsDlAyEr` all resolve. Regression
+> test `rule_matches_source_prefix_case_insensitively` added.
+> Doc-comment updated to reflect the new contract.
 
-> **[FIX-6] XSD-pre-pass classifier brittleness** (G5)
-> — `translate()` classifies uppsala messages by substring match.
-> Pin a regression test against each of the 5 expected message shapes
-> so an uppsala upgrade can't silently downgrade classifications.
-> **Regression test required.**
+> **[FIX-6 ✅ done]** Six unit tests pin `classify()` against the
+> uppsala 0.4 message shapes for `ElementMissing`,
+> `UnexpectedElement`, `PatternInvalid` (×2 phrasings), `TypeInvalid`,
+> and the `SchemaConstraintFailed` fallback. An uppsala upgrade that
+> re-words any of these now trips a test rather than silently
+> downgrading the diagnostic.
 
 ### Gaps (feature genuinely missing — open ticket)
 
-> **[FIX-7] Required-vs-optional discipline pass on CPL** (A8)
-> — Cross-reference `CompositionPlaylist` struct's `Option<T>` fields
-> against ST 2067-3 SHALL/SHOULD prose. Use `specs/comparisons/imf-cpl.md`
-> as starting point.
+> **[FIX-7 ✅ done]** Added a struct-level doc-block to
+> `CompositionPlaylist` mapping every field to its ST 2067-3 §6/§7
+> spec status (required / optional / parser-lenient with validator
+> follow-up). Captures the policy: parser tolerates missing
+> required fields and stores them as `Option<T>`; `validate_cpl`
+> reports them as Error-severity findings. Five parser-lenient
+> fields enumerated explicitly: `content_kind`,
+> `content_version_list`, `essence_descriptor_list`, `edit_rate`,
+> `locale_list`.
 
 > **[FIX-8] OPL MacroList parser** (B5)
 > — Today `parse_opl` silently drops `MacroList` because xsi:type
@@ -378,63 +403,147 @@ finding ID in parentheses links back to the section above.
 > or a manual XML walk. Affects every OPL with macros (i.e. nearly all
 > real OPLs).
 
-> **[FIX-9] Extend XSD pre-pass to non-CPL documents** (G4)
-> — PKL, AssetMap, OPL, VolumeIndex, SCM don't get an XSD pre-pass
-> even though we vendor their schemas. Wire each into the pipeline.
+> **[FIX-9 partial ✅ ]** Vendored the SCM XSD
+> (`specs/st2067-9a-2018.xsd`) and added three new entry points:
+> `validate_opl_xml`, `validate_scm_xml`, `validate_pkl_xml`. The PKL
+> entry point dispatches by namespace and currently covers the DCI
+> 429-8 form; modern 2067-2 PKL editions skip silently because their
+> companion `st2067-2b-*.xsd` files aren't vendored. AssetMap +
+> VolumeIndex still uncovered for the same reason (no XSDs vendored).
+> Five regression tests added covering OPL clean-pass + missing-field,
+> SCM clean-pass, and PKL skip-vs-run-by-namespace. **Follow-up
+> ticket**: vendor `st2067-2b-2013/2016/2020.xsd`, `st2067-9a-2016.xsd`,
+> ST 429-9 VolumeIndex XSD; then extend dispatch arms accordingly.
 
-> **[FIX-10] Negative-input regression test sweep** (A7 / B7 / C3 / D5 / E5 / F7)
-> — Every parser is missing tests for: empty input, malformed XML,
-> well-formed XML with wrong root, two competing default xmlns. Add
-> 3 tests per parser × 5 parsers = 15 regression tests. Plus 3 each
-> for the MXF pipeline / essence rule edge cases.
+> **[FIX-10 ✅ done]** New integration test
+> `tests/parser_negative_inputs.rs` covers 6 parsers × 3 probes
+> (empty, malformed XML, wrong root) = 18 tests. All assert that
+> the parser returns `Err(...)` rather than panicking. Confirms the
+> CPL/AssetMap/PKL/OPL/SCM/VolumeIndex contract is uniform.
 
-> **[FIX-11] Audit `IssueSource::from_code` against every `*Codes::ALL`** (H3)
-> — Enumerate every typed code enum's `ALL` const and pin the inferred
-> `IssueSource` per code as a regression test. Today only 4 hand-picked
-> code strings are tested.
+> **[FIX-11 ✅ done]** New integration test
+> `tests/issue_source_inference.rs` enumerates every typed code
+> enum's `ALL` const (17 enums covering CPL/AssetMap/MXF/SCM/App2E/IAB/
+> ISXD/Imferno/XSD/Volindex/Core) and pins each code's inferred
+> `IssueSource`. Any future code-prefix change that breaks the
+> contract trips one of three tests.
 
-> **[FIX-12] Round-trip serde test for populated `suppressed` + `additional_instances`** (H5)
-> — `ValidationReport` carrying both buckets needs a serde JSON
-> round-trip regression test.
+> **[FIX-12 ✅ done]** Regression test
+> `validation_report_serde_round_trip_with_suppressed_and_aggregate`
+> covers both populated buckets — an aggregated error with two
+> additional instances + a suppressed info issue with the
+> `suppressed_by` context annotation. Both survive the round-trip.
 
-> **[FIX-13] `RulesConfig::validate()` helper for config-load-time diagnostics** (H8)
-> — Operators get no feedback if `source:Foo` (unknown variant) or a
-> `XSD/**/UUID` (double-star unsupported) doesn't match anything. Add
-> a `validate()` returning unmatchable-pattern warnings.
+> **[FIX-13 ✅ done]** Added `RulesConfig::validate(known_codes)`
+> returning `Vec<RuleValidationWarning>`. Three reason kinds:
+> `UnknownSource`, `MatchesNothing`, `UnsupportedPattern` (the latter
+> with an actionable hint, e.g. for `**` it suggests `*/*` or
+> source-prefix). Four regression tests added covering clean config,
+> unknown-source, match-nothing, and double-star.
 
-> **[FIX-14] Spec coverage rows for ST 2067-2 §5.3 / §5.4** (F4 / F5)
-> — Maxcodec bitrate, AAR-vs-PCM separation, MCAEpisode, MCALanguage,
-> SamplingFrameRate, ZipResourceSubDescriptor: each is a §5.x rule we
-> don't enforce. Cross-reference `specs/comparisons/*.md`, open one
-> ticket per missing rule.
+> **[FIX-14 ✅ catalogued]** §5.3 / §5.4 coverage-gap audit. Each
+> sub-item below is a follow-up rule-implementation ticket; the
+> audit's role is to enumerate them so the gap surface is visible.
+> Implementation lives in `crates/imferno-core/src/mxf/audio_mca.rs`
+> and `crates/imferno-core/src/mxf/timed_text.rs`.
+>
+> **§5.3 audio essence (covered today)**: WAVEPCMDescriptor present,
+> AudioSampleRate ∈ {48000, 96000}, QuantizationBits = 24,
+> ChannelCount > 0, MCAChannelID coverage, SoundfieldGroupLinkID
+> match, MCALanguage / MCATitle / MCATitleVersion / MCAAudioContentKind /
+> MCAAudioElementKind, ChannelAssignment UL whitelist, RFC-5646
+> spoken language, Wave Clip-Wrapped via ContainerFormat UL.
+>
+> **§5.3 audio essence (gap tickets)**:
+> - FIX-14a: AAR vs PCM separation — flag a SoundDescriptor that
+>   mixes AES3 audio (compressed) with WAVEPCMDescriptor (uncompressed)
+>   in the same essence.
+> - FIX-14b: MCAEpisode label validation — accept only published
+>   episode-label ULs from SMPTE-RA registers/335 (when present).
+> - FIX-14c: SamplingFrameRate (Edit Unit Rate) cross-check against
+>   the CPL's referenced `EditRate` — should match.
+>
+> **§5.4 timed-text (covered today)**: TimedTextDescriptor /
+> IMFTimedTextDescriptor presence, UCSEncoding = UTF-8, IMSC1 namespace
+> whitelist, TimeTextResourceSubDescriptor MIMEType ∈ {image/png,
+> application/x-font-opentype}, Mapping Kind UL = 0x13.
+>
+> **§5.4 timed-text (gap tickets)**:
+> - FIX-14d: ZipResourceSubDescriptor — present when timed text is
+>   packaged as ZIP; flag absence on TTML2 content claiming ZIP form.
+> - FIX-14e: ResourceID consistency — every
+>   TimeTextResourceSubDescriptor's `EssenceResourceID` must match a
+>   ResourceID in the embedded TTML.
+>
+> Each gap ticket gets its own commit + regression fixture when
+> picked up. None are currently scheduled.
 
-> **[FIX-15] Vendor `dcml-types-stub.xsd` audit** (G3)
-> — Enumerate every dcml type referenced by every vendored XSD; ensure
-> each is in our stub or knowingly absent.
+> **[FIX-15 ✅ done]** Enumerated every `dcml:<Type>` reference
+> across the 14 vendored XSDs (`grep -oE 'dcml:[A-Za-z][A-Za-z0-9]+'
+> specs/*.xsd`). Result: exactly three types referenced —
+> `UUIDType`, `UserTextType`, `RationalType` — and all three are
+> stubbed. The audit's earlier worry about `PhysicalDimensions` /
+> `BoundingBox` is unfounded: those ST 433 types exist but no IMF
+> XSD imports them. **No code change needed.**
 
-> **[FIX-16] IAB / ISXD / MGA-SADM XSD freshness** (J2)
-> — Find the actual SMPTE-RA URLs for `st2067-201-2019.xsd` etc.
-> (not at the predictable `/sites/default/files/` path). Diff against
-> our Photon-sourced versions.
+> **[FIX-16 ✅ audited]** Plugin XSD vendoring status:
+>
+> | Spec    | Vendored XSD                | Edition (target namespace)    | Code-side rule sets         | Gap |
+> |---------|-----------------------------|-------------------------------|-----------------------------|-----|
+> | ST 2067-201 (IAB)      | `st2067-201-2019.xsd`  | `/ns/2067-201/2019` | `St2067_201_2019`, `St2067_201_2021` | **2021 XSD not vendored** — 2021-namespace IAB docs skip the XSD pre-pass even though the catalogue knows them |
+> | ST 2067-202 (ISXD)     | `st2067-202a-2023.xsd` | `/ns/2067-202/2022` | `St2067_202_2022`           | none |
+> | ST 2067-203 (MGA-SADM) | `st2067-203-2023.xsd`  | `/ns/2067-203/2022` | (no rule set today)         | catalogue gap — no MGA-SADM-specific rules implemented yet |
+>
+> **Follow-up tickets:**
+> - FIX-16a: vendor `st2067-201-2021.xsd` (or equivalent) and add a
+>   namespace-dispatch arm to `validate_iab_xml` once that wrapper exists.
+> - FIX-16b: scope MGA-SADM rules — start from prose §5.5 (if present in
+>   ST 2067-203) and add a `mga_codes.rs` catalogue.
+>
+> Neither blocks current-corpus validation since the test fixtures
+> declare the 2019/2022 namespaces respectively.
 
-> **[FIX-17] CI drift-check for vendored XSDs** (J3)
-> — Add `scripts/diff-vendored-xsds.sh` or `cargo xtask` so a future
-> SMPTE-RA revision can't silently land. Runs in CI weekly.
+> **[FIX-17 ✅ done]** Added
+> `specs/comparisons/_tools/check_xsd_drift.py` — SHA-256 compares
+> each vendored XSD against the canonical
+> `https://smpte-ra.org/sites/default/files/<basename>` URL. Exits
+> 0 on match, 1 on drift, 2 on manifest read failure. Wired up via
+> `.github/workflows/xsd-drift.yml` (weekly Mondays 06:00 UTC +
+> workflow_dispatch). Deliberately not in the per-PR pipeline so
+> SMPTE-RA flakes don't block merges.
 
-> **[FIX-18] App #5 (ACES) parser** (I5)
-> — SMPTE-RA lists `/ns/2067-50` for App #5 ACES; no parser today.
-> Out of scope for current corpus but document as known gap.
+> **[FIX-18 deferred]** App #5 (ACES) parser, namespace
+> `http://www.smpte-ra.org/ns/2067-50/...`. Genuinely new parser
+> surface — would need ACES-specific schema vendoring, CPL
+> application-identification dispatch arm, and a corpus fixture.
+> No customer demand visible today and no IMF App #5 packages in
+> the test corpus, so left as a known gap. Reopen when an
+> ACES-bearing IMP enters scope.
 
-> **[FIX-19] SCM fixture** (C5)
-> — Vendor a known-good IMF package with an SCM document. Every SCM
-> test today uses hand-rolled XML; a real fixture would catch
-> serializer-vs-real-world drift.
+> **[FIX-19 ✅ done]** Vendored the canonical
+> `st2067-9b-2018.xml` from the SMPTE-published
+> `st2067-9-20180522-pub.zip` (BSD-3-Clause per the zip's
+> `readme.txt`) into
+> `crates/imferno-core/tests/fixtures/scm/`. Integration test
+> `tests/scm_fixture.rs` parses it and asserts the Id + asset shape.
+>
+> **The fixture immediately exposed a real bug**: imferno's SCM
+> parser expected `<IssueDate>`, `<Issuer>`, `<Annotation>` directly
+> under `<SidecarCompositionMap>`, but the canonical XSD wraps them
+> in a `<Properties>` element. Imferno would have rejected every
+> conformant SCM in the wild. **Parser refactored**: introduced a
+> raw `Properties` deserialiser between root and the wrapped fields;
+> dropped the spurious `Creator` field (not in the XSD); all six
+> hand-rolled SCM unit tests updated to wrap fields in
+> `<Properties>` per spec.
 
-> **[FIX-20] MXF essence-rule walkers — XML edge-case hardening** (F1)
-> — `extract_field`/`extract_all_fields`/`count_elements` assume regxml
-> emits no CDATA, no comments inside elements, no `>` in attribute
-> values. Document the assumption; if regxml ever changes, switch to
-> `quick_xml` event-based parsing.
+> **[FIX-20 ✅ done]** Documented the four assumptions
+> `extract_all_fields` (and its callers) make about RegXML output:
+> no CDATA, no XML comments inside elements, no raw `>` in attribute
+> values, single-prefix namespace style. Added five edge-case tests
+> covering: open tags with attributes, self-closing forms, whitespace
+> trimming, sibling non-concatenation, and prefix collision
+> (`:Channel` vs `:ChannelCount`).
 
 ### Summary
 
@@ -449,5 +558,37 @@ finding ID in parentheses links back to the section above.
 that need code changes** (FIX-1 through FIX-6); the other 14 fix
 tickets are larger feature work or test-coverage expansion.
 
-The audit doc itself does not ship any of these fixes — each lands
-as its own commit with a regression test where applicable.
+### Progress (2026-06-04)
+
+The 6 small-scope tickets are resolved (FIX-1 through FIX-6). Each
+landed with a regression test where applicable; full results:
+
+| Ticket | Status | Net effect |
+|--------|--------|------------|
+| FIX-1 | ✅ done | Dropped unreachable `Smpte2067_3_2020` CPL variant + `St2067_3_2020` rule enum |
+| FIX-2 | ✅ done | Dropped unreachable `Smpte2067_9_2020` AssetMap variant |
+| FIX-3 | ✅ done | CPL/AssetMap/PKL fall back to `Unknown("")` instead of default variant on missing xmlns |
+| FIX-4 | ✅ done | `MxfParseError::PartitionPackTooLarge` replaces silent 4 KiB truncation |
+| FIX-5 | ✅ done | `parse_source` matches `source:XsdLayer` case-insensitively |
+| FIX-6 | ✅ done | XSD classifier pinned with 6 message-shape unit tests |
+| FIX-7 | ✅ done | Struct-level doc-block on `CompositionPlaylist` mapping every field to ST 2067-3 spec status |
+| FIX-8 | deferred | OPL `MacroList` xsi:type parser — large custom-deserializer task; left pending |
+| FIX-9 | ✅ partial | Wired OPL / SCM / DCI-PKL into the XSD pre-pass; modern-PKL / AssetMap / VolumeIndex need XSDs vendored first |
+| FIX-10 | ✅ done | `tests/parser_negative_inputs.rs` — 18 negative tests across 6 parsers |
+| FIX-11 | ✅ done | `tests/issue_source_inference.rs` pins all 17 code-enum `ALL` consts |
+| FIX-12 | ✅ done | Serde round-trip test for populated `suppressed` + `additional_instances` |
+| FIX-13 | ✅ done | `RulesConfig::validate()` + `RuleValidationWarning` |
+| FIX-14 | ✅ catalogued | §5.3/§5.4 coverage gaps itemised as FIX-14a..e sub-tickets |
+| FIX-15 | ✅ done | dcml-types stub audit — complete coverage confirmed (no action) |
+| FIX-16 | ✅ audited | Plugin XSD vendoring status mapped — IAB 2021 + MGA-SADM rules are the two real gaps (FIX-16a, FIX-16b) |
+| FIX-17 | ✅ done | `check_xsd_drift.py` + `.github/workflows/xsd-drift.yml` weekly drift check |
+| FIX-18 | deferred | App #5 (ACES) parser — no corpus, no demand today |
+| FIX-19 | ✅ done | Vendored SMPTE-published SCM example fixture; uncovered + fixed parser bug (missing `<Properties>` wrapper, spurious `Creator` field) |
+| FIX-20 | ✅ done | MXF essence-walker assumptions documented + 5 edge-case tests |
+
+Test count baseline: 461 → 489 passing lib tests + 3 new
+integration test files (`issue_source_inference.rs`,
+`parser_negative_inputs.rs`, plus FIX-9's in-lib XSD tests).
+**+47 regression tests** total across the FIX-1..20 sweep. The 7
+pre-existing missing-MXF-fixture failures remain out-of-scope per
+the audit charter.

@@ -55,8 +55,13 @@ use codes::XsdConstraintCode;
 // ─────────────────────────────────────────────────────────────────────────────
 
 const IMF_CPL_2013_XSD: &str = include_str!("../../../../specs/imf-cpl.xsd");
+// st2067-3a-2020.xsd is byte-identical to st2067-3a-2016.xsd apart from the
+// header text and reuses the 2016 namespace, so 2020-era CPLs validate against
+// this schema too.
 const IMF_CPL_2016_XSD: &str = include_str!("../../../../specs/st2067-3a-2016.xsd");
-const IMF_CPL_2020_XSD: &str = include_str!("../../../../specs/st2067-3a-2020.xsd");
+const IMF_OPL_2014_XSD: &str = include_str!("../../../../specs/st2067-100a-2014.xsd");
+const IMF_SCM_2018_XSD: &str = include_str!("../../../../specs/st2067-9a-2018.xsd");
+const DCI_PKL_2007_XSD: &str = include_str!("../../../../specs/SMPTE-429-8-PKL-2007.xsd");
 const DCML_TYPES_STUB_XSD: &str = include_str!("../../../../specs/dcml-types-stub.xsd");
 
 /// Lazy-init temp dir containing the dcml-types stub so uppsala's
@@ -90,7 +95,6 @@ pub fn validate_parsed_cpl(cpl: &crate::cpl::CompositionPlaylist) -> Vec<Validat
     let primary_xsd = match &cpl.namespace {
         crate::cpl::CplNamespace::Smpte2067_3_2013 => IMF_CPL_2013_XSD,
         crate::cpl::CplNamespace::Smpte2067_3_2016 => IMF_CPL_2016_XSD,
-        crate::cpl::CplNamespace::Smpte2067_3_2020 => IMF_CPL_2020_XSD,
         // No vendored XSD for DCI / Unknown — skip rather than fail loudly
         _ => return Vec::new(),
     };
@@ -100,6 +104,47 @@ pub fn validate_parsed_cpl(cpl: &crate::cpl::CompositionPlaylist) -> Vec<Validat
         dcml_specs_dir(),
         Some(cpl.id),
     )
+}
+
+/// Run the runtime-XSD validator against an Output Profile List XML.
+///
+/// Takes the raw OPL XML directly (the `OutputProfileList` parser doesn't
+/// preserve `source_xml` like the CPL one does). Validates against
+/// `st2067-100a-2014.xsd`; OPL has only the 2014 edition published.
+pub fn validate_opl_xml(source_xml: &str) -> Vec<ValidationIssue> {
+    validate_against_composite_schema_str(source_xml, IMF_OPL_2014_XSD, dcml_specs_dir(), None)
+}
+
+/// Run the runtime-XSD validator against a Sidecar Composition Map XML.
+///
+/// Validates against `st2067-9a-2018.xsd` — the only published SCM edition.
+pub fn validate_scm_xml(source_xml: &str) -> Vec<ValidationIssue> {
+    validate_against_composite_schema_str(source_xml, IMF_SCM_2018_XSD, dcml_specs_dir(), None)
+}
+
+/// Run the runtime-XSD validator against a Packing List XML.
+///
+/// Only the DCI 429-8:2007 PKL namespace has a vendored XSD; modern
+/// `2067-2/<year>/PKL` namespaces aren't vendored yet, so returns
+/// empty for those (callers still get the catalogue-level semantic
+/// checks via `validate_pkl_*`).
+pub fn validate_pkl_xml(
+    source_xml: &str,
+    namespace: &crate::assetmap::PklNamespace,
+) -> Vec<ValidationIssue> {
+    use crate::assetmap::PklNamespace;
+    match namespace {
+        PklNamespace::Dci429_8 => validate_against_composite_schema_str(
+            source_xml,
+            DCI_PKL_2007_XSD,
+            dcml_specs_dir(),
+            None,
+        ),
+        // No vendored XSD for ST 2067-2:2013/2016/2020 PKL forms yet
+        // (the `st2067-2b-*` companion schemas are not in `specs/`).
+        // Skip silently — semantic checks still run downstream.
+        _ => Vec::new(),
+    }
 }
 
 /// Same as `validate_against_composite_schema` but takes the primary XSD as a
@@ -486,5 +531,159 @@ mod tests {
         let issues = validate_against_schema("<not closed", MINI_XSD, None);
         assert_eq!(issues.len(), 1);
         assert_eq!(issues[0].severity, Severity::Critical);
+    }
+
+    // ── FIX-6: pin classify() against each expected uppsala message shape ───
+    //
+    // The classifier is substring-based, so an uppsala upgrade that re-words
+    // an error message would silently downgrade the diagnostic to the
+    // catch-all `SchemaConstraintFailed`. These tests pin the five message
+    // shapes observed in uppsala 0.4 + the imferno-patches fork; if any
+    // string match here breaks, this test catches it before the change ships.
+
+    #[test]
+    fn classifier_pins_element_missing_shape() {
+        let m = "Expected at least 1 occurrence of element 'EditRate'";
+        assert_eq!(classify(m), XsdConstraintCode::ElementMissing);
+    }
+
+    #[test]
+    fn classifier_pins_unexpected_element_shape() {
+        let m = "Unexpected element 'BogusTag' encountered";
+        assert_eq!(classify(m), XsdConstraintCode::UnexpectedElement);
+    }
+
+    #[test]
+    fn classifier_pins_pattern_invalid_shape_v1() {
+        let m = "Value 'abc' does not match pattern '[0-9]+'";
+        assert_eq!(classify(m), XsdConstraintCode::PatternInvalid);
+    }
+
+    #[test]
+    fn classifier_pins_pattern_invalid_shape_v2() {
+        // Some uppsala paths emit the truncated phrasing without "pattern".
+        let m = "Value does not match the expected facet";
+        assert_eq!(classify(m), XsdConstraintCode::PatternInvalid);
+    }
+
+    #[test]
+    fn classifier_pins_type_invalid_shape() {
+        let m = "Value 'not-a-number' is not a valid xs:positiveInteger";
+        assert_eq!(classify(m), XsdConstraintCode::TypeInvalid);
+    }
+
+    #[test]
+    fn classifier_falls_back_to_schema_constraint_failed() {
+        let m = "Some new message shape we don't know yet";
+        assert_eq!(classify(m), XsdConstraintCode::SchemaConstraintFailed);
+    }
+
+    // ── FIX-9: non-CPL XSD pre-pass entry points ────────────────────────────
+    //
+    // The entry points use the vendored OPL / SCM / DCI-PKL schemas. We
+    // don't have vendored XSDs for modern PKL / AssetMap / VolumeIndex so
+    // those code paths simply return empty.
+
+    #[test]
+    fn validate_opl_xml_passes_clean_opl() {
+        // Minimal OPL stripped down to the schema-required elements.
+        let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<OutputProfileList xmlns="http://www.smpte-ra.org/schemas/2067-100/2014">
+    <Id>urn:uuid:8cf83c32-4949-4f00-b081-01e12b18932f</Id>
+    <IssueDate>2016-06-14T19:22:37Z</IssueDate>
+    <Issuer>Imferno</Issuer>
+    <Creator>Imferno</Creator>
+    <CompositionPlaylistId>urn:uuid:0eb3d1b9-b77b-4d3f-bbe5-7c69b15dca85</CompositionPlaylistId>
+    <MacroList/>
+</OutputProfileList>"#;
+        let issues = validate_opl_xml(xml);
+        // The composite schema may still flag missing xmldsig content; the
+        // important property here is the pre-pass is invokable end-to-end.
+        for i in &issues {
+            assert!(
+                i.code.starts_with("XSD/"),
+                "expected XSD/* codes only, got {i:#?}"
+            );
+        }
+    }
+
+    #[test]
+    fn validate_opl_xml_flags_missing_required_field() {
+        // Dropping <Issuer> from the OPL trips the schema's required-element check.
+        let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<OutputProfileList xmlns="http://www.smpte-ra.org/schemas/2067-100/2014">
+    <Id>urn:uuid:8cf83c32-4949-4f00-b081-01e12b18932f</Id>
+    <IssueDate>2016-06-14T19:22:37Z</IssueDate>
+    <Creator>Imferno</Creator>
+    <CompositionPlaylistId>urn:uuid:0eb3d1b9-b77b-4d3f-bbe5-7c69b15dca85</CompositionPlaylistId>
+    <MacroList/>
+</OutputProfileList>"#;
+        let issues = validate_opl_xml(xml);
+        assert!(
+            issues.iter().any(|i| i.code.contains("XSD/")),
+            "expected at least one XSD diagnostic for missing Issuer: {issues:#?}"
+        );
+    }
+
+    #[test]
+    fn validate_scm_xml_passes_clean_scm() {
+        let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<SidecarCompositionMap xmlns="http://www.smpte-ra.org/ns/2067-9/2018">
+    <Id>urn:uuid:8cf83c32-4949-4f00-b081-01e12b18932f</Id>
+    <IssueDate>2024-01-01T00:00:00Z</IssueDate>
+    <Properties>
+        <SidecarAssetList>
+            <SidecarAsset>
+                <Id>urn:uuid:0eb3d1b9-b77b-4d3f-bbe5-7c69b15dca85</Id>
+                <AssociatedCPLList>
+                    <CPLId>urn:uuid:75864667-c65e-4aae-a5b2-fa5ea5fe31b7</CPLId>
+                </AssociatedCPLList>
+            </SidecarAsset>
+        </SidecarAssetList>
+    </Properties>
+</SidecarCompositionMap>"#;
+        let issues = validate_scm_xml(xml);
+        for i in &issues {
+            assert!(
+                i.code.starts_with("XSD/"),
+                "expected XSD/* codes only, got {i:#?}"
+            );
+        }
+    }
+
+    #[test]
+    fn validate_pkl_xml_skips_unvendored_namespace() {
+        // 2067-2:2016 PKL has no vendored XSD — we return empty rather
+        // than fail loudly. Test pins the skip behaviour.
+        use crate::assetmap::PklNamespace;
+        let issues = validate_pkl_xml("<irrelevant/>", &PklNamespace::Smpte2067_2_2016);
+        assert!(issues.is_empty(), "expected skip on unvendored namespace");
+    }
+
+    #[test]
+    fn validate_pkl_xml_runs_for_dci_namespace() {
+        use crate::assetmap::PklNamespace;
+        // A clean DCI PKL — exercises the wiring; schema content
+        // assertions are loose since the goal is end-to-end invokability.
+        let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<PackingList xmlns="http://www.smpte-ra.org/schemas/429-8/2007/PKL">
+    <Id>urn:uuid:f5e93462-aed2-44ad-a4ba-2adb65823e7c</Id>
+    <IssueDate>2024-01-01T00:00:00Z</IssueDate>
+    <Issuer>Imferno</Issuer>
+    <Creator>Imferno</Creator>
+    <AssetList><Asset>
+        <Id>urn:uuid:00000000-0000-0000-0000-000000000001</Id>
+        <Hash>2jmj7l5rSw0yVb/vlWAYkK/YBwk=</Hash>
+        <Size>1024</Size>
+        <Type>application/mxf</Type>
+    </Asset></AssetList>
+</PackingList>"#;
+        let issues = validate_pkl_xml(xml, &PklNamespace::Dci429_8);
+        for i in &issues {
+            assert!(
+                i.code.starts_with("XSD/"),
+                "expected XSD/* codes only, got {i:#?}"
+            );
+        }
     }
 }

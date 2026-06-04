@@ -414,9 +414,11 @@ pub enum AssetMapNamespace {
     #[default]
     Dci429_9,
     /// SMPTE ST 2067-9:2016 — `http://www.smpte-ra.org/schemas/2067-9/2016`
+    ///
+    /// ST 2067-9 has only the 2016 edition published; there is no
+    /// 2020 successor. The SCM extension (ST 2067-9:2018) is a
+    /// separate document tracked by `scm::ScmNamespace`.
     Smpte2067_9_2016,
-    /// SMPTE ST 2067-9:2020 — `http://www.smpte-ra.org/ns/2067-9/2020`
-    Smpte2067_9_2020,
     /// Unrecognised namespace; the original URI is preserved.
     Unknown(String),
 }
@@ -427,7 +429,6 @@ impl AssetMapNamespace {
         match uri.trim() {
             "http://www.smpte-ra.org/schemas/429-9/2007/AM" => Self::Dci429_9,
             "http://www.smpte-ra.org/schemas/2067-9/2016" => Self::Smpte2067_9_2016,
-            "http://www.smpte-ra.org/ns/2067-9/2020" => Self::Smpte2067_9_2020,
             other => Self::Unknown(other.to_string()),
         }
     }
@@ -437,7 +438,6 @@ impl AssetMapNamespace {
         match self {
             Self::Dci429_9 => "ST 429-9:2007",
             Self::Smpte2067_9_2016 => "ST 2067-9:2016",
-            Self::Smpte2067_9_2020 => "ST 2067-9:2020",
             Self::Unknown(_) => "Unknown",
         }
     }
@@ -448,7 +448,6 @@ impl std::fmt::Display for AssetMapNamespace {
         match self {
             Self::Dci429_9 => write!(f, "http://www.smpte-ra.org/schemas/429-9/2007/AM"),
             Self::Smpte2067_9_2016 => write!(f, "http://www.smpte-ra.org/schemas/2067-9/2016"),
-            Self::Smpte2067_9_2020 => write!(f, "http://www.smpte-ra.org/ns/2067-9/2020"),
             Self::Unknown(s) => write!(f, "{}", s),
         }
     }
@@ -1048,9 +1047,12 @@ impl PklAsset {
 /// Detects the SMPTE spec version from the root `xmlns` attribute and stores it
 /// on the returned `AssetMap.namespace` field.
 pub fn parse_assetmap(xml_content: &str) -> Result<AssetMap, AssetMapParseError> {
+    // Missing root xmlns lands in Unknown rather than silently defaulting to
+    // DCI 429-9 (the first enum variant) — see FIX-3 in
+    // docs/parser-audit-2026-06.md.
     let namespace = detect_root_namespace(xml_content)
         .map(|uri| AssetMapNamespace::from_uri(&uri))
-        .unwrap_or_default();
+        .unwrap_or_else(|| AssetMapNamespace::Unknown(String::new()));
     let raw: raw::AssetMap = quick_xml::de::from_str(xml_content)?;
     AssetMap::from_raw(raw, namespace)
 }
@@ -1060,9 +1062,12 @@ pub fn parse_assetmap(xml_content: &str) -> Result<AssetMap, AssetMapParseError>
 /// Detects the SMPTE spec version from the root `xmlns` attribute and stores it
 /// on the returned `PackingList.namespace` field.
 pub fn parse_pkl(xml_content: &str) -> Result<PackingList, AssetMapParseError> {
+    // Missing root xmlns lands in Unknown rather than silently defaulting to
+    // DCI 429-8 (the first enum variant) — see FIX-3 in
+    // docs/parser-audit-2026-06.md.
     let namespace = detect_root_namespace(xml_content)
         .map(|uri| PklNamespace::from_uri(&uri))
-        .unwrap_or_default();
+        .unwrap_or_else(|| PklNamespace::Unknown(String::new()));
     let raw: raw::PackingList = quick_xml::de::from_str(xml_content)?;
     PackingList::from_raw(raw, namespace)
 }
@@ -1605,8 +1610,11 @@ mod tests {
         assert_eq!(result.namespace, AssetMapNamespace::Smpte2067_9_2016);
     }
 
+    /// `http://www.smpte-ra.org/ns/2067-9/2020` is not a registered namespace —
+    /// ST 2067-9 has only the 2016 edition. A document declaring this URI
+    /// still parses but lands in `Unknown`.
     #[test]
-    fn assetmap_parses_with_2020_namespace() {
+    fn assetmap_with_fake_2020_namespace_lands_in_unknown() {
         let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
 <AssetMap xmlns="http://www.smpte-ra.org/ns/2067-9/2020">
     <Id>urn:uuid:75864667-c65e-4aae-a5b2-fa5ea5fe31b7</Id>
@@ -1620,7 +1628,7 @@ mod tests {
     </AssetList>
 </AssetMap>"#;
         let result = parse_assetmap(xml).unwrap();
-        assert_eq!(result.namespace, AssetMapNamespace::Smpte2067_9_2020);
+        assert!(matches!(result.namespace, AssetMapNamespace::Unknown(_)));
     }
 
     #[test]
@@ -1639,6 +1647,53 @@ mod tests {
 </AssetMap>"#;
         let result = parse_assetmap(xml).unwrap();
         assert_eq!(result.namespace, AssetMapNamespace::Dci429_9);
+    }
+
+    /// FIX-3 regression: AssetMap without root xmlns lands in `Unknown("")`,
+    /// not the first variant (`Dci429_9`).
+    #[test]
+    fn assetmap_without_root_xmlns_lands_in_unknown_not_dci() {
+        let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<AssetMap>
+    <Id>urn:uuid:75864667-c65e-4aae-a5b2-fa5ea5fe31b7</Id>
+    <VolumeCount>1</VolumeCount>
+    <IssueDate>2024-01-01T00:00:00Z</IssueDate>
+    <AssetList>
+        <Asset>
+            <Id>urn:uuid:0eb3d1b9-b77b-4d3f-bbe5-7c69b15dca85</Id>
+            <ChunkList><Chunk><Path>test.xml</Path></Chunk></ChunkList>
+        </Asset>
+    </AssetList>
+</AssetMap>"#;
+        let result = parse_assetmap(xml).expect("AssetMap should parse without xmlns");
+        assert!(
+            matches!(result.namespace, AssetMapNamespace::Unknown(ref s) if s.is_empty()),
+            "expected Unknown(\"\") for missing xmlns, got {:?}",
+            result.namespace
+        );
+    }
+
+    /// FIX-3 regression: PKL without root xmlns lands in `Unknown("")`,
+    /// not the first variant (`Dci429_8`).
+    #[test]
+    fn pkl_without_root_xmlns_lands_in_unknown_not_dci() {
+        let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<PackingList>
+    <Id>urn:uuid:75864667-c65e-4aae-a5b2-fa5ea5fe31b7</Id>
+    <IssueDate>2024-01-01T00:00:00Z</IssueDate>
+    <AssetList><Asset>
+        <Id>urn:uuid:00000000-0000-0000-0000-000000000001</Id>
+        <Hash>2jmj7l5rSw0yVb/vlWAYkK/YBwk=</Hash>
+        <Size>1024</Size>
+        <Type>application/xml</Type>
+    </Asset></AssetList>
+</PackingList>"#;
+        let result = parse_pkl(xml).expect("PKL should parse without xmlns");
+        assert!(
+            matches!(result.namespace, PklNamespace::Unknown(ref s) if s.is_empty()),
+            "expected Unknown(\"\") for missing xmlns, got {:?}",
+            result.namespace
+        );
     }
 
     // ── OPL ──────────────────────────────────────────────────────────────────

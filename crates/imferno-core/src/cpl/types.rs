@@ -880,10 +880,12 @@ pub enum CplNamespace {
     #[default]
     Smpte2067_3_2013,
     /// SMPTE ST 2067-3:2016 — `http://www.smpte-ra.org/schemas/2067-3/2016`
+    ///
+    /// Also covers ST 2067-3:2020 in practice: the canonical
+    /// `st2067-3a-2020.xsd` reuses the 2016 namespace and is byte-identical
+    /// to the 2016 schema apart from its header text. Real-world 2020-era
+    /// CPLs declare this namespace.
     Smpte2067_3_2016,
-    /// SMPTE ST 2067-3:2020 — `http://www.smpte-ra.org/ns/2067-3/2020`
-    /// Note: `schemas` → `ns` path change in 2020 editions.
-    Smpte2067_3_2020,
     /// DCI era — `http://www.smpte-ra.org/schemas/429-7/2006/CPL`
     Dci429_7,
     /// Unrecognised namespace; the original URI is preserved.
@@ -896,7 +898,6 @@ impl CplNamespace {
         match uri.trim() {
             "http://www.smpte-ra.org/schemas/2067-3/2013" => Self::Smpte2067_3_2013,
             "http://www.smpte-ra.org/schemas/2067-3/2016" => Self::Smpte2067_3_2016,
-            "http://www.smpte-ra.org/ns/2067-3/2020" => Self::Smpte2067_3_2020,
             "http://www.smpte-ra.org/schemas/429-7/2006/CPL" => Self::Dci429_7,
             other => Self::Unknown(other.to_string()),
         }
@@ -907,7 +908,6 @@ impl CplNamespace {
         match self {
             Self::Smpte2067_3_2013 => "ST 2067-3:2013",
             Self::Smpte2067_3_2016 => "ST 2067-3:2016",
-            Self::Smpte2067_3_2020 => "ST 2067-3:2020",
             Self::Dci429_7 => "ST 429-7:2006",
             Self::Unknown(_) => "Unknown",
         }
@@ -918,7 +918,6 @@ impl CplNamespace {
         match self {
             Self::Smpte2067_3_2013 => Some(2013),
             Self::Smpte2067_3_2016 => Some(2016),
-            Self::Smpte2067_3_2020 => Some(2020),
             Self::Dci429_7 => Some(2006),
             Self::Unknown(_) => None,
         }
@@ -930,7 +929,6 @@ impl std::fmt::Display for CplNamespace {
         match self {
             Self::Smpte2067_3_2013 => write!(f, "http://www.smpte-ra.org/schemas/2067-3/2013"),
             Self::Smpte2067_3_2016 => write!(f, "http://www.smpte-ra.org/schemas/2067-3/2016"),
-            Self::Smpte2067_3_2020 => write!(f, "http://www.smpte-ra.org/ns/2067-3/2020"),
             Self::Dci429_7 => write!(f, "http://www.smpte-ra.org/schemas/429-7/2006/CPL"),
             Self::Unknown(s) => write!(f, "{}", s),
         }
@@ -1174,13 +1172,15 @@ mod tests {
 
     // ── CplNamespace ──────────────────────────────────────────────────────────
 
-    /// SMPTE ST 2067-3: CPL namespace URIs identify the spec version.
+    /// SMPTE ST 2067-3:2020 reuses the 2016 namespace per the canonical
+    /// `st2067-3a-2020.xsd`. The string `/ns/2067-3/2020` is not a registered
+    /// namespace; if it ever appears in the wild it lands in `Unknown`.
     #[test]
-    fn cpl_namespace_from_uri_2020() {
+    fn cpl_namespace_fake_2020_uri_lands_in_unknown() {
         let ns = CplNamespace::from_uri("http://www.smpte-ra.org/ns/2067-3/2020");
-        assert_eq!(ns, CplNamespace::Smpte2067_3_2020);
-        assert_eq!(ns.year(), Some(2020));
-        assert_eq!(ns.spec_id(), "ST 2067-3:2020");
+        assert!(matches!(ns, CplNamespace::Unknown(_)));
+        assert_eq!(ns.year(), None);
+        assert_eq!(ns.spec_id(), "Unknown");
     }
 
     #[test]

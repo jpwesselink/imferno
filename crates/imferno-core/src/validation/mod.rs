@@ -42,7 +42,7 @@ use std::collections::{HashMap, HashSet};
 
 use self::codes::{St2067_21_2020, St2067_21_2023, St2067_21_2025};
 use crate::assetmap::codes::CoreConstraintsCode;
-use crate::cpl::codes::{St2067_3Code, St2067_3_2013, St2067_3_2016, St2067_3_2020};
+use crate::cpl::codes::{St2067_3Code, St2067_3_2013, St2067_3_2016};
 use crate::cpl::CompositionPlaylist;
 use crate::cpl::{CodingEquations, ColorPrimaries, CplNamespace, EditRate, TransferCharacteristic};
 use crate::diagnostics::codes::ValidationCode;
@@ -82,7 +82,6 @@ pub trait ValidatorRegistry {
         let core_ns = match &cpl.namespace {
             CplNamespace::Smpte2067_3_2013 => Some("http://www.smpte-ra.org/schemas/2067-2/2013"),
             CplNamespace::Smpte2067_3_2016 => Some("http://www.smpte-ra.org/schemas/2067-2/2016"),
-            CplNamespace::Smpte2067_3_2020 => Some("http://www.smpte-ra.org/ns/2067-2/2020"),
             _ => None,
         };
         if let Some(ns) = core_ns {
@@ -269,7 +268,6 @@ impl ValidatorRegistry for ConfigurableValidatorRegistry {
                 CplNamespace::Smpte2067_3_2016 => {
                     Some("http://www.smpte-ra.org/schemas/2067-2/2016")
                 }
-                CplNamespace::Smpte2067_3_2020 => Some("http://www.smpte-ra.org/ns/2067-2/2020"),
                 _ => None,
             }
         };
@@ -1346,9 +1344,8 @@ fn validate_segment_track_durations(cpl: &CompositionPlaylist, issues: &mut Vec<
         CplNamespace::Dci429_7 | CplNamespace::Smpte2067_3_2013 => {
             St2067_3_2013::for_code(St2067_3Code::SegmentDuration)
         }
-        CplNamespace::Smpte2067_3_2016 => St2067_3_2016::for_code(St2067_3Code::SegmentDuration),
-        CplNamespace::Smpte2067_3_2020 | CplNamespace::Unknown(_) => {
-            St2067_3_2020::for_code(St2067_3Code::SegmentDuration)
+        CplNamespace::Smpte2067_3_2016 | CplNamespace::Unknown(_) => {
+            St2067_3_2016::for_code(St2067_3Code::SegmentDuration)
         }
     };
 
@@ -1436,10 +1433,7 @@ fn validate_digital_signature_notice(
     // Digital signatures are supported from ST 2067-2:2016 onwards.
     // Since we don't parse Signer/Signature XML elements, we cannot validate them.
     // Output an info notice for awareness.
-    let supports_signatures = matches!(
-        cpl.namespace,
-        CplNamespace::Smpte2067_3_2016 | CplNamespace::Smpte2067_3_2020
-    );
+    let supports_signatures = matches!(cpl.namespace, CplNamespace::Smpte2067_3_2016);
     if supports_signatures {
         issues.push(
             ValidationIssue::new(
@@ -4140,7 +4134,7 @@ mod tests {
 
     fn minimal_cpl() -> CompositionPlaylist {
         CompositionPlaylist {
-            namespace: CplNamespace::Smpte2067_3_2020,
+            namespace: CplNamespace::Smpte2067_3_2016,
             id: uuid(1),
             annotation: None,
             issue_date: "2024-01-01T00:00:00Z".to_string(),
@@ -4390,13 +4384,9 @@ mod tests {
             .is_none());
     }
 
-    #[test]
-    fn get_validators_for_cpl_returns_core_2020() {
-        let cpl = minimal_cpl();
-        let validators = get_validators_for_cpl(&cpl);
-        assert_eq!(validators.len(), 1);
-        assert_eq!(validators[0].spec_id(), "ST 2067-2:2020");
-    }
+    // `get_validators_for_cpl_returns_core_2020` was removed alongside
+    // `CplNamespace::Smpte2067_3_2020`; the 2016 equivalent below now covers
+    // the same dispatch path (minimal_cpl uses Smpte2067_3_2016).
 
     #[test]
     fn get_validators_for_cpl_returns_core_plus_app2e() {
@@ -4408,7 +4398,7 @@ mod tests {
         });
         let validators = get_validators_for_cpl(&cpl);
         assert_eq!(validators.len(), 2);
-        assert_eq!(validators[0].spec_id(), "ST 2067-2:2020");
+        assert_eq!(validators[0].spec_id(), "ST 2067-2:2016");
         assert_eq!(validators[1].spec_id(), "ST 2067-21:2023 (App2E)");
     }
 
@@ -4425,7 +4415,7 @@ mod tests {
         let registry = BuiltinValidatorRegistry;
         let validators = registry.resolve_for_cpl(&cpl);
         assert_eq!(validators.len(), 2);
-        assert_eq!(validators[0].spec_id(), "ST 2067-2:2020");
+        assert_eq!(validators[0].spec_id(), "ST 2067-2:2016");
         assert_eq!(validators[1].spec_id(), "ST 2067-21:2023 (App2E)");
     }
 
@@ -4476,7 +4466,7 @@ mod tests {
 
         let validators = registry.resolve_for_cpl(&cpl);
         assert_eq!(validators.len(), 2);
-        assert_eq!(validators[0].spec_id(), "ST 2067-2:2020");
+        assert_eq!(validators[0].spec_id(), "ST 2067-2:2016");
         assert_eq!(validators[1].spec_id(), "ST 2067-21:2023 (App2E)");
     }
 
@@ -4547,7 +4537,7 @@ mod tests {
         });
         let validators = get_validators_for_cpl(&cpl);
         assert_eq!(validators.len(), 2);
-        assert_eq!(validators[0].spec_id(), "ST 2067-2:2020");
+        assert_eq!(validators[0].spec_id(), "ST 2067-2:2016");
         assert_eq!(validators[1].spec_id(), "ST 2067-21:2023 (App2E)");
     }
 
@@ -4570,14 +4560,14 @@ mod tests {
             1,
             "empty app_specs should suppress app profile"
         );
-        assert_eq!(validators[0].spec_id(), "ST 2067-2:2020");
+        assert_eq!(validators[0].spec_id(), "ST 2067-2:2016");
     }
 
     #[test]
     fn configurable_registry_raw_string_core_uri_override() {
         // Raw string URI override for callers that need to target an unlisted namespace.
         let mut cpl = minimal_cpl();
-        cpl.namespace = CplNamespace::Smpte2067_3_2020;
+        cpl.namespace = CplNamespace::Smpte2067_3_2016;
         let registry = ConfigurableValidatorRegistry::new(ValidatorSelection {
             core_namespace_uri: Some("http://www.smpte-ra.org/schemas/2067-2/2016".to_string()),
             ..Default::default()
@@ -4598,7 +4588,7 @@ mod tests {
         });
         let validators = registry.resolve_for_cpl(&cpl);
         assert_eq!(validators.len(), 2);
-        assert_eq!(validators[0].spec_id(), "ST 2067-2:2020");
+        assert_eq!(validators[0].spec_id(), "ST 2067-2:2016");
         assert_eq!(validators[1].spec_id(), "ST 2067-21:2023 (App2E)");
     }
 
@@ -5131,12 +5121,12 @@ mod tests {
         });
         let validators = get_validators_for_cpl(&cpl);
         assert_eq!(validators.len(), 2, "Should dispatch both core and app2e");
-        assert_eq!(validators[0].spec_id(), "ST 2067-2:2020");
+        assert_eq!(validators[0].spec_id(), "ST 2067-2:2016");
         assert_eq!(validators[1].spec_id(), "ST 2067-21:2023 (App2E)");
 
         // validate_cpl should run both and merge issues
         let issues = validate_cpl(&cpl);
-        let has_core = issues.iter().any(|i| i.code.starts_with("ST2067-2:2020:"));
+        let has_core = issues.iter().any(|i| i.code.starts_with("ST2067-2:2016:"));
         assert!(
             has_core,
             "Core validator should produce issues for CPL without EDL"
@@ -8835,10 +8825,10 @@ mod tests {
 
     // ── #43: Digital Signatures notice ───────────────────────────────────
 
-    /// CPL with 2020 namespace should emit digital signature info notice.
+    /// CPL with 2016+ namespace should emit digital signature info notice.
     #[test]
-    fn core_emits_digital_signature_notice_for_2020_cpl() {
-        let cpl = minimal_cpl(); // Uses Smpte2067_3_2020
+    fn core_emits_digital_signature_notice_for_modern_cpl() {
+        let cpl = minimal_cpl(); // Uses Smpte2067_3_2016
         let v = CoreConstraints2020;
         let issues = v.validate_cpl(&cpl);
         assert!(

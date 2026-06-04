@@ -2200,7 +2200,7 @@ impl Imferno {
                             ValidationIssue::new(
                                 Severity::Error,
                                 Category::Timing,
-                                codes::St2067_3_2020::SegmentDuration,
+                                codes::St2067_3_2016::SegmentDuration,
                                 format!(
                                     "Segment {} has mismatched virtual track durations: \
                                      track {} = {:.6}s but track {} = {:.6}s",

@@ -61,10 +61,10 @@ pub fn list_rules_js() -> serde_json::Value {
     // Core (ASSETMAP / PKL)
     collect::<imferno_core::assetmap::codes::St2067_2_2020>("core", &mut out);
 
-    // CPL — all three editions
+    // CPL — 2013 + 2016. ST 2067-3:2020 reuses the 2016 namespace and is
+    // covered by the 2016 rule set (canonical XSD is byte-identical).
     collect::<imferno_core::cpl::codes::St2067_3_2013>("cpl", &mut out);
     collect::<imferno_core::cpl::codes::St2067_3_2016>("cpl", &mut out);
-    collect::<imferno_core::cpl::codes::St2067_3_2020>("cpl", &mut out);
 
     // App 2E — all three editions
     collect::<imferno_core::validation::codes::St2067_21_2020>("app2e", &mut out);

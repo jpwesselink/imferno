@@ -6,7 +6,7 @@ pub use crate::diagnostics::codes::ValidationCode;
 
 pub use crate::assetmap::codes::St2067_2_2020;
 pub use crate::assetmap::volindex_codes::St429_9_2014;
-pub use crate::cpl::codes::St2067_3_2020;
+pub use crate::cpl::codes::St2067_3_2016;
 pub use crate::mxf::codes::St377_1_2011;
 pub use crate::scm::codes::St2067_9_2018;
 

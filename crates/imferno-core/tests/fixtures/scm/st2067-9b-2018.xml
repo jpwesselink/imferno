@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<SidecarCompositionMap xmlns="http://www.smpte-ra.org/ns/2067-9/2018">
+  <Id>urn:uuid:144dbc24-62bf-611c-4fcc-a936759e31f7</Id>
+  <Properties>
+    <Annotation>Sidecar Composition Map Example</Annotation>
+    <IssueDate>2018-02-07T12:51:21+00:00</IssueDate>
+    <Issuer>Sidecar Composition Map Issuer</Issuer>
+  </Properties>
+  <SidecarAssetList>
+    <SidecarAsset>
+      <Id>urn:uuid:32bae51e-0e70-ebaa-c643-77805f3c90f5</Id>
+      <AssociatedCPLList>
+        <CPLId>urn:uuid:d7ab9e8a-15b3-2e11-15d9-fc30b26e924e</CPLId>
+      </AssociatedCPLList>
+    </SidecarAsset>
+  </SidecarAssetList>
+</SidecarCompositionMap>

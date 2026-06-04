@@ -29,11 +29,13 @@ use crate::cpl::{
 // ─── Code dispatch helper ─────────────────────────────────────────────────────
 
 fn code_fn(ns: &CplNamespace) -> fn(St2067_3Code) -> &'static str {
-    use crate::cpl::codes::{St2067_3_2013, St2067_3_2016, St2067_3_2020};
+    use crate::cpl::codes::{St2067_3_2013, St2067_3_2016};
     match ns {
         CplNamespace::Dci429_7 | CplNamespace::Smpte2067_3_2013 => St2067_3_2013::for_code,
-        CplNamespace::Smpte2067_3_2016 => St2067_3_2016::for_code,
-        CplNamespace::Smpte2067_3_2020 | CplNamespace::Unknown(_) => St2067_3_2020::for_code,
+        // ST 2067-3:2020 reuses the 2016 namespace (canonical XSD is byte-identical
+        // to 2016), so 2020-era CPLs land here too. Unknown namespaces default to
+        // the latest real ruleset.
+        CplNamespace::Smpte2067_3_2016 | CplNamespace::Unknown(_) => St2067_3_2016::for_code,
     }
 }
 

@@ -243,5 +243,6 @@ macro_rules! define_st2067_3_enum {
 }
 
 define_st2067_3_enum!(St2067_3_2013, "ST2067-3:2013");
+// ST 2067-3:2020 reuses the 2016 namespace and the canonical XSD is byte-identical
+// to 2016, so 2016 + 2020 share this rule set.
 define_st2067_3_enum!(St2067_3_2016, "ST2067-3:2016");
-define_st2067_3_enum!(St2067_3_2020, "ST2067-3:2020");

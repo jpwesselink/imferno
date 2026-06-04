@@ -41,6 +41,32 @@ pub enum RuleSeverity {
     Critical,
 }
 
+/// A diagnostic about a `RulesConfig` key that the engine couldn't match.
+///
+/// Produced by [`RulesConfig::validate`]. Operators can use these at
+/// config-load time to catch typos and unsupported syntax before any
+/// validation work runs.
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RuleValidationWarning {
+    /// The configured key that triggered the warning.
+    pub key: String,
+    /// Why it triggered.
+    pub reason: RuleValidationReason,
+}
+
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum RuleValidationReason {
+    /// `source:<variant>` — `<variant>` isn't a known [`IssueSource`].
+    UnknownSource { variant: String },
+    /// The key parsed but matched zero codes in the supplied universe.
+    MatchesNothing,
+    /// The key used syntax the matcher doesn't support (e.g. `**`).
+    UnsupportedPattern { hint: String },
+}
+
 /// ESLint-style per-rule severity overrides.
 ///
 /// Keys are either:
@@ -83,6 +109,67 @@ impl RulesConfig {
     /// Number of configured overrides.
     pub fn len(&self) -> usize {
         self.0.len()
+    }
+
+    /// Check the configured keys against a known-code universe and return
+    /// a list of warnings for keys that match nothing. Useful at config-load
+    /// time so operators get fast feedback on typos and unsupported syntax.
+    ///
+    /// The caller supplies the known-code universe (typically obtained from
+    /// the `listRules` enumerator on the NAPI/wasm boundary, or by iterating
+    /// every typed code enum's `ALL` const).
+    ///
+    /// Warning categories:
+    /// - `UnknownSource` — `source:Foo` where `Foo` isn't a known variant.
+    /// - `MatchesNothing` — the key parsed fine but didn't match any code
+    ///   in `known_codes` (typo, removed rule, or fictional namespace).
+    /// - `UnsupportedPattern` — syntax we don't implement (e.g. `**`).
+    pub fn validate<I, S>(&self, known_codes: I) -> Vec<RuleValidationWarning>
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<str>,
+    {
+        let codes: Vec<String> = known_codes
+            .into_iter()
+            .map(|c| c.as_ref().to_string())
+            .collect();
+        let mut warnings = Vec::new();
+        for key in self.0.keys() {
+            if let Some(rest) = key.strip_prefix("source:") {
+                if parse_source(rest).is_none() {
+                    warnings.push(RuleValidationWarning {
+                        key: key.clone(),
+                        reason: RuleValidationReason::UnknownSource {
+                            variant: rest.to_string(),
+                        },
+                    });
+                }
+                continue;
+            }
+            // `**` is reserved for any-depth wildcards but unsupported by
+            // `glob_match` (each `*` matches a single segment). Flag rather
+            // than silently fail to match.
+            if key.contains("**") {
+                warnings.push(RuleValidationWarning {
+                    key: key.clone(),
+                    reason: RuleValidationReason::UnsupportedPattern {
+                        hint: "`**` (any-depth wildcard) is not supported; use `*/*` or `source:<Variant>` for broader scopes".to_string(),
+                    },
+                });
+                continue;
+            }
+            let matches_any = codes
+                .iter()
+                .any(|c| match_specificity(c, key).is_some());
+            if !matches_any {
+                warnings.push(RuleValidationWarning {
+                    key: key.clone(),
+                    reason: RuleValidationReason::MatchesNothing,
+                });
+            }
+        }
+        warnings.sort_by(|a, b| a.key.cmp(&b.key));
+        warnings
     }
 
     /// Iterate over configured overrides.
@@ -216,12 +303,21 @@ fn literal_prefix_len(key: &str) -> usize {
     key.find('*').unwrap_or(key.len())
 }
 
+/// Parse a source-prefix variant name (e.g. `XsdLayer`) into an [`IssueSource`].
+///
+/// Matching is case-insensitive so operator-friendly keys like
+/// `source:xsdlayer`, `source:XSDLAYER`, and `source:XsdLayer` are all
+/// accepted. Returns `None` for unknown variants — `RulesConfig::validate()`
+/// (FIX-13) surfaces those as unmatchable-pattern warnings.
 fn parse_source(name: &str) -> Option<IssueSource> {
-    match name {
-        "XsdLayer" => Some(IssueSource::XsdLayer),
-        "ProseRule" => Some(IssueSource::ProseRule),
-        "EngineInternal" => Some(IssueSource::EngineInternal),
-        _ => None,
+    if name.eq_ignore_ascii_case("XsdLayer") {
+        Some(IssueSource::XsdLayer)
+    } else if name.eq_ignore_ascii_case("ProseRule") {
+        Some(IssueSource::ProseRule)
+    } else if name.eq_ignore_ascii_case("EngineInternal") {
+        Some(IssueSource::EngineInternal)
+    } else {
+        None
     }
 }
 
@@ -385,7 +481,7 @@ mod tests {
         assert!(match_specificity("XSD/TypeInvalid/IssueDate", "source:XsdLayer").is_some());
         assert!(match_specificity("IMFERNO:Package/X", "source:XsdLayer").is_none());
         assert!(match_specificity("IMFERNO:Package/X", "source:EngineInternal").is_some());
-        assert!(match_specificity("ST2067-3:2020:5/X", "source:ProseRule").is_some());
+        assert!(match_specificity("ST2067-3:2016:5/X", "source:ProseRule").is_some());
         // Unknown source name — no match (silently ignored, doesn't panic).
         assert!(match_specificity("XSD/X", "source:NotAVariant").is_none());
         // Sanity: matched issue inherits the SourcePrefix tier.
@@ -393,6 +489,75 @@ mod tests {
             IssueSource::from_code("XSD/TypeInvalid/IssueDate"),
             IssueSource::XsdLayer,
         );
+    }
+
+    // ── FIX-13: validate() unmatchable-pattern helper ─────────────────────
+
+    /// A clean config (every key resolves) returns no warnings.
+    #[test]
+    fn validate_returns_no_warnings_for_clean_config() {
+        let mut rules = RulesConfig::default();
+        rules.set_raw("XSD/TypeInvalid/IssueDate".into(), RuleSeverity::Warn);
+        rules.set_raw("source:XsdLayer".into(), RuleSeverity::Off);
+        rules.set_raw("XSD/*/*".into(), RuleSeverity::Warn);
+        let warnings = rules.validate(["XSD/TypeInvalid/IssueDate", "XSD/PatternInvalid/UUID"]);
+        assert!(warnings.is_empty(), "expected no warnings, got: {warnings:#?}");
+    }
+
+    /// `source:Foo` where `Foo` isn't a known `IssueSource` variant.
+    #[test]
+    fn validate_flags_unknown_source_variant() {
+        let mut rules = RulesConfig::default();
+        rules.set_raw("source:NotAVariant".into(), RuleSeverity::Off);
+        let warnings = rules.validate::<_, &str>([]);
+        assert_eq!(warnings.len(), 1);
+        assert_eq!(warnings[0].key, "source:NotAVariant");
+        assert_eq!(
+            warnings[0].reason,
+            RuleValidationReason::UnknownSource {
+                variant: "NotAVariant".to_string()
+            }
+        );
+    }
+
+    /// A key that parses fine but matches none of the supplied codes.
+    #[test]
+    fn validate_flags_match_nothing_keys() {
+        let mut rules = RulesConfig::default();
+        rules.set_raw("Doesnotexist".into(), RuleSeverity::Warn);
+        rules.set_raw("XSD/Madeup/*".into(), RuleSeverity::Off);
+        let warnings = rules.validate(["XSD/TypeInvalid/IssueDate"]);
+        assert_eq!(warnings.len(), 2);
+        // sorted by key
+        assert_eq!(warnings[0].key, "Doesnotexist");
+        assert_eq!(warnings[0].reason, RuleValidationReason::MatchesNothing);
+        assert_eq!(warnings[1].key, "XSD/Madeup/*");
+        assert_eq!(warnings[1].reason, RuleValidationReason::MatchesNothing);
+    }
+
+    /// `**` is reserved but not implemented; flag it with a hint.
+    #[test]
+    fn validate_flags_double_star_with_hint() {
+        let mut rules = RulesConfig::default();
+        rules.set_raw("XSD/**/UUID".into(), RuleSeverity::Off);
+        let warnings = rules.validate(["XSD/PatternInvalid/UUID"]);
+        assert_eq!(warnings.len(), 1);
+        assert!(matches!(
+            &warnings[0].reason,
+            RuleValidationReason::UnsupportedPattern { hint } if hint.contains("**")
+        ));
+    }
+
+    /// FIX-5 regression: source-prefix variant names are matched
+    /// case-insensitively so config keys like `source:xsdlayer` and
+    /// `source:XSDLAYER` work as expected.
+    #[test]
+    fn rule_matches_source_prefix_case_insensitively() {
+        assert!(match_specificity("XSD/TypeInvalid/IssueDate", "source:xsdlayer").is_some());
+        assert!(match_specificity("XSD/TypeInvalid/IssueDate", "source:XSDLAYER").is_some());
+        assert!(match_specificity("XSD/TypeInvalid/IssueDate", "source:XsDlAyEr").is_some());
+        assert!(match_specificity("IMFERNO:Package/X", "source:engineinternal").is_some());
+        assert!(match_specificity("ST2067-3:2016:5/X", "source:proserule").is_some());
     }
 
     #[test]

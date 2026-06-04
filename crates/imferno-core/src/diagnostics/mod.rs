@@ -1066,6 +1066,62 @@ mod tests {
         assert_eq!(deserialized.location.cpl_id, Some(uuid));
     }
 
+    /// FIX-12 regression: a ValidationReport carrying both a populated
+    /// `suppressed` bucket and aggregated issues with non-empty
+    /// `additional_instances` survives a serde JSON round-trip.
+    #[test]
+    fn validation_report_serde_round_trip_with_suppressed_and_aggregate() {
+        let uuid1 = ImfUuid::parse("urn:uuid:00000000-0000-0000-0000-000000000001").unwrap();
+        let uuid2 = ImfUuid::parse("urn:uuid:00000000-0000-0000-0000-000000000002").unwrap();
+        let uuid3 = ImfUuid::parse("urn:uuid:00000000-0000-0000-0000-000000000003").unwrap();
+
+        let mut report = ValidationReport::new(ValidationProfile::SMPTE);
+
+        // Aggregated issue: 1 primary + 2 additional instances.
+        let mut aggregated = ValidationIssue::new(
+            Severity::Error,
+            Category::Schema,
+            "XSD/PatternInvalid/UUID",
+            "uuid pattern violation",
+        )
+        .with_location(Location::new().with_cpl(uuid1));
+        aggregated
+            .additional_instances
+            .push(Location::new().with_cpl(uuid2));
+        aggregated
+            .additional_instances
+            .push(Location::new().with_cpl(uuid3));
+        report.errors.push(aggregated);
+
+        // Suppressed issue: demoted by a hypothetical rule key, annotated.
+        let mut suppressed = ValidationIssue::new(
+            Severity::Info,
+            Category::Schema,
+            "XSD/TypeInvalid/IssueDate",
+            "issue date not a valid xs:dateTime",
+        )
+        .with_location(Location::new().with_cpl(uuid1));
+        suppressed
+            .context
+            .insert("suppressed_by".to_string(), "source:XsdLayer".to_string());
+        report.suppressed.push(suppressed);
+
+        let json = serde_json::to_string(&report).expect("serialise");
+        let back: ValidationReport = serde_json::from_str(&json).expect("deserialise");
+
+        assert_eq!(back.errors.len(), 1);
+        assert_eq!(back.errors[0].additional_instances.len(), 2);
+        assert_eq!(back.errors[0].additional_instances[0].cpl_id, Some(uuid2));
+        assert_eq!(back.errors[0].additional_instances[1].cpl_id, Some(uuid3));
+        assert_eq!(back.errors[0].instance_count(), 3);
+
+        assert_eq!(back.suppressed.len(), 1);
+        assert_eq!(
+            back.suppressed[0].context.get("suppressed_by").map(String::as_str),
+            Some("source:XsdLayer")
+        );
+    }
+
     fn agg_issue(code: &str, severity: Severity, cpl_byte: u8) -> ValidationIssue {
         let uuid =
             ImfUuid::parse(&format!("urn:uuid:00000000-0000-0000-0000-0000000000{:02x}", cpl_byte))

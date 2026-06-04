@@ -1,0 +1,35 @@
+name: XSD Drift Check
+
+# Compares vendored XSDs in `specs/` against the live SMPTE-RA copies.
+# Runs weekly (scheduled) and on-demand. Not part of the per-PR CI to
+# avoid gating merges on SMPTE-RA availability, but the workflow is
+# still informative when manually triggered before a release.
+#
+# Security note: this workflow has no untrusted input (no PR titles,
+# issue bodies, commit messages, head_ref, etc.). The python script
+# reads only the vendored manifest.json and fixed SMPTE-RA URLs.
+
+on:
+  schedule:
+    # Mondays at 06:00 UTC. SMPTE rarely re-publishes mid-week.
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Run XSD drift check
+        run: python3 specs/comparisons/_tools/check_xsd_drift.py

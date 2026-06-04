@@ -28,18 +28,18 @@ mod raw {
         }
     }
 
+    /// Per ST 2067-9:2018 §7.2 Table 2: the SCM root contains `<Id>`, a
+    /// `<Properties>` wrapper (Annotation + IssueDate + Issuer), a
+    /// `<SidecarAssetList>`, and optional Signer/Signature elements.
+    /// `Creator` is **not** in the canonical XSD — earlier versions of
+    /// this parser carried it as an Option, but the field can never be
+    /// populated from a conformant document, so it's been removed.
     #[derive(Deserialize)]
     pub struct SidecarCompositionMap {
         #[serde(rename = "Id")]
         pub id: String,
-        #[serde(rename = "IssueDate")]
-        pub issue_date: String,
-        #[serde(rename = "Issuer")]
-        pub issuer: Option<String>,
-        #[serde(rename = "Creator")]
-        pub creator: Option<String>,
-        #[serde(rename = "Annotation")]
-        pub annotation: Option<String>,
+        #[serde(rename = "Properties")]
+        pub properties: Properties,
         /// Presence flag for §7.2.4 Signer/Signature cross-check.
         #[serde(rename = "Signer")]
         pub signer: Option<Present>,
@@ -48,6 +48,16 @@ mod raw {
         pub signature: Option<Present>,
         #[serde(rename = "SidecarAssetList")]
         pub sidecar_asset_list: Option<SidecarAssetList>,
+    }
+
+    #[derive(Deserialize)]
+    pub struct Properties {
+        #[serde(rename = "Annotation")]
+        pub annotation: Option<String>,
+        #[serde(rename = "IssueDate")]
+        pub issue_date: String,
+        #[serde(rename = "Issuer")]
+        pub issuer: Option<String>,
     }
 
     #[derive(Deserialize)]
@@ -76,6 +86,11 @@ mod raw {
 // ── Domain types ─────────────────────────────────────────────────────────────
 
 /// A parsed Sidecar Composition Map document (ST 2067-9:2018).
+///
+/// Field naming flattens the XSD's `<Properties>` wrapper into the
+/// top-level struct; on the wire the document still carries
+/// `<Properties>{Annotation,IssueDate,Issuer}</Properties>` per
+/// ST 2067-9:2018 §7.2 Table 2.
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SidecarCompositionMap {
@@ -83,7 +98,6 @@ pub struct SidecarCompositionMap {
     pub id: ImfUuid,
     pub issue_date: String,
     pub issuer: Option<String>,
-    pub creator: Option<String>,
     pub annotation: Option<String>,
     /// True if a `<Signer>` element was present (§7.2.4).
     pub has_signer: bool,
@@ -150,10 +164,9 @@ pub fn parse_scm(xml: &str) -> Result<SidecarCompositionMap, ScmParseError> {
 
     Ok(SidecarCompositionMap {
         id,
-        issue_date: raw.issue_date,
-        issuer: raw.issuer,
-        creator: raw.creator,
-        annotation: raw.annotation,
+        issue_date: raw.properties.issue_date,
+        issuer: raw.properties.issuer,
+        annotation: raw.properties.annotation,
         has_signer: raw.signer.is_some(),
         has_signature: raw.signature.is_some(),
         sidecar_assets,
@@ -170,7 +183,9 @@ mod tests {
     const MINIMAL_SCM: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
 <SidecarCompositionMap xmlns="http://www.smpte-ra.org/ns/2067-9/2018">
     <Id>urn:uuid:a1b2c3d4-e5f6-7890-abcd-ef1234567890</Id>
-    <IssueDate>2024-01-01T00:00:00</IssueDate>
+    <Properties>
+        <IssueDate>2024-01-01T00:00:00</IssueDate>
+    </Properties>
     <SidecarAssetList>
         <SidecarAsset>
             <Id>urn:uuid:11111111-2222-3333-4444-555555555555</Id>
@@ -203,7 +218,9 @@ mod tests {
         let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
 <SidecarCompositionMap xmlns="http://www.smpte-ra.org/ns/2067-9/2018">
     <Id>urn:uuid:a1b2c3d4-e5f6-7890-abcd-ef1234567890</Id>
-    <IssueDate>2024-01-01T00:00:00</IssueDate>
+    <Properties>
+        <IssueDate>2024-01-01T00:00:00</IssueDate>
+    </Properties>
     <SidecarAssetList>
         <SidecarAsset>
             <Id>urn:uuid:11111111-2222-3333-4444-555555555555</Id>
@@ -224,18 +241,22 @@ mod tests {
 
     #[test]
     fn parses_optional_fields() {
+        // `Creator` is intentionally NOT used here — ST 2067-9:2018 §7.2
+        // Table 2 has no Creator element under Properties. Earlier
+        // versions of this parser carried it, but the field could never
+        // populate from a conformant document.
         let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
 <SidecarCompositionMap xmlns="http://www.smpte-ra.org/ns/2067-9/2018">
     <Id>urn:uuid:a1b2c3d4-e5f6-7890-abcd-ef1234567890</Id>
-    <IssueDate>2024-06-15T12:00:00</IssueDate>
-    <Issuer>Test Facility</Issuer>
-    <Creator>Test Tool 1.0</Creator>
-    <Annotation>IAB sidecar for main feature</Annotation>
+    <Properties>
+        <Annotation>IAB sidecar for main feature</Annotation>
+        <IssueDate>2024-06-15T12:00:00</IssueDate>
+        <Issuer>Test Facility</Issuer>
+    </Properties>
     <SidecarAssetList/>
 </SidecarCompositionMap>"#;
         let scm = parse_scm(xml).unwrap();
         assert_eq!(scm.issuer.as_deref(), Some("Test Facility"));
-        assert_eq!(scm.creator.as_deref(), Some("Test Tool 1.0"));
         assert_eq!(
             scm.annotation.as_deref(),
             Some("IAB sidecar for main feature")
@@ -250,9 +271,11 @@ mod tests {
         let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
 <SidecarCompositionMap xmlns="http://www.smpte-ra.org/ns/2067-9/2018">
     <Id>urn:uuid:a1b2c3d4-e5f6-7890-abcd-ef1234567890</Id>
-    <IssueDate>2024-01-01T00:00:00</IssueDate>
-    <Signer><X509Data/></Signer>
+    <Properties>
+        <IssueDate>2024-01-01T00:00:00</IssueDate>
+    </Properties>
     <SidecarAssetList/>
+    <Signer><X509Data/></Signer>
 </SidecarCompositionMap>"#;
         let scm = parse_scm(xml).unwrap();
         assert!(scm.has_signer);
@@ -269,7 +292,9 @@ mod tests {
         let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
 <SidecarCompositionMap xmlns="http://www.smpte-ra.org/ns/2067-9/2018">
     <Id>not-a-uuid</Id>
-    <IssueDate>2024-01-01T00:00:00</IssueDate>
+    <Properties>
+        <IssueDate>2024-01-01T00:00:00</IssueDate>
+    </Properties>
 </SidecarCompositionMap>"#;
         assert!(parse_scm(xml).is_err());
     }

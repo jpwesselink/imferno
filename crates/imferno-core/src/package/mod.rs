@@ -2734,6 +2734,29 @@ mod tests {
             .join(name)
     }
 
+    /// `ValidationOptions::default()` plus the MERIDIAN-specific rule
+    /// suppressions needed so the reference fixture validates clean.
+    ///
+    /// The Photon-vintage MERIDIAN sample carries a real ST 377-4 §6.3.2
+    /// audio defect (`SoundfieldGroupLinkID` on the
+    /// `AudioChannelLabelSubDescriptor` doesn't match the
+    /// `SoundfieldGroupLabelSubDescriptor`'s `MCALinkID`). Our photon-
+    /// parity sweep now catches this — correctly — at Error severity, so
+    /// tests asserting "MERIDIAN validates without errors" need to opt
+    /// out of that single rule explicitly. The CLI tests do the same via
+    /// `--rule SoundfieldGroupLinkIDMismatch=off`.
+    fn meridian_test_options() -> ValidationOptions {
+        let mut rules = crate::diagnostics::rules::RulesConfig::default();
+        rules.set_raw(
+            "SoundfieldGroupLinkIDMismatch".to_string(),
+            crate::diagnostics::rules::RuleSeverity::Off,
+        );
+        ValidationOptions {
+            rules,
+            ..ValidationOptions::default()
+        }
+    }
+
     #[test]
     fn test_parse_netflix_photon_package() {
         let test_path = test_data("MERIDIAN_Netflix_Photon_161006");
@@ -2748,7 +2771,16 @@ mod tests {
                 assert_eq!(main_cpl.content_kind, crate::cpl::ContentKind::Test);
                 assert_eq!(main_cpl.content_title.text, "MERIDIAN");
 
-                package.validate_structure().unwrap();
+                // `validate_structure()` is the legacy Result-shaped entry
+                // and can't accept rule overrides, so go through
+                // `validate(&meridian_test_options())` to suppress the
+                // known MERIDIAN ST 377-4 §6.3.2 audio defect (see helper).
+                let report = package.validate(&meridian_test_options());
+                assert!(
+                    !report.has_errors(),
+                    "MERIDIAN should validate cleanly under meridian_test_options: {:?}",
+                    report.summary()
+                );
             }
             Err(e) => panic!("Failed to parse IMF package: {:?}", e),
         }
@@ -2810,7 +2842,7 @@ mod tests {
         let package =
             Imferno::parse(read_dir(test_path).unwrap()).expect("Failed to parse package");
 
-        let report = package.validate(&ValidationOptions::default());
+        let report = package.validate(&meridian_test_options());
         assert!(
             !report.has_errors(),
             "Package structure validation should have no errors: {:?}",
@@ -2959,7 +2991,7 @@ mod tests {
         let package =
             Imferno::parse(read_dir(test_path).unwrap()).expect("Failed to parse package");
 
-        let report = package.validate(&ValidationOptions::default());
+        let report = package.validate(&meridian_test_options());
         assert!(
             !report.has_errors(),
             "Validation should pass: {:?}",
@@ -3121,7 +3153,7 @@ mod tests {
         let package =
             Imferno::parse(read_dir(test_path).unwrap()).expect("Failed to parse package");
 
-        let report = package.validate(&ValidationOptions::default());
+        let report = package.validate(&meridian_test_options());
         assert!(
             !report.has_errors(),
             "Package should be valid: {:?}",
@@ -3377,7 +3409,7 @@ mod tests {
         let package = Imferno::parse(read_dir(test_path).unwrap()).expect("parse");
 
         // MERIDIAN package should have valid cross-references
-        let report = package.validate(&ValidationOptions::default());
+        let report = package.validate(&meridian_test_options());
         assert!(
             !report.has_errors(),
             "MERIDIAN should be valid: {:?}",
@@ -3579,7 +3611,7 @@ mod tests {
         let test_path = test_data("MERIDIAN_Netflix_Photon_161006");
         let package = Imferno::parse(read_dir(test_path).unwrap()).expect("parse");
 
-        let report = package.validate(&ValidationOptions::default());
+        let report = package.validate(&meridian_test_options());
         assert!(
             !report.has_critical(),
             "MERIDIAN should have no critical issues: {}",

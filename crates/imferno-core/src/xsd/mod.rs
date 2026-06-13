@@ -39,8 +39,7 @@
 //! `validate_against_composite_schema`) or accept the lax-validation
 //! gap for elements whose types come from the unresolved import.
 
-use std::path::{Path, PathBuf};
-use std::sync::OnceLock;
+use std::path::Path;
 
 use crate::diagnostics::codes::ValidationCode;
 use crate::diagnostics::{Category, Location, Severity, ValidationIssue};
@@ -66,22 +65,24 @@ const DCI_PKL_2007_XSD: &str = include_str!("../../../../specs/SMPTE-429-8-PKL-2
 // (the 2020 publication reuses the 2016 PKL schema body modulo header
 // text), so a single vendored copy covers both editions.
 const IMF_PKL_2016_XSD: &str = include_str!("../../../../specs/st2067-2b-2016.xsd");
-const DCML_TYPES_STUB_XSD: &str = include_str!("../../../../specs/dcml-types-stub.xsd");
+// The dcml stub is no longer baked into the binary — `dcml_specs_dir()`
+// was the only consumer and it's been removed in v3.0.0 in favour of
+// uppsala's in-memory schema path. The stub XSD remains in `specs/` for
+// reference and for the future patch where uppsala grows an in-memory
+// schema resolver.
+//
+// const DCML_TYPES_STUB_XSD: &str =
+//     include_str!("../../../../specs/dcml-types-stub.xsd");
 
-/// Lazy-init temp dir containing the dcml-types stub so uppsala's
-/// `from_schema_with_base_path` can resolve the imported dcml schema.
-/// Shared across all calls; the dir lives for the process lifetime.
-fn dcml_specs_dir() -> &'static Path {
-    static CELL: OnceLock<PathBuf> = OnceLock::new();
-    CELL.get_or_init(|| {
-        let dir = std::env::temp_dir().join("imferno-xsd-specs");
-        std::fs::create_dir_all(&dir).expect("create imferno-xsd-specs temp dir");
-        std::fs::write(dir.join("dcml-types-stub.xsd"), DCML_TYPES_STUB_XSD)
-            .expect("write dcml-types-stub.xsd");
-        dir
-    })
-    .as_path()
-}
+// `dcml_specs_dir()` was removed in v3.0.0 — the helper wrote the dcml
+// stub to `std::env::temp_dir()` so uppsala could read it back via
+// `from_schema_with_base_path`. That round-trip panicked on wasm32
+// and defeated the entire reason uppsala was selected (pure-Rust,
+// browser-runnable). The current code uses uppsala's in-memory
+// `from_schema` path; the dcml `<xs:import>` directive is left
+// unresolved and uppsala lax-validates anything in the dcml namespace.
+// The dcml types are independently enforced at the parser layer
+// (`ImfUuid::parse_urn` etc.), so no structural correctness is lost.
 
 /// Run the runtime-XSD validator against a parsed `CompositionPlaylist`.
 ///
@@ -93,12 +94,16 @@ fn dcml_specs_dir() -> &'static Path {
 /// schema-level diagnostics here just like callers using `validate_cpl_xml`
 /// did via the raw-XML path.
 ///
-/// **Native-only.** uppsala's composite-schema resolver writes the dcml
-/// stub to a temp dir via `std::env::temp_dir()`, which panics on wasm32.
-/// The wasm build short-circuits to a no-op so browser callers — who in
-/// practice ingest XML strings, not full packages — still get the semantic
-/// validators without the schema-layer overlay.
-#[cfg(not(target_arch = "wasm32"))]
+/// **Works identically on native and wasm.** Uses uppsala's pure-in-memory
+/// `from_schema` path (no filesystem, no `std::env::temp_dir()`). The
+/// `<xs:import namespace=".../dcmlTypes/">` directives in the vendored
+/// XSDs are left unresolved — uppsala lax-validates anything in the dcml
+/// namespace. We accept that tradeoff because: (a) the dcml types
+/// (`UUIDType`, `UserTextType`, `RationalType`) are also enforced at the
+/// parser layer (`ImfUuid::parse_urn` etc.), so structural-correctness
+/// signal is preserved; (b) the alternative was a temp-dir round-trip
+/// that panicked on wasm — which defeated the entire reason we picked
+/// uppsala in the first place.
 pub fn validate_parsed_cpl(cpl: &crate::cpl::CompositionPlaylist) -> Vec<ValidationIssue> {
     let Some(source_xml) = &cpl.source_xml else {
         return Vec::new();
@@ -109,13 +114,7 @@ pub fn validate_parsed_cpl(cpl: &crate::cpl::CompositionPlaylist) -> Vec<Validat
         // No vendored XSD for DCI / Unknown — skip rather than fail loudly
         _ => return Vec::new(),
     };
-    validate_against_composite_schema_str(source_xml, primary_xsd, dcml_specs_dir(), Some(cpl.id))
-}
-
-/// wasm32 stub — see the native implementation's docstring.
-#[cfg(target_arch = "wasm32")]
-pub fn validate_parsed_cpl(_cpl: &crate::cpl::CompositionPlaylist) -> Vec<ValidationIssue> {
-    Vec::new()
+    validate_against_schema(source_xml, primary_xsd, Some(cpl.id))
 }
 
 /// Run the runtime-XSD validator against an Output Profile List XML.
@@ -124,14 +123,14 @@ pub fn validate_parsed_cpl(_cpl: &crate::cpl::CompositionPlaylist) -> Vec<Valida
 /// preserve `source_xml` like the CPL one does). Validates against
 /// `st2067-100a-2014.xsd`; OPL has only the 2014 edition published.
 pub fn validate_opl_xml(source_xml: &str) -> Vec<ValidationIssue> {
-    validate_against_composite_schema_str(source_xml, IMF_OPL_2014_XSD, dcml_specs_dir(), None)
+    validate_against_schema(source_xml, IMF_OPL_2014_XSD, None)
 }
 
 /// Run the runtime-XSD validator against a Sidecar Composition Map XML.
 ///
 /// Validates against `st2067-9a-2018.xsd` — the only published SCM edition.
 pub fn validate_scm_xml(source_xml: &str) -> Vec<ValidationIssue> {
-    validate_against_composite_schema_str(source_xml, IMF_SCM_2018_XSD, dcml_specs_dir(), None)
+    validate_against_schema(source_xml, IMF_SCM_2018_XSD, None)
 }
 
 /// Run the runtime-XSD validator against a Packing List XML.
@@ -156,19 +155,9 @@ pub fn validate_pkl_xml(
 ) -> Vec<ValidationIssue> {
     use crate::assetmap::PklNamespace;
     match namespace {
-        PklNamespace::Dci429_8 => validate_against_composite_schema_str(
-            source_xml,
-            DCI_PKL_2007_XSD,
-            dcml_specs_dir(),
-            None,
-        ),
+        PklNamespace::Dci429_8 => validate_against_schema(source_xml, DCI_PKL_2007_XSD, None),
         PklNamespace::Smpte2067_2_2016Pkl | PklNamespace::Smpte2067_2_2020 => {
-            validate_against_composite_schema_str(
-                source_xml,
-                IMF_PKL_2016_XSD,
-                dcml_specs_dir(),
-                None,
-            )
+            validate_against_schema(source_xml, IMF_PKL_2016_XSD, None)
         }
         // ST 2067-2:2013 and the bare 2016/2020 namespaces don't have a
         // PKL-companion XSD in the wild. Skip — semantic checks still

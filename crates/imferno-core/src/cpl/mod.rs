@@ -2138,6 +2138,38 @@ pub struct IABEssenceDescriptor {
 pub struct IABSubDescriptors {
     #[serde(rename = "IABSoundfieldLabelSubDescriptor", default)]
     pub iab_soundfield_label_sub_descriptor: Option<IABSoundfieldLabelSubDescriptor>,
+
+    /// ST 2067-201:2026 Annex E — IAB Channel SubDescriptor entries.
+    /// Optional in 2021 (and earlier — silently dropped), recommended
+    /// in 2026 ("should contain one instance for each channel of each
+    /// BedDefinition"). Captured as a raw count via a bag struct so
+    /// downstream code can probe presence without the parser needing
+    /// to model every field defined in Annex E Table E.1.
+    #[serde(rename = "IABChannelSubDescriptor", default)]
+    pub iab_channel_sub_descriptors: Vec<IABChannelSubDescriptor>,
+}
+
+/// Presence-only stub for ST 2067-201:2026 Annex E `IABChannelSubDescriptor`.
+///
+/// The 2026 spec defines the full item set in Table E.1
+/// (`IABBedMetaID`, `IABChannelID`, `IABAudioDescription`,
+/// `IABAudioDescriptionText`); imferno's CPL parser only needs to count
+/// occurrences to fire the `IabChannelSubDescriptorRecommended` warning,
+/// so the inner shape is intentionally permissive — any nested content
+/// deserialises into the catch-all map without affecting presence.
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone, Default)]
+#[cfg_attr(feature = "typescript", derive(TS))]
+#[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
+#[cfg_attr(feature = "wasm", derive(Tsify))]
+#[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
+pub struct IABChannelSubDescriptor {
+    /// Annex E §E.2 — IAB Bed MetaID of the associated BedDefinition.
+    #[serde(rename = "IABBedMetaID", default)]
+    pub bed_meta_id: Option<u32>,
+    /// Annex E §E.2 — Channel ID within the bed.
+    #[serde(rename = "IABChannelID", default)]
+    pub channel_id: Option<u32>,
 }
 
 /// IAB soundfield label sub-descriptor — contains language for Atmos tracks

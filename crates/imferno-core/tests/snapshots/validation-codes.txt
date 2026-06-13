@@ -50,6 +50,7 @@ ST2067-201:2021:5.9/SubDescriptorMissing
 ST2067-201:2021:6.2/IABSequenceNoResources
 ST2067-201:2021:6.2/IABSequenceSourceEncodingInvalid
 ST2067-201:2021:6.2/MainAudioMissing
+ST2067-201:2026:Annex-E/IabChannelSubDescriptorRecommended
 ST2067-202:2022:5/NamespaceUriMissing
 ST2067-202:2022:5/SubDescriptorMissing
 ST2067-202:2022:6/ISXDSequenceNoResources

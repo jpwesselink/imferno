@@ -305,3 +305,65 @@ macro_rules! define_iab_enum {
 define_iab_enum!(St2067_201_2019, "ST2067-201:2019");
 // 2021 catalogue is bit-for-bit identical to 2019 (audit, 2026-06-04).
 define_iab_enum!(St2067_201_2021, "ST2067-201:2021", "ST2067-201:2019");
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ST 2067-201:2026 delta-catalogue
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// The 2026 revision inherits every 2021 rule verbatim (use the
+// `St2067_201_2021` enum for those) and adds exactly one
+// recommendation, Annex E §E.2.
+//
+// Carrying this as a standalone enum (rather than expanding the
+// `define_iab_enum!` macro to all editions) keeps the 2019↔2021
+// `previous_identical_edition` annotation honest — those catalogues
+// remain bit-identical, and the 2026 plugin selects this delta enum
+// on top of the 2021 base.
+
+/// ST 2067-201:2026-only delta codes (over and above the 2021 catalogue).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, strum::EnumIter)]
+pub enum St2067_201_2026Delta {
+    /// Annex E §E.2 — Track Files **should** contain one
+    /// `IABChannelSubDescriptor` for each channel of each
+    /// `BedDefinition`.
+    IabChannelSubDescriptorRecommended,
+}
+
+impl crate::diagnostics::codes::ValidationCode for St2067_201_2026Delta {
+    fn code(&self) -> &'static str {
+        match self {
+            Self::IabChannelSubDescriptorRecommended =>
+                "ST2067-201:2026:Annex-E/IabChannelSubDescriptorRecommended",
+        }
+    }
+    fn description(&self) -> &'static str {
+        match self {
+            Self::IabChannelSubDescriptorRecommended =>
+                "Track File should carry an IABChannelSubDescriptor for each channel of each BedDefinition (Annex E).",
+        }
+    }
+    fn default_severity(&self) -> crate::diagnostics::Severity {
+        // `should` strength per Annex E §E.2 — Warning, not Error.
+        crate::diagnostics::Severity::Warning
+    }
+    fn category(&self) -> crate::diagnostics::Category {
+        crate::diagnostics::Category::Audio
+    }
+    fn example(&self) -> Option<&'static str> {
+        Some(
+            "<IABEssenceDescriptor><SubDescriptors><IABSoundfieldLabelSubDescriptor/></SubDescriptors></IABEssenceDescriptor>  \
+             <!-- no <IABChannelSubDescriptor> entries -->",
+        )
+    }
+}
+
+impl St2067_201_2026Delta {
+    pub const ALL: &'static [Self] = &[Self::IabChannelSubDescriptorRecommended];
+}
+
+impl From<St2067_201_2026Delta> for String {
+    fn from(c: St2067_201_2026Delta) -> String {
+        use crate::diagnostics::codes::ValidationCode;
+        c.code().to_string()
+    }
+}

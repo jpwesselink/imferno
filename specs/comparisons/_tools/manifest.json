@@ -25,6 +25,14 @@
       "prose_url": "https://pub.smpte.org/doc/st2067-2/20200407-pub/st2067-2-2020.pdf",
       "catalogue_files": ["crates/imferno-core/src/assetmap/codes.rs"]
     },
+    "st2067-2b-2016.xsd": {
+      "spec": "ST 2067-2",
+      "edition": "2016",
+      "title": "IMF Packing List companion schema",
+      "namespace": "http://www.smpte-ra.org/schemas/2067-2/2016/PKL",
+      "prose_url": "https://pub.smpte.org/doc/st2067-2/20160518-pub/st2067-2-2016.pdf",
+      "catalogue_files": []
+    },
     "imf-cpl.xsd": {
       "spec": "ST 2067-3",
       "edition": "2013",

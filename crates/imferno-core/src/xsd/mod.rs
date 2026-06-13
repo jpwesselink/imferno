@@ -62,6 +62,10 @@ const IMF_CPL_2016_XSD: &str = include_str!("../../../../specs/st2067-3a-2016.xs
 const IMF_OPL_2014_XSD: &str = include_str!("../../../../specs/st2067-100a-2014.xsd");
 const IMF_SCM_2018_XSD: &str = include_str!("../../../../specs/st2067-9a-2018.xsd");
 const DCI_PKL_2007_XSD: &str = include_str!("../../../../specs/SMPTE-429-8-PKL-2007.xsd");
+// st2067-2b-2020.xsd targets the same namespace as st2067-2b-2016.xsd
+// (the 2020 publication reuses the 2016 PKL schema body modulo header
+// text), so a single vendored copy covers both editions.
+const IMF_PKL_2016_XSD: &str = include_str!("../../../../specs/st2067-2b-2016.xsd");
 const DCML_TYPES_STUB_XSD: &str = include_str!("../../../../specs/dcml-types-stub.xsd");
 
 /// Lazy-init temp dir containing the dcml-types stub so uppsala's
@@ -124,10 +128,20 @@ pub fn validate_scm_xml(source_xml: &str) -> Vec<ValidationIssue> {
 
 /// Run the runtime-XSD validator against a Packing List XML.
 ///
-/// Only the DCI 429-8:2007 PKL namespace has a vendored XSD; modern
-/// `2067-2/<year>/PKL` namespaces aren't vendored yet, so returns
-/// empty for those (callers still get the catalogue-level semantic
-/// checks via `validate_pkl_*`).
+/// Three PKL namespaces have vendored XSDs:
+/// - **DCI 429-8:2007** — `SMPTE-429-8-PKL-2007.xsd`.
+/// - **ST 2067-2:2016 PKL** (`/schemas/2067-2/2016/PKL`) — `st2067-2b-2016.xsd`.
+/// - **ST 2067-2:2020 PKL** — the canonical 2020 publication's PKL XSD
+///   targets the same `/schemas/2067-2/2016/PKL` namespace and is
+///   structurally identical to the 2016 schema, so the 2016 file
+///   covers both editions.
+///
+/// The bare `/schemas/2067-2/2013` and `/schemas/2067-2/2016` variants
+/// (without the `/PKL` suffix) skip the pre-pass — those forms are
+/// either inline-CPL representations or use the legacy DCI PKL XSD.
+///
+/// Callers still get catalogue-level semantic checks via the package
+/// validator regardless of whether the XSD pre-pass fired.
 pub fn validate_pkl_xml(
     source_xml: &str,
     namespace: &crate::assetmap::PklNamespace,
@@ -140,9 +154,17 @@ pub fn validate_pkl_xml(
             dcml_specs_dir(),
             None,
         ),
-        // No vendored XSD for ST 2067-2:2013/2016/2020 PKL forms yet
-        // (the `st2067-2b-*` companion schemas are not in `specs/`).
-        // Skip silently — semantic checks still run downstream.
+        PklNamespace::Smpte2067_2_2016Pkl | PklNamespace::Smpte2067_2_2020 => {
+            validate_against_composite_schema_str(
+                source_xml,
+                IMF_PKL_2016_XSD,
+                dcml_specs_dir(),
+                None,
+            )
+        }
+        // ST 2067-2:2013 and the bare 2016/2020 namespaces don't have a
+        // PKL-companion XSD in the wild. Skip — semantic checks still
+        // run downstream via the package validator.
         _ => Vec::new(),
     }
 }
@@ -652,12 +674,67 @@ mod tests {
     }
 
     #[test]
-    fn validate_pkl_xml_skips_unvendored_namespace() {
-        // 2067-2:2016 PKL has no vendored XSD — we return empty rather
-        // than fail loudly. Test pins the skip behaviour.
+    fn validate_pkl_xml_skips_namespace_without_pkl_companion() {
+        // The bare 2016 namespace (without the `/PKL` suffix) has no
+        // companion XSD — skipped.
         use crate::assetmap::PklNamespace;
         let issues = validate_pkl_xml("<irrelevant/>", &PklNamespace::Smpte2067_2_2016);
-        assert!(issues.is_empty(), "expected skip on unvendored namespace");
+        assert!(issues.is_empty(), "expected skip on bare 2016 namespace");
+    }
+
+    #[test]
+    fn validate_pkl_xml_runs_for_modern_2016_pkl_namespace() {
+        use crate::assetmap::PklNamespace;
+        let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<PackingList xmlns="http://www.smpte-ra.org/schemas/2067-2/2016/PKL">
+    <Id>urn:uuid:f5e93462-aed2-44ad-a4ba-2adb65823e7c</Id>
+    <IssueDate>2024-01-01T00:00:00Z</IssueDate>
+    <Issuer>Imferno</Issuer>
+    <Creator>Imferno</Creator>
+    <AssetList><Asset>
+        <Id>urn:uuid:00000000-0000-0000-0000-000000000001</Id>
+        <Hash>2jmj7l5rSw0yVb/vlWAYkK/YBwk=</Hash>
+        <Size>1024</Size>
+        <Type>application/mxf</Type>
+    </Asset></AssetList>
+</PackingList>"#;
+        let issues = validate_pkl_xml(xml, &PklNamespace::Smpte2067_2_2016Pkl);
+        for i in &issues {
+            assert!(
+                i.code.starts_with("XSD/"),
+                "expected XSD/* codes only, got {i:#?}"
+            );
+        }
+    }
+
+    #[test]
+    fn validate_pkl_xml_runs_for_2020_pkl_namespace() {
+        // 2020 PKLs declare the same /schemas/2067-2/2016/PKL namespace
+        // (the 2020 spec reused the schema), so they validate against
+        // the 2016 vendored XSD. PklNamespace::Smpte2067_2_2020 is the
+        // SMPTE-RA-landing-page form — it's a real namespace but PKL
+        // documents in the wild don't use it.
+        use crate::assetmap::PklNamespace;
+        let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<PackingList xmlns="http://www.smpte-ra.org/schemas/2067-2/2016/PKL">
+    <Id>urn:uuid:f5e93462-aed2-44ad-a4ba-2adb65823e7c</Id>
+    <IssueDate>2024-01-01T00:00:00Z</IssueDate>
+    <Issuer>Imferno</Issuer>
+    <Creator>Imferno</Creator>
+    <AssetList><Asset>
+        <Id>urn:uuid:00000000-0000-0000-0000-000000000001</Id>
+        <Hash>2jmj7l5rSw0yVb/vlWAYkK/YBwk=</Hash>
+        <Size>1024</Size>
+        <Type>application/mxf</Type>
+    </Asset></AssetList>
+</PackingList>"#;
+        let issues = validate_pkl_xml(xml, &PklNamespace::Smpte2067_2_2020);
+        for i in &issues {
+            assert!(
+                i.code.starts_with("XSD/"),
+                "expected XSD/* codes only, got {i:#?}"
+            );
+        }
     }
 
     #[test]

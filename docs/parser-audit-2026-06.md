@@ -413,17 +413,41 @@ finding ID in parentheses links back to the section above.
 > `opl_with_multiple_macros_captures_all_in_order`); the two
 > pre-existing fixture-backed OPL tests still pass.
 
-> **[FIX-9 partial ✅ ]** Vendored the SCM XSD
-> (`specs/st2067-9a-2018.xsd`) and added three new entry points:
-> `validate_opl_xml`, `validate_scm_xml`, `validate_pkl_xml`. The PKL
-> entry point dispatches by namespace and currently covers the DCI
-> 429-8 form; modern 2067-2 PKL editions skip silently because their
-> companion `st2067-2b-*.xsd` files aren't vendored. AssetMap +
-> VolumeIndex still uncovered for the same reason (no XSDs vendored).
-> Five regression tests added covering OPL clean-pass + missing-field,
-> SCM clean-pass, and PKL skip-vs-run-by-namespace. **Follow-up
-> ticket**: vendor `st2067-2b-2013/2016/2020.xsd`, `st2067-9a-2016.xsd`,
-> ST 429-9 VolumeIndex XSD; then extend dispatch arms accordingly.
+> **[FIX-9 ✅ done as far as vendorable]** Vendored the SCM XSD
+> (`specs/st2067-9a-2018.xsd`) + the modern PKL XSD
+> (`specs/st2067-2b-2016.xsd`) and added four new entry points:
+> `validate_opl_xml`, `validate_scm_xml`, `validate_pkl_xml`,
+> `validate_assetmap_xml` (skipped — see below).
+>
+> **PKL coverage** dispatches by namespace:
+> - `Dci429_8` → `SMPTE-429-8-PKL-2007.xsd`
+> - `Smpte2067_2_2016Pkl` → `st2067-2b-2016.xsd`
+> - `Smpte2067_2_2020` → `st2067-2b-2016.xsd` (canonical 2020 PKL XSD
+>   reuses the 2016 namespace + body)
+> - bare `Smpte2067_2_2013` / `Smpte2067_2_2016` → skip (no companion
+>   XSD in the wild)
+>
+> **Gaps confirmed unresolvable from vendoring (2026-06-13 probe of
+> pub.smpte.org + Photon's resource bundle):**
+> - **IAB:2021** — no separate XSD published. Photon doesn't have it,
+>   SMPTE's `st2067-201-20201109-pub.zip` ships only the PDF, the catalogue
+>   is bit-for-bit identical to 2019. Workaround: keep `St2067_201_2021`
+>   with the `previous_identical_edition = "ST2067-201:2019"` annotation;
+>   XSD pre-pass for 2021-namespace documents skips and structural checks
+>   still fire.
+> - **IAB:2026** — newly published (discovered 2026-06-13); also PDF-only
+>   in `st2067-201-20260325-pub.zip`. No catalogue entries yet — separate
+>   follow-up to add `St2067_201_2026`.
+> - **AssetMap (any edition)** — `st2067-9-20180522-pub.zip` and
+>   `st429-9-20141124-pub.zip` both ship only the PDF. The AssetMap
+>   schema is defined inline in spec prose with no standalone XSD.
+> - **VolumeIndex** — same situation. ST 429-14:2014 covers AuxData, not
+>   VolumeIndex; the VolumeIndex schema is also prose-only.
+>
+> Six regression tests added (OPL clean-pass, OPL missing-field, SCM
+> clean-pass, PKL skip-on-bare-namespace, PKL modern-2016, PKL 2020).
+> Drift CI (`xsd-drift.yml`) covers the new `st2067-2b-2016.xsd`
+> entry via the updated `manifest.json`.
 
 > **[FIX-10 ✅ done]** New integration test
 > `tests/parser_negative_inputs.rs` covers 6 parsers × 3 probes

@@ -13,3 +13,8 @@ wildcards = "deny"
 [sources]
 unknown-registry = "deny"
 unknown-git = "deny"
+# `uppsala` is patched onto our `imferno-patches` fork — see the
+# top-level Cargo.toml's `[patch.crates-io]` block. Tracks
+# v0.4.0 plus two imferno-only fixes (element_path on
+# ValidationError + xmlns-aware QName resolution).
+allow-git = ["https://github.com/jpwesselink/uppsala"]

@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+Stub for SMPTE ST 433:2008 dcml types — minimal definitions for the
+three types every IMF schema imports. NOT a reproduction of the
+SMPTE-published ST 433 XSD (which isn't redistributed by SMPTE-RA at
+the standard /sites/default/files/ URL pattern); these are
+hand-authored stubs matching the publicly-documented type shapes
+already visible in the BSD-licensed SMPTE-429-8-PKL-2007.xsd
+which defines local copies of UUID and UserText.
+
+Used by imferno_core::xsd::validate_against_composite_schema as the
+resolution target for the <xs:import> on the dcml namespace, so the
+uppsala XSD validator can type-check elements declared with
+dcml:UUIDType / dcml:UserTextType / dcml:RationalType instead of
+lax-validating them.
+
+Replace with the canonical ST 433 schema if/when it becomes
+redistributable; this stub is intentionally minimal.
+-->
+<xs:schema
+    xmlns:xs="http://www.w3.org/2001/XMLSchema"
+    xmlns:dcml="http://www.smpte-ra.org/schemas/433/2008/dcmlTypes/"
+    targetNamespace="http://www.smpte-ra.org/schemas/433/2008/dcmlTypes/"
+    elementFormDefault="qualified"
+    attributeFormDefault="unqualified">
+
+    <xs:simpleType name="UUIDType">
+        <xs:restriction base="xs:anyURI">
+            <xs:pattern value="urn:uuid:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"/>
+        </xs:restriction>
+    </xs:simpleType>
+
+    <xs:complexType name="UserTextType">
+        <xs:simpleContent>
+            <xs:extension base="xs:string">
+                <xs:attribute name="language" type="xs:language" use="optional" default="en"/>
+            </xs:extension>
+        </xs:simpleContent>
+    </xs:complexType>
+
+    <xs:simpleType name="RationalType">
+        <xs:restriction>
+            <xs:simpleType>
+                <xs:list itemType="xs:integer"/>
+            </xs:simpleType>
+            <xs:length value="2"/>
+        </xs:restriction>
+    </xs:simpleType>
+
+</xs:schema>

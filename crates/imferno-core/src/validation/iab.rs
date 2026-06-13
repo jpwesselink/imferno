@@ -42,6 +42,15 @@ impl ConstraintsValidator for AppIabPlugin2019 {
 ///
 /// Runs App2E base validation plus ST 2067-201:2021-specific IAB constraints.
 /// In the 2021 edition ChannelCount is ignored (not checked).
+///
+/// **Selected by explicit caller request, not by document namespace.**
+/// Real-world IAB documents — including those validated against the
+/// 2021 prose — declare the 2019 namespace
+/// `http://www.smpte-ra.org/ns/2067-201/2019` (verified firsthand from
+/// the 2021 PDF line 642 and the 2026 publication's inline schema).
+/// Callers wanting the 2021 channel-count-off semantics select
+/// `AppIabPlugin2021` explicitly via
+/// `ValidatorSelection::app_specs = vec![AppSpecTarget::St2067_201_2021]`.
 pub struct AppIabPlugin2021;
 
 impl ConstraintsValidator for AppIabPlugin2021 {
@@ -63,12 +72,106 @@ impl ConstraintsValidator for AppIabPlugin2021 {
     }
 }
 
+/// ST 2067-201:2026 IAB Level 0 Plug-in validator.
+///
+/// Runs the 2021 base validation verbatim (no normative changes to
+/// any existing rule between 2021 and 2026 per the spec-diff), then
+/// adds the single Annex E recommendation introduced in the 2026
+/// revision: every IAB Track File should expose `IABChannelSubDescriptor`
+/// entries mirroring the channels of each `BedDefinition`. The check
+/// fires at Warning severity and **only fires from this validator** —
+/// 2019 and 2021 documents are not held to the recommendation.
+///
+/// Like `AppIabPlugin2021`, this is selected by explicit caller
+/// request (`ValidatorSelection::app_specs`), not by namespace —
+/// the 2026 publication continues to declare
+/// `http://www.smpte-ra.org/ns/2067-201/2019` per its inline HTML
+/// schema (firsthand-confirmed 2026-06-13).
+pub struct AppIabPlugin2026;
+
+impl ConstraintsValidator for AppIabPlugin2026 {
+    fn spec_id(&self) -> &str {
+        "ST 2067-201:2026 (IAB Level 0 Plug-in)"
+    }
+
+    fn validate_cpl(&self, cpl: &CompositionPlaylist) -> Vec<ValidationIssue> {
+        let mut issues = AppIabPlugin2021.validate_cpl(cpl);
+        validate_iab_channel_sub_descriptor_recommendation(cpl, &mut issues);
+        issues
+    }
+}
+
+/// ST 2067-201:2026 Annex E §E.2 — Warning-level recommendation.
+///
+/// Walks every `IABEssenceDescriptor` in the CPL and flags those
+/// whose `SubDescriptors` block carries zero `IABChannelSubDescriptor`
+/// entries. The 2026 prose says "should contain one instance for each
+/// channel of each BedDefinition" — without parsing the IAB bitstream
+/// we can't count BedDefinition channels, so we use the conservative
+/// "any presence" heuristic: zero entries → warn; one or more → assume
+/// the writer met the recommendation.
+fn validate_iab_channel_sub_descriptor_recommendation(
+    cpl: &CompositionPlaylist,
+    issues: &mut Vec<ValidationIssue>,
+) {
+    use crate::diagnostics::codes::ValidationCode;
+    use crate::validation::iab_codes::St2067_201_2026Delta;
+
+    let edl = match &cpl.essence_descriptor_list {
+        Some(edl) => edl,
+        None => return,
+    };
+
+    for ed in &edl.essence_descriptors {
+        let iab = match &ed.iab_essence_descriptor {
+            Some(iab) => iab,
+            None => continue,
+        };
+
+        let n = iab
+            .sub_descriptors
+            .as_ref()
+            .map(|sd| sd.iab_channel_sub_descriptors.len())
+            .unwrap_or(0);
+        if n == 0 {
+            let code = St2067_201_2026Delta::IabChannelSubDescriptorRecommended;
+            let ed_loc = Location::new()
+                .with_cpl(cpl.id)
+                .with_path(format!("EssenceDescriptor/{}", ed.id));
+            issues.push(
+                ValidationIssue::new(
+                    code.default_severity(),
+                    code.category(),
+                    code.code(),
+                    format!(
+                        "IABEssenceDescriptor {}: no <IABChannelSubDescriptor> entries — \
+                         ST 2067-201:2026 Annex E §E.2 recommends one per channel of each BedDefinition.",
+                        ed.id,
+                    ),
+                )
+                .with_location(ed_loc),
+            );
+        }
+    }
+}
+
 // ── Namespace URIs ────────────────────────────────────────────────────────────
+//
+// Both the `/ns/` and `/schemas/` forms appear on SMPTE-RA — the `/schemas/`
+// path is the older convention; `/ns/` is the modern one used by ST 2067-201
+// since the 2019 publication. Both URIs identify the same logical namespace
+// and IAB documents use either interchangeably in xmlns declarations.
+//
+// **There is no separate 2021 URI.** The 2021 publication
+// (`st2067-201-20201109-pub.zip`) embeds a schema with
+// `targetNamespace="http://www.smpte-ra.org/ns/2067-201/2019"`, and the 2026
+// publication's inline HTML schema does the same. Every IAB document in our
+// corpus declares the 2019 URI regardless of which spec edition's rules
+// authored it. The previously-exported `URI_2021` / `URI_2021_SCHEMAS`
+// consts were removed — they never matched any real document.
 
 pub const URI_2019: &str = "http://www.smpte-ra.org/ns/2067-201/2019";
 pub const URI_2019_SCHEMAS: &str = "http://www.smpte-ra.org/schemas/2067-201/2019";
-pub const URI_2021: &str = "http://www.smpte-ra.org/ns/2067-201/2021";
-pub const URI_2021_SCHEMAS: &str = "http://www.smpte-ra.org/schemas/2067-201/2021";
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
@@ -562,5 +665,108 @@ fn validate_iab_sequences(
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod namespace_tests {
+    use super::*;
+
+    /// Pin the firsthand-confirmed IAB namespace contract:
+    /// - The `/ns/2067-201/2019` URI is the canonical IAB namespace declared by
+    ///   2019, 2021, and 2026 IAB documents alike (firsthand-verified from the
+    ///   2021 PDF line 642 and the 2026 publication's inline HTML schema).
+    /// - The `/schemas/2067-201/2019` URI is the legacy form.
+    /// - There is no 2021 or 2026 URI — both publications reuse 2019.
+    #[test]
+    fn iab_namespace_uris_match_pdf_evidence() {
+        assert_eq!(URI_2019, "http://www.smpte-ra.org/ns/2067-201/2019");
+        assert_eq!(
+            URI_2019_SCHEMAS,
+            "http://www.smpte-ra.org/schemas/2067-201/2019"
+        );
+    }
+}
+
+#[cfg(test)]
+mod plugin_2026_tests {
+    use super::*;
+    use crate::cpl::parse_cpl;
+    use crate::diagnostics::Severity;
+
+    /// Minimal CPL embedding an IABEssenceDescriptor with the given
+    /// `<SubDescriptors>` body. Picks a real-shape CPL skeleton (so
+    /// `parse_cpl` succeeds) and substitutes the SubDescriptors body
+    /// in. The CPL namespace doesn't matter for the Annex E check —
+    /// the test exercises the per-validator dispatch directly.
+    fn cpl_xml_with_iab_subdescriptors(subdescriptors_body: &str) -> String {
+        format!(
+            r#"<?xml version="1.0" encoding="UTF-8"?>
+<CompositionPlaylist xmlns="http://www.smpte-ra.org/schemas/2067-3/2016">
+    <Id>urn:uuid:00000000-0000-0000-0000-000000000cc1</Id>
+    <IssueDate>2026-06-13T12:00:00Z</IssueDate>
+    <ContentTitle>T</ContentTitle>
+    <EditRate>24 1</EditRate>
+    <EssenceDescriptorList>
+        <EssenceDescriptor>
+            <Id>urn:uuid:00000000-0000-0000-0000-000000000aaa</Id>
+            <IABEssenceDescriptor>
+                <SubDescriptors>
+                    {subdescriptors_body}
+                </SubDescriptors>
+            </IABEssenceDescriptor>
+        </EssenceDescriptor>
+    </EssenceDescriptorList>
+    <SegmentList/>
+</CompositionPlaylist>"#,
+        )
+    }
+
+    /// 2026 fires the Annex E warning when the IAB descriptor has zero
+    /// `IABChannelSubDescriptor` entries.
+    #[test]
+    fn plugin_2026_warns_when_iab_channel_subdescriptors_absent() {
+        let xml = cpl_xml_with_iab_subdescriptors("<IABSoundfieldLabelSubDescriptor/>");
+        let cpl = parse_cpl(&xml).expect("CPL should parse");
+        let issues = AppIabPlugin2026.validate_cpl(&cpl);
+        let hit = issues
+            .iter()
+            .find(|i| i.code == "ST2067-201:2026:Annex-E/IabChannelSubDescriptorRecommended");
+        assert!(hit.is_some(), "expected Annex E warning, got: {issues:#?}");
+        assert_eq!(hit.unwrap().severity, Severity::Warning);
+    }
+
+    /// 2026 does NOT fire the warning when at least one
+    /// `IABChannelSubDescriptor` is present.
+    #[test]
+    fn plugin_2026_silent_when_iab_channel_subdescriptors_present() {
+        let xml = cpl_xml_with_iab_subdescriptors(
+            "<IABSoundfieldLabelSubDescriptor/>\
+             <IABChannelSubDescriptor><IABBedMetaID>1</IABBedMetaID><IABChannelID>1</IABChannelID></IABChannelSubDescriptor>",
+        );
+        let cpl = parse_cpl(&xml).expect("CPL should parse");
+        let issues = AppIabPlugin2026.validate_cpl(&cpl);
+        assert!(
+            !issues
+                .iter()
+                .any(|i| i.code.contains("IabChannelSubDescriptorRecommended")),
+            "should NOT fire Annex E warning when ≥1 entry present, got: {issues:#?}"
+        );
+    }
+
+    /// **The 2021 plugin must NOT fire the Annex E warning even when
+    /// `IABChannelSubDescriptor` entries are absent** — the
+    /// recommendation only exists in the 2026 prose.
+    #[test]
+    fn plugin_2021_silent_on_annex_e_recommendation() {
+        let xml = cpl_xml_with_iab_subdescriptors("<IABSoundfieldLabelSubDescriptor/>");
+        let cpl = parse_cpl(&xml).expect("CPL should parse");
+        let issues = AppIabPlugin2021.validate_cpl(&cpl);
+        assert!(
+            !issues
+                .iter()
+                .any(|i| i.code.contains("IabChannelSubDescriptorRecommended")),
+            "AppIabPlugin2021 must not emit the 2026-only Annex E code"
+        );
     }
 }

@@ -8,7 +8,29 @@
 //! (Preface, MaterialPackage, essence descriptors) is out of scope for
 //! this phase — CPL EssenceDescriptors are the primary source of format info.
 
+/// ST 2067-2 §5.3 audio MCA rules applied against the RegXML output
+/// of `mxf::metadata`. WAVE PCM requirement, sample rate / quant-bits
+/// whitelist, channel-label count match, SoundfieldGroupLabel
+/// singleton. Native-only.
+#[cfg(not(target_arch = "wasm32"))]
+pub mod audio_mca;
 pub mod codes;
+/// MXF essence-header validation backed by `smpte-mxf`. Native-only —
+/// the wasm validator never sees MXF binaries (browser callers upload
+/// the XML side of an IMF package), so this module isn't compiled for
+/// `target_arch = "wasm32"`.
+#[cfg(not(target_arch = "wasm32"))]
+pub mod essence;
+/// MXF header-metadata extraction via `regxml` — converts the full
+/// Preface tree (MaterialPackage, descriptors, MCA sub-descriptors)
+/// to RegXML for typed essence-rule application. Native-only.
+#[cfg(not(target_arch = "wasm32"))]
+pub mod metadata;
+/// ST 2067-2 §5.4 timed-text essence rules applied against RegXML.
+/// UCSEncoding=UTF-8, NamespaceURI ∈ IMSC1, MIMEType whitelist.
+/// Native-only.
+#[cfg(not(target_arch = "wasm32"))]
+pub mod timed_text;
 
 use std::io::Read;
 use std::path::Path;
@@ -36,6 +58,12 @@ pub enum MxfParseError {
     KlvError { offset: u64, message: String },
     #[error("Header partition pack missing or too short (got {got} bytes, need ≥ {need})")]
     PartitionPackTooShort { got: usize, need: usize },
+    /// The partition pack declares more bytes than the parser will read
+    /// (`MAX_PP_BODY = 4096`). Real-world IMF header partition packs are
+    /// well under 1 KiB; lengths above the cap suggest a corrupted file or
+    /// an unexpected MXF dialect — we error rather than silently truncate.
+    #[error("Header partition pack body too large (got {got} bytes, parser cap is {cap})")]
+    PartitionPackTooLarge { got: usize, cap: usize },
 }
 
 type Result<T> = std::result::Result<T, MxfParseError>;
@@ -147,7 +175,17 @@ pub fn parse_mxf_header_info_from_reader<R: Read>(reader: &mut R) -> Result<MxfH
     }
 
     // ── Step 3: Read partition pack body ─────────────────────────────────────
-    let body_len = length.min(4096) as usize; // cap to avoid absurd allocations
+    // Cap at 4 KiB to avoid absurd allocations on corrupt input. Real IMF
+    // header partition packs are well under 1 KiB, so lengths above the cap
+    // are a signal of a malformed file rather than a legitimate edge case.
+    const MAX_PP_BODY: u64 = 4096;
+    if length > MAX_PP_BODY {
+        return Err(MxfParseError::PartitionPackTooLarge {
+            got: length as usize,
+            cap: MAX_PP_BODY as usize,
+        });
+    }
+    let body_len = length as usize;
     let mut body = vec![0u8; body_len];
     reader.read_exact(&mut body)?;
 
@@ -360,6 +398,39 @@ mod tests {
             parse_mxf_header_info_from_reader(&mut cursor),
             Err(MxfParseError::NotMxf)
         ));
+    }
+
+    /// FIX-4 regression: an oversized partition pack returns
+    /// `PartitionPackTooLarge` rather than silently truncating to 4096 bytes.
+    /// Pre-fix behaviour was a silent `min(4096)` clamp that could swallow
+    /// essence-container data.
+    #[test]
+    fn oversized_partition_pack_returns_too_large() {
+        let mut bytes = Vec::new();
+        // Valid header partition pack key.
+        bytes.extend_from_slice(&[
+            0x06, 0x0E, 0x2B, 0x34, 0x02, 0x05, 0x01, 0x01, 0x0D, 0x01, 0x02, 0x01, 0x01, 0x01,
+            0x09, 0x00,
+        ]);
+        // BER long-form length = 5000 (above the 4096 cap).
+        // 4-byte BER encoding: 0x84 followed by 0x00001388 (5000).
+        bytes.extend_from_slice(&[0x84, 0x00, 0x00, 0x13, 0x88]);
+        // Body padding so read_exact has bytes to consume if the cap check
+        // didn't trip — we only ever need to hit the length check, so the
+        // body content doesn't matter.
+        bytes.extend(std::iter::repeat_n(0u8, 5000));
+
+        let mut cursor = Cursor::new(bytes);
+        assert!(
+            matches!(
+                parse_mxf_header_info_from_reader(&mut cursor),
+                Err(MxfParseError::PartitionPackTooLarge {
+                    got: 5000,
+                    cap: 4096
+                })
+            ),
+            "expected PartitionPackTooLarge {{ got: 5000, cap: 4096 }}"
+        );
     }
 
     /// SMPTE ST 377-1 §7.1: EssenceContainers batch is correctly parsed.

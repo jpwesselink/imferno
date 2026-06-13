@@ -66,7 +66,7 @@ fn scm_valid() -> String {
         r#"<?xml version="1.0" encoding="UTF-8"?>
 <SidecarCompositionMap xmlns="http://www.smpte-ra.org/ns/2067-9/2018">
   <Id>{SCM_ID}</Id>
-  <IssueDate>2024-01-01T00:00:00</IssueDate>
+  <Properties><IssueDate>2024-01-01T00:00:00</IssueDate></Properties>
   <SidecarAssetList>
     <SidecarAsset>
       <Id>{SIDECAR_ID}</Id>
@@ -87,7 +87,7 @@ fn scm_unknown_asset() -> String {
         r#"<?xml version="1.0" encoding="UTF-8"?>
 <SidecarCompositionMap xmlns="http://www.smpte-ra.org/ns/2067-9/2018">
   <Id>{SCM_ID}</Id>
-  <IssueDate>2024-01-01T00:00:00</IssueDate>
+  <Properties><IssueDate>2024-01-01T00:00:00</IssueDate></Properties>
   <SidecarAssetList>
     <SidecarAsset>
       <Id>{UNKNOWN_ID}</Id>
@@ -108,7 +108,7 @@ fn scm_unknown_cpl() -> String {
         r#"<?xml version="1.0" encoding="UTF-8"?>
 <SidecarCompositionMap xmlns="http://www.smpte-ra.org/ns/2067-9/2018">
   <Id>{SCM_ID}</Id>
-  <IssueDate>2024-01-01T00:00:00</IssueDate>
+  <Properties><IssueDate>2024-01-01T00:00:00</IssueDate></Properties>
   <SidecarAssetList>
     <SidecarAsset>
       <Id>{SIDECAR_ID}</Id>
@@ -129,7 +129,7 @@ fn scm_duplicate_asset() -> String {
         r#"<?xml version="1.0" encoding="UTF-8"?>
 <SidecarCompositionMap xmlns="http://www.smpte-ra.org/ns/2067-9/2018">
   <Id>{SCM_ID}</Id>
-  <IssueDate>2024-01-01T00:00:00</IssueDate>
+  <Properties><IssueDate>2024-01-01T00:00:00</IssueDate></Properties>
   <SidecarAssetList>
     <SidecarAsset>
       <Id>{SIDECAR_ID}</Id>
@@ -156,7 +156,7 @@ fn scm_duplicate_cpl_id() -> String {
         r#"<?xml version="1.0" encoding="UTF-8"?>
 <SidecarCompositionMap xmlns="http://www.smpte-ra.org/ns/2067-9/2018">
   <Id>{SCM_ID}</Id>
-  <IssueDate>2024-01-01T00:00:00</IssueDate>
+  <Properties><IssueDate>2024-01-01T00:00:00</IssueDate></Properties>
   <SidecarAssetList>
     <SidecarAsset>
       <Id>{SIDECAR_ID}</Id>
@@ -178,7 +178,7 @@ fn scm_signer_without_signature() -> String {
         r#"<?xml version="1.0" encoding="UTF-8"?>
 <SidecarCompositionMap xmlns="http://www.smpte-ra.org/ns/2067-9/2018">
   <Id>{SCM_ID}</Id>
-  <IssueDate>2024-01-01T00:00:00</IssueDate>
+  <Properties><IssueDate>2024-01-01T00:00:00</IssueDate></Properties>
   <Signer><X509Data/></Signer>
   <SidecarAssetList>
     <SidecarAsset>

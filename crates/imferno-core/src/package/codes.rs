@@ -6,7 +6,7 @@ pub use crate::diagnostics::codes::ValidationCode;
 
 pub use crate::assetmap::codes::St2067_2_2020;
 pub use crate::assetmap::volindex_codes::St429_9_2014;
-pub use crate::cpl::codes::St2067_3_2020;
+pub use crate::cpl::codes::St2067_3_2016;
 pub use crate::mxf::codes::St377_1_2011;
 pub use crate::scm::codes::St2067_9_2018;
 
@@ -101,6 +101,29 @@ impl ValidationCode for ImfernoCode {
 
     fn category(&self) -> Category {
         Category::Structure
+    }
+
+    fn example(&self) -> Option<&'static str> {
+        Some(match self {
+            Self::UnreferencedAsset =>
+                "ASSETMAP lists urn:uuid:abc… as an Asset, but no CPL Virtual Track resource and no SCM Asset entry references it.",
+            Self::UnlistedEssence =>
+                "BONUS_AUDIO.mxf sits next to ASSETMAP.xml on disk but does not appear in any <Asset> entry of ASSETMAP.xml.",
+            Self::ParseError =>
+                "Top-level error parsing ASSETMAP.xml — e.g. missing root <AssetMap> element or truncated stream.",
+            Self::PklParseError =>
+                "PKL_<uuid>.xml is referenced from ASSETMAP but is malformed XML or violates the PKL schema.",
+            Self::XmlAssetParseError =>
+                "An asset listed with a .xml suffix doesn't parse as CPL, OPL, or SCM (likely a misnamed file or a sidecar XML).",
+            Self::XmlReadError =>
+                "ASSETMAP.xml exists in the manifest but couldn't be opened (permission denied, network read failure, etc.).",
+            Self::ReadDirError =>
+                "The package root directory could not be enumerated (permission denied or path missing).",
+            Self::DirEntryError =>
+                "A specific directory entry returned an error during scanning (often a broken symlink).",
+            Self::PathTraversal =>
+                "<Chunk><Path>../../etc/passwd</Path></Chunk> — the asset path resolves outside the package root.",
+        })
     }
 }
 

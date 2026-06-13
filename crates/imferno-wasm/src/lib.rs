@@ -65,12 +65,13 @@ pub fn build_report_js(
     let files: std::collections::HashMap<String, String> = serde_wasm_bindgen::from_value(files_js)
         .map_err(|e| JsValue::from_str(&format!("Invalid files argument: {}", e)))?;
 
-    let (rules, core_spec, app_specs) = parse_options(&options_js)?;
+    let (rules, core_spec, app_specs, aggregate_repeats) = parse_options(&options_js)?;
 
     let options = ValidationOptions {
         rules,
         core_spec,
         app_specs,
+        aggregate_repeats,
         ..Default::default()
     };
 
@@ -140,12 +141,13 @@ pub fn validate_js(
     let files: std::collections::HashMap<String, String> = serde_wasm_bindgen::from_value(files_js)
         .map_err(|e| JsValue::from_str(&format!("Invalid files argument: {}", e)))?;
 
-    let (rules, core_spec, app_specs) = parse_options(&options_js)?;
+    let (rules, core_spec, app_specs, aggregate_repeats) = parse_options(&options_js)?;
 
     let options = ValidationOptions {
         rules,
         core_spec,
         app_specs,
+        aggregate_repeats,
         ..Default::default()
     };
 
@@ -169,11 +171,12 @@ type ParsedOptions = (
     RulesConfig,
     Option<CoreSpecTarget>,
     Option<Vec<AppSpecTarget>>,
+    bool, // aggregate_repeats
 );
 
 fn parse_options(options_js: &JsValue) -> Result<ParsedOptions, JsValue> {
     if options_js.is_null() || options_js.is_undefined() {
-        return Ok((Default::default(), None, None));
+        return Ok((Default::default(), None, None, false));
     }
 
     let opts: serde_json::Value = serde_wasm_bindgen::from_value(options_js.clone())
@@ -199,5 +202,10 @@ fn parse_options(options_js: &JsValue) -> Result<ParsedOptions, JsValue> {
         Some(s) => parse_app_spec_targets(s).map_err(|e| JsValue::from_str(&e))?,
     };
 
-    Ok((rules, core_spec, app_specs))
+    let aggregate_repeats = opts
+        .get("aggregateRepeats")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+
+    Ok((rules, core_spec, app_specs, aggregate_repeats))
 }

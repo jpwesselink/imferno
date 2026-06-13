@@ -7,13 +7,13 @@ use imferno_core::assetmap::codes::{
     St2067_2_2013_Core, St2067_2_2016_Core, St2067_2_2020, St2067_2_2020_Core,
 };
 use imferno_core::assetmap::volindex_codes::St429_9_2014;
-use imferno_core::cpl::codes::{St2067_3_2013, St2067_3_2016, St2067_3_2020};
+use imferno_core::cpl::codes::{St2067_3_2013, St2067_3_2016};
 use imferno_core::diagnostics::codes::ValidationCode;
 use imferno_core::mxf::codes::St377_1_2011;
 use imferno_core::package::codes::ImfernoCode;
 use imferno_core::scm::codes::St2067_9_2018;
 use imferno_core::validation::codes::{St2067_21_2020, St2067_21_2023, St2067_21_2025};
-use imferno_core::validation::iab_codes::{St2067_201_2019, St2067_201_2021};
+use imferno_core::validation::iab_codes::{St2067_201_2019, St2067_201_2021, St2067_201_2026Delta};
 use imferno_core::validation::isxd_codes::St2067_202_2022;
 
 fn collect_all_codes() -> Vec<String> {
@@ -43,9 +43,6 @@ fn collect_all_codes() -> Vec<String> {
     for v in St2067_3_2016::ALL {
         codes.push(v.code().to_string());
     }
-    for v in St2067_3_2020::ALL {
-        codes.push(v.code().to_string());
-    }
     for v in St2067_9_2018::ALL {
         codes.push(v.code().to_string());
     }
@@ -62,6 +59,9 @@ fn collect_all_codes() -> Vec<String> {
         codes.push(v.code().to_string());
     }
     for v in St2067_201_2021::ALL {
+        codes.push(v.code().to_string());
+    }
+    for v in St2067_201_2026Delta::ALL {
         codes.push(v.code().to_string());
     }
     for v in St2067_202_2022::ALL {

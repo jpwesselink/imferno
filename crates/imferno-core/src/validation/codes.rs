@@ -42,6 +42,12 @@ impl ValidationCode for St2067_21_2020 {
     fn category(&self) -> Category {
         Category::Metadata
     }
+    fn example(&self) -> Option<&'static str> {
+        Some(match self {
+            Self::AppIdMismatch =>
+                "CPL ExtensionProperties contains `<ApplicationIdentification>http://www.smpte-ra.org/schemas/2067-20/2013</ApplicationIdentification>` (App #2) instead of the App #2E URI.",
+        })
+    }
 }
 
 impl St2067_21_2020 {
@@ -59,7 +65,10 @@ impl_into_string!(St2067_21_2020);
 /// Variant naming notes:
 /// - Variants ending in `Unknown` check for unrecognized UL values (wrong value).
 /// - Variants starting with `Required` check for missing mandatory fields.
-/// - Plain variants (e.g. `ColorPrimaries`) check field presence at §6.2.1.
+/// - `*Missing` variants (e.g. `ColorPrimariesMissing`) check field presence at §6.2.1.
+/// - `*Unknown` variants (e.g. `ColorPrimariesUnknown`) check value validity at §6.2.2/3/4.
+/// - Plain variants in §6.2.1 check value-validity for fields whose presence
+///   is enforced elsewhere (e.g. `FieldDominance`, `FrameLayout`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, strum::EnumIter)]
 pub enum St2067_21_2023 {
     // ── §5.2 Frame rates and resolutions ─────────────────────────────────────
@@ -108,9 +117,9 @@ pub enum St2067_21_2023 {
     /// Alpha transparency mode is not permitted in App2E.
     AlphaTransparency,
     /// `CodingEquations` field is absent from the picture descriptor (§6.2.1 Table 8).
-    CodingEquations,
+    CodingEquationsMissing,
     /// `ColorPrimaries` field is absent from the picture descriptor (§6.2.1 Table 8).
-    ColorPrimaries,
+    ColorPrimariesMissing,
     /// `FieldDominance` value is not permitted for the declared `FrameLayout`.
     FieldDominance,
     /// `FrameLayout` value is not in the permitted set for App2E.
@@ -134,7 +143,7 @@ pub enum St2067_21_2023 {
     /// `StoredF2Offset` is not zero as required for interlaced content.
     StoredF2Offset,
     /// `TransferCharacteristic` field is absent from the picture descriptor (§6.2.1 Table 8).
-    TransferCharacteristic,
+    TransferCharacteristicMissing,
 
     // ── §6.2.2 Transfer characteristic value ────────────────────────────────
     /// `TransferCharacteristic` UL is present but not a recognized value (§6.2.2).
@@ -269,8 +278,8 @@ impl ValidationCode for St2067_21_2023 {
             Self::RequiredChannelCount => "ST2067-21:2023:6.5/Required-ChannelCount",
             Self::RequiredQuantizationBits => "ST2067-21:2023:6.5/Required-QuantizationBits",
             Self::AlphaTransparency => "ST2067-21:2023:6.2.1/AlphaTransparency",
-            Self::CodingEquations => "ST2067-21:2023:6.2.1/CodingEquations",
-            Self::ColorPrimaries => "ST2067-21:2023:6.2.1/ColorPrimaries",
+            Self::CodingEquationsMissing => "ST2067-21:2023:6.2.1/CodingEquationsMissing",
+            Self::ColorPrimariesMissing => "ST2067-21:2023:6.2.1/ColorPrimariesMissing",
             Self::FieldDominance => "ST2067-21:2023:6.2.1/FieldDominance",
             Self::FrameLayout => "ST2067-21:2023:6.2.1/FrameLayout",
             Self::FrameLayoutInterlaced => "ST2067-21:2023:6.2.1/FrameLayoutInterlaced",
@@ -282,10 +291,14 @@ impl ValidationCode for St2067_21_2023 {
             Self::SampledXOffset => "ST2067-21:2023:6.2.1/SampledXOffset",
             Self::SampledYOffset => "ST2067-21:2023:6.2.1/SampledYOffset",
             Self::StoredF2Offset => "ST2067-21:2023:6.2.1/StoredF2Offset",
-            Self::TransferCharacteristic => "ST2067-21:2023:6.2.1/TransferCharacteristic",
-            Self::TransferCharacteristicUnknown => "ST2067-21:2023:6.2.2/TransferCharacteristic",
-            Self::CodingEquationsUnknown => "ST2067-21:2023:6.2.3/CodingEquations",
-            Self::ColorPrimariesUnknown => "ST2067-21:2023:6.2.4/ColorPrimaries",
+            Self::TransferCharacteristicMissing => {
+                "ST2067-21:2023:6.2.1/TransferCharacteristicMissing"
+            }
+            Self::TransferCharacteristicUnknown => {
+                "ST2067-21:2023:6.2.2/TransferCharacteristicUnknown"
+            }
+            Self::CodingEquationsUnknown => "ST2067-21:2023:6.2.3/CodingEquationsUnknown",
+            Self::ColorPrimariesUnknown => "ST2067-21:2023:6.2.4/ColorPrimariesUnknown",
             Self::J2KRequired => "ST2067-21:2023:6.2.5/J2KRequired",
             Self::AlphaMaxRef => "ST2067-21:2023:6.3/AlphaMaxRef",
             Self::AlphaMinRef => "ST2067-21:2023:6.3/AlphaMinRef",
@@ -346,8 +359,8 @@ impl ValidationCode for St2067_21_2023 {
             Self::RequiredChannelCount => "WavePCM descriptor is missing the required ChannelCount field.",
             Self::RequiredQuantizationBits => "WavePCM descriptor is missing the required QuantizationBits field.",
             Self::AlphaTransparency => "Alpha transparency mode is not permitted in App2E.",
-            Self::CodingEquations => "CodingEquations field is absent from the picture descriptor (Table 8).",
-            Self::ColorPrimaries => "ColorPrimaries field is absent from the picture descriptor (Table 8).",
+            Self::CodingEquationsMissing => "CodingEquations field is absent from the picture descriptor (Table 8).",
+            Self::ColorPrimariesMissing => "ColorPrimaries field is absent from the picture descriptor (Table 8).",
             Self::FieldDominance => "FieldDominance value is not permitted for the declared FrameLayout.",
             Self::FrameLayout => "FrameLayout value is not in the permitted set for App2E.",
             Self::FrameLayoutInterlaced => "FrameLayout declares interlaced content, which is not permitted in App2E.",
@@ -359,7 +372,7 @@ impl ValidationCode for St2067_21_2023 {
             Self::SampledXOffset => "SampledXOffset must be zero.",
             Self::SampledYOffset => "SampledYOffset must be zero.",
             Self::StoredF2Offset => "StoredF2Offset must be zero.",
-            Self::TransferCharacteristic => "TransferCharacteristic field is absent from the picture descriptor (Table 8).",
+            Self::TransferCharacteristicMissing => "TransferCharacteristic field is absent from the picture descriptor (Table 8).",
             Self::TransferCharacteristicUnknown => "TransferCharacteristic UL is present but not a recognized value.",
             Self::CodingEquationsUnknown => "CodingEquations UL is present but not a recognized value.",
             Self::ColorPrimariesUnknown => "ColorPrimaries UL is present but not a recognized value.",
@@ -451,6 +464,150 @@ impl ValidationCode for St2067_21_2023 {
             _ => Category::Video,
         }
     }
+    fn example(&self) -> Option<&'static str> {
+        Some(match self {
+            Self::FrameRate =>
+                "<EditRate>30 1</EditRate>  <!-- not in {24,25,30,50,60,120}/{1,1001} -->",
+            Self::Resolution =>
+                "<StoredWidth>1280</StoredWidth><StoredHeight>720</StoredHeight>  <!-- not 1920×1080 / 3840×2160 / 4096×2160 -->",
+            Self::EmptyLanguageTag =>
+                "<Locale><LanguageList><Language></Language></LanguageList></Locale>",
+            Self::MalformedLanguageTag =>
+                "<Language>123-en</Language>  <!-- BCP-47 primary subtag must start with a letter -->",
+            Self::RegionCode =>
+                "<Language>en-XYZ</Language>  <!-- region subtag XYZ not in ISO 3166-1 -->",
+            Self::ColorSystem =>
+                "ColorPrimaries + TransferCharacteristic + CodingEquations triple doesn't map to a permitted App2E ColorN system",
+            Self::RequiredStoredWidth =>
+                "<RGBADescriptor>…</RGBADescriptor>  <!-- no <StoredWidth> child -->",
+            Self::RequiredStoredHeight =>
+                "<RGBADescriptor>…</RGBADescriptor>  <!-- no <StoredHeight> child -->",
+            Self::RequiredSampleRate =>
+                "<RGBADescriptor>…</RGBADescriptor>  <!-- no <SampleRate> child -->",
+            Self::RequiredFrameLayout =>
+                "<RGBADescriptor>…</RGBADescriptor>  <!-- no <FrameLayout> child -->",
+            Self::RequiredColorPrimaries =>
+                "<RGBADescriptor>…</RGBADescriptor>  <!-- no <ColorPrimaries> UL child -->",
+            Self::RequiredTransferCharacteristic =>
+                "<RGBADescriptor>…</RGBADescriptor>  <!-- no <TransferCharacteristic> UL child -->",
+            Self::RequiredPictureCompression =>
+                "<RGBADescriptor>…</RGBADescriptor>  <!-- no <PictureCompression> UL child -->",
+            Self::RequiredComponentDepth =>
+                "<CDCIDescriptor>…</CDCIDescriptor>  <!-- no <ComponentDepth> child -->",
+            Self::RequiredChannelCount =>
+                "<WAVEPCMDescriptor>…</WAVEPCMDescriptor>  <!-- no <ChannelCount> child -->",
+            Self::RequiredQuantizationBits =>
+                "<WAVEPCMDescriptor>…</WAVEPCMDescriptor>  <!-- no <QuantizationBits> child -->",
+            Self::AlphaTransparency =>
+                "<AlphaTransparency>true</AlphaTransparency>  <!-- App2E disallows alpha -->",
+            Self::CodingEquationsMissing =>
+                "<CDCIDescriptor>…</CDCIDescriptor>  <!-- no <CodingEquations> UL child -->",
+            Self::ColorPrimariesMissing =>
+                "<CDCIDescriptor>…</CDCIDescriptor>  <!-- no <ColorPrimaries> UL child -->",
+            Self::FieldDominance =>
+                "<FieldDominance>2</FieldDominance> on <FrameLayout>FullFrame</FrameLayout>",
+            Self::FrameLayout =>
+                "<FrameLayout>MixedFields</FrameLayout>  <!-- not in {FullFrame,SeparateFields,SingleField} -->",
+            Self::FrameLayoutInterlaced =>
+                "<FrameLayout>SeparateFields</FrameLayout>  <!-- App2E forbids interlaced -->",
+            Self::ImageAlignmentOffset =>
+                "<ImageAlignmentOffset>16</ImageAlignmentOffset>  <!-- must be 0 -->",
+            Self::ImageEndOffset =>
+                "<ImageEndOffset>32</ImageEndOffset>  <!-- must be 0 -->",
+            Self::ImageStartOffset =>
+                "<ImageStartOffset>16</ImageStartOffset>  <!-- must be 0 -->",
+            Self::SampledHeight =>
+                "<StoredHeight>1080</StoredHeight><SampledHeight>1056</SampledHeight>",
+            Self::SampledWidth =>
+                "<StoredWidth>1920</StoredWidth><SampledWidth>1872</SampledWidth>",
+            Self::SampledXOffset =>
+                "<SampledXOffset>4</SampledXOffset>  <!-- must be 0 -->",
+            Self::SampledYOffset =>
+                "<SampledYOffset>4</SampledYOffset>  <!-- must be 0 -->",
+            Self::StoredF2Offset =>
+                "<StoredF2Offset>1</StoredF2Offset>  <!-- must be 0 -->",
+            Self::TransferCharacteristicMissing =>
+                "<CDCIDescriptor>…</CDCIDescriptor>  <!-- no <TransferCharacteristic> UL child -->",
+            Self::TransferCharacteristicUnknown =>
+                "<TransferCharacteristic>urn:smpte:ul:060e2b34.04010101.04010101.01010500</TransferCharacteristic>  <!-- UL not in §6.2.2 table -->",
+            Self::CodingEquationsUnknown =>
+                "<CodingEquations>urn:smpte:ul:060e2b34.04010101.04010101.02020500</CodingEquations>  <!-- UL not in §6.2.3 table -->",
+            Self::ColorPrimariesUnknown =>
+                "<ColorPrimaries>urn:smpte:ul:060e2b34.04010101.04010101.03030500</ColorPrimaries>  <!-- UL not in §6.2.4 table -->",
+            Self::J2KRequired =>
+                "<PictureCompression>urn:smpte:ul:060e2b34.04010101.04010202.01020500</PictureCompression>  <!-- not a JPEG-2000 UL -->",
+            Self::AlphaMaxRef =>
+                "<AlphaMaxRef>1024</AlphaMaxRef>  <!-- outside permitted depth-derived range -->",
+            Self::AlphaMinRef =>
+                "<AlphaMinRef>-1</AlphaMinRef>  <!-- outside permitted depth-derived range -->",
+            Self::ComponentMaxRef =>
+                "<ComponentMaxRef>9999</ComponentMaxRef>  <!-- beyond (2^ComponentDepth)-1 -->",
+            Self::ComponentMinRef =>
+                "<ComponentMinRef>-5</ComponentMinRef>  <!-- must be ≥ 0 -->",
+            Self::Palette =>
+                "<Palette>…</Palette>  <!-- palette images forbidden in App2E -->",
+            Self::PaletteLayout =>
+                "<PaletteLayout>…</PaletteLayout>  <!-- forbidden in App2E -->",
+            Self::ScanningDirection =>
+                "<ScanningDirection>5</ScanningDirection>  <!-- not in permitted set -->",
+            Self::ComponentRefValues =>
+                "<ComponentDepth>10</ComponentDepth><ComponentMaxRef>4096</ComponentMaxRef>  <!-- 4096 > (2^10)-1 -->",
+            Self::AlphaSampleDepth =>
+                "<AlphaSampleDepth>7</AlphaSampleDepth>  <!-- not in {8,10,12,16} -->",
+            Self::ColorSiting =>
+                "<ColorSiting>9</ColorSiting>  <!-- not in permitted set -->",
+            Self::ComponentDepth =>
+                "<ComponentDepth>9</ComponentDepth>  <!-- not in {8,10,12,16} -->",
+            Self::HorizontalSubsampling =>
+                "<HorizontalSubsampling>3</HorizontalSubsampling>  <!-- not in {1,2,4} -->",
+            Self::PaddingBits =>
+                "<PaddingBits>4</PaddingBits>  <!-- must be 0 -->",
+            Self::ReversedByteOrder =>
+                "<ReversedByteOrder>true</ReversedByteOrder>  <!-- byte reversal forbidden -->",
+            Self::VerticalSubsampling =>
+                "<VerticalSubsampling>3</VerticalSubsampling>  <!-- not in {1,2} -->",
+            Self::BlackRefLevel =>
+                "<ComponentDepth>10</ComponentDepth><BlackRefLevel>16</BlackRefLevel>  <!-- expected 64 for 10-bit -->",
+            Self::ColorRange =>
+                "<ComponentDepth>10</ComponentDepth><ColorRange>1019</ColorRange>  <!-- not in permitted set -->",
+            Self::WhiteRefLevel =>
+                "<ComponentDepth>10</ComponentDepth><WhiteRefLevel>235</WhiteRefLevel>  <!-- expected 940 for 10-bit -->",
+            Self::AudioSampleRate =>
+                "<AudioSampleRate>44100/1</AudioSampleRate>  <!-- must be 48000/1 -->",
+            Self::QuantizationBits =>
+                "<QuantizationBits>32</QuantizationBits>  <!-- not in {16,24} -->",
+            Self::CodingStyle =>
+                "JPEG2000SubDescriptor CodingStyleDefault Scod byte declares non-compliant entropy coding",
+            Self::J2CLayout =>
+                "JPEG2000SubDescriptor declares >1 layer or unsupported precinct sizes",
+            Self::J2KExtendedCapabilities =>
+                "JPEG2000SubDescriptor <Capabilities><Bit set=\"15\"/></Capabilities>  <!-- HT not permitted -->",
+            Self::Jpeg2000SubDescriptor =>
+                "<PictureDescriptor>…</PictureDescriptor>  <!-- no JPEG2000SubDescriptor child -->",
+            Self::J2KHtNotAllowed =>
+                "JPEG2000SubDescriptor Profile field declares HTJ2K (ISO 15444-15)",
+            Self::J2K4KResolution =>
+                "<StoredWidth>5000</StoredWidth>  <!-- IMF 4K profile caps width at 4096 -->",
+            Self::J2K2KResolution =>
+                "<StoredWidth>2400</StoredWidth>  <!-- IMF 2K profile caps width at 2048 -->",
+            Self::J2KBcpResolution =>
+                "<StoredWidth>3840</StoredWidth>  <!-- Broadcast Contribution Profile caps width at 1920 -->",
+            Self::ApplicationIdentification =>
+                "<CompositionPlaylist>…</CompositionPlaylist>  <!-- ExtensionProperties has no <ApplicationIdentification> -->",
+            Self::ContentMaturityRatingAgency =>
+                "<ContentMaturityRating><Agency></Agency>…</ContentMaturityRating>",
+            Self::ContentMaturityRatingAgencyUri =>
+                "<ContentMaturityRating><Agency>imdb</Agency>…</ContentMaturityRating>  <!-- not a URI -->",
+            Self::HomogeneousImageEssence =>
+                "Composition mixes Color1 (BT.709) and Color3 (BT.2020) resources across segments",
+            Self::AppIdMismatch =>
+                "<ApplicationIdentification>http://example.org/not-app2e</ApplicationIdentification>",
+            Self::SegmentDurationMultiple =>
+                "<Resource><SourceDuration>7</SourceDuration></Resource>  <!-- not a multiple of 5 -->",
+            Self::MaxCLLMaxFALL =>
+                "HDR content (PQ TransferCharacteristic) with no <MaxCLL> / <MaxFALL> in ExtensionProperties",
+        })
+    }
 }
 
 impl St2067_21_2023 {
@@ -472,8 +629,8 @@ impl St2067_21_2023 {
         Self::RequiredChannelCount,
         Self::RequiredQuantizationBits,
         Self::AlphaTransparency,
-        Self::CodingEquations,
-        Self::ColorPrimaries,
+        Self::CodingEquationsMissing,
+        Self::ColorPrimariesMissing,
         Self::FieldDominance,
         Self::FrameLayout,
         Self::FrameLayoutInterlaced,
@@ -485,7 +642,7 @@ impl St2067_21_2023 {
         Self::SampledXOffset,
         Self::SampledYOffset,
         Self::StoredF2Offset,
-        Self::TransferCharacteristic,
+        Self::TransferCharacteristicMissing,
         Self::TransferCharacteristicUnknown,
         Self::CodingEquationsUnknown,
         Self::ColorPrimariesUnknown,
@@ -565,6 +722,14 @@ impl ValidationCode for St2067_21_2025 {
     }
     fn category(&self) -> Category {
         Category::Subtitle
+    }
+    fn example(&self) -> Option<&'static str> {
+        Some(match self {
+            Self::FNTimedText =>
+                "<ForcedNarrativeSequence>…</ForcedNarrativeSequence>  <!-- but the referenced essence is not a TimedText track -->",
+            Self::HICTimedText =>
+                "<HearingImpairedCaptionsSequence>…</HearingImpairedCaptionsSequence>  <!-- but the referenced essence is not a TimedText track -->",
+        })
     }
 }
 

@@ -152,8 +152,32 @@ pub struct ImfUuid(pub Uuid);
 
 impl ImfUuid {
     /// Parse from `urn:uuid:...` or a bare UUID string.
+    ///
+    /// Lenient: accepts both forms. Useful for callers that get UUIDs
+    /// from non-XML sources (JSON APIs, manual construction, test
+    /// fixtures) where the URN prefix may legitimately be absent.
+    ///
+    /// XML deserialization should prefer [`parse_urn`](Self::parse_urn)
+    /// since the SMPTE dcml:UUIDType XSD pattern explicitly requires
+    /// the `urn:uuid:` prefix.
     pub fn parse(s: &str) -> Result<Self, ImfTypeError> {
         let bare = s.strip_prefix("urn:uuid:").unwrap_or(s);
+        Uuid::parse_str(bare)
+            .map(ImfUuid)
+            .map_err(|_| ImfTypeError::InvalidUuid(s.to_string()))
+    }
+
+    /// Strict parse: requires the `urn:uuid:` prefix per
+    /// SMPTE ST 433 dcml:UUIDType (xs:anyURI restricted to
+    /// `urn:uuid:[hex]{8}-[hex]{4}-[hex]{4}-[hex]{4}-[hex]{12}`).
+    ///
+    /// Used by the XML deserializer so CPL/PKL/SCM instances with bare
+    /// UUIDs (lacking the URN prefix) fail at parse time — matching
+    /// what an XSD-strict validator would catch.
+    pub fn parse_urn(s: &str) -> Result<Self, ImfTypeError> {
+        let bare = s
+            .strip_prefix("urn:uuid:")
+            .ok_or_else(|| ImfTypeError::InvalidUuid(s.to_string()))?;
         Uuid::parse_str(bare)
             .map(ImfUuid)
             .map_err(|_| ImfTypeError::InvalidUuid(s.to_string()))
@@ -180,6 +204,18 @@ impl Serialize for ImfUuid {
 impl<'de> Deserialize<'de> for ImfUuid {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         let s = String::deserialize(d)?;
+        // Lenient: accepts both `urn:uuid:...` and bare UUIDs.
+        //
+        // XSD-strict UUID validation (rejecting bare UUIDs in CPL/PKL/SCM
+        // XML per SMPTE dcml:UUIDType) cannot happen here without also
+        // rejecting bare UUIDs in JSON wire format — same `Deserialize`
+        // impl handles both formats, and JSON intentionally uses bare
+        // UUIDs (see `uuid_roundtrip_serde` test). Making this strict
+        // would break the JSON API contract.
+        //
+        // The runtime XSD validator (`crate::xsd`) is the right layer
+        // for XSD-strict UUID checking. See the documented uppsala
+        // v0.4.0 limitation for the current gap.
         ImfUuid::parse(&s).map_err(serde::de::Error::custom)
     }
 }
@@ -378,9 +414,11 @@ pub enum AssetMapNamespace {
     #[default]
     Dci429_9,
     /// SMPTE ST 2067-9:2016 — `http://www.smpte-ra.org/schemas/2067-9/2016`
+    ///
+    /// ST 2067-9 has only the 2016 edition published; there is no
+    /// 2020 successor. The SCM extension (ST 2067-9:2018) is a
+    /// separate document tracked by `scm::ScmNamespace`.
     Smpte2067_9_2016,
-    /// SMPTE ST 2067-9:2020 — `http://www.smpte-ra.org/ns/2067-9/2020`
-    Smpte2067_9_2020,
     /// Unrecognised namespace; the original URI is preserved.
     Unknown(String),
 }
@@ -391,7 +429,6 @@ impl AssetMapNamespace {
         match uri.trim() {
             "http://www.smpte-ra.org/schemas/429-9/2007/AM" => Self::Dci429_9,
             "http://www.smpte-ra.org/schemas/2067-9/2016" => Self::Smpte2067_9_2016,
-            "http://www.smpte-ra.org/ns/2067-9/2020" => Self::Smpte2067_9_2020,
             other => Self::Unknown(other.to_string()),
         }
     }
@@ -401,7 +438,6 @@ impl AssetMapNamespace {
         match self {
             Self::Dci429_9 => "ST 429-9:2007",
             Self::Smpte2067_9_2016 => "ST 2067-9:2016",
-            Self::Smpte2067_9_2020 => "ST 2067-9:2020",
             Self::Unknown(_) => "Unknown",
         }
     }
@@ -412,7 +448,6 @@ impl std::fmt::Display for AssetMapNamespace {
         match self {
             Self::Dci429_9 => write!(f, "http://www.smpte-ra.org/schemas/429-9/2007/AM"),
             Self::Smpte2067_9_2016 => write!(f, "http://www.smpte-ra.org/schemas/2067-9/2016"),
-            Self::Smpte2067_9_2020 => write!(f, "http://www.smpte-ra.org/ns/2067-9/2020"),
             Self::Unknown(s) => write!(f, "{}", s),
         }
     }
@@ -842,9 +877,16 @@ pub struct Chunk {
 /// OPL XML — Output Profile List (SMPTE ST 2067-100).
 ///
 /// Defines output processing instructions for a composition: image scaling,
-/// cropping, pixel encoding, and audio routing/mixing macros. The macro list
-/// is not deserialized (it uses `xsi:type` polymorphism with vendor-specific
-/// extension types).
+/// cropping, pixel encoding, and audio routing/mixing macros.
+///
+/// `macros` carries every `<Macro xsi:type="...">` entry from the
+/// `<MacroList>`. The list is structurally extracted via a small
+/// `quick_xml` walker rather than serde because the XSD uses
+/// `xsi:type` polymorphism with vendor-specific extension namespaces
+/// (`opl:PresetMacroType`, `arm:AudioRoutingMixingMacroType`, etc.).
+/// Type-specific payload fields land in [`OplMacro::extra_fields`]
+/// as `(local_name, text)` pairs so the parser doesn't have to know
+/// every macro subtype to round-trip the list.
 #[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -857,10 +899,44 @@ pub struct OutputProfileList {
     pub creator: Option<String>,
     /// The CPL that this OPL targets.
     pub composition_playlist_id: ImfUuid,
+    /// Each `<Macro xsi:type="...">` entry from the `<MacroList>`.
+    /// Empty when the OPL has no macros (or has `<MacroList/>`).
+    #[serde(default)]
+    pub macros: Vec<OplMacro>,
+}
+
+/// A single macro entry from an OPL `<MacroList>`.
+///
+/// Captures the polymorphic `xsi:type` attribute plus the common
+/// `Name` / `Annotation` fields from the abstract `MacroType`. All
+/// other children of the macro are stored as `(local_name, text)`
+/// pairs in [`Self::extra_fields`] so that vendor-specific extensions
+/// remain accessible without the parser knowing each subtype.
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct OplMacro {
+    /// Value of the `xsi:type` attribute, e.g. `"opl:PresetMacroType"`.
+    /// `None` when the writer omitted the attribute (non-conformant,
+    /// but we don't reject — the validator can flag it).
+    pub xsi_type: Option<String>,
+    /// `MacroType.Name` per ST 2067-100 §6.5.1; required by the XSD.
+    pub name: String,
+    /// `MacroType.Annotation` (optional, §6.5.2).
+    pub annotation: Option<String>,
+    /// Every other direct-child element of the `<Macro>` element,
+    /// as `(local_name, text_body)`. Element nesting deeper than one
+    /// level is flattened into the outermost name with the joined
+    /// text body — callers that need structured access to nested
+    /// macro extensions should re-parse the OPL with a richer model.
+    pub extra_fields: Vec<(String, String)>,
 }
 
 impl OutputProfileList {
-    fn from_raw(raw: raw::OutputProfileList) -> Result<Self, AssetMapParseError> {
+    fn from_raw(
+        raw: raw::OutputProfileList,
+        macros: Vec<OplMacro>,
+    ) -> Result<Self, AssetMapParseError> {
         Ok(Self {
             id: ImfUuid::parse(&raw.id).map_err(|source| AssetMapParseError::Field {
                 field: "Id",
@@ -876,6 +952,7 @@ impl OutputProfileList {
                     source,
                 },
             )?,
+            macros,
         })
     }
 }
@@ -1012,9 +1089,12 @@ impl PklAsset {
 /// Detects the SMPTE spec version from the root `xmlns` attribute and stores it
 /// on the returned `AssetMap.namespace` field.
 pub fn parse_assetmap(xml_content: &str) -> Result<AssetMap, AssetMapParseError> {
+    // Missing root xmlns lands in Unknown rather than silently defaulting to
+    // DCI 429-9 (the first enum variant) — see FIX-3 in
+    // docs/parser-audit-2026-06.md.
     let namespace = detect_root_namespace(xml_content)
         .map(|uri| AssetMapNamespace::from_uri(&uri))
-        .unwrap_or_default();
+        .unwrap_or_else(|| AssetMapNamespace::Unknown(String::new()));
     let raw: raw::AssetMap = quick_xml::de::from_str(xml_content)?;
     AssetMap::from_raw(raw, namespace)
 }
@@ -1024,9 +1104,12 @@ pub fn parse_assetmap(xml_content: &str) -> Result<AssetMap, AssetMapParseError>
 /// Detects the SMPTE spec version from the root `xmlns` attribute and stores it
 /// on the returned `PackingList.namespace` field.
 pub fn parse_pkl(xml_content: &str) -> Result<PackingList, AssetMapParseError> {
+    // Missing root xmlns lands in Unknown rather than silently defaulting to
+    // DCI 429-8 (the first enum variant) — see FIX-3 in
+    // docs/parser-audit-2026-06.md.
     let namespace = detect_root_namespace(xml_content)
         .map(|uri| PklNamespace::from_uri(&uri))
-        .unwrap_or_default();
+        .unwrap_or_else(|| PklNamespace::Unknown(String::new()));
     let raw: raw::PackingList = quick_xml::de::from_str(xml_content)?;
     PackingList::from_raw(raw, namespace)
 }
@@ -1034,11 +1117,166 @@ pub fn parse_pkl(xml_content: &str) -> Result<PackingList, AssetMapParseError> {
 /// Parse OPL XML (SMPTE ST 2067-100).
 ///
 /// Extracts the core metadata (Id, Annotation, IssueDate, Issuer, Creator,
-/// CompositionPlaylistId). The MacroList is not deserialized because it uses
-/// `xsi:type` polymorphism with vendor-specific extension namespaces.
+/// CompositionPlaylistId) via serde, and then walks the `<MacroList>` with
+/// an event-driven `quick_xml` reader to capture each
+/// `<Macro xsi:type="...">` entry. The XSD's `xsi:type` polymorphism (with
+/// vendor-specific extension namespaces) is too dynamic for serde derives,
+/// so the macros are captured as flexible `OplMacro` records — the abstract
+/// `MacroType` fields (`Name`, `Annotation`) plus an `extra_fields` bag of
+/// `(local_name, text)` pairs for everything else. Malformed
+/// `<MacroList>` content (mid-walk XML errors) is treated as "no macros"
+/// rather than a parse failure, because serde already validated the
+/// outer document structure and we don't want a vendor-quirk macro to
+/// take down the whole parse.
 pub fn parse_opl(xml_content: &str) -> Result<OutputProfileList, AssetMapParseError> {
     let raw: raw::OutputProfileList = quick_xml::de::from_str(xml_content)?;
-    OutputProfileList::from_raw(raw)
+    let macros = parse_opl_macros(xml_content).unwrap_or_default();
+    OutputProfileList::from_raw(raw, macros)
+}
+
+/// Walk an OPL XML document and return every `<Macro xsi:type="...">`
+/// entry found inside `<MacroList>`.
+///
+/// Returns `Ok(empty)` when the OPL has no `<MacroList>` or an
+/// empty/self-closing one. Returns `Err` only on genuinely
+/// unrecoverable XML errors during the walk — callers (see
+/// `parse_opl`) treat that as "no macros" rather than propagating.
+fn parse_opl_macros(xml_content: &str) -> Result<Vec<OplMacro>, quick_xml::Error> {
+    use quick_xml::events::Event;
+    use quick_xml::reader::Reader;
+
+    let mut reader = Reader::from_str(xml_content);
+    reader.trim_text(true);
+
+    let mut macros: Vec<OplMacro> = Vec::new();
+    let mut buf = Vec::new();
+    let mut in_macro_list = 0u32;
+    let mut current: Option<OplMacroBuilder> = None;
+    // Tracks the local name of the element currently accumulating text;
+    // `None` means we're not inside a leaf element with text content.
+    let mut text_target: Option<String> = None;
+
+    loop {
+        match reader.read_event_into(&mut buf) {
+            Ok(Event::Start(e)) => {
+                let local = local_name(e.name().as_ref());
+                if local == "MacroList" {
+                    in_macro_list += 1;
+                    continue;
+                }
+                if in_macro_list == 0 {
+                    continue;
+                }
+                if local == "Macro" {
+                    // Read the xsi:type attribute (any prefix).
+                    let xsi_type = e
+                        .attributes()
+                        .with_checks(false)
+                        .filter_map(|a| a.ok())
+                        .find_map(|a| {
+                            if local_name(a.key.as_ref()) == "type" {
+                                std::str::from_utf8(&a.value).ok().map(str::to_string)
+                            } else {
+                                None
+                            }
+                        });
+                    current = Some(OplMacroBuilder {
+                        xsi_type,
+                        name: String::new(),
+                        annotation: None,
+                        extra_fields: Vec::new(),
+                    });
+                    text_target = None;
+                } else if current.is_some() {
+                    // Direct child of a Macro — start accumulating text
+                    // for it. Nested children get folded into the
+                    // outermost name's text via the `text_target`.
+                    if text_target.is_none() {
+                        text_target = Some(local);
+                    }
+                }
+            }
+            Ok(Event::End(e)) => {
+                let local = local_name(e.name().as_ref());
+                if local == "MacroList" {
+                    in_macro_list = in_macro_list.saturating_sub(1);
+                    continue;
+                }
+                if local == "Macro" {
+                    if let Some(builder) = current.take() {
+                        macros.push(OplMacro {
+                            xsi_type: builder.xsi_type,
+                            name: builder.name,
+                            annotation: builder.annotation,
+                            extra_fields: builder.extra_fields,
+                        });
+                    }
+                    text_target = None;
+                } else if let Some(target) = &text_target {
+                    if target == &local {
+                        text_target = None;
+                    }
+                }
+            }
+            Ok(Event::Empty(e)) => {
+                // Self-closing element: still record its presence with empty text.
+                if let (true, Some(builder)) = (in_macro_list > 0, current.as_mut()) {
+                    let local = local_name(e.name().as_ref());
+                    match local.as_str() {
+                        "Name" => {} // empty Name is structurally invalid; skip
+                        "Annotation" => builder.annotation = Some(String::new()),
+                        _ => builder.extra_fields.push((local, String::new())),
+                    }
+                }
+            }
+            Ok(Event::Text(t)) => {
+                if let (Some(builder), Some(target)) = (current.as_mut(), text_target.as_ref()) {
+                    let text = t.unescape().unwrap_or_default().into_owned();
+                    match target.as_str() {
+                        "Name" => builder.name.push_str(&text),
+                        "Annotation" => {
+                            builder.annotation =
+                                Some(builder.annotation.take().map(|a| a + &text).unwrap_or(text))
+                        }
+                        other => {
+                            // Append to an existing entry for the same
+                            // element if it already exists; otherwise create.
+                            if let Some(entry) =
+                                builder.extra_fields.iter_mut().rfind(|(n, _)| n == other)
+                            {
+                                entry.1.push_str(&text);
+                            } else {
+                                builder.extra_fields.push((other.to_string(), text));
+                            }
+                        }
+                    }
+                }
+            }
+            Ok(Event::Eof) => break,
+            Err(e) => return Err(e),
+            _ => {}
+        }
+        buf.clear();
+    }
+
+    Ok(macros)
+}
+
+/// Strip an XML-namespaced tag down to its local-name component.
+fn local_name(tag: &[u8]) -> String {
+    let s = std::str::from_utf8(tag).unwrap_or("");
+    match s.rsplit_once(':') {
+        Some((_, local)) => local.to_string(),
+        None => s.to_string(),
+    }
+}
+
+/// Mutable builder for one macro entry; flushed into [`OplMacro`] on `</Macro>`.
+struct OplMacroBuilder {
+    xsi_type: Option<String>,
+    name: String,
+    annotation: Option<String>,
+    extra_fields: Vec<(String, String)>,
 }
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
@@ -1569,8 +1807,11 @@ mod tests {
         assert_eq!(result.namespace, AssetMapNamespace::Smpte2067_9_2016);
     }
 
+    /// `http://www.smpte-ra.org/ns/2067-9/2020` is not a registered namespace —
+    /// ST 2067-9 has only the 2016 edition. A document declaring this URI
+    /// still parses but lands in `Unknown`.
     #[test]
-    fn assetmap_parses_with_2020_namespace() {
+    fn assetmap_with_fake_2020_namespace_lands_in_unknown() {
         let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
 <AssetMap xmlns="http://www.smpte-ra.org/ns/2067-9/2020">
     <Id>urn:uuid:75864667-c65e-4aae-a5b2-fa5ea5fe31b7</Id>
@@ -1584,7 +1825,7 @@ mod tests {
     </AssetList>
 </AssetMap>"#;
         let result = parse_assetmap(xml).unwrap();
-        assert_eq!(result.namespace, AssetMapNamespace::Smpte2067_9_2020);
+        assert!(matches!(result.namespace, AssetMapNamespace::Unknown(_)));
     }
 
     #[test]
@@ -1603,6 +1844,53 @@ mod tests {
 </AssetMap>"#;
         let result = parse_assetmap(xml).unwrap();
         assert_eq!(result.namespace, AssetMapNamespace::Dci429_9);
+    }
+
+    /// FIX-3 regression: AssetMap without root xmlns lands in `Unknown("")`,
+    /// not the first variant (`Dci429_9`).
+    #[test]
+    fn assetmap_without_root_xmlns_lands_in_unknown_not_dci() {
+        let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<AssetMap>
+    <Id>urn:uuid:75864667-c65e-4aae-a5b2-fa5ea5fe31b7</Id>
+    <VolumeCount>1</VolumeCount>
+    <IssueDate>2024-01-01T00:00:00Z</IssueDate>
+    <AssetList>
+        <Asset>
+            <Id>urn:uuid:0eb3d1b9-b77b-4d3f-bbe5-7c69b15dca85</Id>
+            <ChunkList><Chunk><Path>test.xml</Path></Chunk></ChunkList>
+        </Asset>
+    </AssetList>
+</AssetMap>"#;
+        let result = parse_assetmap(xml).expect("AssetMap should parse without xmlns");
+        assert!(
+            matches!(result.namespace, AssetMapNamespace::Unknown(ref s) if s.is_empty()),
+            "expected Unknown(\"\") for missing xmlns, got {:?}",
+            result.namespace
+        );
+    }
+
+    /// FIX-3 regression: PKL without root xmlns lands in `Unknown("")`,
+    /// not the first variant (`Dci429_8`).
+    #[test]
+    fn pkl_without_root_xmlns_lands_in_unknown_not_dci() {
+        let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<PackingList>
+    <Id>urn:uuid:75864667-c65e-4aae-a5b2-fa5ea5fe31b7</Id>
+    <IssueDate>2024-01-01T00:00:00Z</IssueDate>
+    <AssetList><Asset>
+        <Id>urn:uuid:00000000-0000-0000-0000-000000000001</Id>
+        <Hash>2jmj7l5rSw0yVb/vlWAYkK/YBwk=</Hash>
+        <Size>1024</Size>
+        <Type>application/xml</Type>
+    </Asset></AssetList>
+</PackingList>"#;
+        let result = parse_pkl(xml).expect("PKL should parse without xmlns");
+        assert!(
+            matches!(result.namespace, PklNamespace::Unknown(ref s) if s.is_empty()),
+            "expected Unknown(\"\") for missing xmlns, got {:?}",
+            result.namespace
+        );
     }
 
     // ── OPL ──────────────────────────────────────────────────────────────────
@@ -1651,6 +1939,99 @@ mod tests {
             result.composition_playlist_id.to_string(),
             "0eb3d1b9-b77b-4d3f-bbe5-7c69b15dca85"
         );
+    }
+
+    // ── FIX-8: OPL MacroList walker ──────────────────────────────────────────
+
+    /// `<MacroList/>` produces an empty `macros` Vec, not an error.
+    #[test]
+    fn opl_with_empty_macro_list_yields_no_macros() {
+        let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<OutputProfileList xmlns="http://www.smpte-ra.org/schemas/2067-100/2014">
+    <Id>urn:uuid:8cf83c32-4949-4f00-b081-01e12b18932f</Id>
+    <IssueDate>2016-06-14T19:22:37Z</IssueDate>
+    <Issuer>x</Issuer>
+    <Creator>x</Creator>
+    <CompositionPlaylistId>urn:uuid:0eb3d1b9-b77b-4d3f-bbe5-7c69b15dca85</CompositionPlaylistId>
+    <MacroList/>
+</OutputProfileList>"#;
+        let result = parse_opl(xml).unwrap();
+        assert!(result.macros.is_empty());
+    }
+
+    /// Single preset macro: xsi:type, Name, Annotation, and the
+    /// type-specific Preset field land in `extra_fields`.
+    #[test]
+    fn opl_with_preset_macro_captures_all_fields() {
+        let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<OutputProfileList xmlns="http://www.smpte-ra.org/schemas/2067-100/2014"
+    xmlns:opl="http://www.smpte-ra.org/schemas/2067-100/2014"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <Id>urn:uuid:8cf83c32-4949-4f00-b081-01e12b18932f</Id>
+    <IssueDate>2016-06-14T19:22:37Z</IssueDate>
+    <Issuer>x</Issuer>
+    <Creator>x</Creator>
+    <CompositionPlaylistId>urn:uuid:0eb3d1b9-b77b-4d3f-bbe5-7c69b15dca85</CompositionPlaylistId>
+    <MacroList>
+        <Macro xsi:type="opl:PresetMacroType">
+            <Name>HD1080p</Name>
+            <Annotation>Preset for 1080p HD</Annotation>
+            <Preset>urn:smpte:opl:preset:hd1080p</Preset>
+        </Macro>
+    </MacroList>
+</OutputProfileList>"#;
+        let result = parse_opl(xml).unwrap();
+        assert_eq!(result.macros.len(), 1);
+        let m = &result.macros[0];
+        assert_eq!(m.xsi_type.as_deref(), Some("opl:PresetMacroType"));
+        assert_eq!(m.name, "HD1080p");
+        assert_eq!(m.annotation.as_deref(), Some("Preset for 1080p HD"));
+        assert!(
+            m.extra_fields
+                .iter()
+                .any(|(k, v)| k == "Preset" && v == "urn:smpte:opl:preset:hd1080p"),
+            "expected Preset URI in extra_fields, got {:?}",
+            m.extra_fields
+        );
+    }
+
+    /// Multiple macros, mixed xsi:type prefixes, are all captured in order.
+    #[test]
+    fn opl_with_multiple_macros_captures_all_in_order() {
+        let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<OutputProfileList xmlns="http://www.smpte-ra.org/schemas/2067-100/2014"
+    xmlns:opl="http://www.smpte-ra.org/schemas/2067-100/2014"
+    xmlns:arm="http://www.smpte-ra.org/schemas/2067-103/2014"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <Id>urn:uuid:8cf83c32-4949-4f00-b081-01e12b18932f</Id>
+    <IssueDate>2016-06-14T19:22:37Z</IssueDate>
+    <Issuer>x</Issuer>
+    <Creator>x</Creator>
+    <CompositionPlaylistId>urn:uuid:0eb3d1b9-b77b-4d3f-bbe5-7c69b15dca85</CompositionPlaylistId>
+    <MacroList>
+        <Macro xsi:type="opl:PresetMacroType">
+            <Name>P1</Name>
+            <Preset>urn:p1</Preset>
+        </Macro>
+        <Macro xsi:type="arm:AudioRoutingMixingMacroType">
+            <Name>AudioMix</Name>
+            <Annotation>5.1 downmix</Annotation>
+        </Macro>
+    </MacroList>
+</OutputProfileList>"#;
+        let result = parse_opl(xml).unwrap();
+        assert_eq!(result.macros.len(), 2);
+        assert_eq!(result.macros[0].name, "P1");
+        assert_eq!(
+            result.macros[0].xsi_type.as_deref(),
+            Some("opl:PresetMacroType")
+        );
+        assert_eq!(result.macros[1].name, "AudioMix");
+        assert_eq!(
+            result.macros[1].xsi_type.as_deref(),
+            Some("arm:AudioRoutingMixingMacroType")
+        );
+        assert_eq!(result.macros[1].annotation.as_deref(), Some("5.1 downmix"));
     }
 
     /// SMPTE ST 2067-100: OPL with simple preset macro from ISXD test data.

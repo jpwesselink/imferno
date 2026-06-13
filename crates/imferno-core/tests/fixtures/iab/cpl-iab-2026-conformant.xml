@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Synthetic ST 2067-201:2026-conformant IAB CPL fragment.
+
+  IAB descriptor exposes two IABChannelSubDescriptor entries (one per
+  channel of a single two-channel BedDefinition), satisfying
+  Annex E §E.2.
+-->
+<CompositionPlaylist xmlns="http://www.smpte-ra.org/schemas/2067-3/2016"
+                     xmlns:iab="http://www.smpte-ra.org/ns/2067-201/2019">
+    <Id>urn:uuid:00000000-0000-0000-0000-0000000026c1</Id>
+    <IssueDate>2026-06-13T12:00:00Z</IssueDate>
+    <ContentTitle>2026 conformant IAB sample</ContentTitle>
+    <EditRate>24 1</EditRate>
+    <EssenceDescriptorList>
+        <EssenceDescriptor>
+            <Id>urn:uuid:00000000-0000-0000-0000-00000026aaa1</Id>
+            <IABEssenceDescriptor>
+                <SubDescriptors>
+                    <IABSoundfieldLabelSubDescriptor/>
+                    <IABChannelSubDescriptor>
+                        <IABBedMetaID>1</IABBedMetaID>
+                        <IABChannelID>1</IABChannelID>
+                    </IABChannelSubDescriptor>
+                    <IABChannelSubDescriptor>
+                        <IABBedMetaID>1</IABBedMetaID>
+                        <IABChannelID>2</IABChannelID>
+                    </IABChannelSubDescriptor>
+                </SubDescriptors>
+            </IABEssenceDescriptor>
+        </EssenceDescriptor>
+    </EssenceDescriptorList>
+    <SegmentList/>
+</CompositionPlaylist>

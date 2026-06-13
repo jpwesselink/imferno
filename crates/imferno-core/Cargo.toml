@@ -1,6 +1,6 @@
 [package]
 name = "imferno-core"
-version = "2.4.1"
+version = "3.0.0"
 edition = "2021"
 description = "SMPTE ST 2067 IMF parser and validator"
 license = "MIT"
@@ -40,7 +40,34 @@ libxml       = { version = "0.3.8", optional = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "sync", "time", "macros"], optional = true }
 aws-sdk-s3 = { workspace = true, optional = true }
 aws-config = { workspace = true, optional = true }
+uppsala    = { version = "0.4" }
+# MXF essence-header parsing — pure-Rust port of the SMPTE-reference
+# regxmllib, verified semantically identical to the Java implementation
+# across 75 real-world IMF MXFs. Drives the SMPTE essence-rule checks
+# under `crate::mxf::essence`. Native targets only — MXF binaries don't
+# reach the wasm validator (browser callers upload XML, not full assets),
+# so we keep the wasm bundle lean by excluding these from that target.
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+smpte-mxf = { version = "0.1" }
+smpte-klv = { version = "0.1" }
+smpte-types = { version = "0.1" }
+# Full MXF header metadata parsing (Preface, MaterialPackage,
+# AudioChannelLabelSubDescriptor, …) — converts an MXF file into
+# RegXML so the audio MCA / IMSC profile / IAB params rules can be
+# applied against typed metadata. Same native-only constraint as
+# the partition-pack layer above.
+regxml = { version = "0.1" }
+regxml-dict = { version = "0.1" }
 
 [dev-dependencies]
 pretty_assertions = { workspace = true }
 tempfile          = { workspace = true }
+xmloxide          = "0.4"
+
+[[example]]
+name = "xsd_validate_spike"
+path = "examples/xsd_validate_spike.rs"
+
+[[example]]
+name = "xsd_validate_spike_uppsala"
+path = "examples/xsd_validate_spike_uppsala.rs"

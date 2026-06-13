@@ -46,13 +46,22 @@ pub fn get_version() -> String {
 pub fn list_rules_js() -> serde_json::Value {
     fn collect<C: ValidationCode + IntoEnumIterator>(spec: &str, out: &mut Vec<serde_json::Value>) {
         for c in C::iter() {
-            out.push(json!({
+            let mut entry = json!({
                 "code": c.code(),
                 "spec": spec,
                 "description": c.description(),
                 "defaultSeverity": format!("{:?}", c.default_severity()).to_lowercase(),
                 "category": format!("{:?}", c.category()),
-            }));
+            });
+            // Cross-edition annotation: when the enum's code set is
+            // bit-for-bit identical to its predecessor (e.g. ST 2067-3:2016 → :2013),
+            // expose the predecessor's prefix so UIs can group / hide
+            // the duplicate block. Skipped when None to keep the
+            // on-wire shape backwards-compatible.
+            if let Some(prev) = c.previous_identical_edition() {
+                entry["sameAsPreviousEdition"] = json!(prev);
+            }
+            out.push(entry);
         }
     }
 
@@ -61,10 +70,10 @@ pub fn list_rules_js() -> serde_json::Value {
     // Core (ASSETMAP / PKL)
     collect::<imferno_core::assetmap::codes::St2067_2_2020>("core", &mut out);
 
-    // CPL — all three editions
+    // CPL — 2013 + 2016. ST 2067-3:2020 reuses the 2016 namespace and is
+    // covered by the 2016 rule set (canonical XSD is byte-identical).
     collect::<imferno_core::cpl::codes::St2067_3_2013>("cpl", &mut out);
     collect::<imferno_core::cpl::codes::St2067_3_2016>("cpl", &mut out);
-    collect::<imferno_core::cpl::codes::St2067_3_2020>("cpl", &mut out);
 
     // App 2E — all three editions
     collect::<imferno_core::validation::codes::St2067_21_2020>("app2e", &mut out);
@@ -77,7 +86,12 @@ pub fn list_rules_js() -> serde_json::Value {
     collect::<imferno_core::scm::codes::St2067_9_2018>("scm", &mut out);
     collect::<imferno_core::validation::isxd_codes::St2067_202_2022>("isxd", &mut out);
     collect::<imferno_core::validation::iab_codes::St2067_201_2019>("iab", &mut out);
+    // 2021 catalogue is bit-identical to 2019; the previous_identical_edition
+    // annotation lets downstream UIs group / hide the duplicate block.
     collect::<imferno_core::validation::iab_codes::St2067_201_2021>("iab", &mut out);
+    // 2026 adds exactly one Annex E recommendation on top of the 2021
+    // catalogue; the delta enum surfaces only the new rule.
+    collect::<imferno_core::validation::iab_codes::St2067_201_2026Delta>("iab", &mut out);
 
     // Imferno's own rule namespace (cross-cutting checks beyond pure SMPTE).
     collect::<imferno_core::package::codes::ImfernoCode>("imferno", &mut out);
@@ -100,6 +114,7 @@ pub fn build_report_js(
         rules: opts.rules,
         core_spec: opts.core_spec,
         app_specs: opts.app_specs,
+        aggregate_repeats: opts.aggregate_repeats,
         // Hash verification not yet exposed via NAPI; skip disk checks for in-memory files.
         verify_hashes: None,
         skip_disk_checks: true,
@@ -135,6 +150,7 @@ pub fn build_report_from_path(
         rules: opts.rules,
         core_spec: opts.core_spec,
         app_specs: opts.app_specs,
+        aggregate_repeats: opts.aggregate_repeats,
         // Hash verification not yet exposed via NAPI options.
         verify_hashes: None,
         skip_disk_checks: opts.skip_disk_checks,
@@ -208,6 +224,7 @@ pub fn validate_js(
         rules: opts.rules,
         core_spec: opts.core_spec,
         app_specs: opts.app_specs,
+        aggregate_repeats: opts.aggregate_repeats,
         verify_hashes: None,
         skip_disk_checks: true,
     };
@@ -234,6 +251,7 @@ pub fn validate_path_js(
         rules: opts.rules,
         core_spec: opts.core_spec,
         app_specs: opts.app_specs,
+        aggregate_repeats: opts.aggregate_repeats,
         // Hash verification not yet exposed via NAPI options.
         verify_hashes: None,
         skip_disk_checks: opts.skip_disk_checks,
@@ -261,6 +279,7 @@ pub fn build_report_from_uri(
         rules: opts.rules,
         core_spec: opts.core_spec,
         app_specs: opts.app_specs,
+        aggregate_repeats: opts.aggregate_repeats,
         verify_hashes: None,
         skip_disk_checks: opts.skip_disk_checks,
     };
@@ -287,6 +306,7 @@ pub fn validate_uri_js(
         rules: opts.rules,
         core_spec: opts.core_spec,
         app_specs: opts.app_specs,
+        aggregate_repeats: opts.aggregate_repeats,
         verify_hashes: None,
         skip_disk_checks: opts.skip_disk_checks,
     };
@@ -352,6 +372,7 @@ struct ParsedOptions {
     rules: RulesConfig,
     core_spec: Option<CoreSpecTarget>,
     app_specs: Option<Vec<AppSpecTarget>>,
+    aggregate_repeats: bool,
     skip_disk_checks: bool,
     credentials: Option<S3CredentialsInput>,
 }
@@ -372,6 +393,7 @@ fn parse_options(options: Option<&serde_json::Value>) -> napi::Result<ParsedOpti
             rules: Default::default(),
             core_spec: None,
             app_specs: None,
+            aggregate_repeats: false,
             skip_disk_checks: false,
             credentials: None,
         });
@@ -402,6 +424,11 @@ fn parse_options(options: Option<&serde_json::Value>) -> napi::Result<ParsedOpti
         .and_then(|v| v.as_bool())
         .unwrap_or(false);
 
+    let aggregate_repeats = opts
+        .get("aggregateRepeats")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+
     // Optional explicit S3 credentials (skipped here for non-s3 URIs;
     // read_uri ignores the field unless the scheme is s3).
     let credentials = match opts.get("credentials") {
@@ -414,6 +441,7 @@ fn parse_options(options: Option<&serde_json::Value>) -> napi::Result<ParsedOpti
         rules,
         core_spec,
         app_specs,
+        aggregate_repeats,
         skip_disk_checks,
         credentials,
     })

@@ -41,7 +41,17 @@ pub enum St2067_3Code {
 // ─── Per-edition enums ────────────────────────────────────────────────────────
 
 macro_rules! define_st2067_3_enum {
+    // Edition with no identical predecessor — defaults to the
+    // trait-provided `previous_identical_edition` = None.
     ($name:ident, $prefix:literal) => {
+        define_st2067_3_enum!(@inner $name, $prefix, None);
+    };
+    // Edition whose code set matches a prior edition byte-for-byte
+    // (per the snapshot diff in docs/catalogue-todos.md Item 2).
+    ($name:ident, $prefix:literal, $previous:literal) => {
+        define_st2067_3_enum!(@inner $name, $prefix, Some($previous));
+    };
+    (@inner $name:ident, $prefix:literal, $previous:expr) => {
         #[allow(non_camel_case_types)]
         #[derive(Debug, Clone, Copy, PartialEq, Eq, strum::EnumIter)]
         pub enum $name {
@@ -232,6 +242,41 @@ macro_rules! define_st2067_3_enum {
                     Self::SegmentDurationIntegerEditUnits => Category::Timing,
                 }
             }
+            fn previous_identical_edition(&self) -> Option<&'static str> {
+                $previous
+            }
+            fn example(&self) -> Option<&'static str> {
+                Some(match self {
+                    Self::ContentKindUnknown =>
+                        "<ContentKind scope=\"http://www.smpte-ra.org/schemas/2067-3/2013/content-kind\">Banana</ContentKind>",
+                    Self::SourceEncodingNoEssenceDescriptorList =>
+                        "<Resource><SourceEncoding>urn:uuid:…</SourceEncoding></Resource>  <!-- but the CPL has no <EssenceDescriptorList> -->",
+                    Self::SourceEncodingUnresolved =>
+                        "<SourceEncoding>urn:uuid:aaaa…</SourceEncoding>  <!-- no EssenceDescriptor with that Id -->",
+                    Self::EssenceDescriptorListEmpty =>
+                        "<EssenceDescriptorList></EssenceDescriptorList>",
+                    Self::ContentVersionListEmpty =>
+                        "<ContentVersionList></ContentVersionList>",
+                    Self::ContentVersionIdInvalid =>
+                        "<ContentVersion><Id></Id>…</ContentVersion>",
+                    Self::ContentVersionLabelTextMissing =>
+                        "<ContentVersion><Id>urn:uuid:…</Id></ContentVersion>  <!-- no <LabelText> -->",
+                    Self::LocaleLanguageTagInvalid =>
+                        "<Locale><LanguageList><Language>english</Language></LanguageList></Locale>  <!-- not RFC 5646 -->",
+                    Self::TrackIdNotUnique =>
+                        "<Sequence><TrackId>urn:uuid:abc…</TrackId>…</Sequence><Sequence><TrackId>urn:uuid:abc…</TrackId>…</Sequence>  <!-- same TrackId in two sequences of one segment -->",
+                    Self::MarkerOffsetOutOfRange =>
+                        "<Marker><Offset>120</Offset></Marker>  <!-- resource IntrinsicDuration=100 -->",
+                    Self::MarkerLabelUnknown =>
+                        "<Marker><Label>NotARealMarker</Label></Marker>",
+                    Self::SegmentDuration =>
+                        "Segment with MainImageSequence duration = 24f and MainAudioSequence duration = 25f",
+                    Self::ContentVersionIdDuplicate =>
+                        "<ContentVersion><Id>urn:uuid:a…</Id></ContentVersion><ContentVersion><Id>urn:uuid:a…</Id></ContentVersion>",
+                    Self::SegmentDurationIntegerEditUnits =>
+                        "Sequence duration = 12.5 edit units (must be an integer multiple of the Composition Edit Unit)",
+                })
+            }
         }
 
         impl From<$name> for String {
@@ -243,5 +288,8 @@ macro_rules! define_st2067_3_enum {
 }
 
 define_st2067_3_enum!(St2067_3_2013, "ST2067-3:2013");
-define_st2067_3_enum!(St2067_3_2016, "ST2067-3:2016");
-define_st2067_3_enum!(St2067_3_2020, "ST2067-3:2020");
+// ST 2067-3:2020 reuses the 2016 namespace and the canonical XSD is byte-identical
+// to 2016, so 2016 + 2020 share this rule set. Also bit-for-bit identical to the
+// 2013 catalogue (audit snapshot diff, 2026-06-04), recorded via the second
+// macro arm.
+define_st2067_3_enum!(St2067_3_2016, "ST2067-3:2016", "ST2067-3:2013");

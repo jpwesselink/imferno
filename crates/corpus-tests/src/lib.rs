@@ -2,7 +2,7 @@
 //!
 //! All tests in this crate read real IMF package files from the workspace
 //! `test-data/` directory and run them through the public parser + validator
-//! APIs. They are ported from the Netflix Photon Java test suite.
+//! APIs. They are ported from the published IMF test corpus.
 
 use std::path::PathBuf;
 

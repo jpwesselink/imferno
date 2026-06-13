@@ -1213,8 +1213,8 @@ impl schemars::JsonSchema for LanguageString {
 #[cfg_attr(feature = "wasm", derive(Tsify))]
 #[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
 pub struct LocaleList {
-    #[cfg_attr(not(feature = "wasm"), serde(rename = "Locale"))]
-    #[cfg_attr(feature = "wasm", serde(rename = "locales", alias = "Locale"))]
+    #[cfg_attr(not(feature = "wasm"), serde(rename = "Locale", default))]
+    #[cfg_attr(feature = "wasm", serde(rename = "locales", alias = "Locale", default))]
     pub locales: Vec<Locale>,
 }
 
@@ -2138,6 +2138,38 @@ pub struct IABEssenceDescriptor {
 pub struct IABSubDescriptors {
     #[serde(rename = "IABSoundfieldLabelSubDescriptor", default)]
     pub iab_soundfield_label_sub_descriptor: Option<IABSoundfieldLabelSubDescriptor>,
+
+    /// ST 2067-201:2026 Annex E — IAB Channel SubDescriptor entries.
+    /// Optional in 2021 (and earlier — silently dropped), recommended
+    /// in 2026 ("should contain one instance for each channel of each
+    /// BedDefinition"). Captured as a raw count via a bag struct so
+    /// downstream code can probe presence without the parser needing
+    /// to model every field defined in Annex E Table E.1.
+    #[serde(rename = "IABChannelSubDescriptor", default)]
+    pub iab_channel_sub_descriptors: Vec<IABChannelSubDescriptor>,
+}
+
+/// Presence-only stub for ST 2067-201:2026 Annex E `IABChannelSubDescriptor`.
+///
+/// The 2026 spec defines the full item set in Table E.1
+/// (`IABBedMetaID`, `IABChannelID`, `IABAudioDescription`,
+/// `IABAudioDescriptionText`); imferno's CPL parser only needs to count
+/// occurrences to fire the `IabChannelSubDescriptorRecommended` warning,
+/// so the inner shape is intentionally permissive — any nested content
+/// deserialises into the catch-all map without affecting presence.
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone, Default)]
+#[cfg_attr(feature = "typescript", derive(TS))]
+#[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
+#[cfg_attr(feature = "wasm", derive(Tsify))]
+#[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
+pub struct IABChannelSubDescriptor {
+    /// Annex E §E.2 — IAB Bed MetaID of the associated BedDefinition.
+    #[serde(rename = "IABBedMetaID", default)]
+    pub bed_meta_id: Option<u32>,
+    /// Annex E §E.2 — Channel ID within the bed.
+    #[serde(rename = "IABChannelID", default)]
+    pub channel_id: Option<u32>,
 }
 
 /// IAB soundfield label sub-descriptor — contains language for Atmos tracks
@@ -2234,7 +2266,49 @@ pub struct ISXDDataEssenceDescriptor {
 // Root CPL structure
 // =============================================================================
 
-/// Root CPL structure - defines a complete IMF composition
+/// Root CPL structure — defines a complete IMF composition.
+///
+/// # Spec-required vs `Option<T>` policy (FIX-7 audit)
+///
+/// The parser is intentionally lenient: every spec-required element that
+/// isn't strictly necessary to **construct** a valid `CompositionPlaylist`
+/// is exposed as `Option<T>` (or via a `default = "…"` serde attribute).
+/// Missing-required-field violations are surfaced as catalogue diagnostics
+/// by the validator (`validate_cpl`) rather than as parse errors, so a
+/// caller can still inspect the parsed structure of a non-conformant CPL.
+///
+/// Field-by-field map against ST 2067-3 §6 / §7 (2013 / 2016 — the 2020
+/// edition reuses the 2016 schema verbatim):
+///
+/// | Field                     | Type             | Spec status                               |
+/// |---------------------------|------------------|-------------------------------------------|
+/// | `id`                      | `ImfUuid`        | required §6.1 — parse error if missing    |
+/// | `annotation`              | `Option<…>`      | optional §6.2                             |
+/// | `issue_date`              | `String`         | required §6.3 — parse error if missing    |
+/// | `issuer`                  | `Option<…>`      | optional §6.4                             |
+/// | `creator`                 | `Option<…>`      | optional §6.5                             |
+/// | `content_originator`      | `Option<…>`      | optional §6.6                             |
+/// | `content_title`           | `LanguageString` | required §6.7 — parse error if missing    |
+/// | `content_kind`            | concrete (default) | required §6.8 — `default_content_kind`  |
+/// | `content_version_list`    | `Option<…>`      | optional §6.10                            |
+/// | `essence_descriptor_list` | `Option<…>`      | **required** per ST 2067-2 §6.1.5 —       |
+/// |                           |                  | parser-lenient; absence is reported by    |
+/// |                           |                  | `validate_cpl` as Error                   |
+/// | `edit_rate`               | `Option<…>`      | required §6.13 — parser-lenient; absence  |
+/// |                           |                  | reported by `validate_cpl`                |
+/// | `total_running_time`      | `Option<String>` | optional §6.14                            |
+/// | `locale_list`             | `Option<…>`      | optional §6.15                            |
+/// | `extension_properties`    | `Option<…>`      | optional §6.16                            |
+/// | `composition_timecode`    | `Option<…>`      | optional §6.9                             |
+/// | `segment_list`            | `SegmentList`    | required §6.17 — parse error if missing   |
+/// | `has_signer`/`has_signature` | `bool`        | reflect presence in raw XML (§8 signatures unparsed) |
+/// | `source_xml`              | `Option<String>` | retained when parsed from XML; absent for JSON-deserialised |
+///
+/// Five fields are spec-required but stored as `Option<T>` (with `default`
+/// on the serde side) to support the parser-lenient model:
+/// `content_kind` (defaults via `default_content_kind`), `content_version_list`,
+/// `essence_descriptor_list`, `edit_rate`, `locale_list`. The validator
+/// surfaces missing-required findings against the ST 2067-3 prose.
 #[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[cfg_attr(feature = "typescript", derive(TS))]
@@ -2394,6 +2468,14 @@ pub struct CompositionPlaylist {
     #[serde(skip)]
     pub has_signature: bool,
 
+    /// The raw CPL XML as parsed, retained so callers running through
+    /// `validate_cpl(&cpl)` can transparently invoke the runtime-XSD
+    /// validator (which needs the unparsed source). Set by `parse_cpl()`.
+    /// `None` when the struct was built via JSON deserialization or
+    /// manual construction.
+    #[serde(skip)]
+    pub source_xml: Option<String>,
+
     #[cfg_attr(not(feature = "wasm"), serde(rename = "SegmentList"))]
     #[cfg_attr(feature = "wasm", serde(rename = "segmentList", alias = "SegmentList"))]
     #[cfg_attr(feature = "typescript", ts(rename = "segmentList"))]
@@ -2484,8 +2566,11 @@ pub struct ContentVersion {
 #[cfg_attr(feature = "wasm", derive(Tsify))]
 #[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
 pub struct SegmentList {
-    #[cfg_attr(not(feature = "wasm"), serde(rename = "Segment"))]
-    #[cfg_attr(feature = "wasm", serde(rename = "segments", alias = "Segment"))]
+    #[cfg_attr(not(feature = "wasm"), serde(rename = "Segment", default))]
+    #[cfg_attr(
+        feature = "wasm",
+        serde(rename = "segments", alias = "Segment", default)
+    )]
     pub segments: Vec<Segment>,
 }
 
@@ -2883,10 +2968,13 @@ pub fn parse_cpl_with_options(
     options: &CplParseOptions<'_>,
 ) -> Result<CompositionPlaylist, CplParseError> {
     // Detect namespace before stripping (stripping preserves default xmlns but
-    // removes prefixed xmlns:xxx declarations)
+    // removes prefixed xmlns:xxx declarations). A document with no detectable
+    // root xmlns falls into `Unknown(String::new())` so downstream validators
+    // see "namespace unknown" instead of silently defaulting to the 2013
+    // ruleset (the first enum variant).
     let namespace = crate::assetmap::detect_root_namespace(xml_content)
         .map(|uri| CplNamespace::from_uri(&uri))
-        .unwrap_or_default();
+        .unwrap_or_else(|| CplNamespace::Unknown(String::new()));
 
     // Detect Signer/Signature presence from raw XML before stripping
     let has_signer = xml_content.contains("<Signer") || xml_content.contains(":Signer");
@@ -2947,6 +3035,7 @@ pub fn parse_cpl_with_options(
     cpl.namespace = namespace;
     cpl.has_signer = has_signer;
     cpl.has_signature = has_signature;
+    cpl.source_xml = Some(xml_content.to_string());
     Ok(cpl)
 }
 
@@ -3871,14 +3960,38 @@ mod tests {
         assert_eq!(cpl.namespace.year(), Some(2016));
     }
 
-    /// SMPTE ST 2067-3:2020 namespace (note: `schemas` → `ns` path change).
+    /// `http://www.smpte-ra.org/ns/2067-3/2020` is not a registered namespace —
+    /// ST 2067-3:2020 reuses the 2016 namespace per the canonical XSD. Documents
+    /// declaring the fake URI parse but resolve to `Unknown`.
     #[test]
-    fn cpl_parses_with_2067_3_2020_namespace() {
+    fn cpl_parses_with_fake_2020_namespace_as_unknown() {
         let xml = minimal_cpl_with_ns("http://www.smpte-ra.org/ns/2067-3/2020");
-        let cpl = parse_cpl(&xml).expect("2020 namespace should parse");
+        let cpl = parse_cpl(&xml).expect("CPL should still parse, namespace just unknown");
         assert_eq!(cpl.content_title.text, "NS Test");
-        assert_eq!(cpl.namespace, CplNamespace::Smpte2067_3_2020);
-        assert_eq!(cpl.namespace.year(), Some(2020));
+        assert!(matches!(cpl.namespace, CplNamespace::Unknown(_)));
+        assert_eq!(cpl.namespace.year(), None);
+    }
+
+    /// FIX-3 regression: a CPL with no detectable root xmlns lands in
+    /// `Unknown(String::new())` rather than silently defaulting to the 2013
+    /// ruleset (the first enum variant).
+    #[test]
+    fn cpl_without_root_xmlns_lands_in_unknown_not_2013() {
+        // No xmlns attribute on the root element at all.
+        let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<CompositionPlaylist>
+    <Id>urn:uuid:0eb3d1b9-b77b-4d3f-bbe5-7c69b15dca85</Id>
+    <IssueDate>2024-01-01T00:00:00Z</IssueDate>
+    <ContentTitle>NS Test</ContentTitle>
+    <EditRate>24 1</EditRate>
+    <SegmentList></SegmentList>
+</CompositionPlaylist>"#;
+        let cpl = parse_cpl(xml).expect("CPL should still parse without xmlns");
+        assert!(
+            matches!(cpl.namespace, CplNamespace::Unknown(ref s) if s.is_empty()),
+            "expected Unknown(\"\") for missing xmlns, got {:?}",
+            cpl.namespace
+        );
     }
 
     /// DCI CPL namespace compatibility (pre-IMF era, ST 429 series).

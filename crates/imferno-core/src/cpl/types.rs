@@ -485,16 +485,16 @@ pub enum VideoCodec {
 /// Bytes 13-16 of normalized UL (after common prefix 060e2b34.040101XX.04010202.)
 ///
 /// Sources: SMPTE ST 422, ST 2067-21:2023 §6.2.5 + Annex G, test corpus verification.
-/// Profile classification mirrors Photon JPEG2000.java (isIMF4KProfile / isIMF2KProfile /
-/// isBroadcastProfile / isAPP2HT). ULs not matching a recognized App2E profile stay
-/// as Jpeg2000 (generic), which the App2E validator then rejects.
+/// Profile classification follows ST 422 BCP sub-levels (4K / 2K / Broadcast /
+/// HT / App2). ULs not matching a recognised App2E profile stay as
+/// `Jpeg2000` (generic), which the App2E validator then rejects.
 const CODEC_TABLE: &[([u8; 4], VideoCodec)] = &[
     // ── JPEG 2000 generic / unspecified profile ───────────────────────────────
     // byte [14]=0x01, byte [15]=0x00 — J2K node (no specific profile sub-level)
     ([0x03, 0x01, 0x01, 0x00], VideoCodec::Jpeg2000),
-    // Note: byte [14]=0x01, byte [15]=0x01 ("Profile 0/1") is NOT a recognized BCP
-    // sub-level (valid levels are 0x11–0x17). Photon rejects it as "Invalid JPEG 2000
-    // Profile". It is intentionally absent from this table → maps to Unknown.
+    // Note: byte [14]=0x01, byte [15]=0x01 ("Profile 0/1") is NOT a recognised BCP
+    // sub-level (valid levels are 0x11–0x17). It's flagged as "Invalid JPEG 2000
+    // Profile" downstream. Intentionally absent from this table → maps to Unknown.
     //
     // ── JPEG 2000 Broadcast Contribution profile (ST 422 §A.1) ───────────────
     // byte [14]=0x01, byte [15]=0x11–0x17 (single-tile and multi-tile reversible)
@@ -561,8 +561,9 @@ const CODEC_TABLE: &[([u8; 4], VideoCodec)] = &[
     ([0x03, 0x01, 0x06, 0x14], VideoCodec::Jpeg2000Imf4k), // 4K M7S0 reversible
     ([0x03, 0x01, 0x06, 0x1a], VideoCodec::Jpeg2000Imf4k), // 4K M8S0 reversible
     //
-    // Note: byte [14]=0x07 ("8K") is not a recognized App2E profile in Photon.
-    // It is intentionally absent → maps to Unknown → fails is_jpeg2000_family().
+    // Note: byte [14]=0x07 ("8K") is not a recognised App2E JPEG 2000
+    // profile per ST 2067-21. Intentionally absent → maps to Unknown →
+    // fails is_jpeg2000_family().
     //
     // ── JPEG 2000 HT (ISO 15444-15, ST 2067-21 §6.2.5 + Annex I) ──────────
     ([0x03, 0x01, 0x08, 0x00], VideoCodec::Jpeg2000Ht), // HT-J2K generic
@@ -879,10 +880,12 @@ pub enum CplNamespace {
     #[default]
     Smpte2067_3_2013,
     /// SMPTE ST 2067-3:2016 — `http://www.smpte-ra.org/schemas/2067-3/2016`
+    ///
+    /// Also covers ST 2067-3:2020 in practice: the canonical
+    /// `st2067-3a-2020.xsd` reuses the 2016 namespace and is byte-identical
+    /// to the 2016 schema apart from its header text. Real-world 2020-era
+    /// CPLs declare this namespace.
     Smpte2067_3_2016,
-    /// SMPTE ST 2067-3:2020 — `http://www.smpte-ra.org/ns/2067-3/2020`
-    /// Note: `schemas` → `ns` path change in 2020 editions.
-    Smpte2067_3_2020,
     /// DCI era — `http://www.smpte-ra.org/schemas/429-7/2006/CPL`
     Dci429_7,
     /// Unrecognised namespace; the original URI is preserved.
@@ -895,7 +898,6 @@ impl CplNamespace {
         match uri.trim() {
             "http://www.smpte-ra.org/schemas/2067-3/2013" => Self::Smpte2067_3_2013,
             "http://www.smpte-ra.org/schemas/2067-3/2016" => Self::Smpte2067_3_2016,
-            "http://www.smpte-ra.org/ns/2067-3/2020" => Self::Smpte2067_3_2020,
             "http://www.smpte-ra.org/schemas/429-7/2006/CPL" => Self::Dci429_7,
             other => Self::Unknown(other.to_string()),
         }
@@ -906,7 +908,6 @@ impl CplNamespace {
         match self {
             Self::Smpte2067_3_2013 => "ST 2067-3:2013",
             Self::Smpte2067_3_2016 => "ST 2067-3:2016",
-            Self::Smpte2067_3_2020 => "ST 2067-3:2020",
             Self::Dci429_7 => "ST 429-7:2006",
             Self::Unknown(_) => "Unknown",
         }
@@ -917,7 +918,6 @@ impl CplNamespace {
         match self {
             Self::Smpte2067_3_2013 => Some(2013),
             Self::Smpte2067_3_2016 => Some(2016),
-            Self::Smpte2067_3_2020 => Some(2020),
             Self::Dci429_7 => Some(2006),
             Self::Unknown(_) => None,
         }
@@ -929,7 +929,6 @@ impl std::fmt::Display for CplNamespace {
         match self {
             Self::Smpte2067_3_2013 => write!(f, "http://www.smpte-ra.org/schemas/2067-3/2013"),
             Self::Smpte2067_3_2016 => write!(f, "http://www.smpte-ra.org/schemas/2067-3/2016"),
-            Self::Smpte2067_3_2020 => write!(f, "http://www.smpte-ra.org/ns/2067-3/2020"),
             Self::Dci429_7 => write!(f, "http://www.smpte-ra.org/schemas/429-7/2006/CPL"),
             Self::Unknown(s) => write!(f, "{}", s),
         }
@@ -1144,8 +1143,8 @@ mod tests {
         assert!(vc.is_jpeg2000_family());
     }
 
-    /// UL 03010101 (Profile 0/1) is not a recognized App2E profile — maps to Unknown.
-    /// Photon rejects it as "Invalid JPEG 2000 Profile" (not a BCP sub-level 0x11-0x17).
+    /// UL 03010101 (Profile 0/1) is not a recognised App2E profile — maps to Unknown.
+    /// Downstream validators flag it as "Invalid JPEG 2000 Profile" (not a BCP sub-level 0x11-0x17).
     #[test]
     fn video_codec_jpeg2000_unrecognized_maps_to_unknown() {
         let vc = VideoCodec::from_ul("urn:smpte:ul:060e2b34.04010107.04010202.03010101");
@@ -1173,13 +1172,15 @@ mod tests {
 
     // ── CplNamespace ──────────────────────────────────────────────────────────
 
-    /// SMPTE ST 2067-3: CPL namespace URIs identify the spec version.
+    /// SMPTE ST 2067-3:2020 reuses the 2016 namespace per the canonical
+    /// `st2067-3a-2020.xsd`. The string `/ns/2067-3/2020` is not a registered
+    /// namespace; if it ever appears in the wild it lands in `Unknown`.
     #[test]
-    fn cpl_namespace_from_uri_2020() {
+    fn cpl_namespace_fake_2020_uri_lands_in_unknown() {
         let ns = CplNamespace::from_uri("http://www.smpte-ra.org/ns/2067-3/2020");
-        assert_eq!(ns, CplNamespace::Smpte2067_3_2020);
-        assert_eq!(ns.year(), Some(2020));
-        assert_eq!(ns.spec_id(), "ST 2067-3:2020");
+        assert!(matches!(ns, CplNamespace::Unknown(_)));
+        assert_eq!(ns.year(), None);
+        assert_eq!(ns.spec_id(), "Unknown");
     }
 
     #[test]

@@ -47,14 +47,22 @@ pub enum Category {
     Asset,
     /// Timing, frame rate, and duration issues
     Timing,
-    /// Encoding and codec issues
+    /// Codec-level encoding issues (J2K profiles, JPEG-XS, AAC params,
+    /// PCM bit depth, etc.). For *container*-level concerns (MXF
+    /// wrapping, partition layout) use `Container`.
     Encoding,
+    /// MXF / wrapping container constraints — distinct from `Encoding`
+    /// which covers the codec carried inside the container.
+    Container,
     /// Audio configuration issues
     Audio,
     /// Video configuration issues
     Video,
     /// Subtitle and caption issues
     Subtitle,
+    /// Data essence (ISXD, dynamic metadata sidecars, ancillary data
+    /// tracks). NOT for *metadata about* essence — that's `Metadata`.
+    Data,
     /// Metadata and labeling issues
     Metadata,
     /// Security and DRM issues
@@ -72,12 +80,71 @@ impl fmt::Display for Category {
             Category::Asset => write!(f, "Asset"),
             Category::Timing => write!(f, "Timing"),
             Category::Encoding => write!(f, "Encoding"),
+            Category::Container => write!(f, "Container"),
             Category::Audio => write!(f, "Audio"),
             Category::Video => write!(f, "Video"),
             Category::Subtitle => write!(f, "Subtitle"),
+            Category::Data => write!(f, "Data"),
             Category::Metadata => write!(f, "Metadata"),
             Category::Security => write!(f, "Security"),
             Category::StudioSpecific(studio) => write!(f, "{} Specific", studio),
+        }
+    }
+}
+
+/// Which authority produced a validation finding.
+///
+/// Encodes the "prose vs XSD" provenance distinction that SMPTE ST 2067-3
+/// §5.1 calls out ("the prose document takes precedence on conflict"),
+/// so callers can filter, group, or apply per-source severity overrides
+/// without inspecting the code string.
+///
+/// Currently *inferred* from the code prefix on a `ValidationIssue`
+/// (see `ValidationIssue::source`) — no engine code needs to set it
+/// explicitly. If inference ever becomes ambiguous (e.g. a non-XSD
+/// engine internal rule that wants the `XSD/` prefix for catalogue
+/// reasons), we can add a `with_source()` builder without changing
+/// the public shape.
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum IssueSource {
+    /// Came from the runtime XSD validator (uppsala). Schema-layer:
+    /// the structural subset of the spec that the XSD DSL can express.
+    XsdLayer,
+    /// Came from a hand-rolled prose-cited rule. Semantic/cross-field/
+    /// value-set checks that XSD can't express; the rule's code
+    /// typically cites a SMPTE prose section (e.g. `ST2067-2:2020:6.4.2`).
+    ProseRule,
+    /// Came from imferno engine internals — parse failures, package
+    /// structure checks, manifest issues — not directly traceable to
+    /// a single SMPTE spec section.
+    EngineInternal,
+}
+
+impl fmt::Display for IssueSource {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            IssueSource::XsdLayer => write!(f, "XSD"),
+            IssueSource::ProseRule => write!(f, "Prose"),
+            IssueSource::EngineInternal => write!(f, "Engine"),
+        }
+    }
+}
+
+impl IssueSource {
+    /// Infer the source authority from a catalogue code string.
+    ///
+    /// Inference rules (checked top-to-bottom):
+    /// - `XSD/...` → XsdLayer
+    /// - `IMFERNO:...` or `IMFERNO/...` → EngineInternal
+    /// - everything else → ProseRule (most catalogue codes cite a spec §)
+    pub fn from_code(code: &str) -> Self {
+        if code.starts_with("XSD/") {
+            IssueSource::XsdLayer
+        } else if code.starts_with("IMFERNO:") || code.starts_with("IMFERNO/") {
+            IssueSource::EngineInternal
+        } else {
+            IssueSource::ProseRule
         }
     }
 }
@@ -192,6 +259,14 @@ pub struct ValidationIssue {
     pub severity: Severity,
     /// Category of issue
     pub category: Category,
+    /// Authority that emitted this issue (XSD layer, prose rule, engine
+    /// internal). Inferred from `code` at construction time so the field
+    /// is always consistent with the code prefix — JS consumers can
+    /// filter on `issue.source` directly without re-implementing the
+    /// inference. Deserialised with a default so old reports without the
+    /// field round-trip cleanly.
+    #[serde(default = "default_source_for_deserialize")]
+    pub source: IssueSource,
     /// Location where issue was found
     pub location: Location,
     /// Error code (e.g., "ST2067-2:2020:8.3/FileNotFound")
@@ -202,6 +277,13 @@ pub struct ValidationIssue {
     pub suggestion: Option<String>,
     /// Additional context
     pub context: HashMap<String, String>,
+    /// Other `Location`s when this issue represents an aggregation of
+    /// multiple identical-code occurrences (see
+    /// [`ValidationReport::aggregate`]). Empty for fresh, un-aggregated
+    /// issues. Skipped during serialisation when empty so the on-wire
+    /// shape stays back-compatible for callers that don't aggregate.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub additional_instances: Vec<Location>,
 }
 
 impl ValidationIssue {
@@ -211,15 +293,55 @@ impl ValidationIssue {
         code: impl Into<String>,
         message: impl Into<String>,
     ) -> Self {
+        let code: String = code.into();
+        let source = IssueSource::from_code(&code);
         Self {
             severity,
             category,
+            source,
             location: Location::new(),
-            code: code.into(),
+            code,
             message: message.into(),
             suggestion: None,
             context: HashMap::new(),
+            additional_instances: Vec::new(),
         }
+    }
+
+    /// Build a `ValidationIssue` directly from a typed `ValidationCode`,
+    /// reading severity + category from the catalogue rather than the
+    /// caller. Use this for any rule whose code lives in one of the
+    /// `*_codes` modules — the catalogue is the single source of truth
+    /// for severity and category. Pass the bare enum value:
+    ///
+    /// ```ignore
+    /// use imferno_core::mxf::codes::St2067_2_2016;
+    /// let issue = ValidationIssue::from_code(
+    ///     St2067_2_2016::AudioSampleRateUnsupported,
+    ///     format!("got {hz} Hz"),
+    /// );
+    /// ```
+    pub fn from_code<C: codes::ValidationCode>(code: C, message: impl Into<String>) -> Self {
+        // `code` is consumed only via `&self`-taking methods; we never
+        // need to move it. The string code itself comes from
+        // `code.code()` which returns `&'static str`, so no `Into<String>`
+        // bound on `C` is required.
+        Self::new(
+            code.default_severity(),
+            code.category(),
+            code.code(),
+            message,
+        )
+    }
+
+    /// Number of occurrences this issue represents. `1` for a fresh
+    /// issue, `1 + additional_instances.len()` after aggregation.
+    ///
+    /// JS consumers can compute this themselves as
+    /// `1 + issue.additionalInstances.length` — the field is the source
+    /// of truth, this method is a Rust-side convenience.
+    pub fn instance_count(&self) -> usize {
+        1 + self.additional_instances.len()
     }
 
     pub fn with_location(mut self, location: Location) -> Self {
@@ -238,6 +360,15 @@ impl ValidationIssue {
     }
 }
 
+/// Serde default for `ValidationIssue::source` — used only when
+/// deserialising a payload that pre-dates the field. Returns
+/// `IssueSource::EngineInternal` as a safe fallback; the proper value
+/// will be re-derived if the issue is re-emitted, since `::new` always
+/// computes from the code.
+fn default_source_for_deserialize() -> IssueSource {
+    IssueSource::EngineInternal
+}
+
 impl fmt::Display for ValidationIssue {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
@@ -252,6 +383,11 @@ impl fmt::Display for ValidationIssue {
 
         if let Some(ref suggestion) = self.suggestion {
             write!(f, "\n  Suggestion: {}", suggestion)?;
+        }
+
+        let count = self.instance_count();
+        if count > 1 {
+            write!(f, "\n  Occurrences: {}", count)?;
         }
 
         Ok(())
@@ -270,6 +406,17 @@ pub struct ValidationReport {
     pub warnings: Vec<ValidationIssue>,
     /// Informational issues
     pub info: Vec<ValidationIssue>,
+    /// Issues that were suppressed by a `RuleSeverity::Off` override.
+    /// These are not counted toward `is_playable`/`is_compliant` or
+    /// surfaced by `has_errors`/`summary` — they exist so operators can
+    /// debug their `RulesConfig` (`--show-suppressed`) without re-running
+    /// validation. Each carries a `context["suppressed_by"]` annotation
+    /// naming the rule key that matched.
+    ///
+    /// Skipped during serialisation when empty so reports without
+    /// suppressed rules keep the previous on-wire shape.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub suppressed: Vec<ValidationIssue>,
     /// Whether the package is playable despite issues
     pub is_playable: bool,
     /// Whether the package is compliant with base SMPTE standards
@@ -287,6 +434,7 @@ impl ValidationReport {
             errors: Vec::new(),
             warnings: Vec::new(),
             info: Vec::new(),
+            suppressed: Vec::new(),
             is_playable: true,
             is_compliant: true,
             profile,
@@ -310,6 +458,52 @@ impl ValidationReport {
         }
     }
 
+    /// Collapse repeat-offender diagnostics within each severity bucket.
+    ///
+    /// When the same `code` fires N times, the first-encountered issue
+    /// is kept as the canonical instance and the rest contribute only
+    /// their `Location` to its [`ValidationIssue::additional_instances`].
+    /// All other fields (`message`, `suggestion`, `context`, `severity`,
+    /// `category`) are taken from the first occurrence; later instances'
+    /// `additional_instances` (if any — handles repeated aggregation
+    /// idempotently) are merged in.
+    ///
+    /// Aggregation stays within severity buckets, since rules emit at
+    /// a fixed severity per code. Order across the report is preserved
+    /// (first-seen wins) so output remains reproducible.
+    ///
+    /// Idempotent and order-independent with [`Self::apply_rules`] —
+    /// safe to call either before or after.
+    pub fn aggregate(mut self) -> Self {
+        fn collapse(bucket: &mut Vec<ValidationIssue>) {
+            if bucket.len() < 2 {
+                return;
+            }
+            let mut seen: HashMap<String, usize> = HashMap::with_capacity(bucket.len());
+            let mut out: Vec<ValidationIssue> = Vec::with_capacity(bucket.len());
+            for issue in bucket.drain(..) {
+                match seen.get(&issue.code) {
+                    Some(&i) => {
+                        out[i].additional_instances.push(issue.location);
+                        out[i]
+                            .additional_instances
+                            .extend(issue.additional_instances);
+                    }
+                    None => {
+                        seen.insert(issue.code.clone(), out.len());
+                        out.push(issue);
+                    }
+                }
+            }
+            *bucket = out;
+        }
+        collapse(&mut self.critical);
+        collapse(&mut self.errors);
+        collapse(&mut self.warnings);
+        collapse(&mut self.info);
+        self
+    }
+
     /// Merge another report's issues into this one.
     ///
     /// The source report's `profile` and `timestamp` are discarded;
@@ -320,6 +514,7 @@ impl ValidationReport {
         self.errors.extend(other.errors);
         self.warnings.extend(other.warnings);
         self.info.extend(other.info);
+        self.suppressed.extend(other.suppressed);
         self.is_playable = self.is_playable && other.is_playable;
         self.is_compliant = self.is_compliant && other.is_compliant;
     }
@@ -501,6 +696,107 @@ mod tests {
         assert_eq!(issue.severity, Severity::Error);
         assert_eq!(issue.code, "ST2067-2:2020:8.3/FileNotFound");
         assert!(issue.suggestion.is_some());
+    }
+
+    #[test]
+    fn issue_source_from_code_classifies_xsd_layer() {
+        assert_eq!(
+            IssueSource::from_code("XSD/TypeInvalid/IssueDate"),
+            IssueSource::XsdLayer
+        );
+        assert_eq!(
+            IssueSource::from_code("XSD/ElementMissing"),
+            IssueSource::XsdLayer
+        );
+    }
+
+    #[test]
+    fn issue_source_from_code_classifies_engine_internal() {
+        assert_eq!(
+            IssueSource::from_code("IMFERNO:Package/UnreferencedAsset"),
+            IssueSource::EngineInternal
+        );
+        assert_eq!(
+            IssueSource::from_code("IMFERNO/Internal/ParseError"),
+            IssueSource::EngineInternal
+        );
+    }
+
+    #[test]
+    fn issue_source_from_code_defaults_to_prose_rule() {
+        // SMPTE prose-cited codes — explicit spec section in the prefix.
+        assert_eq!(
+            IssueSource::from_code("ST2067-2:2020:6.4.2/EssenceDescriptorList"),
+            IssueSource::ProseRule
+        );
+        assert_eq!(
+            IssueSource::from_code("ST2067-21:2023:7.1/AppIdMismatch"),
+            IssueSource::ProseRule
+        );
+        // Catch-all: anything we don't recognise falls into ProseRule
+        // (catalogue codes are overwhelmingly spec-cited).
+        assert_eq!(
+            IssueSource::from_code("dcml-UUID-Malformed"),
+            IssueSource::ProseRule
+        );
+    }
+
+    #[test]
+    fn validation_issue_source_field_is_populated_from_code() {
+        let xsd = ValidationIssue::new(
+            Severity::Error,
+            Category::Schema,
+            "XSD/PatternInvalid/UUID",
+            "uuid did not match pattern",
+        );
+        assert_eq!(xsd.source, IssueSource::XsdLayer);
+
+        let prose = ValidationIssue::new(
+            Severity::Warning,
+            Category::Reference,
+            "ST2067-3:2020:5.5.1.2/ContentKindUnknown",
+            "unknown content kind",
+        );
+        assert_eq!(prose.source, IssueSource::ProseRule);
+
+        let engine = ValidationIssue::new(
+            Severity::Critical,
+            Category::Structure,
+            "IMFERNO:Package/ParseError",
+            "could not parse CPL",
+        );
+        assert_eq!(engine.source, IssueSource::EngineInternal);
+    }
+
+    #[test]
+    fn validation_issue_source_round_trips_through_serde() {
+        let xsd = ValidationIssue::new(
+            Severity::Error,
+            Category::Schema,
+            "XSD/PatternInvalid/UUID",
+            "uuid did not match pattern",
+        );
+        let json = serde_json::to_string(&xsd).unwrap();
+        assert!(json.contains("XsdLayer"), "source should serialise: {json}");
+        let back: ValidationIssue = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.source, IssueSource::XsdLayer);
+    }
+
+    #[test]
+    fn validation_issue_source_deserialise_defaults_when_missing() {
+        // Older payload shape without the `source` field — must
+        // round-trip into a sensible default rather than failing.
+        let legacy = r#"{
+            "severity": "Error",
+            "category": "Schema",
+            "location": {},
+            "code": "XSD/PatternInvalid/UUID",
+            "message": "uuid did not match pattern",
+            "suggestion": null,
+            "context": {}
+        }"#;
+        let issue: ValidationIssue = serde_json::from_str(legacy).unwrap();
+        assert_eq!(issue.source, IssueSource::EngineInternal);
     }
 
     #[test]
@@ -772,5 +1068,185 @@ mod tests {
         let deserialized: ValidationIssue = serde_json::from_str(&json).unwrap();
         assert_eq!(deserialized.severity, Severity::Warning);
         assert_eq!(deserialized.location.cpl_id, Some(uuid));
+    }
+
+    /// FIX-12 regression: a ValidationReport carrying both a populated
+    /// `suppressed` bucket and aggregated issues with non-empty
+    /// `additional_instances` survives a serde JSON round-trip.
+    #[test]
+    fn validation_report_serde_round_trip_with_suppressed_and_aggregate() {
+        let uuid1 = ImfUuid::parse("urn:uuid:00000000-0000-0000-0000-000000000001").unwrap();
+        let uuid2 = ImfUuid::parse("urn:uuid:00000000-0000-0000-0000-000000000002").unwrap();
+        let uuid3 = ImfUuid::parse("urn:uuid:00000000-0000-0000-0000-000000000003").unwrap();
+
+        let mut report = ValidationReport::new(ValidationProfile::SMPTE);
+
+        // Aggregated issue: 1 primary + 2 additional instances.
+        let mut aggregated = ValidationIssue::new(
+            Severity::Error,
+            Category::Schema,
+            "XSD/PatternInvalid/UUID",
+            "uuid pattern violation",
+        )
+        .with_location(Location::new().with_cpl(uuid1));
+        aggregated
+            .additional_instances
+            .push(Location::new().with_cpl(uuid2));
+        aggregated
+            .additional_instances
+            .push(Location::new().with_cpl(uuid3));
+        report.errors.push(aggregated);
+
+        // Suppressed issue: demoted by a hypothetical rule key, annotated.
+        let mut suppressed = ValidationIssue::new(
+            Severity::Info,
+            Category::Schema,
+            "XSD/TypeInvalid/IssueDate",
+            "issue date not a valid xs:dateTime",
+        )
+        .with_location(Location::new().with_cpl(uuid1));
+        suppressed
+            .context
+            .insert("suppressed_by".to_string(), "source:XsdLayer".to_string());
+        report.suppressed.push(suppressed);
+
+        let json = serde_json::to_string(&report).expect("serialise");
+        let back: ValidationReport = serde_json::from_str(&json).expect("deserialise");
+
+        assert_eq!(back.errors.len(), 1);
+        assert_eq!(back.errors[0].additional_instances.len(), 2);
+        assert_eq!(back.errors[0].additional_instances[0].cpl_id, Some(uuid2));
+        assert_eq!(back.errors[0].additional_instances[1].cpl_id, Some(uuid3));
+        assert_eq!(back.errors[0].instance_count(), 3);
+
+        assert_eq!(back.suppressed.len(), 1);
+        assert_eq!(
+            back.suppressed[0]
+                .context
+                .get("suppressed_by")
+                .map(String::as_str),
+            Some("source:XsdLayer")
+        );
+    }
+
+    fn agg_issue(code: &str, severity: Severity, cpl_byte: u8) -> ValidationIssue {
+        let uuid = ImfUuid::parse(&format!(
+            "urn:uuid:00000000-0000-0000-0000-0000000000{:02x}",
+            cpl_byte
+        ))
+        .unwrap();
+        ValidationIssue::new(severity, Category::Schema, code, "test")
+            .with_location(Location::new().with_cpl(uuid))
+    }
+
+    #[test]
+    fn aggregate_collapses_repeat_codes_within_a_bucket() {
+        let mut report = ValidationReport::new(ValidationProfile::SMPTE);
+        report.add(agg_issue("XSD/PatternInvalid/UUID", Severity::Error, 1));
+        report.add(agg_issue("XSD/PatternInvalid/UUID", Severity::Error, 2));
+        report.add(agg_issue("XSD/PatternInvalid/UUID", Severity::Error, 3));
+        report.add(agg_issue("XSD/Other/X", Severity::Error, 4));
+        let out = report.aggregate();
+        // Two distinct codes → two issues in errors bucket.
+        assert_eq!(out.errors.len(), 2);
+        // The repeated-code issue carries the extra locations.
+        let agg = out
+            .errors
+            .iter()
+            .find(|i| i.code == "XSD/PatternInvalid/UUID")
+            .unwrap();
+        assert_eq!(agg.instance_count(), 3);
+        assert_eq!(agg.additional_instances.len(), 2);
+        // First-seen location is retained on the canonical issue.
+        // Other code stays as a single-instance issue.
+        let solo = out.errors.iter().find(|i| i.code == "XSD/Other/X").unwrap();
+        assert_eq!(solo.instance_count(), 1);
+    }
+
+    #[test]
+    fn aggregate_preserves_first_message_and_severity() {
+        let mut report = ValidationReport::new(ValidationProfile::SMPTE);
+        report.add(
+            ValidationIssue::new(Severity::Error, Category::Schema, "X/Y", "first message")
+                .with_suggestion("first suggestion"),
+        );
+        report.add(ValidationIssue::new(
+            Severity::Error,
+            Category::Schema,
+            "X/Y",
+            "second message",
+        ));
+        let out = report.aggregate();
+        assert_eq!(out.errors.len(), 1);
+        assert_eq!(out.errors[0].message, "first message");
+        assert_eq!(
+            out.errors[0].suggestion.as_deref(),
+            Some("first suggestion")
+        );
+    }
+
+    #[test]
+    fn aggregate_does_not_cross_severity_buckets() {
+        // Same code in different buckets should NOT merge — different
+        // buckets indicate the issue was demoted/promoted independently.
+        // (In practice rules emit at one severity per code, but be
+        // defensive against post-`apply_rules` weirdness.)
+        let mut report = ValidationReport::new(ValidationProfile::SMPTE);
+        report.add(agg_issue("X/Y", Severity::Error, 1));
+        report.add(agg_issue("X/Y", Severity::Warning, 2));
+        let out = report.aggregate();
+        assert_eq!(out.errors.len(), 1);
+        assert_eq!(out.warnings.len(), 1);
+    }
+
+    #[test]
+    fn aggregate_is_idempotent() {
+        let mut report = ValidationReport::new(ValidationProfile::SMPTE);
+        report.add(agg_issue("X/Y", Severity::Error, 1));
+        report.add(agg_issue("X/Y", Severity::Error, 2));
+        report.add(agg_issue("X/Y", Severity::Error, 3));
+        let once = report.clone().aggregate();
+        let twice = once.clone().aggregate();
+        // Aggregating already-aggregated report yields same shape.
+        assert_eq!(twice.errors.len(), 1);
+        assert_eq!(twice.errors[0].instance_count(), 3);
+    }
+
+    #[test]
+    fn aggregate_preserves_first_seen_order() {
+        let mut report = ValidationReport::new(ValidationProfile::SMPTE);
+        report.add(agg_issue("Z/last", Severity::Error, 1));
+        report.add(agg_issue("A/first", Severity::Error, 2));
+        report.add(agg_issue("Z/last", Severity::Error, 3));
+        report.add(agg_issue("A/first", Severity::Error, 4));
+        let out = report.aggregate();
+        // First-seen order maps to "Z/last" → idx 0, "A/first" → idx 1.
+        assert_eq!(out.errors[0].code, "Z/last");
+        assert_eq!(out.errors[1].code, "A/first");
+    }
+
+    #[test]
+    fn aggregate_short_circuits_when_bucket_is_singleton() {
+        // Single issue in a bucket — aggregate is a no-op and should
+        // leave the issue untouched (no unnecessary clone / re-push).
+        let mut report = ValidationReport::new(ValidationProfile::SMPTE);
+        report.add(agg_issue("X/Y", Severity::Error, 1));
+        let out = report.aggregate();
+        assert_eq!(out.errors.len(), 1);
+        assert_eq!(out.errors[0].additional_instances.len(), 0);
+        assert_eq!(out.errors[0].instance_count(), 1);
+    }
+
+    #[test]
+    fn aggregate_display_shows_occurrence_count_when_above_one() {
+        let mut report = ValidationReport::new(ValidationProfile::SMPTE);
+        report.add(agg_issue("X/Y", Severity::Error, 1));
+        report.add(agg_issue("X/Y", Severity::Error, 2));
+        let out = report.aggregate();
+        let rendered = format!("{}", out.errors[0]);
+        assert!(
+            rendered.contains("Occurrences: 2"),
+            "Display should mention aggregate count: {rendered}"
+        );
     }
 }

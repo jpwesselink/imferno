@@ -78,7 +78,23 @@ macro_rules! define_isxd_enum {
                 }
             }
             fn category(&self) -> Category {
-                Category::Audio
+                // ISXD carries dynamic data essence (sidecar metadata
+                // streams). Not audio — the previous tagging was wrong.
+                Category::Data
+            }
+            fn example(&self) -> Option<&'static str> {
+                Some(match self {
+                    Self::SubDescriptorMissing =>
+                        "<ISXDDataEssenceDescriptor>…</ISXDDataEssenceDescriptor>  <!-- no ContainerConstraintsSubDescriptor inside -->",
+                    Self::NamespaceUriMissing =>
+                        "<ISXDDataEssenceDescriptor>  <!-- missing required <NamespaceURI>… --> </ISXDDataEssenceDescriptor>",
+                    Self::ISXDSequenceNoResources =>
+                        "<ISXDSequence><ResourceList/></ISXDSequence>",
+                    Self::ISXDSequenceSourceEncodingInvalid =>
+                        "<ISXDSequence>…<SourceEncoding>urn:uuid:…</SourceEncoding></ISXDSequence>  <!-- UUID doesn't resolve to an ISXDDataEssenceDescriptor -->",
+                    Self::NamespaceUriMismatch =>
+                        "Two Resources in the same ISXDSequence point at descriptors whose <NamespaceURI> differs.",
+                })
             }
         }
 

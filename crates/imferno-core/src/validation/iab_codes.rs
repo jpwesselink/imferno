@@ -68,7 +68,16 @@ pub enum IabCode {
 // ─────────────────────────────────────────────────────────────────────────────
 
 macro_rules! define_iab_enum {
+    // No identical predecessor — trait default `None`.
     ($name:ident, $prefix:literal) => {
+        define_iab_enum!(@inner $name, $prefix, None);
+    };
+    // Identical-to-prior-edition annotation (verified via snapshot
+    // diff, docs/catalogue-todos.md Item 2).
+    ($name:ident, $prefix:literal, $previous:literal) => {
+        define_iab_enum!(@inner $name, $prefix, Some($previous));
+    };
+    (@inner $name:ident, $prefix:literal, $previous:expr) => {
         /// IAB Level 0 Plug-in validation codes, edition
         #[doc = $prefix]
         #[derive(Debug, Clone, Copy, PartialEq, Eq, strum::EnumIter)]
@@ -180,6 +189,55 @@ macro_rules! define_iab_enum {
             fn category(&self) -> Category {
                 Category::Audio
             }
+            fn previous_identical_edition(&self) -> Option<&'static str> {
+                $previous
+            }
+            fn example(&self) -> Option<&'static str> {
+                Some(match self {
+                    Self::CodecForbidden =>
+                        "IABEssenceDescriptor with a non-empty Codec UL — ST 2067-201 forbids the item entirely.",
+                    Self::ElectrospatialFormulationForbidden =>
+                        "IABEssenceDescriptor sets ElectrospatialFormulation; the item shall be absent.",
+                    Self::QuantizationBitsMissing =>
+                        "IABEssenceDescriptor with no QuantizationBits item.",
+                    Self::QuantizationBitsInvalid =>
+                        "IABEssenceDescriptor with QuantizationBits = 16 instead of 24.",
+                    Self::ContainerFormatMissing =>
+                        "IABEssenceDescriptor with no ContainerFormat (EssenceContainer) UL.",
+                    Self::EssenceContainerInvalid =>
+                        "IABEssenceDescriptor with ContainerFormat = `0d010301.020c0900` (WAV) instead of the IAB frame-wrapped UL.",
+                    Self::AudioSamplingRateMissing =>
+                        "IABEssenceDescriptor with no AudioSampleRate.",
+                    Self::AudioSamplingRateInvalid =>
+                        "IABEssenceDescriptor with AudioSampleRate = 96000/1 instead of 48000/1.",
+                    Self::SoundCompressionMissing =>
+                        "IABEssenceDescriptor with no SoundCompression UL.",
+                    Self::SoundCompressionInvalid =>
+                        "IABEssenceDescriptor with SoundCompression = uncompressed PCM UL instead of the IAB compression UL.",
+                    Self::ChannelCountNotZero =>
+                        "IABEssenceDescriptor with ChannelCount = 2 — the 2019 edition mandates the distinguished value 0.",
+                    Self::SubDescriptorMissing =>
+                        "IABEssenceDescriptor with no IABSoundfieldLabelSubDescriptor in its SubDescriptors strong-ref list.",
+                    Self::MCATagSymbolMissing =>
+                        "IABSoundfieldLabelSubDescriptor with no MCATagSymbol item.",
+                    Self::MCATagSymbolInvalid =>
+                        "IABSoundfieldLabelSubDescriptor with MCATagSymbol = \"71\" instead of \"IAB\".",
+                    Self::MCATagNameMissing =>
+                        "IABSoundfieldLabelSubDescriptor with no MCATagName item.",
+                    Self::MCATagNameInvalid =>
+                        "IABSoundfieldLabelSubDescriptor with MCATagName = \"Immersive Audio Bitstream\" instead of \"IAB\".",
+                    Self::MCALabelDictionaryIDMissing =>
+                        "IABSoundfieldLabelSubDescriptor with no MCALabelDictionaryID UL.",
+                    Self::MCALabelDictionaryIDInvalid =>
+                        "IABSoundfieldLabelSubDescriptor with MCALabelDictionaryID set to a 5.1 surround UL instead of the IAB label UL.",
+                    Self::MainAudioMissing =>
+                        "Segment contains an IABSequence but no MainAudioSequence — required pairing per §6.2.",
+                    Self::IABSequenceNoResources =>
+                        "An IABSequence with an empty `<ResourceList>`.",
+                    Self::IABSequenceSourceEncodingInvalid =>
+                        "An IABSequence Resource whose SourceEncoding references a WAVEPCMDescriptor instead of an IABEssenceDescriptor.",
+                })
+            }
         }
 
         impl $name {
@@ -245,4 +303,68 @@ macro_rules! define_iab_enum {
 }
 
 define_iab_enum!(St2067_201_2019, "ST2067-201:2019");
-define_iab_enum!(St2067_201_2021, "ST2067-201:2021");
+// 2021 catalogue is bit-for-bit identical to 2019 (audit, 2026-06-04).
+define_iab_enum!(St2067_201_2021, "ST2067-201:2021", "ST2067-201:2019");
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ST 2067-201:2026 delta-catalogue
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// The 2026 revision inherits every 2021 rule verbatim (use the
+// `St2067_201_2021` enum for those) and adds exactly one
+// recommendation, Annex E §E.2.
+//
+// Carrying this as a standalone enum (rather than expanding the
+// `define_iab_enum!` macro to all editions) keeps the 2019↔2021
+// `previous_identical_edition` annotation honest — those catalogues
+// remain bit-identical, and the 2026 plugin selects this delta enum
+// on top of the 2021 base.
+
+/// ST 2067-201:2026-only delta codes (over and above the 2021 catalogue).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, strum::EnumIter)]
+pub enum St2067_201_2026Delta {
+    /// Annex E §E.2 — Track Files **should** contain one
+    /// `IABChannelSubDescriptor` for each channel of each
+    /// `BedDefinition`.
+    IabChannelSubDescriptorRecommended,
+}
+
+impl crate::diagnostics::codes::ValidationCode for St2067_201_2026Delta {
+    fn code(&self) -> &'static str {
+        match self {
+            Self::IabChannelSubDescriptorRecommended => {
+                "ST2067-201:2026:Annex-E/IabChannelSubDescriptorRecommended"
+            }
+        }
+    }
+    fn description(&self) -> &'static str {
+        match self {
+            Self::IabChannelSubDescriptorRecommended =>
+                "Track File should carry an IABChannelSubDescriptor for each channel of each BedDefinition (Annex E).",
+        }
+    }
+    fn default_severity(&self) -> crate::diagnostics::Severity {
+        // `should` strength per Annex E §E.2 — Warning, not Error.
+        crate::diagnostics::Severity::Warning
+    }
+    fn category(&self) -> crate::diagnostics::Category {
+        crate::diagnostics::Category::Audio
+    }
+    fn example(&self) -> Option<&'static str> {
+        Some(
+            "<IABEssenceDescriptor><SubDescriptors><IABSoundfieldLabelSubDescriptor/></SubDescriptors></IABEssenceDescriptor>  \
+             <!-- no <IABChannelSubDescriptor> entries -->",
+        )
+    }
+}
+
+impl St2067_201_2026Delta {
+    pub const ALL: &'static [Self] = &[Self::IabChannelSubDescriptorRecommended];
+}
+
+impl From<St2067_201_2026Delta> for String {
+    fn from(c: St2067_201_2026Delta) -> String {
+        use crate::diagnostics::codes::ValidationCode;
+        c.code().to_string()
+    }
+}

@@ -384,6 +384,14 @@ Every validation issue emitted by imferno carries a code like `ST2067-2:2020:8.3
 | `ST2067-201:2021:6.2/IABSequenceNoResources` | IABSequence shall contain at least one Resource (§6.2). | ERROR | Audio |
 | `ST2067-201:2021:6.2/IABSequenceSourceEncodingInvalid` | IABSequence Resource.SourceEncoding does not reference an IABEssenceDescriptor (§6.2). | ERROR | Audio |
 
+### 2026
+
+The 2026 revision keeps every 2021 rule verbatim (same namespace `/ns/2067-201/2019` per the canonical PDF and inline HTML schema). It adds **one** recommendation in the new Annex E. Select `AppIabPlugin2026` (or `St2067_201_2026` in `app_specs`) to opt in.
+
+| Code | Description | Default Severity | Category |
+|------|-------------|-----------------|----------|
+| `ST2067-201:2026:Annex-E/IabChannelSubDescriptorRecommended` | Track File should carry an `IABChannelSubDescriptor` for each channel of each `BedDefinition` (Annex E §E.2). | WARNING | Audio |
+
 ## ST 2067-202 — ISXD Plug-in
 
 | Code | Description | Default Severity | Category |

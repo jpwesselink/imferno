@@ -61,3 +61,11 @@ rustdoc-args = ["--cfg", "docsrs"]
 [workspace.dependencies.getrandom]
 version = "0.2"
 features = ["js"]
+
+# Patched uppsala with two imferno-specific fixes (see
+# docs/uppsala-issues.md). Tracks the imferno-patches branch which is
+# v0.4.0 plus the element_path field on ValidationError populated at
+# validation emission sites. The patch will eventually be replaced by
+# upstream uppsala once the equivalent change lands.
+[patch.crates-io]
+uppsala = { git = "https://github.com/jpwesselink/uppsala", branch = "imferno-patches" }

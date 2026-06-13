@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Synthetic ST 2067-201:2026 non-conformant IAB CPL fragment.
+
+  IAB descriptor has only an IABSoundfieldLabelSubDescriptor (carried
+  over from the 2021 base) and zero IABChannelSubDescriptor entries.
+  AppIabPlugin2026 emits the Annex E warning on this input;
+  AppIabPlugin2021 is silent (the rule didn't exist before 2026).
+-->
+<CompositionPlaylist xmlns="http://www.smpte-ra.org/schemas/2067-3/2016"
+                     xmlns:iab="http://www.smpte-ra.org/ns/2067-201/2019">
+    <Id>urn:uuid:00000000-0000-0000-0000-0000000026c2</Id>
+    <IssueDate>2026-06-13T12:00:00Z</IssueDate>
+    <ContentTitle>2026 non-conformant IAB sample</ContentTitle>
+    <EditRate>24 1</EditRate>
+    <EssenceDescriptorList>
+        <EssenceDescriptor>
+            <Id>urn:uuid:00000000-0000-0000-0000-00000026aaa2</Id>
+            <IABEssenceDescriptor>
+                <SubDescriptors>
+                    <IABSoundfieldLabelSubDescriptor/>
+                </SubDescriptors>
+            </IABEssenceDescriptor>
+        </EssenceDescriptor>
+    </EssenceDescriptorList>
+    <SegmentList/>
+</CompositionPlaylist>

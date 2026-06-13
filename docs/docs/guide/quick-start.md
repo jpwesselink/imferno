@@ -36,7 +36,7 @@ See the [CLI Reference](/reference/cli/) for all commands and options.
 
 ```toml
 [dependencies]
-imferno-core = "2.0"
+imferno-core = "3"
 ```
 
 ```rust

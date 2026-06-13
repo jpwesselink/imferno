@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?> 
+<!-- $Id$ -->
+<xs:schema
+   targetNamespace="http://www.smpte-ra.org/schemas/429-14/2014/Aux-Data"
+   xmlns:axd="http://www.smpte-ra.org/schemas/429-14/2014/Aux-Data"
+   xmlns:cpl="http://www.smpte-ra.org/schemas/429-7/2006/CPL"
+   xmlns:xs="http://www.w3.org/2001/XMLSchema"
+   elementFormDefault="qualified" attributeFormDefault="unqualified">
+
+  <xs:import namespace="http://www.smpte-ra.org/schemas/429-7/2006/CPL"/>
+
+  <xs:element name="AuxData" type="axd:DataTrackFileAssetType" />
+
+  <xs:complexType name="DataTrackFileAssetType">
+    <xs:complexContent>
+      <xs:extension base="cpl:TrackFileAssetType">
+        <xs:sequence>
+          <xs:element name="DataEssenceCoding" type="xs:anyURI" />
+          <xs:any namespace="##other" minOccurs="0" maxOccurs="unbounded" processContents="lax" />
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+</xs:schema>

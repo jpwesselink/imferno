@@ -91,7 +91,18 @@ fn test_cli_cpl_invalid_uuid() {
 
 #[test]
 fn test_cli_validate_success() {
-    let (success, stdout, stderr) = run_cli_command(&["validate", TEST_PACKAGE]);
+    // The MERIDIAN reference fixture fires
+    // `ST377-4:2012:6.3.2/SoundfieldGroupLinkIDMismatch` — a real (Photon-
+    // injected) audio metadata defect we model since the photon-parity
+    // pass. Suppress that one rule via `--rule` so the test continues to
+    // verify the end-to-end CLI flow rather than re-litigating the
+    // MERIDIAN sample's known bug.
+    let (success, stdout, stderr) = run_cli_command(&[
+        "validate",
+        TEST_PACKAGE,
+        "--rule",
+        "SoundfieldGroupLinkIDMismatch=off",
+    ]);
 
     assert!(success, "CLI validate failed: {}", stderr);
     assert!(stdout.contains("ASSETMAP.xml"));
@@ -148,9 +159,14 @@ fn test_cli_error_handling_invalid_args() {
 fn test_cli_performance() {
     use std::time::Instant;
 
+    // Same rule suppression as test_cli_validate_success — see comment there.
     for cmd in &["validate", "cpl"] {
         let start = Instant::now();
-        let (success, _stdout, _stderr) = run_cli_command(&[cmd, TEST_PACKAGE]);
+        let mut args: Vec<&str> = vec![cmd, TEST_PACKAGE];
+        if *cmd == "validate" {
+            args.extend_from_slice(&["--rule", "SoundfieldGroupLinkIDMismatch=off"]);
+        }
+        let (success, _stdout, _stderr) = run_cli_command(&args);
         let duration = start.elapsed();
 
         assert!(success, "Command {} failed", cmd);

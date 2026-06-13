@@ -71,6 +71,27 @@ impl ValidationCode for St2067_9_2018 {
     fn category(&self) -> Category {
         Category::Reference
     }
+
+    fn example(&self) -> Option<&'static str> {
+        Some(match self {
+            Self::MalformedXml =>
+                "SCM_<uuid>.xml ends mid-element or has mismatched tags.",
+            Self::SidecarAssetReferencedByVirtualTrack =>
+                "A CPL <Resource><TrackFileId> points at a sidecar asset declared in an SCM document.",
+            Self::DuplicateAssetId =>
+                "Two <SidecarAsset> entries in one SCM share the same <Id>urn:uuid:abc…</Id>.",
+            Self::SignerWithoutSignature =>
+                "<Signer>…</Signer> appears but no sibling <Signature> follows.",
+            Self::SignatureWithoutSigner =>
+                "<Signature>…</Signature> appears without a preceding <Signer>.",
+            Self::SidecarAssetNotFound =>
+                "<SidecarAsset><Id>urn:uuid:abc…</Id> references a UUID that is not present in ASSETMAP.xml.",
+            Self::CplNotFound =>
+                "<AssociatedCPLList><CPLId>urn:uuid:xyz…</CPLId> points at a CPL that isn't in the package.",
+            Self::DuplicateCplId =>
+                "An <AssociatedCPLList> contains the same <CPLId>urn:uuid:xyz…</CPLId> twice.",
+        })
+    }
 }
 
 impl St2067_9_2018 {

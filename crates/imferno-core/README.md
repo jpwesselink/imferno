@@ -8,7 +8,7 @@ Part of the [`imferno`](https://github.com/jpwesselink/imferno) ecosystem.
 
 ```toml
 [dependencies]
-imferno-core = "2.0"
+imferno-core = "3"
 ```
 
 ## Usage

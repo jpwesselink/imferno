@@ -1,6 +1,13 @@
 # MXF test data (fetched from GitHub Release assets, not stored in git)
 *.mxf
 
+# Exception: small, curated MXF unit-test fixtures live in the
+# imferno-core tests/ tree. Each is <50KB and synthesised /
+# trimmed specifically for the audio-MCA / video / timed-text
+# rule tests, so we keep them in git rather than the
+# release-tarball pipeline used for full IMF packages.
+!crates/imferno-core/tests/fixtures/mxf/*.mxf
+
 # Fixture media (large production IMF packages)
 fixture/
 

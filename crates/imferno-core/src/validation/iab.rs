@@ -42,6 +42,15 @@ impl ConstraintsValidator for AppIabPlugin2019 {
 ///
 /// Runs App2E base validation plus ST 2067-201:2021-specific IAB constraints.
 /// In the 2021 edition ChannelCount is ignored (not checked).
+///
+/// **Selected by explicit caller request, not by document namespace.**
+/// Real-world IAB documents — including those validated against the
+/// 2021 prose — declare the 2019 namespace
+/// `http://www.smpte-ra.org/ns/2067-201/2019` (verified firsthand from
+/// the 2021 PDF line 642 and the 2026 publication's inline schema).
+/// Callers wanting the 2021 channel-count-off semantics select
+/// `AppIabPlugin2021` explicitly via
+/// `ValidatorSelection::app_specs = vec![AppSpecTarget::St2067_201_2021]`.
 pub struct AppIabPlugin2021;
 
 impl ConstraintsValidator for AppIabPlugin2021 {
@@ -64,11 +73,22 @@ impl ConstraintsValidator for AppIabPlugin2021 {
 }
 
 // ── Namespace URIs ────────────────────────────────────────────────────────────
+//
+// Both the `/ns/` and `/schemas/` forms appear on SMPTE-RA — the `/schemas/`
+// path is the older convention; `/ns/` is the modern one used by ST 2067-201
+// since the 2019 publication. Both URIs identify the same logical namespace
+// and IAB documents use either interchangeably in xmlns declarations.
+//
+// **There is no separate 2021 URI.** The 2021 publication
+// (`st2067-201-20201109-pub.zip`) embeds a schema with
+// `targetNamespace="http://www.smpte-ra.org/ns/2067-201/2019"`, and the 2026
+// publication's inline HTML schema does the same. Every IAB document in our
+// corpus declares the 2019 URI regardless of which spec edition's rules
+// authored it. The previously-exported `URI_2021` / `URI_2021_SCHEMAS`
+// consts were removed — they never matched any real document.
 
 pub const URI_2019: &str = "http://www.smpte-ra.org/ns/2067-201/2019";
 pub const URI_2019_SCHEMAS: &str = "http://www.smpte-ra.org/schemas/2067-201/2019";
-pub const URI_2021: &str = "http://www.smpte-ra.org/ns/2067-201/2021";
-pub const URI_2021_SCHEMAS: &str = "http://www.smpte-ra.org/schemas/2067-201/2021";
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
@@ -562,5 +582,26 @@ fn validate_iab_sequences(
                 }
             }
         }
+    }
+}
+
+
+#[cfg(test)]
+mod namespace_tests {
+    use super::*;
+
+    /// Pin the firsthand-confirmed IAB namespace contract:
+    /// - The `/ns/2067-201/2019` URI is the canonical IAB namespace declared by
+    ///   2019, 2021, and 2026 IAB documents alike (firsthand-verified from the
+    ///   2021 PDF line 642 and the 2026 publication's inline HTML schema).
+    /// - The `/schemas/2067-201/2019` URI is the legacy form.
+    /// - There is no 2021 or 2026 URI — both publications reuse 2019.
+    #[test]
+    fn iab_namespace_uris_match_pdf_evidence() {
+        assert_eq!(URI_2019, "http://www.smpte-ra.org/ns/2067-201/2019");
+        assert_eq!(
+            URI_2019_SCHEMAS,
+            "http://www.smpte-ra.org/schemas/2067-201/2019"
+        );
     }
 }

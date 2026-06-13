@@ -429,22 +429,22 @@ finding ID in parentheses links back to the section above.
 >
 > **Gaps confirmed unresolvable from vendoring (2026-06-13 probe of
 > pub.smpte.org + Photon's resource bundle):**
-> - **IAB:2021** — no separate XSD published. SMPTE's
->   `st2067-201-20201109-pub.zip` ships only the PDF. The 2026
->   publication (whose HTML version embeds the schema inline) shows
->   `targetNamespace="http://www.smpte-ra.org/ns/2067-201/2019"` —
->   meaning **the 2026 schema explicitly reuses the 2019 namespace**.
->   Same pattern as CPL 2020 / AssetMap 2020 / PKL 2020. Combined
->   with the fact that 100% of our IAB test fixtures
->   (`test-data/Application5/*`) declare the 2019 namespace, the
->   `St2067_201_2021` enum's URI `/ns/2067-201/2021` is **probably
->   fictional** in the same way `Smpte2067_3_2020` was. Follow-up:
->   `pdftotext` the 2021 PDF to confirm (poppler not installed in
->   the current shell); if confirmed, drop the `URI_2021` /
->   `URI_2021_SCHEMAS` consts and route IAB validation by the actual
->   document namespace (2019). The existing
->   `previous_identical_edition` annotation already telegraphs the
->   intent.
+> - **IAB:2021** — no separate XSD published, **and no separate
+>   namespace URI either** (firsthand-confirmed 2026-06-13).
+>   `pdftotext st2067-201-2021.pdf` line 642:
+>   `targetNamespace="http://www.smpte-ra.org/ns/2067-201/2019"`. The
+>   2021 publication's schema explicitly reuses the 2019 namespace,
+>   matching the CPL 2020 / AssetMap 2020 / PKL 2020 pattern. The
+>   2026 publication's inline HTML schema does the same. Every IAB
+>   document in our corpus declares the 2019 URI regardless of which
+>   spec edition's rules authored it. **Action taken**: dropped the
+>   `URI_2021` / `URI_2021_SCHEMAS` consts from `validation/iab.rs`
+>   (they never matched any real document) and the matching
+>   re-export from `validation/mod.rs`. `AppIabPlugin2021` survives
+>   for callers who want the 2021 channel-count-off semantics — they
+>   select it explicitly via `ValidatorSelection::app_specs`, not by
+>   namespace match. Regression test `iab_namespace_uris_match_pdf_evidence`
+>   pins the firsthand URI contract.
 > - **IAB:2026** — newly published (discovered 2026-06-13). The HTML
 >   index.html in `st2067-201-20260325-pub.zip` contains the schema
 >   inline; its `targetNamespace` is `/ns/2067-201/2019`, not

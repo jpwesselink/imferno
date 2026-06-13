@@ -50,7 +50,7 @@ export default function Homepage() {
         <div className="card-grid four">
           <a className="feat-card" href={`${base}reference/standards`}>
             <h3>IMF core + applications</h3>
-            <p>Parse AssetMaps, PKLs, and CPLs per SMPTE ST 2067-2, ST 2067-3, and Application profiles including ST 2067-21 and ST 2067-201.</p>
+            <p>Parse AssetMaps, PKLs, and CPLs per SMPTE ST 2067-2, ST 2067-3, and Application profiles including ST 2067-21 and ST 2067-201 (through the 2026 IAB revision).</p>
           </a>
           <a className="feat-card" href={`${base}guide/config`}>
             <h3>Flexible strictness</h3>
@@ -122,7 +122,7 @@ export default function Homepage() {
               <tr><td>ST 2067-2:2013, :2016, :2020</td><td>Core Constraints &amp; Packing List</td><td><span className="badge done">Complete</span></td></tr>
               <tr><td>ST 2067-3:2013, :2016, :2020</td><td>Composition Playlist</td><td><span className="badge done">Complete</span></td></tr>
               <tr><td>ST 2067-21:2020, :2023, :2025</td><td>Application #2E (UHD/HDR)</td><td><span className="badge done">Complete</span></td></tr>
-              <tr><td>ST 2067-201:2019, :2021</td><td>IAB Level 0 Plug-in</td><td><span className="badge done">Complete</span></td></tr>
+              <tr><td>ST 2067-201:2019, :2021, :2026</td><td>IAB Level 0 Plug-in (incl. 2026 Annex E IABChannelSubDescriptor recommendation)</td><td><span className="badge done">Complete</span></td></tr>
               <tr><td>ST 2067-9:2018</td><td>Sidecar Composition Map</td><td><span className="badge done">Complete</span></td></tr>
               <tr><td>ST 2067-202:2022</td><td>ISXD Plug-in</td><td><span className="badge done">Complete</span></td></tr>
               <tr><td colSpan={3} className="section-row">Partial</td></tr>

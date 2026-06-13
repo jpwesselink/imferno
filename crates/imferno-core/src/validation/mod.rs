@@ -33,7 +33,9 @@ pub mod iab_codes;
 pub mod isxd;
 pub mod isxd_codes;
 
-pub use iab::{AppIabPlugin2019, AppIabPlugin2021, URI_2019, URI_2019_SCHEMAS};
+pub use iab::{
+    AppIabPlugin2019, AppIabPlugin2021, AppIabPlugin2026, URI_2019, URI_2019_SCHEMAS,
+};
 pub use isxd::{AppIsxdPlugin2022, URI_2022};
 
 use std::collections::{HashMap, HashSet};

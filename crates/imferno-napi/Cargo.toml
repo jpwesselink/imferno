@@ -1,6 +1,6 @@
 [package]
 name = "imferno-napi"
-version = "2.3.0"
+version = "3.0.0"
 edition = "2021"
 description = "Native Node.js bindings for the imferno SMPTE ST 2067 IMF validator"
 license = "MIT"
@@ -15,7 +15,7 @@ aws-s3 = ["imferno-core/aws-s3"]
 crate-type = ["cdylib"]
 
 [dependencies]
-imferno-core = { path = "../imferno-core", version = "2.4.1" }
+imferno-core = { path = "../imferno-core", version = "3.0.0" }
 napi = { version = "3", default-features = false, features = ["napi9", "serde-json"] }
 napi-derive = "3"
 serde = { workspace = true }

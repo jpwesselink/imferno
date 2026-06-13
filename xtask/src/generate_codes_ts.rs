@@ -8,7 +8,7 @@
 use imferno_core::assetmap::codes::{
     St2067_2_2013_Core, St2067_2_2016_Core, St2067_2_2020, St2067_2_2020_Core, St429_9_2014,
 };
-use imferno_core::cpl::codes::{St2067_3_2013, St2067_3_2016, St2067_3_2020};
+use imferno_core::cpl::codes::{St2067_3_2013, St2067_3_2016};
 use imferno_core::diagnostics::codes::ValidationCode;
 use imferno_core::mxf::codes::St377_1_2011;
 use imferno_core::package::codes::ImfernoCode;
@@ -125,7 +125,6 @@ pub fn run() {
         js_object("ST2067_2_2020_Core", St2067_2_2020_Core::ALL),
         js_object("ST2067_3_2013", St2067_3_2013::ALL),
         js_object("ST2067_3_2016", St2067_3_2016::ALL),
-        js_object("ST2067_3_2020", St2067_3_2020::ALL),
         js_object("ST2067_9_2018", St2067_9_2018::ALL),
         js_object("ST2067_21_2020", St2067_21_2020::ALL),
         js_object("ST2067_21_2023", St2067_21_2023::ALL),
@@ -145,7 +144,6 @@ pub fn run() {
         dts_object("ST2067_2_2020_Core", St2067_2_2020_Core::ALL),
         dts_object("ST2067_3_2013", St2067_3_2013::ALL),
         dts_object("ST2067_3_2016", St2067_3_2016::ALL),
-        dts_object("ST2067_3_2020", St2067_3_2020::ALL),
         dts_object("ST2067_9_2018", St2067_9_2018::ALL),
         dts_object("ST2067_21_2020", St2067_21_2020::ALL),
         dts_object("ST2067_21_2023", St2067_21_2023::ALL),

@@ -9,7 +9,7 @@
 use imferno_core::assetmap::codes::{
     St2067_2_2013_Core, St2067_2_2016_Core, St2067_2_2020, St2067_2_2020_Core, St429_9_2014,
 };
-use imferno_core::cpl::codes::{St2067_3_2013, St2067_3_2016, St2067_3_2020};
+use imferno_core::cpl::codes::{St2067_3_2013, St2067_3_2016};
 use imferno_core::diagnostics::codes::ValidationCode;
 use imferno_core::mxf::codes::St377_1_2011;
 use imferno_core::package::codes::ImfernoCode;
@@ -112,11 +112,10 @@ fn codes_page() -> String {
     s.push_str("### 2013\n\n");
     s.push_str(&code_table(St2067_3_2013::ALL));
     s.push('\n');
-    s.push_str("### 2016\n\n");
+    // 2016 covers 2020 too — the 2020 publication's CPL XSD is byte-identical
+    // to 2016 (modulo header) and the catalogue is bit-for-bit identical.
+    s.push_str("### 2016 / 2020\n\n");
     s.push_str(&code_table(St2067_3_2016::ALL));
-    s.push('\n');
-    s.push_str("### 2020\n\n");
-    s.push_str(&code_table(St2067_3_2020::ALL));
     s.push('\n');
 
     // ── ST 2067-9 ──

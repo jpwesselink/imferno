@@ -176,6 +176,11 @@ export interface HearingImpairedCaptionsSequence {
     resourceList: ResourceList;
 }
 
+export interface IABChannelSubDescriptor {
+    IABBedMetaID?: number | null;
+    IABChannelID?: number | null;
+}
+
 export interface IABEssenceDescriptor {
     InstanceID?: string | null;
     LinkedTrackID?: number | null;
@@ -206,6 +211,7 @@ export interface IABSoundfieldLabelSubDescriptor {
 
 export interface IABSubDescriptors {
     IABSoundfieldLabelSubDescriptor?: IABSoundfieldLabelSubDescriptor | null;
+    IABChannelSubDescriptor?: IABChannelSubDescriptor[];
 }
 
 export interface ISXDDataEssenceDescriptor {
@@ -276,7 +282,7 @@ export interface Locale {
 }
 
 export interface LocaleList {
-    locales: Locale[];
+    locales?: Locale[];
 }
 
 export interface MainAudioSequence {
@@ -393,7 +399,7 @@ export interface Segment {
 }
 
 export interface SegmentList {
-    segments: Segment[];
+    segments?: Segment[];
 }
 
 export interface SequenceList {
@@ -458,7 +464,7 @@ export type ColorPrimaries = "Bt601_625" | "Bt601_525" | "Bt709" | "Bt2020" | "D
 
 export type ContentKind = "Feature" | "Trailer" | "Test" | "Promo" | "Teaser" | "RatingBump" | "Advertisement" | "Episode" | "Short" | "Commercial" | "PublicServiceAnnouncement" | { Other: string };
 
-export type CplNamespace = "Smpte2067_3_2013" | "Smpte2067_3_2016" | "Smpte2067_3_2020" | "Dci429_7" | { Unknown: string };
+export type CplNamespace = "Smpte2067_3_2013" | "Smpte2067_3_2016" | "Dci429_7" | { Unknown: string };
 
 export type LanguageTag = string;
 

@@ -668,7 +668,6 @@ fn validate_iab_sequences(
     }
 }
 
-
 #[cfg(test)]
 mod namespace_tests {
     use super::*;
@@ -730,9 +729,9 @@ mod plugin_2026_tests {
         let xml = cpl_xml_with_iab_subdescriptors("<IABSoundfieldLabelSubDescriptor/>");
         let cpl = parse_cpl(&xml).expect("CPL should parse");
         let issues = AppIabPlugin2026.validate_cpl(&cpl);
-        let hit = issues.iter().find(|i| {
-            i.code == "ST2067-201:2026:Annex-E/IabChannelSubDescriptorRecommended"
-        });
+        let hit = issues
+            .iter()
+            .find(|i| i.code == "ST2067-201:2026:Annex-E/IabChannelSubDescriptorRecommended");
         assert!(hit.is_some(), "expected Annex E warning, got: {issues:#?}");
         assert_eq!(hit.unwrap().severity, Severity::Warning);
     }

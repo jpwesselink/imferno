@@ -125,7 +125,6 @@ impl ValidationCode for ImfernoCode {
                 "<Chunk><Path>../../etc/passwd</Path></Chunk> — the asset path resolves outside the package root.",
         })
     }
-
 }
 
 impl ImfernoCode {

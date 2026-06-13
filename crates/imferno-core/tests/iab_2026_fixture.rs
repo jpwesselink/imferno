@@ -15,13 +15,11 @@ use imferno_core::validation::{
     AppIabPlugin2019, AppIabPlugin2021, AppIabPlugin2026, ConstraintsValidator,
 };
 
-const CPL_CONFORMANT: &str =
-    include_str!("fixtures/iab/cpl-iab-2026-conformant.xml");
+const CPL_CONFORMANT: &str = include_str!("fixtures/iab/cpl-iab-2026-conformant.xml");
 const CPL_NON_CONFORMANT: &str =
     include_str!("fixtures/iab/cpl-iab-2026-missing-channel-subdescriptors.xml");
 
-const ANNEX_E_CODE: &str =
-    "ST2067-201:2026:Annex-E/IabChannelSubDescriptorRecommended";
+const ANNEX_E_CODE: &str = "ST2067-201:2026:Annex-E/IabChannelSubDescriptorRecommended";
 
 #[test]
 fn fixture_conformant_passes_under_2026_plugin() {

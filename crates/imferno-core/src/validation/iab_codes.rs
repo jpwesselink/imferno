@@ -332,8 +332,9 @@ pub enum St2067_201_2026Delta {
 impl crate::diagnostics::codes::ValidationCode for St2067_201_2026Delta {
     fn code(&self) -> &'static str {
         match self {
-            Self::IabChannelSubDescriptorRecommended =>
-                "ST2067-201:2026:Annex-E/IabChannelSubDescriptorRecommended",
+            Self::IabChannelSubDescriptorRecommended => {
+                "ST2067-201:2026:Annex-E/IabChannelSubDescriptorRecommended"
+            }
         }
     }
     fn description(&self) -> &'static str {

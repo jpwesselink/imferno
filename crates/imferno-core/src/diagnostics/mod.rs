@@ -326,7 +326,12 @@ impl ValidationIssue {
         // need to move it. The string code itself comes from
         // `code.code()` which returns `&'static str`, so no `Into<String>`
         // bound on `C` is required.
-        Self::new(code.default_severity(), code.category(), code.code(), message)
+        Self::new(
+            code.default_severity(),
+            code.category(),
+            code.code(),
+            message,
+        )
     }
 
     /// Number of occurrences this issue represents. `1` for a fresh
@@ -353,7 +358,6 @@ impl ValidationIssue {
         self.context.insert(key.into(), value.into());
         self
     }
-
 }
 
 /// Serde default for `ValidationIssue::source` — used only when
@@ -1117,15 +1121,20 @@ mod tests {
 
         assert_eq!(back.suppressed.len(), 1);
         assert_eq!(
-            back.suppressed[0].context.get("suppressed_by").map(String::as_str),
+            back.suppressed[0]
+                .context
+                .get("suppressed_by")
+                .map(String::as_str),
             Some("source:XsdLayer")
         );
     }
 
     fn agg_issue(code: &str, severity: Severity, cpl_byte: u8) -> ValidationIssue {
-        let uuid =
-            ImfUuid::parse(&format!("urn:uuid:00000000-0000-0000-0000-0000000000{:02x}", cpl_byte))
-                .unwrap();
+        let uuid = ImfUuid::parse(&format!(
+            "urn:uuid:00000000-0000-0000-0000-0000000000{:02x}",
+            cpl_byte
+        ))
+        .unwrap();
         ValidationIssue::new(severity, Category::Schema, code, "test")
             .with_location(Location::new().with_cpl(uuid))
     }
@@ -1158,13 +1167,8 @@ mod tests {
     fn aggregate_preserves_first_message_and_severity() {
         let mut report = ValidationReport::new(ValidationProfile::SMPTE);
         report.add(
-            ValidationIssue::new(
-                Severity::Error,
-                Category::Schema,
-                "X/Y",
-                "first message",
-            )
-            .with_suggestion("first suggestion"),
+            ValidationIssue::new(Severity::Error, Category::Schema, "X/Y", "first message")
+                .with_suggestion("first suggestion"),
         );
         report.add(ValidationIssue::new(
             Severity::Error,
@@ -1175,7 +1179,10 @@ mod tests {
         let out = report.aggregate();
         assert_eq!(out.errors.len(), 1);
         assert_eq!(out.errors[0].message, "first message");
-        assert_eq!(out.errors[0].suggestion.as_deref(), Some("first suggestion"));
+        assert_eq!(
+            out.errors[0].suggestion.as_deref(),
+            Some("first suggestion")
+        );
     }
 
     #[test]

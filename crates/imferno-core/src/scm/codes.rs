@@ -92,7 +92,6 @@ impl ValidationCode for St2067_9_2018 {
                 "An <AssociatedCPLList> contains the same <CPLId>urn:uuid:xyz…</CPLId> twice.",
         })
     }
-
 }
 
 impl St2067_9_2018 {

@@ -42,10 +42,8 @@ const REG_TYPES: &[u8] = include_bytes!("../../resources/registers/Types.xml");
 /// "engine misconfigured".
 pub fn dictionaries() -> Option<&'static MetaDictionary> {
     static CELL: OnceLock<Option<MetaDictionary>> = OnceLock::new();
-    CELL.get_or_init(|| {
-        import_registers(&[REG_ELEMENTS, REG_GROUPS, REG_TYPES]).ok()
-    })
-    .as_ref()
+    CELL.get_or_init(|| import_registers(&[REG_ELEMENTS, REG_GROUPS, REG_TYPES]).ok())
+        .as_ref()
 }
 
 /// Convert an MXF file's header metadata into RegXML.
@@ -71,9 +69,8 @@ pub fn parse_mxf_to_regxml(
     let mut reader = std::io::BufReader::new(file);
     let mut buf: Vec<u8> = Vec::new();
     MxfFragmentBuilder::from_reader(&mut reader, Cursor::new(&mut buf), dicts, options)?;
-    String::from_utf8(buf).map_err(|e| {
-        MxfFragmentError::Xml(format!("RegXML output was not valid UTF-8: {e}"))
-    })
+    String::from_utf8(buf)
+        .map_err(|e| MxfFragmentError::Xml(format!("RegXML output was not valid UTF-8: {e}")))
 }
 
 /// Wrap a `regxml`-side error as a `ValidationIssue` so callers can

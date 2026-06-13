@@ -31,8 +31,8 @@ pub fn check_timed_text(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
     // Sniff for timed-text essence shape. ST 2067-2 timed text uses
     // `TimedTextDescriptor` (the AAF name). Some emitters use
     // `IMFTimedTextDescriptor` for the IMF-specific subclass.
-    let has_timed_text = regxml.contains(":TimedTextDescriptor")
-        || regxml.contains(":IMFTimedTextDescriptor");
+    let has_timed_text =
+        regxml.contains(":TimedTextDescriptor") || regxml.contains(":IMFTimedTextDescriptor");
     if !has_timed_text {
         return issues;
     }
@@ -45,7 +45,8 @@ pub fn check_timed_text(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
         if let Some(bytes) = crate::mxf::audio_mca::parse_ul_bytes(&cf) {
             if bytes[14] != 0x13 {
                 issues.push(
-                    ValidationIssue::from_code(St2067_2_2016::TimedTextMappingKindNot0x13,
+                    ValidationIssue::from_code(
+                        St2067_2_2016::TimedTextMappingKindNot0x13,
                         format!(
                             "MXF {} timed-text ContainerFormat UL byte 15 = 0x{:02x} \
                              — ST 429-5 §7 requires Mapping Kind = 0x13 for IMSC. \
@@ -91,7 +92,8 @@ pub fn check_timed_text(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
         ];
         if !ACCEPTABLE.contains(&ns) {
             issues.push(
-                ValidationIssue::from_code(St2067_2_2016::TimedTextNamespaceNotIMSC,
+                ValidationIssue::from_code(
+                    St2067_2_2016::TimedTextNamespaceNotIMSC,
                     format!(
                         "MXF {} TimedTextDescriptor NamespaceURI = '{}' — ST 2067-2 §5.4 \
                          requires one of the IMSC1 profile namespaces (text or image, 1.0 or 1.1).",
@@ -112,7 +114,8 @@ pub fn check_timed_text(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
         const ACCEPTABLE: &[&str] = &["image/png", "application/x-font-opentype"];
         if !ACCEPTABLE.contains(&mime) {
             issues.push(
-                ValidationIssue::from_code(St2067_2_2016::TimedTextResourceMIMETypeUnsupported,
+                ValidationIssue::from_code(
+                    St2067_2_2016::TimedTextResourceMIMETypeUnsupported,
                     format!(
                         "MXF {} TimeTextResourceSubDescriptor MIMEType = '{}' — ST 2067-2 \
                          §5.4.5/6 requires image/png or application/x-font-opentype.",

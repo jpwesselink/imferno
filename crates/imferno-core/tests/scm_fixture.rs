@@ -16,10 +16,7 @@ fn canonical_scm_example_parses() {
 #[test]
 fn canonical_scm_example_has_expected_id_and_one_asset() {
     let scm = parse_scm(CANONICAL_SCM).expect("canonical SCM example should parse");
-    assert_eq!(
-        scm.id.to_string(),
-        "144dbc24-62bf-611c-4fcc-a936759e31f7"
-    );
+    assert_eq!(scm.id.to_string(), "144dbc24-62bf-611c-4fcc-a936759e31f7");
     assert_eq!(scm.issue_date, "2018-02-07T12:51:21+00:00");
     assert_eq!(
         scm.annotation.as_deref(),

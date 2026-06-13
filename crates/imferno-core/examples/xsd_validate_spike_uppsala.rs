@@ -36,11 +36,9 @@ fn main() {
     println!("== uppsala XSD validation spike ==");
     println!("XSD: {}", xsd_path.display());
 
-    let xsd_src = fs::read_to_string(&xsd_path)
-        .unwrap_or_else(|e| panic!("read xsd: {e}"));
+    let xsd_src = fs::read_to_string(&xsd_path).unwrap_or_else(|e| panic!("read xsd: {e}"));
 
-    let schema_doc = parse(&xsd_src)
-        .unwrap_or_else(|e| panic!("parse schema xml: {e:?}"));
+    let schema_doc = parse(&xsd_src).unwrap_or_else(|e| panic!("parse schema xml: {e:?}"));
     let validator = XsdValidator::from_schema(&schema_doc)
         .unwrap_or_else(|e| panic!("XsdValidator::from_schema: {e:?}"));
     println!("schema parsed + validator built ok\n");
@@ -174,12 +172,24 @@ fn main() {
     let mini_schema_doc = parse(mini_xsd).unwrap();
     let mini_validator = XsdValidator::from_schema(&mini_schema_doc).unwrap();
     let probes: &[(&str, &str)] = &[
-        ("valid",                "<thing><name>x</name><count>5</count></thing>"),
-        ("missing-required",     "<thing><name>x</name></thing>"),
-        ("wrong-element-order",  "<thing><count>5</count><name>x</name></thing>"),
-        ("invalid-type",         "<thing><name>x</name><count>not-a-number</count></thing>"),
-        ("negative-positive",    "<thing><name>x</name><count>-1</count></thing>"),
-        ("unknown-element",      "<thing><name>x</name><count>5</count><unknown/></thing>"),
+        ("valid", "<thing><name>x</name><count>5</count></thing>"),
+        ("missing-required", "<thing><name>x</name></thing>"),
+        (
+            "wrong-element-order",
+            "<thing><count>5</count><name>x</name></thing>",
+        ),
+        (
+            "invalid-type",
+            "<thing><name>x</name><count>not-a-number</count></thing>",
+        ),
+        (
+            "negative-positive",
+            "<thing><name>x</name><count>-1</count></thing>",
+        ),
+        (
+            "unknown-element",
+            "<thing><name>x</name><count>5</count><unknown/></thing>",
+        ),
     ];
     for (label, xml) in probes {
         let doc = parse(xml).unwrap();

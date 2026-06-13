@@ -92,6 +92,13 @@ fn dcml_specs_dir() -> &'static Path {
 /// This is the unified entry point: callers using `validate_cpl(&cpl)` get
 /// schema-level diagnostics here just like callers using `validate_cpl_xml`
 /// did via the raw-XML path.
+///
+/// **Native-only.** uppsala's composite-schema resolver writes the dcml
+/// stub to a temp dir via `std::env::temp_dir()`, which panics on wasm32.
+/// The wasm build short-circuits to a no-op so browser callers — who in
+/// practice ingest XML strings, not full packages — still get the semantic
+/// validators without the schema-layer overlay.
+#[cfg(not(target_arch = "wasm32"))]
 pub fn validate_parsed_cpl(cpl: &crate::cpl::CompositionPlaylist) -> Vec<ValidationIssue> {
     let Some(source_xml) = &cpl.source_xml else {
         return Vec::new();
@@ -102,12 +109,13 @@ pub fn validate_parsed_cpl(cpl: &crate::cpl::CompositionPlaylist) -> Vec<Validat
         // No vendored XSD for DCI / Unknown — skip rather than fail loudly
         _ => return Vec::new(),
     };
-    validate_against_composite_schema_str(
-        source_xml,
-        primary_xsd,
-        dcml_specs_dir(),
-        Some(cpl.id),
-    )
+    validate_against_composite_schema_str(source_xml, primary_xsd, dcml_specs_dir(), Some(cpl.id))
+}
+
+/// wasm32 stub — see the native implementation's docstring.
+#[cfg(target_arch = "wasm32")]
+pub fn validate_parsed_cpl(_cpl: &crate::cpl::CompositionPlaylist) -> Vec<ValidationIssue> {
+    Vec::new()
 }
 
 /// Run the runtime-XSD validator against an Output Profile List XML.
@@ -190,13 +198,11 @@ pub fn validate_against_composite_schema_str(
     // one directory too high and uppsala silently `continue`s past the
     // missing file (dropping the import without an error).
     let virtual_base = specs_dir.join("__primary.xsd");
-    let validator = match uppsala::XsdValidator::from_schema_with_base_path(
-        &schema_doc,
-        Some(&virtual_base),
-    ) {
-        Ok(v) => v,
-        Err(e) => return vec![schema_build_failure_issue(e, cpl_id)],
-    };
+    let validator =
+        match uppsala::XsdValidator::from_schema_with_base_path(&schema_doc, Some(&virtual_base)) {
+            Ok(v) => v,
+            Err(e) => return vec![schema_build_failure_issue(e, cpl_id)],
+        };
     let instance_doc = match uppsala::parse(instance_xml) {
         Ok(d) => d,
         Err(e) => return vec![parse_failure_issue("xml-instance", e, cpl_id)],
@@ -302,13 +308,11 @@ pub fn validate_against_composite_schema(
     // directory directly: uppsala treats the arg as a file and takes
     // `.parent()` on it.
     let virtual_base = specs_dir.join("__primary.xsd");
-    let validator = match uppsala::XsdValidator::from_schema_with_base_path(
-        &schema_doc,
-        Some(&virtual_base),
-    ) {
-        Ok(v) => v,
-        Err(e) => return vec![schema_build_failure_issue(e, cpl_id)],
-    };
+    let validator =
+        match uppsala::XsdValidator::from_schema_with_base_path(&schema_doc, Some(&virtual_base)) {
+            Ok(v) => v,
+            Err(e) => return vec![schema_build_failure_issue(e, cpl_id)],
+        };
     let instance_doc = match uppsala::parse(instance_xml) {
         Ok(d) => d,
         Err(e) => return vec![parse_failure_issue("xml-instance", e, cpl_id)],
@@ -340,8 +344,7 @@ pub fn validate_cpl_xml(
     primary_xsd_path: &Path,
     specs_dir: &Path,
 ) -> Vec<ValidationIssue> {
-    let mut issues =
-        validate_against_composite_schema(raw_xml, primary_xsd_path, specs_dir, None);
+    let mut issues = validate_against_composite_schema(raw_xml, primary_xsd_path, specs_dir, None);
 
     match crate::cpl::parse_cpl(raw_xml) {
         Ok(cpl) => {
@@ -392,9 +395,7 @@ fn inject_dcml_schema_location(xsd_src: &str) -> String {
     };
     let before_tag_end = &xsd_src[..start + needle.len()];
     let after_tag = &tail[end_rel + 1..];
-    format!(
-        r#"{before_tag_end}{attr_body} schemaLocation="{STUB_PATH}"{terminator}{after_tag}"#
-    )
+    format!(r#"{before_tag_end}{attr_body} schemaLocation="{STUB_PATH}"{terminator}{after_tag}"#)
 }
 
 /// Map a single uppsala diagnostic to a catalogue `ValidationIssue`.
@@ -428,8 +429,7 @@ pub fn translate(
         (Some(line), None) => format!("{} (at line {line})", err.message),
         _ => err.message,
     };
-    ValidationIssue::new(kind.default_severity(), kind.category(), code, message)
-        .with_location(loc)
+    ValidationIssue::new(kind.default_severity(), kind.category(), code, message).with_location(loc)
 }
 
 fn classify(message: &str) -> XsdConstraintCode {
@@ -480,7 +480,9 @@ fn schema_build_failure_issue(
         Severity::Critical,
         Category::Schema,
         XsdConstraintCode::SchemaConstraintFailed.code(),
-        format!("XSD validation aborted: schema parsed but XsdValidator construction failed: {err:?}"),
+        format!(
+            "XSD validation aborted: schema parsed but XsdValidator construction failed: {err:?}"
+        ),
     )
     .with_location(loc)
 }
@@ -512,32 +514,40 @@ mod tests {
         let xml = "<thing><name>x</name></thing>";
         let issues = validate_against_schema(xml, MINI_XSD, None);
         assert!(!issues.is_empty());
-        assert!(issues.iter().any(|i| i.code.contains("ElementMissing")),
-            "expected XSD/ElementMissing: {issues:#?}");
+        assert!(
+            issues.iter().any(|i| i.code.contains("ElementMissing")),
+            "expected XSD/ElementMissing: {issues:#?}"
+        );
     }
 
     #[test]
     fn unknown_element_classifies_as_unexpected_element() {
         let xml = "<thing><name>x</name><count>5</count><unknown/></thing>";
         let issues = validate_against_schema(xml, MINI_XSD, None);
-        assert!(issues.iter().any(|i| i.code.contains("UnexpectedElement")),
-            "expected XSD/UnexpectedElement: {issues:#?}");
+        assert!(
+            issues.iter().any(|i| i.code.contains("UnexpectedElement")),
+            "expected XSD/UnexpectedElement: {issues:#?}"
+        );
     }
 
     #[test]
     fn invalid_type_classifies_as_type_invalid() {
         let xml = "<thing><name>x</name><count>not-a-number</count></thing>";
         let issues = validate_against_schema(xml, MINI_XSD, None);
-        assert!(issues.iter().any(|i| i.code.contains("TypeInvalid")),
-            "expected XSD/TypeInvalid: {issues:#?}");
+        assert!(
+            issues.iter().any(|i| i.code.contains("TypeInvalid")),
+            "expected XSD/TypeInvalid: {issues:#?}"
+        );
     }
 
     #[test]
     fn negative_for_positive_classifies_as_type_invalid() {
         let xml = "<thing><name>x</name><count>-1</count></thing>";
         let issues = validate_against_schema(xml, MINI_XSD, None);
-        assert!(issues.iter().any(|i| i.code.contains("TypeInvalid")),
-            "expected XSD/TypeInvalid for negative-positive: {issues:#?}");
+        assert!(
+            issues.iter().any(|i| i.code.contains("TypeInvalid")),
+            "expected XSD/TypeInvalid for negative-positive: {issues:#?}"
+        );
     }
 
     #[test]

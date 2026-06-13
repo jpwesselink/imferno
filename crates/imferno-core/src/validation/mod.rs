@@ -33,9 +33,7 @@ pub mod iab_codes;
 pub mod isxd;
 pub mod isxd_codes;
 
-pub use iab::{
-    AppIabPlugin2019, AppIabPlugin2021, AppIabPlugin2026, URI_2019, URI_2019_SCHEMAS,
-};
+pub use iab::{AppIabPlugin2019, AppIabPlugin2021, AppIabPlugin2026, URI_2019, URI_2019_SCHEMAS};
 pub use isxd::{AppIsxdPlugin2022, URI_2022};
 
 use std::collections::{HashMap, HashSet};
@@ -2183,7 +2181,9 @@ impl App2E2021 {
                     ValidationIssue::new(
                         Severity::Error,
                         Category::Video,
-                        St2067_21_2023::TransferCharacteristicMissing.code().to_string(),
+                        St2067_21_2023::TransferCharacteristicMissing
+                            .code()
+                            .to_string(),
                         "TransferCharacteristic shall be present (Table 8)",
                     )
                     .with_location(loc.clone()),
@@ -2649,7 +2649,9 @@ impl App2E2021 {
                     ValidationIssue::new(
                         Severity::Error,
                         Category::Video,
-                        St2067_21_2023::TransferCharacteristicMissing.code().to_string(),
+                        St2067_21_2023::TransferCharacteristicMissing
+                            .code()
+                            .to_string(),
                         "TransferCharacteristic shall be present (Table 8)",
                     )
                     .with_location(loc.clone()),
@@ -7776,8 +7778,8 @@ mod tests {
                 <SequenceList/>
             </Segment></SegmentList>
         </CompositionPlaylist>"#;
-        let cpl =
-            crate::cpl::parse_cpl(xml).expect("should parse despite incomplete CompositionTimecode");
+        let cpl = crate::cpl::parse_cpl(xml)
+            .expect("should parse despite incomplete CompositionTimecode");
         let issues = CoreConstraints2013.validate_cpl(&cpl);
         assert!(
             issues
@@ -9554,7 +9556,8 @@ mod tests {
                 <SequenceList/>
             </Segment></SegmentList>
         </CompositionPlaylist>"#;
-        let cpl = crate::cpl::parse_cpl(xml).expect("should parse despite invalid TotalRunningTime");
+        let cpl =
+            crate::cpl::parse_cpl(xml).expect("should parse despite invalid TotalRunningTime");
         let issues = CoreConstraints2013.validate_cpl(&cpl);
         assert!(
             issues.iter().any(|i| i.code.contains("TotalRunningTime")),
@@ -9649,7 +9652,9 @@ mod tests {
             crate::cpl::parse_cpl(xml).expect("should parse despite invalid TimecodeStartAddress");
         let issues = CoreConstraints2013.validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| i.code.contains("TimecodeStartAddress")),
+            issues
+                .iter()
+                .any(|i| i.code.contains("TimecodeStartAddress")),
             "Invalid TimecodeStartAddress format should be flagged: {:#?}",
             issues,
         );

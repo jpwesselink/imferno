@@ -36,10 +36,12 @@ impl ValidationCode for St429_9_2014 {
     }
     fn example(&self) -> Option<&'static str> {
         Some(match self {
-            Self::VolindexMissing =>
-                "Package root contains ASSETMAP.xml and CPL/PKL XMLs but no VOLINDEX.xml.",
-            Self::MalformedXml =>
-                "<VolumeIndex>1<!-- truncated --> — VOLINDEX.xml ends mid-element.",
+            Self::VolindexMissing => {
+                "Package root contains ASSETMAP.xml and CPL/PKL XMLs but no VOLINDEX.xml."
+            }
+            Self::MalformedXml => {
+                "<VolumeIndex>1<!-- truncated --> — VOLINDEX.xml ends mid-element."
+            }
         })
     }
 }

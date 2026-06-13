@@ -70,8 +70,9 @@ fn parse_header_pack<R: Read + Seek>(reader: &mut R) -> Result<PartitionPack, Mx
         .ok_or(MxfError::Truncated(
             "expected partition pack triplet at header offset",
         ))?;
-    PartitionPack::from_triplet(&triplet)?
-        .ok_or(MxfError::Truncated("first triplet was not a partition pack"))
+    PartitionPack::from_triplet(&triplet)?.ok_or(MxfError::Truncated(
+        "first triplet was not a partition pack",
+    ))
 }
 
 fn check_partition_pack(path: &Path, pack: &PartitionPack) -> Vec<ValidationIssue> {
@@ -147,7 +148,8 @@ fn check_partition_pack(path: &Path, pack: &PartitionPack) -> Vec<ValidationIssu
     }
 
     issues.push(
-        ValidationIssue::from_code(ImfernoMxf::EssenceContainersDetected,
+        ValidationIssue::from_code(
+            ImfernoMxf::EssenceContainersDetected,
             format!(
                 "MXF file at {} declares {} essence container UL(s) in its header partition",
                 path.display(),
@@ -161,14 +163,16 @@ fn check_partition_pack(path: &Path, pack: &PartitionPack) -> Vec<ValidationIssu
 }
 
 fn open_failure_issue(path: &Path, err: &std::io::Error) -> ValidationIssue {
-    ValidationIssue::from_code(ImfernoMxf::OpenFailed,
+    ValidationIssue::from_code(
+        ImfernoMxf::OpenFailed,
         format!("Could not open MXF file {}: {}", path.display(), err),
     )
     .with_location(Location::new().with_file(path.to_path_buf()))
 }
 
 fn parse_failure_issue(path: &Path, err: &MxfError) -> ValidationIssue {
-    ValidationIssue::from_code(ImfernoMxf::PartitionPackParseFailed,
+    ValidationIssue::from_code(
+        ImfernoMxf::PartitionPackParseFailed,
         format!(
             "Failed to parse the header partition pack of {}: {}",
             path.display(),
@@ -198,8 +202,22 @@ mod tests {
         // ST 377-1 partition pack key with the partition-kind nibble
         // (byte 14) and status (byte 15) varied per call.
         buf.extend_from_slice(&[
-            0x06, 0x0e, 0x2b, 0x34, 0x02, 0x05, 0x01, 0x01, 0x0d, 0x01, 0x02, 0x01, 0x01,
-            kind_byte, status_byte, 0x00,
+            0x06,
+            0x0e,
+            0x2b,
+            0x34,
+            0x02,
+            0x05,
+            0x01,
+            0x01,
+            0x0d,
+            0x01,
+            0x02,
+            0x01,
+            0x01,
+            kind_byte,
+            status_byte,
+            0x00,
         ]);
     }
 
@@ -255,7 +273,10 @@ mod tests {
         write_klv(&mut buf, &key, &value);
         let tmp = dump_to_temp(&buf);
         let issues = validate_mxf_essence(tmp.path());
-        let non_info: Vec<_> = issues.iter().filter(|i| i.severity != Severity::Info).collect();
+        let non_info: Vec<_> = issues
+            .iter()
+            .filter(|i| i.severity != Severity::Info)
+            .collect();
         assert!(
             non_info.is_empty(),
             "Clean header should emit only Info diagnostics, got: {:#?}",
@@ -310,7 +331,8 @@ mod tests {
 
     #[test]
     fn validate_mxf_essence_handles_missing_file_gracefully() {
-        let issues = validate_mxf_essence(std::path::Path::new("/nonexistent/imferno-mxf-test.mxf"));
+        let issues =
+            validate_mxf_essence(std::path::Path::new("/nonexistent/imferno-mxf-test.mxf"));
         assert!(
             issues.iter().any(|i| i.code == "IMFERNO:Mxf/OpenFailed"),
             "missing file should produce OpenFailed, got: {:#?}",

@@ -2567,7 +2567,10 @@ pub struct ContentVersion {
 #[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
 pub struct SegmentList {
     #[cfg_attr(not(feature = "wasm"), serde(rename = "Segment", default))]
-    #[cfg_attr(feature = "wasm", serde(rename = "segments", alias = "Segment", default))]
+    #[cfg_attr(
+        feature = "wasm",
+        serde(rename = "segments", alias = "Segment", default)
+    )]
     pub segments: Vec<Segment>,
 }
 

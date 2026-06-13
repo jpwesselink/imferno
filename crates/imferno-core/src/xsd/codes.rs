@@ -45,16 +45,13 @@ impl ValidationCode for XsdConstraintCode {
 
     fn description(&self) -> &'static str {
         match self {
-            Self::ElementMissing =>
-                "A required element is absent (XSD minOccurs violated).",
-            Self::UnexpectedElement =>
-                "An element appears outside its declared content model.",
-            Self::PatternInvalid =>
-                "A value violates an xs:pattern facet on its type.",
-            Self::TypeInvalid =>
-                "A value violates its declared XSD type (built-in or restriction).",
-            Self::SchemaConstraintFailed =>
-                "An XSD constraint failed; see message for details.",
+            Self::ElementMissing => "A required element is absent (XSD minOccurs violated).",
+            Self::UnexpectedElement => "An element appears outside its declared content model.",
+            Self::PatternInvalid => "A value violates an xs:pattern facet on its type.",
+            Self::TypeInvalid => {
+                "A value violates its declared XSD type (built-in or restriction)."
+            }
+            Self::SchemaConstraintFailed => "An XSD constraint failed; see message for details.",
         }
     }
 

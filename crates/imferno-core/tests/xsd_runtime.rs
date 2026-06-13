@@ -60,8 +60,7 @@ fn real_fixtures_validate_as_xsd_clean() {
 
     for path in &fixtures {
         let name = path.file_name().unwrap().to_string_lossy();
-        let cpl_xml = fs::read_to_string(path)
-            .unwrap_or_else(|e| panic!("read {name}: {e}"));
+        let cpl_xml = fs::read_to_string(path).unwrap_or_else(|e| panic!("read {name}: {e}"));
         let issues = validate_against_schema(&cpl_xml, &schema_xml, None);
         assert!(
             issues.is_empty(),
@@ -88,9 +87,14 @@ fn synthetic_broken_cpls_fire_expected_codes() {
         </Segment></SegmentList>
     </CompositionPlaylist>"#;
     let issues = validate_against_schema(missing_issue_date, &schema_xml, None);
-    assert!(!issues.is_empty(), "missing IssueDate must fire at least one issue");
     assert!(
-        issues.iter().any(|i| i.code.starts_with("XSD/ElementMissing")),
+        !issues.is_empty(),
+        "missing IssueDate must fire at least one issue"
+    );
+    assert!(
+        issues
+            .iter()
+            .any(|i| i.code.starts_with("XSD/ElementMissing")),
         "missing IssueDate must classify as XSD/ElementMissing: {issues:#?}"
     );
 
@@ -121,7 +125,10 @@ fn synthetic_broken_cpls_fire_expected_codes() {
         </Segment></SegmentList>
     </CompositionPlaylist>"#;
     let issues = validate_against_schema(out_of_order, &schema_xml, None);
-    assert!(!issues.is_empty(), "out-of-order elements must fire at least one issue");
+    assert!(
+        !issues.is_empty(),
+        "out-of-order elements must fire at least one issue"
+    );
     // Out-of-order produces a mix of ElementMissing (expected here but found
     // elsewhere) and possibly UnexpectedElement — assert the bag is non-empty
     // and includes at least one of those two.
@@ -141,11 +148,9 @@ fn synthetic_broken_cpls_fire_expected_codes() {
 fn composite_schema_validates_real_fixture_with_dcml_types_bound() {
     let primary = repo_root().join("specs/imf-cpl.xsd");
     let specs = repo_root().join("specs");
-    let fixture = repo_root().join(
-        "test-data/Application2Extended/CPL_0eb3d1b9-b77b-4d3f-bbe5-7c69b15dca85.xml",
-    );
-    let cpl_xml = fs::read_to_string(&fixture)
-        .unwrap_or_else(|e| panic!("read fixture: {e}"));
+    let fixture = repo_root()
+        .join("test-data/Application2Extended/CPL_0eb3d1b9-b77b-4d3f-bbe5-7c69b15dca85.xml");
+    let cpl_xml = fs::read_to_string(&fixture).unwrap_or_else(|e| panic!("read fixture: {e}"));
     let issues = validate_against_composite_schema(&cpl_xml, &primary, &specs, None);
     // The well-formed BLACKL fixture should still be XSD-valid even
     // with dcml types bound — if it's not, our stub is mis-spec'd
@@ -229,15 +234,17 @@ fn composite_schema_catches_dcml_typed_violations() {
 fn validate_cpl_xml_runs_both_layers_clean_fixture() {
     let primary = repo_root().join("specs/imf-cpl.xsd");
     let specs = repo_root().join("specs");
-    let fixture = repo_root().join(
-        "test-data/Application2Extended/CPL_0eb3d1b9-b77b-4d3f-bbe5-7c69b15dca85.xml",
-    );
+    let fixture = repo_root()
+        .join("test-data/Application2Extended/CPL_0eb3d1b9-b77b-4d3f-bbe5-7c69b15dca85.xml");
     let cpl_xml = fs::read_to_string(&fixture).unwrap();
     let issues = validate_cpl_xml(&cpl_xml, &primary, &specs);
     // XSD layer should contribute 0 (clean fixture); semantic layer
     // may contribute some prose-only findings depending on the
     // catalogue's coverage of this fixture. Either way, no XSD/* codes.
-    let xsd_codes: Vec<_> = issues.iter().filter(|i| i.code.starts_with("XSD/")).collect();
+    let xsd_codes: Vec<_> = issues
+        .iter()
+        .filter(|i| i.code.starts_with("XSD/"))
+        .collect();
     assert!(
         xsd_codes.is_empty(),
         "clean fixture should produce no XSD/* issues; got:\n{xsd_codes:#?}"
@@ -267,10 +274,8 @@ fn validate_cpl_xml_chains_xsd_then_semantic() {
         "should include XSD/TypeInvalid for bad date: {issues:#?}"
     );
     // Ordering: first XSD/*, then anything else (parse error or semantic)
-    let first_non_xsd =
-        issues.iter().position(|i| !i.code.starts_with("XSD/"));
-    let last_xsd =
-        issues.iter().rposition(|i| i.code.starts_with("XSD/"));
+    let first_non_xsd = issues.iter().position(|i| !i.code.starts_with("XSD/"));
+    let last_xsd = issues.iter().rposition(|i| i.code.starts_with("XSD/"));
     if let (Some(fns), Some(lx)) = (first_non_xsd, last_xsd) {
         assert!(lx < fns, "XSD issues should precede non-XSD issues");
     }
@@ -294,17 +299,25 @@ fn parse_then_validate_runs_xsd_prepass_via_source_xml() {
         </Segment></SegmentList>
     </CompositionPlaylist>"#;
     let cpl = parse_cpl(bad_xml).expect("should parse");
-    assert!(cpl.source_xml.is_some(), "parse_cpl must populate source_xml");
+    assert!(
+        cpl.source_xml.is_some(),
+        "parse_cpl must populate source_xml"
+    );
 
     let issues = validate_cpl(&cpl);
-    let xsd_issues: Vec<_> = issues.iter().filter(|i| i.code.starts_with("XSD/")).collect();
+    let xsd_issues: Vec<_> = issues
+        .iter()
+        .filter(|i| i.code.starts_with("XSD/"))
+        .collect();
     assert!(
         !xsd_issues.is_empty(),
         "validate_cpl should now emit XSD/* codes via the runtime-XSD pre-pass; got: {:#?}",
         issues
     );
     assert!(
-        xsd_issues.iter().any(|i| i.code.starts_with("XSD/TypeInvalid")),
+        xsd_issues
+            .iter()
+            .any(|i| i.code.starts_with("XSD/TypeInvalid")),
         "bad xs:dateTime should fire XSD/TypeInvalid: {xsd_issues:#?}"
     );
 }

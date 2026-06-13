@@ -1235,21 +1235,14 @@ fn parse_opl_macros(xml_content: &str) -> Result<Vec<OplMacro>, quick_xml::Error
                     match target.as_str() {
                         "Name" => builder.name.push_str(&text),
                         "Annotation" => {
-                            builder.annotation = Some(
-                                builder
-                                    .annotation
-                                    .take()
-                                    .map(|a| a + &text)
-                                    .unwrap_or(text),
-                            )
+                            builder.annotation =
+                                Some(builder.annotation.take().map(|a| a + &text).unwrap_or(text))
                         }
                         other => {
                             // Append to an existing entry for the same
                             // element if it already exists; otherwise create.
-                            if let Some(entry) = builder
-                                .extra_fields
-                                .iter_mut()
-                                .rfind(|(n, _)| n == other)
+                            if let Some(entry) =
+                                builder.extra_fields.iter_mut().rfind(|(n, _)| n == other)
                             {
                                 entry.1.push_str(&text);
                             } else {
@@ -2038,10 +2031,7 @@ mod tests {
             result.macros[1].xsi_type.as_deref(),
             Some("arm:AudioRoutingMixingMacroType")
         );
-        assert_eq!(
-            result.macros[1].annotation.as_deref(),
-            Some("5.1 downmix")
-        );
+        assert_eq!(result.macros[1].annotation.as_deref(), Some("5.1 downmix"));
     }
 
     /// SMPTE ST 2067-100: OPL with simple preset macro from ISXD test data.

@@ -97,7 +97,8 @@ pub fn check_audio_mca(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
 
     // §5.3.6.2 — number of AudioChannelLabelSubDescriptors must equal
     // ChannelCount on the WAVEPCMDescriptor.
-    let channel_count = extract_field(regxml, "ChannelCount").and_then(|c| c.trim().parse::<u32>().ok());
+    let channel_count =
+        extract_field(regxml, "ChannelCount").and_then(|c| c.trim().parse::<u32>().ok());
     let channel_labels = count_elements(regxml, "AudioChannelLabelSubDescriptor");
     if let Some(cc) = channel_count {
         if (channel_labels as u32) != cc {
@@ -142,7 +143,8 @@ pub fn check_audio_mca(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
     let expected_link_count = channel_labels + soundfield_count;
     if mca_link_count < expected_link_count {
         issues.push(
-            ValidationIssue::from_code(St377_4_2012::MCALinkIDMissing,
+            ValidationIssue::from_code(
+                St377_4_2012::MCALinkIDMissing,
                 format!(
                     "MXF {} carries {} MCALinkID(s) but expected {} ({} channel-label + {} \
                      soundfield-group). ST 377-4 §6.3.2 requires every MCA sub-descriptor to \
@@ -169,7 +171,8 @@ pub fn check_audio_mca(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
         for sf_link in extract_all_fields(regxml, "SoundfieldGroupLinkID") {
             if sf_link.trim() != sg_link.trim() {
                 issues.push(
-                    ValidationIssue::from_code(St377_4_2012::SoundfieldGroupLinkIDMismatch,
+                    ValidationIssue::from_code(
+                        St377_4_2012::SoundfieldGroupLinkIDMismatch,
                         format!(
                             "MXF {} carries an AudioChannelLabelSubDescriptor with \
                              SoundfieldGroupLinkID '{}' that doesn't match the SoundfieldGroup \
@@ -190,14 +193,16 @@ pub fn check_audio_mca(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
     // an AudioChannelLabelSubDescriptor. The actual MCAChannelID
     // field carries the channel index for each label.
     if let Some(cc) = channel_count {
-        let channel_ids: std::collections::HashSet<u32> = extract_all_fields(regxml, "MCAChannelID")
-            .into_iter()
-            .filter_map(|s| s.trim().parse::<u32>().ok())
-            .collect();
+        let channel_ids: std::collections::HashSet<u32> =
+            extract_all_fields(regxml, "MCAChannelID")
+                .into_iter()
+                .filter_map(|s| s.trim().parse::<u32>().ok())
+                .collect();
         for expected in 1..=cc {
             if !channel_ids.contains(&expected) {
                 issues.push(
-                    ValidationIssue::from_code(St2067_2_2016::MCAChannelIDMissing,
+                    ValidationIssue::from_code(
+                        St2067_2_2016::MCAChannelIDMissing,
                         format!(
                             "MXF {} declares ChannelCount = {} but no \
                              AudioChannelLabelSubDescriptor carries MCAChannelID = {} — \
@@ -223,11 +228,12 @@ pub fn check_audio_mca(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
         // both the documented `0401010d` form and any future
         // `0401010X` revision, plus the structural body bytes that
         // identify ST 428-12 MCA layouts.
-        let prefix_ok = ca.starts_with("urn:smpte:ul:060e2b34.0401010")
-            && ca.contains(".04020210.");
+        let prefix_ok =
+            ca.starts_with("urn:smpte:ul:060e2b34.0401010") && ca.contains(".04020210.");
         if !prefix_ok {
             issues.push(
-                ValidationIssue::from_code(St2067_2_2016::ChannelAssignmentNotMCA,
+                ValidationIssue::from_code(
+                    St2067_2_2016::ChannelAssignmentNotMCA,
                     format!(
                         "MXF {} declares ChannelAssignment = {} — ST 2067-2 §5.3.4.2 \
                          requires a SMPTE 428-12 MCA channel-layout UL.",
@@ -250,7 +256,8 @@ pub fn check_audio_mca(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
         if let Some(bytes) = parse_ul_bytes(&cf) {
             if bytes[14] != 0x02 {
                 issues.push(
-                    ValidationIssue::from_code(St2067_2_2016::AudioNotClipWrapped,
+                    ValidationIssue::from_code(
+                        St2067_2_2016::AudioNotClipWrapped,
                         format!(
                             "MXF {} audio ContainerFormat UL byte 15 = 0x{:02x} \
                              — ST 2067-2 §5.3.3 / ST 382 §10 require Clip-Wrapped (0x02). \
@@ -272,7 +279,8 @@ pub fn check_audio_mca(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
     // tighten via `RulesConfig` when their pipeline mandates it.
     if !regxml.contains(":RFC5646SpokenLanguage") {
         issues.push(
-            ValidationIssue::from_code(St2067_2_2016::RFC5646SpokenLanguageMissing,
+            ValidationIssue::from_code(
+                St2067_2_2016::RFC5646SpokenLanguageMissing,
                 format!(
                     "MXF {} sound descriptor is missing RFC5646SpokenLanguage — ST 2067-2 \
                      §5.3 recommends declaring the spoken-language BCP-47 tag.",
@@ -294,9 +302,18 @@ pub fn check_audio_mca(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
         // its catalogue code, severity, and category.
         for (required, code) in &[
             ("MCATitle", St2067_2_2016::SoundfieldGroupMissingMCATitle),
-            ("MCATitleVersion", St2067_2_2016::SoundfieldGroupMissingMCATitleVersion),
-            ("MCAAudioContentKind", St2067_2_2016::SoundfieldGroupMissingMCAAudioContentKind),
-            ("MCAAudioElementKind", St2067_2_2016::SoundfieldGroupMissingMCAAudioElementKind),
+            (
+                "MCATitleVersion",
+                St2067_2_2016::SoundfieldGroupMissingMCATitleVersion,
+            ),
+            (
+                "MCAAudioContentKind",
+                St2067_2_2016::SoundfieldGroupMissingMCAAudioContentKind,
+            ),
+            (
+                "MCAAudioElementKind",
+                St2067_2_2016::SoundfieldGroupMissingMCAAudioElementKind,
+            ),
         ] {
             if !regxml.contains(&format!(":{required}")) {
                 issues.push(
@@ -363,7 +380,10 @@ pub(crate) fn extract_all_fields(xml: &str, local_name: &str) -> Vec<String> {
         // legal tag terminator. Otherwise we hit a name with this as
         // a prefix (e.g. `:MCAChannel` matched on `:MCAChannelID`).
         let next = xml.as_bytes().get(abs + probe.len()).copied();
-        if !matches!(next, Some(b'>') | Some(b' ') | Some(b'/') | Some(b'\t') | Some(b'\n')) {
+        if !matches!(
+            next,
+            Some(b'>') | Some(b' ') | Some(b'/') | Some(b'\t') | Some(b'\n')
+        ) {
             cursor = abs + probe.len();
             continue;
         }
@@ -434,7 +454,10 @@ pub(crate) fn count_elements(xml: &str, local_name: &str) -> usize {
         let abs = search_from + rel;
         let next_char = xml.as_bytes().get(abs + open_token.len()).copied();
         // Match boundary so `:Channel` doesn't match `:ChannelCount`.
-        if matches!(next_char, Some(b'>') | Some(b' ') | Some(b'/') | Some(b'\t') | Some(b'\n')) {
+        if matches!(
+            next_char,
+            Some(b'>') | Some(b' ') | Some(b'/') | Some(b'\t') | Some(b'\n')
+        ) {
             if let Some(prefix_start) = xml[..abs].rfind('<') {
                 if !xml[prefix_start..].starts_with("</") {
                     count += 1;
@@ -541,7 +564,12 @@ mod tests {
         // Warnings on this fixture.
         let (xml, path) = audio1_regxml();
         let issues = check_audio_mca(&xml, &path);
-        for field in &["MCATitle", "MCATitleVersion", "MCAAudioContentKind", "MCAAudioElementKind"] {
+        for field in &[
+            "MCATitle",
+            "MCATitleVersion",
+            "MCAAudioContentKind",
+            "MCAAudioElementKind",
+        ] {
             assert!(
                 issues
                     .iter()
@@ -625,7 +653,9 @@ mod tests {
             issues
         );
         assert!(
-            missing_ids.iter().any(|i| i.message.contains("MCAChannelID = 2")),
+            missing_ids
+                .iter()
+                .any(|i| i.message.contains("MCAChannelID = 2")),
             "expected diagnostic to name channel id 2, got: {:#?}",
             missing_ids
         );
@@ -638,7 +668,10 @@ mod tests {
             <ns2:QuantizationBits xmlns:ns2="x">24</ns2:QuantizationBits>
         "#;
         assert_eq!(extract_field(xml, "ChannelCount").as_deref(), Some("2"));
-        assert_eq!(extract_field(xml, "QuantizationBits").as_deref(), Some("24"));
+        assert_eq!(
+            extract_field(xml, "QuantizationBits").as_deref(),
+            Some("24")
+        );
         assert_eq!(extract_field(xml, "AbsentField"), None);
     }
 
@@ -825,7 +858,10 @@ mod tests {
         let ul = "urn:smpte:ul:060e2b34.04010101.0d010301.02060200";
         let bytes = parse_ul_bytes(ul).unwrap();
         assert_eq!(bytes[0], 0x06);
-        assert_eq!(bytes[14], 0x02, "byte 15 (1-indexed) is the wrapping octet — 0x02 = clip");
+        assert_eq!(
+            bytes[14], 0x02,
+            "byte 15 (1-indexed) is the wrapping octet — 0x02 = clip"
+        );
         assert_eq!(bytes[15], 0x00);
     }
 
@@ -856,7 +892,9 @@ mod tests {
         </ns1:WAVEPCMDescriptor>"#;
         let issues = check_audio_mca(xml, std::path::Path::new("/synth.mxf"));
         assert!(
-            issues.iter().any(|i| i.code.contains("AudioNotClipWrapped")),
+            issues
+                .iter()
+                .any(|i| i.code.contains("AudioNotClipWrapped")),
             "expected AudioNotClipWrapped, got: {:#?}",
             issues
         );
@@ -880,7 +918,9 @@ mod tests {
         </ns1:WAVEPCMDescriptor>"#;
         let issues = check_audio_mca(xml, std::path::Path::new("/synth.mxf"));
         assert!(
-            issues.iter().any(|i| i.code.contains("ChannelAssignmentNotMCA")),
+            issues
+                .iter()
+                .any(|i| i.code.contains("ChannelAssignmentNotMCA")),
             "expected ChannelAssignmentNotMCA, got: {:#?}",
             issues
         );

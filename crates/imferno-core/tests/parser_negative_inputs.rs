@@ -10,8 +10,8 @@
 //! because the error enums differ per parser, but `Result::is_err()`
 //! is universal.
 
-use imferno_core::assetmap::{parse_assetmap, parse_opl, parse_pkl};
 use imferno_core::assetmap::volindex::parse_volindex;
+use imferno_core::assetmap::{parse_assetmap, parse_opl, parse_pkl};
 use imferno_core::cpl::parse_cpl;
 use imferno_core::scm::parse_scm;
 

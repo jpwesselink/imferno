@@ -17,10 +17,10 @@
 use std::fs;
 use std::path::PathBuf;
 
-use xmloxide::Document;
 use xmloxide::validation::xsd::{
     parse_xsd, parse_xsd_with_options, validate_xsd, SchemaResolver, XsdParseOptions,
 };
+use xmloxide::Document;
 
 /// Minimal synthetic stub for SMPTE ST 433 dcml types — provides the three
 /// types every IMF schema imports (`UUIDType`, `UserTextType`, `RationalType`)
@@ -71,7 +71,11 @@ impl SchemaResolver for StubResolver {
 fn repo_root() -> PathBuf {
     // crates/imferno-core/examples/xsd_validate_spike.rs → repo root is 3 up
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
-    PathBuf::from(manifest_dir).join("..").join("..").canonicalize().unwrap()
+    PathBuf::from(manifest_dir)
+        .join("..")
+        .join("..")
+        .canonicalize()
+        .unwrap()
 }
 
 fn main() {
@@ -82,8 +86,7 @@ fn main() {
     println!("== xmloxide XSD validation spike ==");
     println!("XSD: {}", xsd_path.display());
 
-    let xsd_src = fs::read_to_string(&xsd_path)
-        .unwrap_or_else(|e| panic!("read xsd: {e}"));
+    let xsd_src = fs::read_to_string(&xsd_path).unwrap_or_else(|e| panic!("read xsd: {e}"));
 
     let resolver = StubResolver;
     let opts = XsdParseOptions {
@@ -234,12 +237,24 @@ fn main() {
     </xs:schema>"#;
     let mini_schema = parse_xsd(mini_xsd).unwrap();
     let probes: &[(&str, &str)] = &[
-        ("valid",                "<thing><name>x</name><count>5</count></thing>"),
-        ("missing-required",     "<thing><name>x</name></thing>"),
-        ("wrong-element-order",  "<thing><count>5</count><name>x</name></thing>"),
-        ("invalid-type",         "<thing><name>x</name><count>not-a-number</count></thing>"),
-        ("negative-positive",    "<thing><name>x</name><count>-1</count></thing>"),
-        ("unknown-element",      "<thing><name>x</name><count>5</count><unknown/></thing>"),
+        ("valid", "<thing><name>x</name><count>5</count></thing>"),
+        ("missing-required", "<thing><name>x</name></thing>"),
+        (
+            "wrong-element-order",
+            "<thing><count>5</count><name>x</name></thing>",
+        ),
+        (
+            "invalid-type",
+            "<thing><name>x</name><count>not-a-number</count></thing>",
+        ),
+        (
+            "negative-positive",
+            "<thing><name>x</name><count>-1</count></thing>",
+        ),
+        (
+            "unknown-element",
+            "<thing><name>x</name><count>5</count><unknown/></thing>",
+        ),
     ];
     for (label, xml) in probes {
         let doc = Document::parse_str(xml).unwrap();

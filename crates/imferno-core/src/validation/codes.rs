@@ -291,8 +291,12 @@ impl ValidationCode for St2067_21_2023 {
             Self::SampledXOffset => "ST2067-21:2023:6.2.1/SampledXOffset",
             Self::SampledYOffset => "ST2067-21:2023:6.2.1/SampledYOffset",
             Self::StoredF2Offset => "ST2067-21:2023:6.2.1/StoredF2Offset",
-            Self::TransferCharacteristicMissing => "ST2067-21:2023:6.2.1/TransferCharacteristicMissing",
-            Self::TransferCharacteristicUnknown => "ST2067-21:2023:6.2.2/TransferCharacteristicUnknown",
+            Self::TransferCharacteristicMissing => {
+                "ST2067-21:2023:6.2.1/TransferCharacteristicMissing"
+            }
+            Self::TransferCharacteristicUnknown => {
+                "ST2067-21:2023:6.2.2/TransferCharacteristicUnknown"
+            }
             Self::CodingEquationsUnknown => "ST2067-21:2023:6.2.3/CodingEquationsUnknown",
             Self::ColorPrimariesUnknown => "ST2067-21:2023:6.2.4/ColorPrimariesUnknown",
             Self::J2KRequired => "ST2067-21:2023:6.2.5/J2KRequired",

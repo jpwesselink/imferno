@@ -8,6 +8,12 @@
 //! (Preface, MaterialPackage, essence descriptors) is out of scope for
 //! this phase — CPL EssenceDescriptors are the primary source of format info.
 
+/// ST 2067-2 §5.3 audio MCA rules applied against the RegXML output
+/// of `mxf::metadata`. WAVE PCM requirement, sample rate / quant-bits
+/// whitelist, channel-label count match, SoundfieldGroupLabel
+/// singleton. Native-only.
+#[cfg(not(target_arch = "wasm32"))]
+pub mod audio_mca;
 pub mod codes;
 /// MXF essence-header validation backed by `smpte-mxf`. Native-only —
 /// the wasm validator never sees MXF binaries (browser callers upload
@@ -20,12 +26,6 @@ pub mod essence;
 /// to RegXML for typed essence-rule application. Native-only.
 #[cfg(not(target_arch = "wasm32"))]
 pub mod metadata;
-/// ST 2067-2 §5.3 audio MCA rules applied against the RegXML output
-/// of `mxf::metadata`. WAVE PCM requirement, sample rate / quant-bits
-/// whitelist, channel-label count match, SoundfieldGroupLabel
-/// singleton. Native-only.
-#[cfg(not(target_arch = "wasm32"))]
-pub mod audio_mca;
 /// ST 2067-2 §5.4 timed-text essence rules applied against RegXML.
 /// UCSEncoding=UTF-8, NamespaceURI ∈ IMSC1, MIMEType whitelist.
 /// Native-only.
@@ -424,7 +424,10 @@ mod tests {
         assert!(
             matches!(
                 parse_mxf_header_info_from_reader(&mut cursor),
-                Err(MxfParseError::PartitionPackTooLarge { got: 5000, cap: 4096 })
+                Err(MxfParseError::PartitionPackTooLarge {
+                    got: 5000,
+                    cap: 4096
+                })
             ),
             "expected PartitionPackTooLarge {{ got: 5000, cap: 4096 }}"
         );

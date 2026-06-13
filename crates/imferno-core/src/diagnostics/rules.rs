@@ -158,9 +158,7 @@ impl RulesConfig {
                 });
                 continue;
             }
-            let matches_any = codes
-                .iter()
-                .any(|c| match_specificity(c, key).is_some());
+            let matches_any = codes.iter().any(|c| match_specificity(c, key).is_some());
             if !matches_any {
                 warnings.push(RuleValidationWarning {
                     key: key.clone(),
@@ -429,12 +427,11 @@ mod tests {
         assert_eq!(deserialized.len(), 1);
     }
 
-    use crate::diagnostics::{
-        Category, IssueSource, Location, ValidationIssue, ValidationProfile,
-    };
+    use crate::diagnostics::{Category, IssueSource, Location, ValidationIssue, ValidationProfile};
 
     fn issue(code: &str, severity: Severity) -> ValidationIssue {
-        ValidationIssue::new(severity, Category::Schema, code, "test").with_location(Location::new())
+        ValidationIssue::new(severity, Category::Schema, code, "test")
+            .with_location(Location::new())
     }
 
     fn report_with(issues: Vec<ValidationIssue>) -> ValidationReport {
@@ -464,11 +461,10 @@ mod tests {
     #[test]
     fn rule_matches_supports_smpte_section_globs() {
         // Mid-segment wildcards — anchored at both ends of the segment.
-        assert!(match_specificity(
-            "ST2067-2:2020:6.4.2/EditRate",
-            "ST2067-*:2020:*/EditRate",
-        )
-        .is_some());
+        assert!(
+            match_specificity("ST2067-2:2020:6.4.2/EditRate", "ST2067-*:2020:*/EditRate",)
+                .is_some()
+        );
         assert!(match_specificity(
             "ST2067-3:2020:5.5.1.2/ContentKindUnknown",
             "ST2067-*:2020:*/EditRate",
@@ -501,7 +497,10 @@ mod tests {
         rules.set_raw("source:XsdLayer".into(), RuleSeverity::Off);
         rules.set_raw("XSD/*/*".into(), RuleSeverity::Warn);
         let warnings = rules.validate(["XSD/TypeInvalid/IssueDate", "XSD/PatternInvalid/UUID"]);
-        assert!(warnings.is_empty(), "expected no warnings, got: {warnings:#?}");
+        assert!(
+            warnings.is_empty(),
+            "expected no warnings, got: {warnings:#?}"
+        );
     }
 
     /// `source:Foo` where `Foo` isn't a known `IssueSource` variant.
@@ -599,7 +598,10 @@ mod tests {
         assert_eq!(out.suppressed[0].code, "XSD/TypeInvalid/IssueDate");
         assert_eq!(out.suppressed[0].severity, Severity::Info);
         assert_eq!(
-            out.suppressed[0].context.get("suppressed_by").map(String::as_str),
+            out.suppressed[0]
+                .context
+                .get("suppressed_by")
+                .map(String::as_str),
             Some("source:XsdLayer"),
         );
     }
@@ -616,7 +618,10 @@ mod tests {
         assert!(out.errors.is_empty());
         assert_eq!(out.suppressed.len(), 1);
         assert_eq!(
-            out.suppressed[0].context.get("suppressed_by").map(String::as_str),
+            out.suppressed[0]
+                .context
+                .get("suppressed_by")
+                .map(String::as_str),
             Some("XSD/TypeInvalid/*"),
         );
     }
@@ -632,8 +637,14 @@ mod tests {
         ]);
         let out = report.apply_rules(&rules);
         assert_eq!(out.suppressed.len(), 2);
-        assert!(out.is_playable, "suppressed Critical should not block playability");
-        assert!(out.is_compliant, "suppressed Error should not block compliance");
+        assert!(
+            out.is_playable,
+            "suppressed Critical should not block playability"
+        );
+        assert!(
+            out.is_compliant,
+            "suppressed Error should not block compliance"
+        );
     }
 
     #[test]

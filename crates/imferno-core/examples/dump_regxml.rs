@@ -7,7 +7,9 @@
 //! Usage: `cargo run --example dump_regxml -- path/to/file.mxf`
 
 fn main() {
-    let path = std::env::args().nth(1).expect("usage: dump_regxml <file.mxf>");
+    let path = std::env::args()
+        .nth(1)
+        .expect("usage: dump_regxml <file.mxf>");
     let opts = regxml::MxfFragmentOptions {
         partition: regxml::PartitionTarget::Header,
         ..Default::default()

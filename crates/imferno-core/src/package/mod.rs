@@ -2037,13 +2037,11 @@ impl Imferno {
                     match crate::mxf::metadata::parse_mxf_to_regxml(path, opts) {
                         Ok(regxml) => {
                             for issue in crate::mxf::audio_mca::check_audio_mca(&regxml, path) {
-                                let issue =
-                                    issue.with_context("asset_uuid", asset.id.to_string());
+                                let issue = issue.with_context("asset_uuid", asset.id.to_string());
                                 report.add(issue);
                             }
                             for issue in crate::mxf::timed_text::check_timed_text(&regxml, path) {
-                                let issue =
-                                    issue.with_context("asset_uuid", asset.id.to_string());
+                                let issue = issue.with_context("asset_uuid", asset.id.to_string());
                                 report.add(issue);
                             }
                         }

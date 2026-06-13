@@ -53,21 +53,24 @@ impl ValidationCode for St377_1_2011 {
             Self::ParseError => "MXF file could not be parsed; it may be truncated or corrupt.",
             Self::NoEssenceContainers => "MXF file contains no essence containers.",
             Self::Op1a => "MXF operational pattern must be OP1a for IMF packages.",
-            Self::NonHeaderFirstPartition =>
-                "The first partition in an MXF file must be the Header partition.",
-            Self::HeaderPartitionOpen =>
-                "The header partition status should be ClosedComplete for finished deliveries.",
-            Self::MissingHeaderMetadata =>
-                "The header partition must carry header metadata (HeaderByteCount > 0).",
+            Self::NonHeaderFirstPartition => {
+                "The first partition in an MXF file must be the Header partition."
+            }
+            Self::HeaderPartitionOpen => {
+                "The header partition status should be ClosedComplete for finished deliveries."
+            }
+            Self::MissingHeaderMetadata => {
+                "The header partition must carry header metadata (HeaderByteCount > 0)."
+            }
         }
     }
     fn default_severity(&self) -> Severity {
         match self {
             Self::NotMxf | Self::ParseError | Self::NoEssenceContainers => Severity::Warning,
             Self::HeaderPartitionOpen => Severity::Warning,
-            Self::Op1a
-            | Self::NonHeaderFirstPartition
-            | Self::MissingHeaderMetadata => Severity::Error,
+            Self::Op1a | Self::NonHeaderFirstPartition | Self::MissingHeaderMetadata => {
+                Severity::Error
+            }
         }
     }
     fn category(&self) -> Category {
@@ -172,33 +175,32 @@ impl ValidationCode for St2067_2_2016 {
         match self {
             Self::OperationalPatternNotOP1A => "ST2067-2:2016:5.2/OperationalPatternNotOP1A",
             Self::SoundDescriptorNotWAVEPCM => "ST2067-2:2016:5.3.4.1/SoundDescriptorNotWAVEPCM",
-            Self::AudioSampleRateUnsupported =>
-                "ST2067-2:2016:5.3.2.2/AudioSampleRateUnsupported",
+            Self::AudioSampleRateUnsupported => "ST2067-2:2016:5.3.2.2/AudioSampleRateUnsupported",
             Self::QuantizationBitsNot24 => "ST2067-2:2016:5.3.2.3/QuantizationBitsNot24",
-            Self::ChannelLabelCountMismatch =>
-                "ST2067-2:2016:5.3.6.2/ChannelLabelCountMismatch",
+            Self::ChannelLabelCountMismatch => "ST2067-2:2016:5.3.6.2/ChannelLabelCountMismatch",
             Self::MCAChannelIDMissing => "ST2067-2:2016:5.3.6.2/MCAChannelIDMissing",
-            Self::SoundFieldGroupLabelCount =>
-                "ST2067-2:2016:5.3.6.3/SoundFieldGroupLabelCount",
+            Self::SoundFieldGroupLabelCount => "ST2067-2:2016:5.3.6.3/SoundFieldGroupLabelCount",
             Self::AudioNotClipWrapped => "ST2067-2:2016:5.3.3/AudioNotClipWrapped",
-            Self::RFC5646SpokenLanguageMissing =>
-                "ST2067-2:2016:5.3/RFC5646SpokenLanguageMissing",
+            Self::RFC5646SpokenLanguageMissing => "ST2067-2:2016:5.3/RFC5646SpokenLanguageMissing",
             Self::ChannelAssignmentNotMCA => "ST2067-2:2016:5.3.4.2/ChannelAssignmentNotMCA",
-            Self::SoundfieldGroupMissingMCATitle =>
-                "ST2067-2:2016:5.3.6.5/SoundfieldGroupMissing/MCATitle",
-            Self::SoundfieldGroupMissingMCATitleVersion =>
-                "ST2067-2:2016:5.3.6.5/SoundfieldGroupMissing/MCATitleVersion",
-            Self::SoundfieldGroupMissingMCAAudioContentKind =>
-                "ST2067-2:2016:5.3.6.5/SoundfieldGroupMissing/MCAAudioContentKind",
-            Self::SoundfieldGroupMissingMCAAudioElementKind =>
-                "ST2067-2:2016:5.3.6.5/SoundfieldGroupMissing/MCAAudioElementKind",
-            Self::TimedTextUCSEncodingNotUTF8 =>
-                "ST2067-2:2016:5.4/TimedTextUCSEncodingNotUTF8",
+            Self::SoundfieldGroupMissingMCATitle => {
+                "ST2067-2:2016:5.3.6.5/SoundfieldGroupMissing/MCATitle"
+            }
+            Self::SoundfieldGroupMissingMCATitleVersion => {
+                "ST2067-2:2016:5.3.6.5/SoundfieldGroupMissing/MCATitleVersion"
+            }
+            Self::SoundfieldGroupMissingMCAAudioContentKind => {
+                "ST2067-2:2016:5.3.6.5/SoundfieldGroupMissing/MCAAudioContentKind"
+            }
+            Self::SoundfieldGroupMissingMCAAudioElementKind => {
+                "ST2067-2:2016:5.3.6.5/SoundfieldGroupMissing/MCAAudioElementKind"
+            }
+            Self::TimedTextUCSEncodingNotUTF8 => "ST2067-2:2016:5.4/TimedTextUCSEncodingNotUTF8",
             Self::TimedTextNamespaceNotIMSC => "ST2067-2:2016:5.4/TimedTextNamespaceNotIMSC",
-            Self::TimedTextResourceMIMETypeUnsupported =>
-                "ST2067-2:2016:5.4.5/TimedTextResourceMIMETypeUnsupported",
-            Self::TimedTextMappingKindNot0x13 =>
-                "ST2067-2:2016:5.4/TimedTextMappingKindNot0x13",
+            Self::TimedTextResourceMIMETypeUnsupported => {
+                "ST2067-2:2016:5.4.5/TimedTextResourceMIMETypeUnsupported"
+            }
+            Self::TimedTextMappingKindNot0x13 => "ST2067-2:2016:5.4/TimedTextMappingKindNot0x13",
         }
     }
     fn description(&self) -> &'static str {
@@ -369,8 +371,9 @@ impl ValidationCode for St377_4_2012 {
     fn code(&self) -> &'static str {
         match self {
             Self::MCALinkIDMissing => "ST377-4:2012:6.3.2/MCALinkIDMissing",
-            Self::SoundfieldGroupLinkIDMismatch =>
-                "ST377-4:2012:6.3.2/SoundfieldGroupLinkIDMismatch",
+            Self::SoundfieldGroupLinkIDMismatch => {
+                "ST377-4:2012:6.3.2/SoundfieldGroupLinkIDMismatch"
+            }
         }
     }
     fn description(&self) -> &'static str {
@@ -397,10 +400,7 @@ impl ValidationCode for St377_4_2012 {
 }
 
 impl St377_4_2012 {
-    pub const ALL: &'static [Self] = &[
-        Self::MCALinkIDMissing,
-        Self::SoundfieldGroupLinkIDMismatch,
-    ];
+    pub const ALL: &'static [Self] = &[Self::MCALinkIDMissing, Self::SoundfieldGroupLinkIDMismatch];
 }
 
 impl From<St377_4_2012> for String {
@@ -441,10 +441,10 @@ impl ValidationCode for ImfernoMxf {
         match self {
             Self::OpenFailed => "MXF file could not be opened for reading.",
             Self::PartitionPackParseFailed => "MXF header partition pack failed to parse.",
-            Self::RegXmlConversionFailed =>
-                "MXF header metadata could not be converted to RegXML.",
-            Self::EssenceContainersDetected =>
-                "Informational trace of how many essence containers the MXF declares.",
+            Self::RegXmlConversionFailed => "MXF header metadata could not be converted to RegXML.",
+            Self::EssenceContainersDetected => {
+                "Informational trace of how many essence containers the MXF declares."
+            }
         }
     }
     fn default_severity(&self) -> Severity {

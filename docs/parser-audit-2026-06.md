@@ -429,15 +429,29 @@ finding ID in parentheses links back to the section above.
 >
 > **Gaps confirmed unresolvable from vendoring (2026-06-13 probe of
 > pub.smpte.org + Photon's resource bundle):**
-> - **IAB:2021** — no separate XSD published. Photon doesn't have it,
->   SMPTE's `st2067-201-20201109-pub.zip` ships only the PDF, the catalogue
->   is bit-for-bit identical to 2019. Workaround: keep `St2067_201_2021`
->   with the `previous_identical_edition = "ST2067-201:2019"` annotation;
->   XSD pre-pass for 2021-namespace documents skips and structural checks
->   still fire.
-> - **IAB:2026** — newly published (discovered 2026-06-13); also PDF-only
->   in `st2067-201-20260325-pub.zip`. No catalogue entries yet — separate
->   follow-up to add `St2067_201_2026`.
+> - **IAB:2021** — no separate XSD published. SMPTE's
+>   `st2067-201-20201109-pub.zip` ships only the PDF. The 2026
+>   publication (whose HTML version embeds the schema inline) shows
+>   `targetNamespace="http://www.smpte-ra.org/ns/2067-201/2019"` —
+>   meaning **the 2026 schema explicitly reuses the 2019 namespace**.
+>   Same pattern as CPL 2020 / AssetMap 2020 / PKL 2020. Combined
+>   with the fact that 100% of our IAB test fixtures
+>   (`test-data/Application5/*`) declare the 2019 namespace, the
+>   `St2067_201_2021` enum's URI `/ns/2067-201/2021` is **probably
+>   fictional** in the same way `Smpte2067_3_2020` was. Follow-up:
+>   `pdftotext` the 2021 PDF to confirm (poppler not installed in
+>   the current shell); if confirmed, drop the `URI_2021` /
+>   `URI_2021_SCHEMAS` consts and route IAB validation by the actual
+>   document namespace (2019). The existing
+>   `previous_identical_edition` annotation already telegraphs the
+>   intent.
+> - **IAB:2026** — newly published (discovered 2026-06-13). The HTML
+>   index.html in `st2067-201-20260325-pub.zip` contains the schema
+>   inline; its `targetNamespace` is `/ns/2067-201/2019`, not
+>   `/ns/2067-201/2026`. The existing `st2067-201-2019.xsd` therefore
+>   validates 2026 documents too — **no new XSD needed**. A future
+>   `St2067_201_2026` rule-catalogue enum may still be warranted if
+>   the prose adds new normative constraints (TBD — needs PDF read).
 > - **AssetMap (any edition)** — `st2067-9-20180522-pub.zip` and
 >   `st429-9-20141124-pub.zip` both ship only the PDF. The AssetMap
 >   schema is defined inline in spec prose with no standalone XSD.

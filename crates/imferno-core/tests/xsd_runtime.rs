@@ -24,9 +24,12 @@ fn repo_root() -> PathBuf {
         .unwrap()
 }
 
+fn specs_dir() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("specs")
+}
+
 fn read_xsd(name: &str) -> String {
-    fs::read_to_string(repo_root().join("specs").join(name))
-        .unwrap_or_else(|e| panic!("read xsd {name}: {e}"))
+    fs::read_to_string(specs_dir().join(name)).unwrap_or_else(|e| panic!("read xsd {name}: {e}"))
 }
 
 fn list_fixtures(dir: &Path, prefix: &str) -> Vec<PathBuf> {
@@ -146,8 +149,8 @@ fn synthetic_broken_cpls_fire_expected_codes() {
 /// gap noted in `specs/comparisons/imf-cpl.md` for real CPLs.
 #[test]
 fn composite_schema_validates_real_fixture_with_dcml_types_bound() {
-    let primary = repo_root().join("specs/imf-cpl.xsd");
-    let specs = repo_root().join("specs");
+    let primary = specs_dir().join("imf-cpl.xsd");
+    let specs = specs_dir();
     let fixture = repo_root()
         .join("test-data/Application2Extended/CPL_0eb3d1b9-b77b-4d3f-bbe5-7c69b15dca85.xml");
     let cpl_xml = fs::read_to_string(&fixture).unwrap_or_else(|e| panic!("read fixture: {e}"));
@@ -168,8 +171,8 @@ fn composite_schema_validates_real_fixture_with_dcml_types_bound() {
 /// of import-resolution state).
 #[test]
 fn composite_schema_still_catches_builtin_type_violations() {
-    let primary = repo_root().join("specs/imf-cpl.xsd");
-    let specs = repo_root().join("specs");
+    let primary = specs_dir().join("imf-cpl.xsd");
+    let specs = specs_dir();
     let bad_date = r#"<CompositionPlaylist xmlns="http://www.smpte-ra.org/schemas/2067-3/2013">
         <Id>urn:uuid:00000000-0000-0000-0000-000000000001</Id>
         <IssueDate>not-a-date</IssueDate>
@@ -206,8 +209,8 @@ fn composite_schema_still_catches_builtin_type_violations() {
 /// validation reaches every constraint expressible in the XSD layer.
 #[test]
 fn composite_schema_catches_dcml_typed_violations() {
-    let primary = repo_root().join("specs/imf-cpl.xsd");
-    let specs = repo_root().join("specs");
+    let primary = specs_dir().join("imf-cpl.xsd");
+    let specs = specs_dir();
     let bad_uuid = r#"<CompositionPlaylist xmlns="http://www.smpte-ra.org/schemas/2067-3/2013">
         <Id>not-a-uuid</Id>
         <IssueDate>2025-01-01T00:00:00Z</IssueDate>
@@ -232,8 +235,8 @@ fn composite_schema_catches_dcml_typed_violations() {
 /// issues (or only known prose-only ones).
 #[test]
 fn validate_cpl_xml_runs_both_layers_clean_fixture() {
-    let primary = repo_root().join("specs/imf-cpl.xsd");
-    let specs = repo_root().join("specs");
+    let primary = specs_dir().join("imf-cpl.xsd");
+    let specs = specs_dir();
     let fixture = repo_root()
         .join("test-data/Application2Extended/CPL_0eb3d1b9-b77b-4d3f-bbe5-7c69b15dca85.xml");
     let cpl_xml = fs::read_to_string(&fixture).unwrap();
@@ -256,8 +259,8 @@ fn validate_cpl_xml_runs_both_layers_clean_fixture() {
 /// concatenated list — XSD findings first, semantic after.
 #[test]
 fn validate_cpl_xml_chains_xsd_then_semantic() {
-    let primary = repo_root().join("specs/imf-cpl.xsd");
-    let specs = repo_root().join("specs");
+    let primary = specs_dir().join("imf-cpl.xsd");
+    let specs = specs_dir();
     let bad_xml = r#"<CompositionPlaylist xmlns="http://www.smpte-ra.org/schemas/2067-3/2013">
         <Id>urn:uuid:00000000-0000-0000-0000-000000000001</Id>
         <IssueDate>not-a-date</IssueDate>

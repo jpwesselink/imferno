@@ -17,7 +17,7 @@ default = []
 aws-s3 = ["imferno-core/aws-s3", "dep:aws-config", "dep:aws-sdk-s3"]
 
 [dependencies]
-imferno-core = { path = "../imferno-core", version = "3.0.0", features = ["tokio"] }
+imferno-core = { path = "../imferno-core", version = "3.0.0", features = ["tokio", "uppsala-patched"] }
 clap = { workspace = true }
 serde_json = { workspace = true }
 anyhow = { workspace = true }

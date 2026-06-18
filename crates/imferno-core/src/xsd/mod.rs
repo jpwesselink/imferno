@@ -405,15 +405,15 @@ pub fn translate(
     if let Some(id) = cpl_id {
         loc = loc.with_cpl(id);
     }
-    // When the patched uppsala fork populated element_path, append it to
-    // the catalogue code so downstream code-string substring matches can
-    // discriminate per-element (e.g. "XSD/ElementMissing/EditRate" vs the
-    // generic "XSD/ElementMissing"). Falls back to the bare code when no
-    // path is available (e.g. root-element-missing errors).
-    let code: String = match &err.element_path {
-        Some(path) if !path.is_empty() => format!("{}/{}", kind.code(), path),
-        _ => kind.code().to_string(),
-    };
+    // Per-element code discrimination (e.g. `XSD/ElementMissing/EditRate`
+    // vs the generic `XSD/ElementMissing`) reads `err.element_path`, which
+    // only exists on the patched uppsala fork at jpwesselink/uppsala —
+    // upstream uppsala 0.4 on crates.io lacks the field. We feature-gate
+    // the access so the lib compiles against vanilla uppsala for crates.io
+    // publishing while the workspace (which patches in the fork) gets the
+    // richer codes. See the `uppsala-patched` feature in Cargo.toml; once
+    // the patches land upstream this gate can be removed.
+    let code: String = element_path_code(kind, &err);
     // Until `Location` grows line/column fields, we fold the position
     // into the human-readable message body so the information isn't lost.
     let message = match (err.line, err.column) {
@@ -422,6 +422,19 @@ pub fn translate(
         _ => err.message,
     };
     ValidationIssue::new(kind.default_severity(), kind.category(), code, message).with_location(loc)
+}
+
+#[cfg(feature = "uppsala-patched")]
+fn element_path_code(kind: XsdConstraintCode, err: &uppsala::ValidationError) -> String {
+    match &err.element_path {
+        Some(path) if !path.is_empty() => format!("{}/{}", kind.code(), path),
+        _ => kind.code().to_string(),
+    }
+}
+
+#[cfg(not(feature = "uppsala-patched"))]
+fn element_path_code(kind: XsdConstraintCode, _err: &uppsala::ValidationError) -> String {
+    kind.code().to_string()
 }
 
 fn classify(message: &str) -> XsdConstraintCode {

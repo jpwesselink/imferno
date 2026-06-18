@@ -16,6 +16,13 @@ xmlsec1    = ["dep:tempfile"]
 jsonschema = ["dep:schemars"]
 tokio = ["dep:tokio"]
 aws-s3 = ["dep:aws-sdk-s3", "dep:aws-config", "tokio"]
+# Opt-in for builds against the patched uppsala fork (jpwesselink/uppsala),
+# which adds `element_path` to `ValidationError`. Enabled by workspace
+# members via the workspace `[patch.crates-io]`; left off by default so
+# the published crate compiles against upstream uppsala 0.4 on crates.io.
+# Downstream gets coarser XSD codes (no per-element suffix); once the
+# patches land upstream this feature can be removed.
+uppsala-patched = []
 
 [dependencies]
 serde        = { workspace = true, features = ["derive"] }

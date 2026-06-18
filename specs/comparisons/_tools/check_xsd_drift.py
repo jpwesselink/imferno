@@ -33,7 +33,7 @@ import urllib.request
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-SPECS_DIR = REPO_ROOT / "specs"
+SPECS_DIR = REPO_ROOT / "crates" / "imferno-core" / "specs"
 DEFAULT_MANIFEST = REPO_ROOT / "specs" / "comparisons" / "_tools" / "manifest.json"
 LIVE_URL_TEMPLATE = "https://smpte-ra.org/sites/default/files/{basename}"
 

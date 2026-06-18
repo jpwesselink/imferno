@@ -80,7 +80,7 @@ fn repo_root() -> PathBuf {
 
 fn main() {
     let root = repo_root();
-    let xsd_path = root.join("specs/imf-cpl.xsd");
+    let xsd_path = root.join("crates/imferno-core/specs/imf-cpl.xsd");
     let fixture_dir = root.join("test-data/Application2Extended");
 
     println!("== xmloxide XSD validation spike ==");

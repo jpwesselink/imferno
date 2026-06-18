@@ -49,22 +49,25 @@ pub mod codes;
 use codes::XsdConstraintCode;
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Embedded XSDs — vendored under specs/ and baked in at compile time so the
-// runtime XSD validator is self-contained.
+// Embedded XSDs — vendored under `crates/imferno-core/specs/` and baked in at
+// compile time so the runtime XSD validator is self-contained. The vendored
+// copies live inside the crate (not at the workspace root) so they ship in
+// the published tarball; `cargo package --verify` would otherwise fail to
+// resolve them via the old workspace-relative `include_str!` paths.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const IMF_CPL_2013_XSD: &str = include_str!("../../../../specs/imf-cpl.xsd");
+const IMF_CPL_2013_XSD: &str = include_str!("../../specs/imf-cpl.xsd");
 // st2067-3a-2020.xsd is byte-identical to st2067-3a-2016.xsd apart from the
 // header text and reuses the 2016 namespace, so 2020-era CPLs validate against
 // this schema too.
-const IMF_CPL_2016_XSD: &str = include_str!("../../../../specs/st2067-3a-2016.xsd");
-const IMF_OPL_2014_XSD: &str = include_str!("../../../../specs/st2067-100a-2014.xsd");
-const IMF_SCM_2018_XSD: &str = include_str!("../../../../specs/st2067-9a-2018.xsd");
-const DCI_PKL_2007_XSD: &str = include_str!("../../../../specs/SMPTE-429-8-PKL-2007.xsd");
+const IMF_CPL_2016_XSD: &str = include_str!("../../specs/st2067-3a-2016.xsd");
+const IMF_OPL_2014_XSD: &str = include_str!("../../specs/st2067-100a-2014.xsd");
+const IMF_SCM_2018_XSD: &str = include_str!("../../specs/st2067-9a-2018.xsd");
+const DCI_PKL_2007_XSD: &str = include_str!("../../specs/SMPTE-429-8-PKL-2007.xsd");
 // st2067-2b-2020.xsd targets the same namespace as st2067-2b-2016.xsd
 // (the 2020 publication reuses the 2016 PKL schema body modulo header
 // text), so a single vendored copy covers both editions.
-const IMF_PKL_2016_XSD: &str = include_str!("../../../../specs/st2067-2b-2016.xsd");
+const IMF_PKL_2016_XSD: &str = include_str!("../../specs/st2067-2b-2016.xsd");
 // The dcml stub is no longer baked into the binary — `dcml_specs_dir()`
 // was the only consumer and it's been removed in v3.0.0 in favour of
 // uppsala's in-memory schema path. The stub XSD remains in `specs/` for
@@ -72,7 +75,7 @@ const IMF_PKL_2016_XSD: &str = include_str!("../../../../specs/st2067-2b-2016.xs
 // schema resolver.
 //
 // const DCML_TYPES_STUB_XSD: &str =
-//     include_str!("../../../../specs/dcml-types-stub.xsd");
+//     include_str!("../../specs/dcml-types-stub.xsd");
 
 // `dcml_specs_dir()` was removed in v3.0.0 — the helper wrote the dcml
 // stub to `std::env::temp_dir()` so uppsala could read it back via

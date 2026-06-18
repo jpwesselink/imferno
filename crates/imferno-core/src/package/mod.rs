@@ -2327,49 +2327,52 @@ pub struct TrackAnalysis {
     pub codecs: Vec<String>,
 }
 
+/// Project a parsed CPL into the flat `CplDetails` view used by the CLI and other consumers.
+pub fn cpl_details_from(cpl: &crate::cpl::CompositionPlaylist) -> CplDetails {
+    let content_versions = if let Some(ref version_list) = cpl.content_version_list {
+        version_list
+            .content_versions
+            .iter()
+            .map(|v| v.id.clone())
+            .collect()
+    } else {
+        Vec::new()
+    };
+
+    let segments = cpl
+        .segment_list
+        .segments
+        .iter()
+        .map(|seg| {
+            let seq_list = &seg.sequence_list;
+            let sequence_count = seq_list.main_image_sequences.len()
+                + seq_list.main_audio_sequences.len()
+                + seq_list.subtitles_sequences.len();
+            SegmentInfo {
+                id: seg.id.to_string(),
+                sequence_count,
+            }
+        })
+        .collect();
+
+    CplDetails {
+        id: cpl.id.to_string(),
+        title: cpl.content_title.text.clone(),
+        kind: cpl.content_kind.to_string(),
+        issue_date: cpl.issue_date.clone(),
+        annotation: cpl.annotation.as_ref().map(|ls| ls.text.clone()),
+        issuer: cpl.issuer.as_ref().map(|ls| ls.text.clone()),
+        creator: cpl.creator.as_ref().map(|ls| ls.text.clone()),
+        content_originator: cpl.content_originator.as_ref().map(|ls| ls.text.clone()),
+        content_versions,
+        segments,
+    }
+}
+
 impl Imferno {
     /// Get detailed information about a specific CPL
     pub fn get_cpl_details(&self, uuid: &str) -> Option<CplDetails> {
-        let cpl = self.get_cpl_str(uuid)?;
-
-        let content_versions = if let Some(ref version_list) = cpl.content_version_list {
-            version_list
-                .content_versions
-                .iter()
-                .map(|v| v.id.clone())
-                .collect()
-        } else {
-            Vec::new()
-        };
-
-        let segments = cpl
-            .segment_list
-            .segments
-            .iter()
-            .map(|seg| {
-                let seq_list = &seg.sequence_list;
-                let sequence_count = seq_list.main_image_sequences.len()
-                    + seq_list.main_audio_sequences.len()
-                    + seq_list.subtitles_sequences.len();
-                SegmentInfo {
-                    id: seg.id.to_string(),
-                    sequence_count,
-                }
-            })
-            .collect();
-
-        Some(CplDetails {
-            id: cpl.id.to_string(),
-            title: cpl.content_title.text.clone(),
-            kind: cpl.content_kind.to_string(),
-            issue_date: cpl.issue_date.clone(),
-            annotation: cpl.annotation.as_ref().map(|ls| ls.text.clone()),
-            issuer: cpl.issuer.as_ref().map(|ls| ls.text.clone()),
-            creator: cpl.creator.as_ref().map(|ls| ls.text.clone()),
-            content_originator: cpl.content_originator.as_ref().map(|ls| ls.text.clone()),
-            content_versions,
-            segments,
-        })
+        self.get_cpl_str(uuid).map(cpl_details_from)
     }
 
     /// Get track analysis for all CPLs

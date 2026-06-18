@@ -81,6 +81,19 @@ fn test_cli_cpl_with_uuid() {
 }
 
 #[test]
+fn test_cli_cpl_single_file() {
+    let cpl_path = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../imferno-core/tests/fixtures/iab/cpl-iab-2026-conformant.xml"
+    );
+    let (success, stdout, stderr) = run_cli_command(&["cpl", cpl_path]);
+
+    assert!(success, "CLI cpl on single file failed: {}", stderr);
+    assert!(stdout.contains("CPL Details"));
+    assert!(stdout.contains("2026 conformant IAB sample"));
+}
+
+#[test]
 fn test_cli_cpl_invalid_uuid() {
     let (success, _stdout, stderr) =
         run_cli_command(&["cpl", TEST_PACKAGE, "--uuid", "invalid-uuid"]);

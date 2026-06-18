@@ -65,6 +65,11 @@
     "label": "beta (3.0.1)",
     "path": "/beta/"
   },
-  "prs": [],
+  "prs": [
+    {
+      "label": "#58 fix/vendor-xsds-into-crate",
+      "path": "/pr-58/"
+    }
+  ],
   "latest": "/v2.4.1/"
 }

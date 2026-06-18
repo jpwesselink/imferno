@@ -125,11 +125,11 @@ enum Commands {
 
     /// Show detailed CPL information
     Cpl {
-        /// Path to the IMF package directory
+        /// Path to the IMF package directory or a single CPL XML file
         #[arg(value_name = "PATH")]
         path: PathBuf,
 
-        /// CPL UUID (optional, shows first CPL if not specified)
+        /// CPL UUID (optional, shows first CPL if not specified). Ignored when PATH is a single CPL file.
         #[arg(short, long)]
         uuid: Option<String>,
     },
@@ -604,19 +604,25 @@ async fn cmd_validate(
 }
 
 async fn cmd_cpl(path: &std::path::Path, uuid: Option<String>) -> Result<()> {
-    let package = Imferno::parse(read_input(&path.to_string_lossy()).await?)?;
-
-    let cpl_uuid = if let Some(uuid) = uuid {
-        uuid
-    } else if let Some(cpl) = package.get_main_cpl() {
-        cpl.id.to_string()
+    let details = if path.is_file() {
+        let xml = std::fs::read_to_string(path)
+            .with_context(|| format!("reading CPL file {}", path.display()))?;
+        let cpl = imferno_core::cpl::parse_cpl(&xml)
+            .with_context(|| format!("parsing CPL file {}", path.display()))?;
+        imferno_core::package::cpl_details_from(&cpl)
     } else {
-        return Err(anyhow::anyhow!("No CPLs found in package"));
+        let package = Imferno::parse(read_input(&path.to_string_lossy()).await?)?;
+        let cpl_uuid = if let Some(uuid) = uuid {
+            uuid
+        } else if let Some(cpl) = package.get_main_cpl() {
+            cpl.id.to_string()
+        } else {
+            return Err(anyhow::anyhow!("No CPLs found in package"));
+        };
+        package
+            .get_cpl_details(&cpl_uuid)
+            .ok_or_else(|| anyhow::anyhow!("CPL with UUID {} not found", cpl_uuid))?
     };
-
-    let details = package
-        .get_cpl_details(&cpl_uuid)
-        .ok_or_else(|| anyhow::anyhow!("CPL with UUID {} not found", cpl_uuid))?;
 
     println!("CPL Details");
     println!("===========");

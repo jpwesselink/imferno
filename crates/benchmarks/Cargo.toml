@@ -27,7 +27,7 @@ harness = false
 
 [dependencies]
 criterion = { workspace = true }
-imferno-core = { path = "../imferno-core" }
+imferno-core = { path = "../imferno-core", features = ["uppsala-patched"] }
 
 [dev-dependencies]
 tempfile = { workspace = true }

@@ -8,4 +8,4 @@ publish = false
 [lib]
 
 [dependencies]
-imferno-core = { path = "../imferno-core" }
+imferno-core = { path = "../imferno-core", features = ["uppsala-patched"] }

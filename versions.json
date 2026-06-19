@@ -69,6 +69,11 @@
     "label": "beta (3.0.1)",
     "path": "/beta/"
   },
-  "prs": [],
+  "prs": [
+    {
+      "label": "#60 fix/imferno-cli-drop-uppsala-patched-feature",
+      "path": "/pr-60/"
+    }
+  ],
   "latest": "/v3.0.0/"
 }

@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.1](https://github.com/jpwesselink/imferno/compare/imferno-core-v3.0.0...imferno-core-v3.0.1) - 2026-06-19
+
+### Fixed
+
+- *(audio)* skip ST 2067-2 §5.3 WAVE-PCM rules on ST 2067-203 SADM/MGA tracks
+
 ## [2.4.1](https://github.com/jpwesselink/imferno/compare/imferno-core-v2.4.0...imferno-core-v2.4.1) - 2026-05-18
 
 ### Fixed

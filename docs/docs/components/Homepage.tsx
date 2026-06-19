@@ -33,6 +33,29 @@ export default function Homepage() {
     document.head.appendChild(script);
   }, []);
 
+  // Rspress's nav uses client-side routing — navigating to `/#playground`
+  // changes the URL but doesn't trigger the browser's default
+  // scroll-to-fragment. Handle it manually: on mount and on every
+  // hashchange, if a fragment is present scroll to the matching id.
+  // We give layout a tick to settle (lazy-loaded WASM playground card)
+  // before scrolling.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const scrollToHash = () => {
+      const hash = window.location.hash;
+      if (!hash || hash.length < 2) return;
+      const el = document.getElementById(hash.slice(1));
+      if (el) {
+        requestAnimationFrame(() => {
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+      }
+    };
+    scrollToHash();
+    window.addEventListener('hashchange', scrollToHash);
+    return () => window.removeEventListener('hashchange', scrollToHash);
+  }, []);
+
   return (
     <div className="homepage">
       {/* Hero */}

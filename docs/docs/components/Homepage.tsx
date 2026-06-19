@@ -103,7 +103,7 @@ export default function Homepage() {
       </section>
 
       {/* IMF Playground */}
-      <section className="section">
+      <section id="playground" className="section">
         <ImfPlayground />
       </section>
 

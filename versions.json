@@ -73,6 +73,11 @@
     "label": "beta (3.0.2)",
     "path": "/beta/"
   },
-  "prs": [],
+  "prs": [
+    {
+      "label": "#63 docs/refresh-mxf-coverage-claim",
+      "path": "/pr-63/"
+    }
+  ],
   "latest": "/v3.0.1/"
 }

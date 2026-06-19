@@ -65,11 +65,6 @@
     "label": "beta (3.0.1)",
     "path": "/beta/"
   },
-  "prs": [
-    {
-      "label": "#59 fix/uppsala-patched-feature-gate",
-      "path": "/pr-59/"
-    }
-  ],
+  "prs": [],
   "latest": "/v2.4.1/"
 }

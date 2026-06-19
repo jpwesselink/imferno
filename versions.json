@@ -73,6 +73,11 @@
     "label": "beta (3.0.2)",
     "path": "/beta/"
   },
-  "prs": [],
+  "prs": [
+    {
+      "label": "#64 docs/top-nav-try-in-browser",
+      "path": "/pr-64/"
+    }
+  ],
   "latest": "/v3.0.1/"
 }

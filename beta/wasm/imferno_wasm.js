@@ -282,7 +282,7 @@ function __wbg_get_imports() {
             const ret = arg0.length;
             return ret;
         },
-        __wbg_log_3e6bfd09dc6b55c4: function(arg0, arg1) {
+        __wbg_log_9010caac6e5891c3: function(arg0, arg1) {
             console.log(getStringFromWasm0(arg0, arg1));
         },
         __wbg_new_0_1b32bedde98fef4b: function() {

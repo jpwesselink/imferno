@@ -69,11 +69,6 @@
     "label": "beta (3.0.1)",
     "path": "/beta/"
   },
-  "prs": [
-    {
-      "label": "#61 fix/sadm-mga-not-wavepcm-false-positive",
-      "path": "/pr-61/"
-    }
-  ],
+  "prs": [],
   "latest": "/v3.0.0/"
 }

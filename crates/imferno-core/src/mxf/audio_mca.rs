@@ -37,6 +37,26 @@ use crate::mxf::codes::{St2067_2_2016, St377_4_2012};
 pub fn check_audio_mca(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
     let mut issues = Vec::new();
 
+    // ST 2067-203:2023 (S-ADM) audio is wrapped as MGA (Multichannel
+    // Group Audio) per §6 and carries an `MGASoundEssenceDescriptor`
+    // rather than a `WAVEPCMDescriptor`. ST 2067-2 §5.3.4.1's "must be
+    // WAVE PCM" pre-dates that addition; when SMPTE introduced SADM/MGA
+    // they explicitly opened a parallel audio essence path for IMF.
+    // None of the §5.3.* MCA rules below apply to MGA tracks (they have
+    // their own descriptor hierarchy + their own subdescriptors —
+    // `MGAAudioMetadataSubDescriptor`, `MGASoundfieldGroupLabelSubDescriptor`,
+    // and `SADMAudioMetadataSubDescriptor`). Skip the whole §5.3 audio
+    // block here so ST 2067-203 packages don't get a false-positive
+    // `SoundDescriptorNotWAVEPCM` plus a cascade of channel-count and
+    // sample-rate mismatches.
+    //
+    // ST 2067-203 native validation is tracked separately; this branch
+    // only suppresses the WAVE-PCM-specific rules that don't apply.
+    let is_mga_essence = regxml.contains("MGASoundEssenceDescriptor");
+    if is_mga_essence {
+        return issues;
+    }
+
     // §5.3.4.1 — sound essence MUST use WAVEPCMDescriptor.
     // If we see *any* audio-shaped surface (ChannelCount + audio
     // sample rate) but no WAVEPCMDescriptor element, that's a
@@ -973,6 +993,32 @@ mod tests {
         assert!(
             issues.is_empty(),
             "video-only RegXML should produce no audio diagnostics, got: {:#?}",
+            issues
+        );
+    }
+
+    #[test]
+    fn skips_when_mga_sound_essence_descriptor_present() {
+        // ST 2067-203 SADM/MGA audio uses `MGASoundEssenceDescriptor`
+        // instead of `WAVEPCMDescriptor`. The §5.3 WAVE-PCM rules do
+        // not apply — firing `SoundDescriptorNotWAVEPCM` (or any of the
+        // channel-count / sample-rate cascade) would be a false positive
+        // on every valid SADM IMF.
+        let xml = r#"<ns1:Preface>
+            <ns1:MGASoundEssenceDescriptor>
+                <ns2:AudioSampleRate>48000/1</ns2:AudioSampleRate>
+                <ns2:ChannelCount>2</ns2:ChannelCount>
+                <ns2:SubDescriptors>
+                    <ns1:MGAAudioMetadataSubDescriptor/>
+                    <ns1:MGASoundfieldGroupLabelSubDescriptor/>
+                    <ns1:SADMAudioMetadataSubDescriptor/>
+                </ns2:SubDescriptors>
+            </ns1:MGASoundEssenceDescriptor>
+        </ns1:Preface>"#;
+        let issues = check_audio_mca(xml, std::path::Path::new("/sadm.mxf"));
+        assert!(
+            issues.is_empty(),
+            "MGA/SADM RegXML should produce no audio diagnostics (WAVE PCM rules don't apply), got: {:#?}",
             issues
         );
     }

@@ -87,7 +87,7 @@ let files = imferno_core::package::read(&uri, &storage)?;
 | ST 2067-21 | Application #2E (UHD/HDR) | Complete |
 | ST 2067-201 | IAB Level 0 Plug-in | Complete |
 | ST 2067-202 | ISXD Plug-in | Complete |
-| ST 377-1 | MXF File Format | Partial — header partition only |
+| ST 377-1 | MXF File Format | Partial — full header metadata via RegXML (Preface, MaterialPackage, descriptors, sub-descriptors), read from footer with header fallback; no essence sample decoding |
 
 ## Development
 

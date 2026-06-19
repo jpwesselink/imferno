@@ -96,7 +96,7 @@ validate `imferno`'s output without depending on any of them.
 | ST 2067-21:2020, :2023, :2025 | Application Profile #2E (UHD/HDR) | Complete |
 | ST 2067-201:2019, :2021, :2026 | IAB (Immersive Audio Bitstream) | Complete |
 | ST 2067-202:2022 | ISXD (Immersive Sound XML Data) Plug-in | Complete |
-| ST 377-1:2011 | MXF file structure | Partial — header partition only |
+| ST 377-1:2011 | MXF file structure | Partial — full header metadata via RegXML (Preface, MaterialPackage, descriptors, sub-descriptors); no essence sample decoding |
 
 ## Why Rust?
 

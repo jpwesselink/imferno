@@ -20,6 +20,10 @@ html:not(.rp-dark) .homepage {
 }
 
 .homepage .section { padding-bottom: 2rem; }
+/* Offset fragment-anchor scrolls so the section header isn't hidden
+   behind the sticky top nav. Matches Rspress's default nav height
+   (~64px) plus a small visual buffer. */
+.homepage .section[id] { scroll-margin-top: 80px; }
 
 /* ── Hero ── */
 .homepage .hero-section {

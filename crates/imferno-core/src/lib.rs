@@ -35,5 +35,5 @@ pub mod codes {
     pub use crate::scm::codes::St2067_9_2018;
     pub use crate::validation::codes::{St2067_21_2020, St2067_21_2023, St2067_21_2025};
     pub use crate::validation::iab_codes::{St2067_201_2019, St2067_201_2021};
-    pub use crate::validation::isxd_codes::St2067_202_2022;
+    pub use crate::validation::isxd_codes::St2067_202_2023;
 }

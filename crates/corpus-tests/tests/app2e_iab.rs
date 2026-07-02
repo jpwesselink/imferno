@@ -27,14 +27,19 @@ fn iab2021_valid_iabsequence() {
 
 /// ST 2067-201 §5.9: Missing `AudioSampleRate` produces a Warning, not an Error.
 ///
-/// The 2021 spec requires 48000/1 but a missing value is advisory only.
+/// AUDIT-16: §5.9 says the Audio Sampling Rate item "shall be present" —
+/// a missing value is an Error, not the advisory Warning it used to be.
+///
+/// Canonical code: `ST2067-201:2021:5.9/AudioSamplingRateMissing`
 #[test]
-fn iab2021_valid_missing_audiosamplingrate() {
+fn iab2021_invalid_missing_audiosamplingrate() {
     let cpl = read_cpl("IAB/CPL/IAB_CPL_valid_missing_audiosamplingrate.xml");
     let issues = AppIabPlugin2021.validate_cpl(&cpl);
     assert!(
-        errors(&issues).is_empty(),
-        "missing AudioSampleRate should produce Warning only, not Error; got: {:#?}",
+        errors(&issues)
+            .iter()
+            .any(|i| i.code.contains("5.9/AudioSamplingRateMissing")),
+        "missing AudioSampleRate is a SHALL (§5.9) and must produce an Error; got: {:#?}",
         errors(&issues)
     );
 }
@@ -148,10 +153,10 @@ fn iab2021_missing_audio_is_conformant() {
     );
 }
 
-/// ST 2067-201 §5.9: `IABSoundfieldLabelSubDescriptor` shall be present in
-/// `IABEssenceDescriptor.SubDescriptors`.
+/// ST 2067-201 §5.10.2: exactly one `IABSoundfieldLabelSubDescriptor` shall
+/// be present in `IABEssenceDescriptor.SubDescriptors`.
 ///
-/// Canonical code: `ST2067-201:2021:5.9/SubDescriptorMissing`
+/// Canonical code: `ST2067-201:2021:5.10.2/SubDescriptorMissing`
 #[test]
 fn iab2021_invalid_missing_subdescriptor() {
     let cpl = read_cpl("IAB/CPL/IAB_CPL_invalid_missing_subdescriptor.xml");
@@ -159,7 +164,7 @@ fn iab2021_invalid_missing_subdescriptor() {
     assert!(
         errors(&issues)
             .iter()
-            .any(|i| i.code.contains("5.9/SubDescriptorMissing")),
+            .any(|i| i.code.contains("5.10.2/SubDescriptorMissing")),
         "expected SubDescriptorMissing; got: {:#?}",
         errors(&issues)
     );
@@ -215,9 +220,12 @@ fn iab2019_invalid_wrong_channel_count() {
     );
 }
 
-/// ST 2067-201 §5.9: `ElectrospatialFormulation` shall NOT be present.
+/// ST 2067-201 §5.9: "If present, the Electro-Spatial Formulation item …
+/// shall be set to a value of 15" — the fixture carries value 0.
+/// (AUDIT-15: presence itself is legal; the old Forbidden rule inverted
+/// the spec.)
 ///
-/// Canonical code: `ST2067-201:2021:5.9/ElectrospatialFormulationForbidden`
+/// Canonical code: `ST2067-201:2021:5.9/ElectrospatialFormulationInvalid`
 #[test]
 fn iab2021_invalid_wrong_electro_spatial_formulation() {
     let cpl = read_cpl("IAB/CPL/IAB_CPL_invalid_wrong_electro_spatial_formulation.xml");
@@ -225,16 +233,16 @@ fn iab2021_invalid_wrong_electro_spatial_formulation() {
     assert!(
         errors(&issues)
             .iter()
-            .any(|i| i.code.contains("5.9/ElectrospatialFormulationForbidden")),
-        "expected ElectrospatialFormulationForbidden; got: {:#?}",
+            .any(|i| i.code.contains("5.9/ElectrospatialFormulationInvalid")),
+        "expected ElectrospatialFormulationInvalid (value 0 != 15); got: {:#?}",
         errors(&issues)
     );
 }
 
-/// ST 2067-201 §5.3: `ContainerFormat` shall be the IAB essence container UL
-/// (`urn:smpte:ul:060e2b34.0401010d.0d010301.021d0101`).
+/// ST 2067-201 §5.9 Table 4.5: `ContainerFormat` shall be the IAB essence
+/// container UL (`urn:smpte:ul:060e2b34.0401010d.0d010301.021d0101`).
 ///
-/// Canonical code: `ST2067-201:2021:5.3/EssenceContainerInvalid`
+/// Canonical code: `ST2067-201:2021:5.9/EssenceContainerInvalid`
 #[test]
 fn iab2021_invalid_wrong_essence_container_ul() {
     let cpl = read_cpl("IAB/CPL/IAB_CPL_invalid_wrong_essence_container_ul.xml");
@@ -242,7 +250,7 @@ fn iab2021_invalid_wrong_essence_container_ul() {
     assert!(
         errors(&issues)
             .iter()
-            .any(|i| i.code.contains("5.3/EssenceContainerInvalid")),
+            .any(|i| i.code.contains("5.9/EssenceContainerInvalid")),
         "expected EssenceContainerInvalid; got: {:#?}",
         errors(&issues)
     );
@@ -269,17 +277,17 @@ fn iab2021_invalid_wrong_soundcompression() {
 /// `MCATagSymbol` absent, `MCATagName = "I A B"` (not `"IAB"`),
 /// and `MCALabelDictionaryID` points to wrong UL.
 ///
-/// Canonical codes: `ST2067-201:2021:5.9/MCATagSymbolMissing`,
-/// `ST2067-201:2021:5.9/MCATagNameInvalid`, `ST2067-201:2021:5.9/MCALabelDictionaryIDInvalid`
+/// Canonical codes: `ST2067-201:2021:5.10.4/MCATagSymbolMissing`,
+/// `ST2067-201:2021:5.10.4/MCATagNameInvalid`, `ST2067-201:2021:5.10.4/MCALabelDictionaryIDInvalid`
 #[test]
 fn iab2021_invalid_wrong_subdescriptor_values() {
     let cpl = read_cpl("IAB/CPL/IAB_CPL_invalid_wrong_subdescriptor_values.xml");
     let issues = AppIabPlugin2021.validate_cpl(&cpl);
     assert!(
         errors(&issues).iter().any(|i| {
-            i.code.contains("5.9/MCATagSymbolMissing")
-                || i.code.contains("5.9/MCATagNameInvalid")
-                || i.code.contains("5.9/MCALabelDictionaryIDInvalid")
+            i.code.contains("5.10.4/MCATagSymbolMissing")
+                || i.code.contains("5.10.4/MCATagNameInvalid")
+                || i.code.contains("5.10.4/MCALabelDictionaryIDInvalid")
         }),
         "expected subdescriptor value error (MCATagSymbolMissing / MCATagNameInvalid / \
          MCALabelDictionaryIDInvalid); got: {:#?}",
@@ -298,7 +306,7 @@ fn iab2021_invalid_wrong_subdescriptor() {
     assert!(
         errors(&issues)
             .iter()
-            .any(|i| i.code.contains("5.9/SubDescriptorMissing")),
+            .any(|i| i.code.contains("5.10.2/SubDescriptorMissing")),
         "expected SubDescriptorMissing (wrong sub-descriptor type); got: {:#?}",
         errors(&issues)
     );

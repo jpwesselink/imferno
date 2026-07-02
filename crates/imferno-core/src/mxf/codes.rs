@@ -138,25 +138,32 @@ pub enum St2067_2_2016 {
     /// §5.3.6.2 — number of AudioChannelLabelSubDescriptors must
     /// equal ChannelCount.
     ChannelLabelCountMismatch,
-    /// §5.3.6.2 — every channel ID 1..ChannelCount must have an
-    /// AudioChannelLabelSubDescriptor.
+    /// §5.3.6.5 Table 7 — MCAChannelID shall be present on each
+    /// AudioChannelLabelSubDescriptor, except that channel 1 may omit
+    /// it.
     MCAChannelIDMissing,
     /// §5.3.6.3 — exactly one SoundfieldGroupLabelSubDescriptor per
     /// WAVEPCMDescriptor.
     SoundFieldGroupLabelCount,
+    /// §5.3.6.5 Table 7 — SoundfieldGroupLinkID shall be present on
+    /// every AudioChannelLabelSubDescriptor.
+    SoundfieldGroupLinkIDMissing,
     /// §5.3.3 / ST 382 §10 — audio essence must be Wave Clip-Wrapped.
     AudioNotClipWrapped,
     /// §5.3 — RFC-5646 spoken language tag recommended (Warning).
     RFC5646SpokenLanguageMissing,
-    /// §5.3.4.2 — ChannelAssignment must be a SMPTE 428-12 MCA UL.
+    /// §5.3.4.2 — ChannelAssignment shall be present.
+    ChannelAssignmentMissing,
+    /// §5.3.4.2 — ChannelAssignment shall equal the Table 5 label UL
+    /// (IMF MCA channel assignment, byte 13 = 04h).
     ChannelAssignmentNotMCA,
-    /// §5.3.6.5 — SoundfieldGroup MCATitle field missing (Warning).
+    /// §5.3.6.5 Table 7 — SoundfieldGroup MCATitle shall be present.
     SoundfieldGroupMissingMCATitle,
-    /// §5.3.6.5 — SoundfieldGroup MCATitleVersion missing (Warning).
+    /// §5.3.6.5 Table 7 — SoundfieldGroup MCATitleVersion shall be present.
     SoundfieldGroupMissingMCATitleVersion,
-    /// §5.3.6.5 — SoundfieldGroup MCAAudioContentKind missing (Warning).
+    /// §5.3.6.5 Table 7 — SoundfieldGroup MCAAudioContentKind shall be present.
     SoundfieldGroupMissingMCAAudioContentKind,
-    /// §5.3.6.5 — SoundfieldGroup MCAAudioElementKind missing (Warning).
+    /// §5.3.6.5 Table 7 — SoundfieldGroup MCAAudioElementKind shall be present.
     SoundfieldGroupMissingMCAAudioElementKind,
     /// §5.4 — timed text UCSEncoding must be UTF-8.
     TimedTextUCSEncodingNotUTF8,
@@ -178,10 +185,14 @@ impl ValidationCode for St2067_2_2016 {
             Self::AudioSampleRateUnsupported => "ST2067-2:2016:5.3.2.2/AudioSampleRateUnsupported",
             Self::QuantizationBitsNot24 => "ST2067-2:2016:5.3.2.3/QuantizationBitsNot24",
             Self::ChannelLabelCountMismatch => "ST2067-2:2016:5.3.6.2/ChannelLabelCountMismatch",
-            Self::MCAChannelIDMissing => "ST2067-2:2016:5.3.6.2/MCAChannelIDMissing",
+            Self::MCAChannelIDMissing => "ST2067-2:2016:5.3.6.5/MCAChannelIDMissing",
             Self::SoundFieldGroupLabelCount => "ST2067-2:2016:5.3.6.3/SoundFieldGroupLabelCount",
+            Self::SoundfieldGroupLinkIDMissing => {
+                "ST2067-2:2016:5.3.6.5/SoundfieldGroupLinkIDMissing"
+            }
             Self::AudioNotClipWrapped => "ST2067-2:2016:5.3.3/AudioNotClipWrapped",
             Self::RFC5646SpokenLanguageMissing => "ST2067-2:2016:5.3/RFC5646SpokenLanguageMissing",
+            Self::ChannelAssignmentMissing => "ST2067-2:2016:5.3.4.2/ChannelAssignmentMissing",
             Self::ChannelAssignmentNotMCA => "ST2067-2:2016:5.3.4.2/ChannelAssignmentNotMCA",
             Self::SoundfieldGroupMissingMCATitle => {
                 "ST2067-2:2016:5.3.6.5/SoundfieldGroupMissing/MCATitle"
@@ -215,23 +226,27 @@ impl ValidationCode for St2067_2_2016 {
             Self::ChannelLabelCountMismatch =>
                 "Number of AudioChannelLabelSubDescriptors must equal ChannelCount.",
             Self::MCAChannelIDMissing =>
-                "Every channel index 1..ChannelCount must have an AudioChannelLabelSubDescriptor.",
+                "MCAChannelID shall be present per channel (channel 1 may omit it) — §5.3.6.5 Table 7.",
             Self::SoundFieldGroupLabelCount =>
                 "Exactly one SoundfieldGroupLabelSubDescriptor is required per WAVEPCMDescriptor.",
+            Self::SoundfieldGroupLinkIDMissing =>
+                "Every AudioChannelLabelSubDescriptor shall carry a SoundfieldGroupLinkID (§5.3.6.5 Table 7).",
             Self::AudioNotClipWrapped =>
                 "Audio essence must be Wave Clip-Wrapped (ST 382 §10).",
             Self::RFC5646SpokenLanguageMissing =>
                 "Audio descriptor should carry an RFC-5646 spoken language tag.",
+            Self::ChannelAssignmentMissing =>
+                "ChannelAssignment shall be present on the audio essence descriptor (§5.3.4.2).",
             Self::ChannelAssignmentNotMCA =>
-                "ChannelAssignment UL must be a SMPTE 428-12 MCA channel-layout UL.",
+                "ChannelAssignment shall equal the ST 2067-2 Table 5 channel-assignment label UL.",
             Self::SoundfieldGroupMissingMCATitle =>
-                "SoundfieldGroupLabelSubDescriptor is missing MCATitle.",
+                "SoundfieldGroupLabelSubDescriptor shall carry MCATitle (§5.3.6.5 Table 7).",
             Self::SoundfieldGroupMissingMCATitleVersion =>
-                "SoundfieldGroupLabelSubDescriptor is missing MCATitleVersion.",
+                "SoundfieldGroupLabelSubDescriptor shall carry MCATitleVersion (§5.3.6.5 Table 7).",
             Self::SoundfieldGroupMissingMCAAudioContentKind =>
-                "SoundfieldGroupLabelSubDescriptor is missing MCAAudioContentKind.",
+                "SoundfieldGroupLabelSubDescriptor shall carry MCAAudioContentKind (§5.3.6.5 Table 7).",
             Self::SoundfieldGroupMissingMCAAudioElementKind =>
-                "SoundfieldGroupLabelSubDescriptor is missing MCAAudioElementKind.",
+                "SoundfieldGroupLabelSubDescriptor shall carry MCAAudioElementKind (§5.3.6.5 Table 7).",
             Self::TimedTextUCSEncodingNotUTF8 =>
                 "TimedTextDescriptor UCSEncoding must be UTF-8.",
             Self::TimedTextNamespaceNotIMSC =>
@@ -244,13 +259,12 @@ impl ValidationCode for St2067_2_2016 {
     }
     fn default_severity(&self) -> Severity {
         match self {
-            // Recommendation-level rules emitted as Warning so operators
-            // can `Off` them when their pipeline doesn't require the field.
-            Self::RFC5646SpokenLanguageMissing
-            | Self::SoundfieldGroupMissingMCATitle
-            | Self::SoundfieldGroupMissingMCATitleVersion
-            | Self::SoundfieldGroupMissingMCAAudioContentKind
-            | Self::SoundfieldGroupMissingMCAAudioElementKind => Severity::Warning,
+            // Recommendation-level rule emitted as Warning so operators
+            // can `Off` it when their pipeline doesn't require the field.
+            // (The SoundfieldGroupMissingMCA* rules were moved to Error:
+            // Table 7 marks them SHALL for the SoundfieldGroup column —
+            // AUDIT-11.)
+            Self::RFC5646SpokenLanguageMissing => Severity::Warning,
             // Everything else is a "SHALL" rule — Error severity.
             _ => Severity::Error,
         }
@@ -264,7 +278,9 @@ impl ValidationCode for St2067_2_2016 {
             | Self::ChannelLabelCountMismatch
             | Self::MCAChannelIDMissing
             | Self::SoundFieldGroupLabelCount
+            | Self::SoundfieldGroupLinkIDMissing
             | Self::RFC5646SpokenLanguageMissing
+            | Self::ChannelAssignmentMissing
             | Self::ChannelAssignmentNotMCA
             | Self::SoundfieldGroupMissingMCATitle
             | Self::SoundfieldGroupMissingMCATitleVersion
@@ -295,15 +311,19 @@ impl ValidationCode for St2067_2_2016 {
             Self::ChannelLabelCountMismatch =>
                 "<ChannelCount>6</ChannelCount> but only 2 AudioChannelLabelSubDescriptor entries present",
             Self::MCAChannelIDMissing =>
-                "ChannelCount=6 but no AudioChannelLabelSubDescriptor with MCAChannelID=4",
+                "ChannelCount=6 but no AudioChannelLabelSubDescriptor carries MCAChannelID=4 (channels 2..N must be identified)",
             Self::SoundFieldGroupLabelCount =>
                 "WAVEPCMDescriptor with 2 SoundfieldGroupLabelSubDescriptor children (must be exactly 1)",
+            Self::SoundfieldGroupLinkIDMissing =>
+                "<AudioChannelLabelSubDescriptor>…</AudioChannelLabelSubDescriptor>  <!-- no <SoundfieldGroupLinkID> child -->",
             Self::AudioNotClipWrapped =>
                 "ContainerFormat UL byte 14 = 0x02 (frame-wrapped) instead of 0x06 (clip-wrapped)",
             Self::RFC5646SpokenLanguageMissing =>
                 "No RFC5646SpokenLanguage tag on any AudioChannelLabel/SoundfieldGroupLabel sub-descriptor",
+            Self::ChannelAssignmentMissing =>
+                "WAVEPCMDescriptor with no <ChannelAssignment> item",
             Self::ChannelAssignmentNotMCA =>
-                "ChannelAssignment UL outside the SMPTE 428-12 MCA label range (bytes 9..16)",
+                "ChannelAssignment UL with byte 13 = 05h (ADM labeling) instead of the Table 5 value 04h on a plain IMF audio file",
             Self::SoundfieldGroupMissingMCATitle =>
                 "SoundfieldGroupLabelSubDescriptor with no <MCATitle> item",
             Self::SoundfieldGroupMissingMCATitleVersion =>
@@ -333,8 +353,10 @@ impl St2067_2_2016 {
         Self::ChannelLabelCountMismatch,
         Self::MCAChannelIDMissing,
         Self::SoundFieldGroupLabelCount,
+        Self::SoundfieldGroupLinkIDMissing,
         Self::AudioNotClipWrapped,
         Self::RFC5646SpokenLanguageMissing,
+        Self::ChannelAssignmentMissing,
         Self::ChannelAssignmentNotMCA,
         Self::SoundfieldGroupMissingMCATitle,
         Self::SoundfieldGroupMissingMCATitleVersion,
@@ -355,32 +377,35 @@ impl From<St2067_2_2016> for String {
 
 // ─── ST 377-4:2012 — MCA sub-descriptor linkage ──────────────────────────────
 
-/// Validation codes for SMPTE ST 377-4:2012 §6.3.2 MCA sub-descriptor
-/// linkage rules — the MCALinkID / SoundfieldGroupLinkID correlation
-/// that ties channel labels to their soundfield group.
+/// Validation codes for SMPTE ST 377-4:2012 MCA sub-descriptor linkage
+/// rules — the MCALinkID (§6.3 Table 3, Req) / SoundfieldGroupLinkID
+/// (§6.4.1) correlation that ties channel labels to their soundfield
+/// group.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, strum::EnumIter)]
 pub enum St377_4_2012 {
-    /// Required MCALinkID is missing on an MCA sub-descriptor.
+    /// §6.3 Table 3 — MCALinkID is a required item on every MCA
+    /// sub-descriptor.
     MCALinkIDMissing,
-    /// AudioChannelLabelSubDescriptor's SoundfieldGroupLinkID does
-    /// not equal its enclosing SoundfieldGroup's MCALinkID.
+    /// §6.4.1 — AudioChannelLabelSubDescriptor's SoundfieldGroupLinkID
+    /// shall be the MCA Link ID of the SoundfieldGroupLabelSubDescriptor
+    /// to which the channel belongs.
     SoundfieldGroupLinkIDMismatch,
 }
 
 impl ValidationCode for St377_4_2012 {
     fn code(&self) -> &'static str {
         match self {
-            Self::MCALinkIDMissing => "ST377-4:2012:6.3.2/MCALinkIDMissing",
+            Self::MCALinkIDMissing => "ST377-4:2012:6.3/MCALinkIDMissing",
             Self::SoundfieldGroupLinkIDMismatch => {
-                "ST377-4:2012:6.3.2/SoundfieldGroupLinkIDMismatch"
+                "ST377-4:2012:6.4.1/SoundfieldGroupLinkIDMismatch"
             }
         }
     }
     fn description(&self) -> &'static str {
         match self {
-            Self::MCALinkIDMissing => "Every MCA sub-descriptor must carry an MCALinkID.",
+            Self::MCALinkIDMissing => "Every MCA sub-descriptor shall carry an MCALinkID (§6.3 Table 3, Req).",
             Self::SoundfieldGroupLinkIDMismatch =>
-                "AudioChannelLabelSubDescriptor SoundfieldGroupLinkID must equal the SoundfieldGroup's MCALinkID.",
+                "AudioChannelLabelSubDescriptor SoundfieldGroupLinkID shall equal the SoundfieldGroup's MCALinkID (§6.4.1).",
         }
     }
     fn default_severity(&self) -> Severity {

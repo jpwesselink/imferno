@@ -25,7 +25,7 @@
 //! - **ST 2067-2:2013** Core Constraints (`CoreConstraints2013`)
 //! - **ST 2067-21:2020/2023/2025** Application Profile #2E (`App2E2021`)
 //! - **ST 2067-201:2019/2021** IAB Level 0 Plug-in (`AppIabPlugin2019`, `AppIabPlugin2021`)
-//! - **ST 2067-202:2022** ISXD Plug-in (`AppIsxdPlugin2022`)
+//! - **ST 2067-202:2023** ISXD Plug-in (`AppIsxdPlugin2023`)
 
 pub mod codes;
 pub mod iab;
@@ -34,7 +34,7 @@ pub mod isxd;
 pub mod isxd_codes;
 
 pub use iab::{AppIabPlugin2019, AppIabPlugin2021, AppIabPlugin2026, URI_2019, URI_2019_SCHEMAS};
-pub use isxd::{AppIsxdPlugin2022, URI_2022};
+pub use isxd::{AppIsxdPlugin2023, URI_2022};
 
 use std::collections::{HashMap, HashSet};
 
@@ -151,7 +151,7 @@ fn push_sequence_presence_plugins(
         validators.push(Box::new(AppIabPlugin2021));
     }
     if has_isxd && !already("2067-202", validators) {
-        validators.push(Box::new(AppIsxdPlugin2022));
+        validators.push(Box::new(AppIsxdPlugin2023));
     }
 }
 
@@ -177,7 +177,7 @@ impl ValidatorRegistry for BuiltinValidatorRegistry {
             // only an opt-in Annex E recommendation).
             iab::URI_2019 | iab::URI_2019_SCHEMAS => Some(Box::new(AppIabPlugin2021)),
             // ST 2067-202 ISXD plug-in.
-            isxd::URI_2022 => Some(Box::new(AppIsxdPlugin2022)),
+            isxd::URI_2022 => Some(Box::new(AppIsxdPlugin2023)),
             _ => None,
         }
     }
@@ -1108,6 +1108,13 @@ fn validate_virtual_track_edit_rates(
         }
         for seq in &sl.iab_sequences {
             check_sequence(seq, "IABSequence", issues, &mut track_edit_rates);
+        }
+        // AUDIT-21: ISXD sequences were missing from this loop, so
+        // ST 2067-202 §6 ("The Edit Rate of an ISXD Virtual Track shall
+        // be equal to the Edit Rate of the Main Image Virtual Track")
+        // violations went undetected at the generic per-track level.
+        for seq in &sl.isxd_sequences {
+            check_sequence(seq, "ISXDSequence", issues, &mut track_edit_rates);
         }
     }
 }

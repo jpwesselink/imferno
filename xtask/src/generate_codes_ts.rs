@@ -15,7 +15,7 @@ use imferno_core::package::codes::ImfernoCode;
 use imferno_core::scm::codes::St2067_9_2018;
 use imferno_core::validation::codes::{St2067_21_2020, St2067_21_2023, St2067_21_2025};
 use imferno_core::validation::iab_codes::{St2067_201_2019, St2067_201_2021};
-use imferno_core::validation::isxd_codes::St2067_202_2022;
+use imferno_core::validation::isxd_codes::St2067_202_2023;
 
 use std::collections::HashMap;
 use std::fs;
@@ -131,7 +131,7 @@ pub fn run() {
         js_object("ST2067_21_2025", St2067_21_2025::ALL),
         js_object("ST2067_201_2019", St2067_201_2019::ALL),
         js_object("ST2067_201_2021", St2067_201_2021::ALL),
-        js_object("ST2067_202_2022", St2067_202_2022::ALL),
+        js_object("ST2067_202_2023", St2067_202_2023::ALL),
         js_object("Imferno", ImfernoCode::ALL),
     ];
 
@@ -150,7 +150,7 @@ pub fn run() {
         dts_object("ST2067_21_2025", St2067_21_2025::ALL),
         dts_object("ST2067_201_2019", St2067_201_2019::ALL),
         dts_object("ST2067_201_2021", St2067_201_2021::ALL),
-        dts_object("ST2067_202_2022", St2067_202_2022::ALL),
+        dts_object("ST2067_202_2023", St2067_202_2023::ALL),
         dts_object("Imferno", ImfernoCode::ALL),
     ];
 

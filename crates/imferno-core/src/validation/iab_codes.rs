@@ -21,19 +21,19 @@ use crate::diagnostics::{Category, Severity};
 pub enum IabCode {
     /// IABEssenceDescriptor: Codec item shall not be present (§5.9).
     CodecForbidden,
-    /// IABEssenceDescriptor: ElectrospatialFormulation shall not be present (§5.9).
-    ElectrospatialFormulationForbidden,
+    /// IABEssenceDescriptor: ElectrospatialFormulation, if present, shall be 15 (§5.9).
+    ElectrospatialFormulationInvalid,
     /// IABEssenceDescriptor: QuantizationBits is missing; shall be 24 (§5.9).
     QuantizationBitsMissing,
     /// IABEssenceDescriptor: QuantizationBits is present but not 24 (§5.9).
     QuantizationBitsInvalid,
-    /// IABEssenceDescriptor: ContainerFormat is missing (§5.3).
+    /// IABEssenceDescriptor: ContainerFormat is missing (§5.9).
     ContainerFormatMissing,
-    /// IABEssenceDescriptor: ContainerFormat is not the required IAB container UL (§5.3).
+    /// IABEssenceDescriptor: ContainerFormat is not the required IAB container UL (§5.9 Table 4.5).
     EssenceContainerInvalid,
-    /// IABEssenceDescriptor: AudioSampleRate is missing; shall be 48000/1 (§5.9).
+    /// IABEssenceDescriptor: AudioSampleRate shall be present (§5.9).
     AudioSamplingRateMissing,
-    /// IABEssenceDescriptor: AudioSampleRate is not 48000/1 (§5.9).
+    /// IABEssenceDescriptor: AudioSampleRate does not match an ST 2098-2 sampling rate (48 kHz / 96 kHz) (§5.9).
     AudioSamplingRateInvalid,
     /// IABEssenceDescriptor: SoundCompression is missing (§5.9).
     SoundCompressionMissing,
@@ -41,19 +41,19 @@ pub enum IabCode {
     SoundCompressionInvalid,
     /// IABEssenceDescriptor: ChannelCount shall be the distinguished value 0 (§5.9, 2019 only).
     ChannelCountNotZero,
-    /// IABEssenceDescriptor: IABSoundfieldLabelSubDescriptor shall be present (§5.9).
+    /// IABEssenceDescriptor: exactly one IABSoundfieldLabelSubDescriptor shall be present (§5.10.2).
     SubDescriptorMissing,
-    /// IABSoundfieldLabelSubDescriptor: MCATagSymbol shall be "IAB" — missing (§5.9).
+    /// IABSoundfieldLabelSubDescriptor: MCATagSymbol shall be "IAB" — missing (§5.10.4 Table 4.8).
     MCATagSymbolMissing,
-    /// IABSoundfieldLabelSubDescriptor: MCATagSymbol shall be "IAB" — wrong value (§5.9).
+    /// IABSoundfieldLabelSubDescriptor: MCATagSymbol shall be "IAB" — wrong value (§5.10.4 Table 4.8).
     MCATagSymbolInvalid,
-    /// IABSoundfieldLabelSubDescriptor: MCATagName shall be "IAB" — missing (§5.9).
+    /// IABSoundfieldLabelSubDescriptor: MCATagName shall be present (§5.10.3 Table 4.7); value "IAB" per §5.10.4.
     MCATagNameMissing,
-    /// IABSoundfieldLabelSubDescriptor: MCATagName shall be "IAB" — wrong value (§5.9).
+    /// IABSoundfieldLabelSubDescriptor: MCATagName shall be "IAB" — wrong value (§5.10.4 Table 4.8).
     MCATagNameInvalid,
-    /// IABSoundfieldLabelSubDescriptor: MCALabelDictionaryID is missing (§5.9).
+    /// IABSoundfieldLabelSubDescriptor: MCALabelDictionaryID is missing (§5.10.4 Table 4.8).
     MCALabelDictionaryIDMissing,
-    /// IABSoundfieldLabelSubDescriptor: MCALabelDictionaryID is not the required IAB label UL (§5.9).
+    /// IABSoundfieldLabelSubDescriptor: MCALabelDictionaryID is not the IAB Soundfield UL (§5.10.4 Table 4.9).
     MCALabelDictionaryIDInvalid,
     /// IABSequence shall contain at least one Resource (§6.2).
     IABSequenceNoResources,
@@ -82,19 +82,19 @@ macro_rules! define_iab_enum {
         pub enum $name {
             /// IABEssenceDescriptor: Codec item shall not be present (§5.9).
             CodecForbidden,
-            /// IABEssenceDescriptor: ElectrospatialFormulation shall not be present (§5.9).
-            ElectrospatialFormulationForbidden,
+            /// IABEssenceDescriptor: ElectrospatialFormulation, if present, shall be 15 (§5.9).
+            ElectrospatialFormulationInvalid,
             /// IABEssenceDescriptor: QuantizationBits is missing; shall be 24 (§5.9).
             QuantizationBitsMissing,
             /// IABEssenceDescriptor: QuantizationBits is present but not 24 (§5.9).
             QuantizationBitsInvalid,
-            /// IABEssenceDescriptor: ContainerFormat is missing (§5.3).
+            /// IABEssenceDescriptor: ContainerFormat is missing (§5.9).
             ContainerFormatMissing,
-            /// IABEssenceDescriptor: ContainerFormat is not the required IAB container UL (§5.3).
+            /// IABEssenceDescriptor: ContainerFormat is not the required IAB container UL (§5.9 Table 4.5).
             EssenceContainerInvalid,
-            /// IABEssenceDescriptor: AudioSampleRate is missing; shall be 48000/1 (§5.9).
+            /// IABEssenceDescriptor: AudioSampleRate shall be present (§5.9).
             AudioSamplingRateMissing,
-            /// IABEssenceDescriptor: AudioSampleRate is not 48000/1 (§5.9).
+            /// IABEssenceDescriptor: AudioSampleRate does not match an ST 2098-2 sampling rate (48 kHz / 96 kHz) (§5.9).
             AudioSamplingRateInvalid,
             /// IABEssenceDescriptor: SoundCompression is missing (§5.9).
             SoundCompressionMissing,
@@ -102,19 +102,19 @@ macro_rules! define_iab_enum {
             SoundCompressionInvalid,
             /// IABEssenceDescriptor: ChannelCount shall be the distinguished value 0 (§5.9, 2019 only).
             ChannelCountNotZero,
-            /// IABEssenceDescriptor: IABSoundfieldLabelSubDescriptor shall be present (§5.9).
+            /// IABEssenceDescriptor: exactly one IABSoundfieldLabelSubDescriptor shall be present (§5.10.2).
             SubDescriptorMissing,
-            /// IABSoundfieldLabelSubDescriptor: MCATagSymbol shall be "IAB" — missing (§5.9).
+            /// IABSoundfieldLabelSubDescriptor: MCATagSymbol shall be "IAB" — missing (§5.10.4 Table 4.8).
             MCATagSymbolMissing,
-            /// IABSoundfieldLabelSubDescriptor: MCATagSymbol shall be "IAB" — wrong value (§5.9).
+            /// IABSoundfieldLabelSubDescriptor: MCATagSymbol shall be "IAB" — wrong value (§5.10.4 Table 4.8).
             MCATagSymbolInvalid,
-            /// IABSoundfieldLabelSubDescriptor: MCATagName shall be "IAB" — missing (§5.9).
+            /// IABSoundfieldLabelSubDescriptor: MCATagName shall be present (§5.10.3 Table 4.7); value "IAB" per §5.10.4.
             MCATagNameMissing,
-            /// IABSoundfieldLabelSubDescriptor: MCATagName shall be "IAB" — wrong value (§5.9).
+            /// IABSoundfieldLabelSubDescriptor: MCATagName shall be "IAB" — wrong value (§5.10.4 Table 4.8).
             MCATagNameInvalid,
-            /// IABSoundfieldLabelSubDescriptor: MCALabelDictionaryID is missing (§5.9).
+            /// IABSoundfieldLabelSubDescriptor: MCALabelDictionaryID is missing (§5.10.4 Table 4.8).
             MCALabelDictionaryIDMissing,
-            /// IABSoundfieldLabelSubDescriptor: MCALabelDictionaryID is not the required IAB label UL (§5.9).
+            /// IABSoundfieldLabelSubDescriptor: MCALabelDictionaryID is not the IAB Soundfield UL (§5.10.4 Table 4.9).
             MCALabelDictionaryIDInvalid,
             /// IABSequence shall contain at least one Resource (§6.2).
             IABSequenceNoResources,
@@ -126,23 +126,23 @@ macro_rules! define_iab_enum {
             fn code(&self) -> &'static str {
                 match self {
                     Self::CodecForbidden                 => concat!($prefix, ":5.9/CodecForbidden"),
-                    Self::ElectrospatialFormulationForbidden => concat!($prefix, ":5.9/ElectrospatialFormulationForbidden"),
+                    Self::ElectrospatialFormulationInvalid => concat!($prefix, ":5.9/ElectrospatialFormulationInvalid"),
                     Self::QuantizationBitsMissing        => concat!($prefix, ":5.9/QuantizationBitsMissing"),
                     Self::QuantizationBitsInvalid        => concat!($prefix, ":5.9/QuantizationBitsInvalid"),
-                    Self::ContainerFormatMissing         => concat!($prefix, ":5.3/ContainerFormatMissing"),
-                    Self::EssenceContainerInvalid        => concat!($prefix, ":5.3/EssenceContainerInvalid"),
+                    Self::ContainerFormatMissing         => concat!($prefix, ":5.9/ContainerFormatMissing"),
+                    Self::EssenceContainerInvalid        => concat!($prefix, ":5.9/EssenceContainerInvalid"),
                     Self::AudioSamplingRateMissing       => concat!($prefix, ":5.9/AudioSamplingRateMissing"),
                     Self::AudioSamplingRateInvalid       => concat!($prefix, ":5.9/AudioSamplingRateInvalid"),
                     Self::SoundCompressionMissing        => concat!($prefix, ":5.9/SoundCompressionMissing"),
                     Self::SoundCompressionInvalid        => concat!($prefix, ":5.9/SoundCompressionInvalid"),
                     Self::ChannelCountNotZero            => concat!($prefix, ":5.9/ChannelCountNotZero"),
-                    Self::SubDescriptorMissing           => concat!($prefix, ":5.9/SubDescriptorMissing"),
-                    Self::MCATagSymbolMissing            => concat!($prefix, ":5.9/MCATagSymbolMissing"),
-                    Self::MCATagSymbolInvalid            => concat!($prefix, ":5.9/MCATagSymbolInvalid"),
-                    Self::MCATagNameMissing              => concat!($prefix, ":5.9/MCATagNameMissing"),
-                    Self::MCATagNameInvalid              => concat!($prefix, ":5.9/MCATagNameInvalid"),
-                    Self::MCALabelDictionaryIDMissing    => concat!($prefix, ":5.9/MCALabelDictionaryIDMissing"),
-                    Self::MCALabelDictionaryIDInvalid    => concat!($prefix, ":5.9/MCALabelDictionaryIDInvalid"),
+                    Self::SubDescriptorMissing           => concat!($prefix, ":5.10.2/SubDescriptorMissing"),
+                    Self::MCATagSymbolMissing            => concat!($prefix, ":5.10.4/MCATagSymbolMissing"),
+                    Self::MCATagSymbolInvalid            => concat!($prefix, ":5.10.4/MCATagSymbolInvalid"),
+                    Self::MCATagNameMissing              => concat!($prefix, ":5.10.3/MCATagNameMissing"),
+                    Self::MCATagNameInvalid              => concat!($prefix, ":5.10.4/MCATagNameInvalid"),
+                    Self::MCALabelDictionaryIDMissing    => concat!($prefix, ":5.10.4/MCALabelDictionaryIDMissing"),
+                    Self::MCALabelDictionaryIDInvalid    => concat!($prefix, ":5.10.4/MCALabelDictionaryIDInvalid"),
                     Self::IABSequenceNoResources         => concat!($prefix, ":6.2/IABSequenceNoResources"),
                     Self::IABSequenceSourceEncodingInvalid => concat!($prefix, ":6.2/IABSequenceSourceEncodingInvalid"),
                 }
@@ -150,13 +150,13 @@ macro_rules! define_iab_enum {
             fn description(&self) -> &'static str {
                 match self {
                     Self::CodecForbidden                 => "IABEssenceDescriptor: Codec item shall not be present (§5.9).",
-                    Self::ElectrospatialFormulationForbidden => "IABEssenceDescriptor: ElectrospatialFormulation shall not be present (§5.9).",
+                    Self::ElectrospatialFormulationInvalid => "IABEssenceDescriptor: ElectrospatialFormulation, if present, shall be 15 — multi-channel mode default (§5.9).",
                     Self::QuantizationBitsMissing        => "IABEssenceDescriptor: QuantizationBits is missing; shall be 24.",
                     Self::QuantizationBitsInvalid        => "IABEssenceDescriptor: QuantizationBits shall be 24.",
                     Self::ContainerFormatMissing         => "IABEssenceDescriptor: ContainerFormat is missing.",
                     Self::EssenceContainerInvalid        => "IABEssenceDescriptor: ContainerFormat is not the required IAB container UL.",
-                    Self::AudioSamplingRateMissing       => "IABEssenceDescriptor: AudioSampleRate is missing; shall be 48000/1.",
-                    Self::AudioSamplingRateInvalid       => "IABEssenceDescriptor: AudioSampleRate shall be 48000/1.",
+                    Self::AudioSamplingRateMissing       => "IABEssenceDescriptor: AudioSampleRate shall be present (§5.9).",
+                    Self::AudioSamplingRateInvalid       => "IABEssenceDescriptor: AudioSampleRate shall match the bitstream SampleRate — 48 kHz or 96 kHz per ST 2098-2.",
                     Self::SoundCompressionMissing        => "IABEssenceDescriptor: SoundCompression is missing.",
                     Self::SoundCompressionInvalid        => "IABEssenceDescriptor: SoundCompression is not the required IAB compression UL.",
                     Self::ChannelCountNotZero            => "IABEssenceDescriptor: ChannelCount shall be the distinguished value 0 (2019 edition).",
@@ -173,9 +173,10 @@ macro_rules! define_iab_enum {
             }
             fn default_severity(&self) -> Severity {
                 match self {
+                    // AudioSamplingRateMissing is a SHALL (§5.9 "shall be
+                    // present") — Error, not Warning (AUDIT-16).
                     Self::QuantizationBitsMissing
                     | Self::ContainerFormatMissing
-                    | Self::AudioSamplingRateMissing
                     | Self::SoundCompressionMissing => Severity::Warning,
                     _ => Severity::Error,
                 }
@@ -190,8 +191,8 @@ macro_rules! define_iab_enum {
                 Some(match self {
                     Self::CodecForbidden =>
                         "IABEssenceDescriptor with a non-empty Codec UL — ST 2067-201 forbids the item entirely.",
-                    Self::ElectrospatialFormulationForbidden =>
-                        "IABEssenceDescriptor sets ElectrospatialFormulation; the item shall be absent.",
+                    Self::ElectrospatialFormulationInvalid =>
+                        "IABEssenceDescriptor with ElectrospatialFormulation = 1 instead of 15 (multi-channel mode default).",
                     Self::QuantizationBitsMissing =>
                         "IABEssenceDescriptor with no QuantizationBits item.",
                     Self::QuantizationBitsInvalid =>
@@ -203,7 +204,7 @@ macro_rules! define_iab_enum {
                     Self::AudioSamplingRateMissing =>
                         "IABEssenceDescriptor with no AudioSampleRate.",
                     Self::AudioSamplingRateInvalid =>
-                        "IABEssenceDescriptor with AudioSampleRate = 96000/1 instead of 48000/1.",
+                        "IABEssenceDescriptor with AudioSampleRate = 44100/1 — not an ST 2098-2 sampling rate (48000/1 or 96000/1).",
                     Self::SoundCompressionMissing =>
                         "IABEssenceDescriptor with no SoundCompression UL.",
                     Self::SoundCompressionInvalid =>
@@ -235,7 +236,7 @@ macro_rules! define_iab_enum {
         impl $name {
             pub const ALL: &'static [Self] = &[
                 Self::CodecForbidden,
-                Self::ElectrospatialFormulationForbidden,
+                Self::ElectrospatialFormulationInvalid,
                 Self::QuantizationBitsMissing,
                 Self::QuantizationBitsInvalid,
                 Self::ContainerFormatMissing,
@@ -261,23 +262,23 @@ macro_rules! define_iab_enum {
             pub fn for_code(r: IabCode) -> &'static str {
                 match r {
                     IabCode::CodecForbidden                    => concat!($prefix, ":5.9/CodecForbidden"),
-                    IabCode::ElectrospatialFormulationForbidden => concat!($prefix, ":5.9/ElectrospatialFormulationForbidden"),
+                    IabCode::ElectrospatialFormulationInvalid => concat!($prefix, ":5.9/ElectrospatialFormulationInvalid"),
                     IabCode::QuantizationBitsMissing           => concat!($prefix, ":5.9/QuantizationBitsMissing"),
                     IabCode::QuantizationBitsInvalid           => concat!($prefix, ":5.9/QuantizationBitsInvalid"),
-                    IabCode::ContainerFormatMissing            => concat!($prefix, ":5.3/ContainerFormatMissing"),
-                    IabCode::EssenceContainerInvalid           => concat!($prefix, ":5.3/EssenceContainerInvalid"),
+                    IabCode::ContainerFormatMissing            => concat!($prefix, ":5.9/ContainerFormatMissing"),
+                    IabCode::EssenceContainerInvalid           => concat!($prefix, ":5.9/EssenceContainerInvalid"),
                     IabCode::AudioSamplingRateMissing          => concat!($prefix, ":5.9/AudioSamplingRateMissing"),
                     IabCode::AudioSamplingRateInvalid          => concat!($prefix, ":5.9/AudioSamplingRateInvalid"),
                     IabCode::SoundCompressionMissing           => concat!($prefix, ":5.9/SoundCompressionMissing"),
                     IabCode::SoundCompressionInvalid           => concat!($prefix, ":5.9/SoundCompressionInvalid"),
                     IabCode::ChannelCountNotZero               => concat!($prefix, ":5.9/ChannelCountNotZero"),
-                    IabCode::SubDescriptorMissing              => concat!($prefix, ":5.9/SubDescriptorMissing"),
-                    IabCode::MCATagSymbolMissing               => concat!($prefix, ":5.9/MCATagSymbolMissing"),
-                    IabCode::MCATagSymbolInvalid               => concat!($prefix, ":5.9/MCATagSymbolInvalid"),
-                    IabCode::MCATagNameMissing                 => concat!($prefix, ":5.9/MCATagNameMissing"),
-                    IabCode::MCATagNameInvalid                 => concat!($prefix, ":5.9/MCATagNameInvalid"),
-                    IabCode::MCALabelDictionaryIDMissing       => concat!($prefix, ":5.9/MCALabelDictionaryIDMissing"),
-                    IabCode::MCALabelDictionaryIDInvalid       => concat!($prefix, ":5.9/MCALabelDictionaryIDInvalid"),
+                    IabCode::SubDescriptorMissing              => concat!($prefix, ":5.10.2/SubDescriptorMissing"),
+                    IabCode::MCATagSymbolMissing               => concat!($prefix, ":5.10.4/MCATagSymbolMissing"),
+                    IabCode::MCATagSymbolInvalid               => concat!($prefix, ":5.10.4/MCATagSymbolInvalid"),
+                    IabCode::MCATagNameMissing                 => concat!($prefix, ":5.10.3/MCATagNameMissing"),
+                    IabCode::MCATagNameInvalid                 => concat!($prefix, ":5.10.4/MCATagNameInvalid"),
+                    IabCode::MCALabelDictionaryIDMissing       => concat!($prefix, ":5.10.4/MCALabelDictionaryIDMissing"),
+                    IabCode::MCALabelDictionaryIDInvalid       => concat!($prefix, ":5.10.4/MCALabelDictionaryIDInvalid"),
                     IabCode::IABSequenceNoResources            => concat!($prefix, ":6.2/IABSequenceNoResources"),
                     IabCode::IABSequenceSourceEncodingInvalid  => concat!($prefix, ":6.2/IABSequenceSourceEncodingInvalid"),
                 }
@@ -313,9 +314,9 @@ define_iab_enum!(St2067_201_2021, "ST2067-201:2021", "ST2067-201:2019");
 /// ST 2067-201:2026-only delta codes (over and above the 2021 catalogue).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, strum::EnumIter)]
 pub enum St2067_201_2026Delta {
-    /// Annex E §E.2 — Track Files **should** contain one
-    /// `IABChannelSubDescriptor` for each channel of each
-    /// `BedDefinition`.
+    /// §5.10.2 — Track Files **should** contain one
+    /// `IABChannelSubDescriptor` (defined in Annex E) for each channel
+    /// of each `BedDefinition`.
     IabChannelSubDescriptorRecommended,
 }
 
@@ -323,18 +324,18 @@ impl crate::diagnostics::codes::ValidationCode for St2067_201_2026Delta {
     fn code(&self) -> &'static str {
         match self {
             Self::IabChannelSubDescriptorRecommended => {
-                "ST2067-201:2026:Annex-E/IabChannelSubDescriptorRecommended"
+                "ST2067-201:2026:5.10.2/IabChannelSubDescriptorRecommended"
             }
         }
     }
     fn description(&self) -> &'static str {
         match self {
             Self::IabChannelSubDescriptorRecommended =>
-                "Track File should carry an IABChannelSubDescriptor for each channel of each BedDefinition (Annex E).",
+                "Track File should carry an IABChannelSubDescriptor for each channel of each BedDefinition (§5.10.2; set defined in Annex E).",
         }
     }
     fn default_severity(&self) -> crate::diagnostics::Severity {
-        // `should` strength per Annex E §E.2 — Warning, not Error.
+        // `should` strength per §5.10.2 — Warning, not Error.
         crate::diagnostics::Severity::Warning
     }
     fn category(&self) -> crate::diagnostics::Category {

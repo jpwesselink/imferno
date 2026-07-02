@@ -98,7 +98,60 @@ pub trait ValidatorRegistry {
             }
         }
 
+        push_sequence_presence_plugins(cpl, &mut validators);
+
         validators
+    }
+}
+
+/// Add plug-in validators signaled by sequence presence rather than by
+/// `ApplicationIdentification`.
+///
+/// ST 2067-201 (IAB) and ST 2067-202 (ISXD) are *plug-ins* on top of an
+/// application profile: real-world CPLs declare the application (e.g.
+/// App2E `.../2067-21/2016`) in `ApplicationIdentification` and signal
+/// plug-in usage by the presence of `iab:IABSequence` / `isxd:ISXDSequence`
+/// elements in the segment sequence lists — the plug-in namespace often
+/// never appears in `ApplicationIdentification` at all (this is exactly
+/// how the IAB/ISXD corpus fixtures are authored). Before this dispatch
+/// existed, the IAB/ISXD plugins were only reachable by direct
+/// construction — `imferno validate` never ran them.
+///
+/// Skips a plug-in if a validator for its spec was already selected via
+/// URI resolution, so a CPL that both declares the URI and carries the
+/// sequences doesn't get validated twice.
+fn push_sequence_presence_plugins(
+    cpl: &CompositionPlaylist,
+    validators: &mut Vec<Box<dyn ConstraintsValidator>>,
+) {
+    let has_iab = cpl
+        .segment_list
+        .segments
+        .iter()
+        .any(|s| !s.sequence_list.iab_sequences.is_empty());
+    let has_isxd = cpl
+        .segment_list
+        .segments
+        .iter()
+        .any(|s| !s.sequence_list.isxd_sequences.is_empty());
+
+    let already = |needle: &str, validators: &[Box<dyn ConstraintsValidator>]| {
+        validators.iter().any(|v| v.spec_id().contains(needle))
+    };
+
+    // Every published ST 2067-201 edition (2019/2021/2026) reuses the 2019
+    // namespace URI, so the sequence itself can't tell editions apart.
+    // Default to the 2021 rules: 2019's stricter ChannelCount==0 requirement
+    // was relaxed in 2021 (the corpus has a `valid_non_zero_essence_
+    // channelcount` fixture that 2019 rules would false-positive), and
+    // 2026 only adds an Annex E recommendation that pre-2026 content
+    // shouldn't be warned about by default. Pin a different edition via
+    // `ValidatorSelection::app_specs`.
+    if has_iab && !already("2067-201", validators) {
+        validators.push(Box::new(AppIabPlugin2021));
+    }
+    if has_isxd && !already("2067-202", validators) {
+        validators.push(Box::new(AppIsxdPlugin2022));
     }
 }
 
@@ -117,6 +170,14 @@ impl ValidatorRegistry for BuiltinValidatorRegistry {
             | "http://www.smpte-ra.org/schemas/2067-21/2016"
             | "http://www.smpte-ra.org/ns/2067-21/2021"
             | "http://www.smpte-ra.org/ns/2067-21/2023" => Some(Box::new(App2E2021)),
+            // ST 2067-201 IAB Level 0 plug-in. Every published edition
+            // (2019/2021/2026) reuses the 2019 namespace URI — see the
+            // note above `iab::URI_2019` — so the URI resolves to the
+            // 2021 rules (the current unconditional edition; 2026 adds
+            // only an opt-in Annex E recommendation).
+            iab::URI_2019 | iab::URI_2019_SCHEMAS => Some(Box::new(AppIabPlugin2021)),
+            // ST 2067-202 ISXD plug-in.
+            isxd::URI_2022 => Some(Box::new(AppIsxdPlugin2022)),
             _ => None,
         }
     }
@@ -288,14 +349,22 @@ impl ValidatorRegistry for ConfigurableValidatorRegistry {
                     validators.push(v);
                 }
             }
-        } else if let Some(ref ext) = cpl.extension_properties {
-            if let Some(ref app_id) = ext.application_identification {
-                for uri in app_id.split_whitespace() {
-                    if let Some(v) = self.resolve_namespace(uri) {
-                        validators.push(v);
+        } else {
+            // Auto mode — no caller-pinned app selection. Resolve from the
+            // CPL's declared ApplicationIdentification, then add plug-ins
+            // signaled by sequence presence (IAB/ISXD). When the caller
+            // pinned app_specs/app_uris above, we respect that pin and do
+            // NOT auto-add plug-ins.
+            if let Some(ref ext) = cpl.extension_properties {
+                if let Some(ref app_id) = ext.application_identification {
+                    for uri in app_id.split_whitespace() {
+                        if let Some(v) = self.resolve_namespace(uri) {
+                            validators.push(v);
+                        }
                     }
                 }
             }
+            push_sequence_presence_plugins(cpl, &mut validators);
         }
 
         validators

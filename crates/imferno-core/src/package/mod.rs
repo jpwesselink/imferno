@@ -2030,11 +2030,15 @@ impl Imferno {
                 // want to double-report.
                 #[cfg(not(target_arch = "wasm32"))]
                 {
-                    let opts = regxml::MxfFragmentOptions {
-                        partition: regxml::PartitionTarget::Header,
-                        ..Default::default()
-                    };
-                    match crate::mxf::metadata::parse_mxf_to_regxml(path, opts) {
+                    // Footer-first with header fallback: closed MXFs carry
+                    // the authoritative (final) metadata copy in the footer
+                    // partition, while standalone track files (e.g. the
+                    // Fraunhofer ST 2067-203/-204 corpus) may only have it
+                    // in the header.
+                    match crate::mxf::metadata::parse_mxf_to_regxml_with_partition_fallback(
+                        path,
+                        regxml::RootMode::Preface,
+                    ) {
                         Ok(regxml) => {
                             for issue in crate::mxf::audio_mca::check_audio_mca(&regxml, path) {
                                 let issue = issue.with_context("asset_uuid", asset.id.to_string());

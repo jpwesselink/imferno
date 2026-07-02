@@ -53,9 +53,12 @@ pub fn dictionaries() -> Option<&'static MetaDictionary> {
 /// themselves. Returns the RegXML as a UTF-8 string ready for further
 /// parsing (e.g. via `quick_xml`) when applying essence-layer rules.
 ///
-/// `options` controls which partition is read (footer first by default,
-/// header fallback) and whether the full Preface or just an
-/// EssenceDescriptor is emitted.
+/// `options` controls which partition is read (see
+/// [`parse_mxf_to_regxml_with_partition_fallback`] for a wrapper that
+/// tries footer first with header fallback) and whether the full
+/// Preface or just an EssenceDescriptor is emitted. This raw entry point
+/// makes exactly one attempt against the partition the caller requested
+/// — no fallback.
 pub fn parse_mxf_to_regxml(
     path: &Path,
     options: MxfFragmentOptions,
@@ -71,6 +74,54 @@ pub fn parse_mxf_to_regxml(
     MxfFragmentBuilder::from_reader(&mut reader, Cursor::new(&mut buf), dicts, options)?;
     String::from_utf8(buf)
         .map_err(|e| MxfFragmentError::Xml(format!("RegXML output was not valid UTF-8: {e}")))
+}
+
+/// Convert an MXF file's header metadata into RegXML, trying the
+/// footer partition first and falling back to the header on
+/// `MissingPrimerPack` / IO-shape errors.
+///
+/// The MXF spec allows header metadata in either the header or footer
+/// partition; closed-file MXFs typically place a copy in the footer for
+/// fast seek, but standalone track files (notably the Fraunhofer SMPTE
+/// working-group ST 2067-203/-204 audio track files) sometimes only
+/// carry the metadata in the header partition. Callers that don't have
+/// a strong reason to pin one partition should prefer this wrapper.
+///
+/// `root_mode` controls whether the full Preface tree or just the first
+/// EssenceDescriptor is written — the partition target is set by this
+/// function, not by the caller.
+pub fn parse_mxf_to_regxml_with_partition_fallback(
+    path: &Path,
+    root_mode: regxml::RootMode,
+) -> Result<String, MxfFragmentError> {
+    let footer_opts = MxfFragmentOptions {
+        partition: regxml::PartitionTarget::Footer,
+        root_mode,
+        ..Default::default()
+    };
+    match parse_mxf_to_regxml(path, footer_opts) {
+        Ok(xml) => Ok(xml),
+        Err(footer_err) if partition_error_indicates_missing_metadata(&footer_err) => {
+            let header_opts = MxfFragmentOptions {
+                partition: regxml::PartitionTarget::Header,
+                root_mode,
+                ..Default::default()
+            };
+            parse_mxf_to_regxml(path, header_opts)
+        }
+        Err(other) => Err(other),
+    }
+}
+
+/// True when the underlying error suggests the requested partition
+/// simply doesn't carry header metadata — the case where a fallback
+/// to the other partition is worth trying rather than surfacing as a
+/// hard parse failure.
+fn partition_error_indicates_missing_metadata(err: &MxfFragmentError) -> bool {
+    // regxml surfaces "primer pack absent from this partition" as a
+    // typed variant we can match; other variants come from IO or from
+    // a corrupt file body and shouldn't trigger a retry.
+    matches!(err, MxfFragmentError::MissingPrimerPack)
 }
 
 /// Wrap a `regxml`-side error as a `ValidationIssue` so callers can
@@ -121,5 +172,31 @@ mod tests {
                 || msg.to_lowercase().contains("os error"),
             "expected IO error, got: {msg}"
         );
+    }
+
+    #[test]
+    fn partition_fallback_wrapper_reads_vendored_fixture() {
+        // audio1.mxf carries metadata in both partitions, so this
+        // exercises the happy footer-first path. The fallback branch
+        // itself is pinned by `fallback_triggers_only_on_missing_primer_pack`
+        // below plus the Fraunhofer corpus example (whose audio track
+        // files are header-only).
+        let path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("tests/fixtures/mxf/audio1.mxf");
+        let xml = parse_mxf_to_regxml_with_partition_fallback(&path, regxml::RootMode::Preface)
+            .expect("dual-partition fixture must parse via the wrapper");
+        assert!(xml.contains("WAVEPCMDescriptor"));
+    }
+
+    #[test]
+    fn fallback_triggers_only_on_missing_primer_pack() {
+        assert!(partition_error_indicates_missing_metadata(
+            &MxfFragmentError::MissingPrimerPack
+        ));
+        // IO-shaped errors must NOT retry — they'd just fail twice and
+        // mask the real cause.
+        assert!(!partition_error_indicates_missing_metadata(
+            &MxfFragmentError::Io("disk on fire".to_string())
+        ));
     }
 }

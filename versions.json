@@ -73,11 +73,6 @@
     "label": "beta (3.0.2)",
     "path": "/beta/"
   },
-  "prs": [
-    {
-      "label": "#68 audit/spec-conformance-2026-07",
-      "path": "/pr-68/"
-    }
-  ],
+  "prs": [],
   "latest": "/v3.0.1/"
 }

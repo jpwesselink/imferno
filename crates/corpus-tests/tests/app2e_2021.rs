@@ -71,16 +71,28 @@ fn app2e2021_bad_color() {
 /// App2E validation must pass.
 ///
 /// Note: The reference test asserts 2 errors (namespace mismatch warnings counted as errors).
-/// Our validator models namespace mismatches as warnings, not errors, so the
-/// error list is empty.
+/// Our validator models namespace mismatches as warnings, not errors.
+///
+/// The fixture also carries an `ns6:IABSequence` with no accompanying
+/// MainAudioSequence. Since IAB plug-in dispatch was wired up
+/// (sequence-presence dispatch), the ST 2067-201 §6.2 rule correctly
+/// fires on it — that error is expected and pinned here; anything else
+/// is a regression.
 #[test]
 fn app2e2021_cc_namespaces() {
     let cpl =
         read_cpl("Application2E2021/CPL_3714715a-af0c-4a89-9cc9-c99f61e7eb6d_CC-Namespaces.xml");
     let issues = validate_cpl(&cpl);
+    let errs = errors(&issues);
     assert!(
-        errors(&issues).is_empty(),
-        "expected no errors for CC-Namespaces CPL; got: {:#?}",
-        errors(&issues)
+        errs.iter()
+            .all(|i| i.code == "ST2067-201:2021:6.2/MainAudioMissing"),
+        "only the genuine IAB §6.2 MainAudioMissing error is expected for the \
+         CC-Namespaces CPL; got: {errs:#?}"
+    );
+    assert_eq!(
+        errs.len(),
+        1,
+        "expected exactly the IAB §6.2 error; got: {errs:#?}"
     );
 }

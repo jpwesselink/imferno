@@ -77,6 +77,10 @@
     {
       "label": "#68 audit/spec-conformance-2026-07",
       "path": "/pr-68/"
+    },
+    {
+      "label": "#69 fix/iab-essence-descriptor-guard",
+      "path": "/pr-69/"
     }
   ],
   "latest": "/v3.0.1/"

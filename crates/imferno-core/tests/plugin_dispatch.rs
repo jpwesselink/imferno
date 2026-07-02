@@ -1,7 +1,7 @@
 //! Regression tests for IAB / ISXD plug-in dispatch.
 //!
 //! Before these plugins were registered, `AppIabPlugin*` and
-//! `AppIsxdPlugin2022` were only reachable by direct construction —
+//! `AppIsxdPlugin2023` were only reachable by direct construction —
 //! `validate_cpl` / `imferno validate` never ran them. Real-world CPLs
 //! signal plug-in usage two ways:
 //!

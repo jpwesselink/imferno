@@ -84,7 +84,7 @@ pub fn list_rules_js() -> serde_json::Value {
     collect::<imferno_core::assetmap::volindex_codes::St429_9_2014>("volindex", &mut out);
     collect::<imferno_core::mxf::codes::St377_1_2011>("mxf", &mut out);
     collect::<imferno_core::scm::codes::St2067_9_2018>("scm", &mut out);
-    collect::<imferno_core::validation::isxd_codes::St2067_202_2022>("isxd", &mut out);
+    collect::<imferno_core::validation::isxd_codes::St2067_202_2023>("isxd", &mut out);
     collect::<imferno_core::validation::iab_codes::St2067_201_2019>("iab", &mut out);
     // 2021 catalogue is bit-identical to 2019; the previous_identical_edition
     // annotation lets downstream UIs group / hide the duplicate block.

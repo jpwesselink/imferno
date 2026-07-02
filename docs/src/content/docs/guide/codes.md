@@ -324,23 +324,23 @@ Every validation issue emitted by imferno carries a code like `ST2067-2:2020:8.3
 | Code | Description | Default Severity | Category |
 |------|-------------|-----------------|----------|
 | `ST2067-201:2019:5.9/CodecForbidden` | IABEssenceDescriptor: Codec item shall not be present (§5.9). | ERROR | Audio |
-| `ST2067-201:2019:5.9/ElectrospatialFormulationForbidden` | IABEssenceDescriptor: ElectrospatialFormulation shall not be present (§5.9). | ERROR | Audio |
+| `ST2067-201:2019:5.9/ElectrospatialFormulationInvalid` | IABEssenceDescriptor: ElectrospatialFormulation, if present, shall be 15 — multi-channel mode default (§5.9). | ERROR | Audio |
 | `ST2067-201:2019:5.9/QuantizationBitsMissing` | IABEssenceDescriptor: QuantizationBits is missing; shall be 24. | WARNING | Audio |
 | `ST2067-201:2019:5.9/QuantizationBitsInvalid` | IABEssenceDescriptor: QuantizationBits shall be 24. | ERROR | Audio |
-| `ST2067-201:2019:5.3/ContainerFormatMissing` | IABEssenceDescriptor: ContainerFormat is missing. | WARNING | Audio |
-| `ST2067-201:2019:5.3/EssenceContainerInvalid` | IABEssenceDescriptor: ContainerFormat is not the required IAB container UL. | ERROR | Audio |
-| `ST2067-201:2019:5.9/AudioSamplingRateMissing` | IABEssenceDescriptor: AudioSampleRate is missing; shall be 48000/1. | WARNING | Audio |
-| `ST2067-201:2019:5.9/AudioSamplingRateInvalid` | IABEssenceDescriptor: AudioSampleRate shall be 48000/1. | ERROR | Audio |
+| `ST2067-201:2019:5.9/ContainerFormatMissing` | IABEssenceDescriptor: ContainerFormat is missing. | WARNING | Audio |
+| `ST2067-201:2019:5.9/EssenceContainerInvalid` | IABEssenceDescriptor: ContainerFormat is not the required IAB container UL. | ERROR | Audio |
+| `ST2067-201:2019:5.9/AudioSamplingRateMissing` | IABEssenceDescriptor: AudioSampleRate shall be present (§5.9). | ERROR | Audio |
+| `ST2067-201:2019:5.9/AudioSamplingRateInvalid` | IABEssenceDescriptor: AudioSampleRate shall match the bitstream SampleRate — 48 kHz or 96 kHz per ST 2098-2. | ERROR | Audio |
 | `ST2067-201:2019:5.9/SoundCompressionMissing` | IABEssenceDescriptor: SoundCompression is missing. | WARNING | Audio |
 | `ST2067-201:2019:5.9/SoundCompressionInvalid` | IABEssenceDescriptor: SoundCompression is not the required IAB compression UL. | ERROR | Audio |
 | `ST2067-201:2019:5.9/ChannelCountNotZero` | IABEssenceDescriptor: ChannelCount shall be the distinguished value 0 (2019 edition). | ERROR | Audio |
-| `ST2067-201:2019:5.9/SubDescriptorMissing` | IABEssenceDescriptor: IABSoundfieldLabelSubDescriptor shall be present. | ERROR | Audio |
-| `ST2067-201:2019:5.9/MCATagSymbolMissing` | IABSoundfieldLabelSubDescriptor: MCATagSymbol is missing; shall be "IAB". | ERROR | Audio |
-| `ST2067-201:2019:5.9/MCATagSymbolInvalid` | IABSoundfieldLabelSubDescriptor: MCATagSymbol shall be "IAB". | ERROR | Audio |
-| `ST2067-201:2019:5.9/MCATagNameMissing` | IABSoundfieldLabelSubDescriptor: MCATagName is missing; shall be "IAB". | ERROR | Audio |
-| `ST2067-201:2019:5.9/MCATagNameInvalid` | IABSoundfieldLabelSubDescriptor: MCATagName shall be "IAB". | ERROR | Audio |
-| `ST2067-201:2019:5.9/MCALabelDictionaryIDMissing` | IABSoundfieldLabelSubDescriptor: MCALabelDictionaryID is missing. | ERROR | Audio |
-| `ST2067-201:2019:5.9/MCALabelDictionaryIDInvalid` | IABSoundfieldLabelSubDescriptor: MCALabelDictionaryID is not the required IAB label UL. | ERROR | Audio |
+| `ST2067-201:2019:5.10.2/SubDescriptorMissing` | IABEssenceDescriptor: IABSoundfieldLabelSubDescriptor shall be present. | ERROR | Audio |
+| `ST2067-201:2019:5.10.4/MCATagSymbolMissing` | IABSoundfieldLabelSubDescriptor: MCATagSymbol is missing; shall be "IAB". | ERROR | Audio |
+| `ST2067-201:2019:5.10.4/MCATagSymbolInvalid` | IABSoundfieldLabelSubDescriptor: MCATagSymbol shall be "IAB". | ERROR | Audio |
+| `ST2067-201:2019:5.10.3/MCATagNameMissing` | IABSoundfieldLabelSubDescriptor: MCATagName is missing; shall be "IAB". | ERROR | Audio |
+| `ST2067-201:2019:5.10.4/MCATagNameInvalid` | IABSoundfieldLabelSubDescriptor: MCATagName shall be "IAB". | ERROR | Audio |
+| `ST2067-201:2019:5.10.4/MCALabelDictionaryIDMissing` | IABSoundfieldLabelSubDescriptor: MCALabelDictionaryID is missing. | ERROR | Audio |
+| `ST2067-201:2019:5.10.4/MCALabelDictionaryIDInvalid` | IABSoundfieldLabelSubDescriptor: MCALabelDictionaryID is not the required IAB label UL. | ERROR | Audio |
 | `ST2067-201:2019:6.2/IABSequenceNoResources` | IABSequence shall contain at least one Resource (§6.2). | ERROR | Audio |
 | `ST2067-201:2019:6.2/IABSequenceSourceEncodingInvalid` | IABSequence Resource.SourceEncoding does not reference an IABEssenceDescriptor (§6.2). | ERROR | Audio |
 
@@ -349,23 +349,23 @@ Every validation issue emitted by imferno carries a code like `ST2067-2:2020:8.3
 | Code | Description | Default Severity | Category |
 |------|-------------|-----------------|----------|
 | `ST2067-201:2021:5.9/CodecForbidden` | IABEssenceDescriptor: Codec item shall not be present (§5.9). | ERROR | Audio |
-| `ST2067-201:2021:5.9/ElectrospatialFormulationForbidden` | IABEssenceDescriptor: ElectrospatialFormulation shall not be present (§5.9). | ERROR | Audio |
+| `ST2067-201:2021:5.9/ElectrospatialFormulationInvalid` | IABEssenceDescriptor: ElectrospatialFormulation, if present, shall be 15 — multi-channel mode default (§5.9). | ERROR | Audio |
 | `ST2067-201:2021:5.9/QuantizationBitsMissing` | IABEssenceDescriptor: QuantizationBits is missing; shall be 24. | WARNING | Audio |
 | `ST2067-201:2021:5.9/QuantizationBitsInvalid` | IABEssenceDescriptor: QuantizationBits shall be 24. | ERROR | Audio |
-| `ST2067-201:2021:5.3/ContainerFormatMissing` | IABEssenceDescriptor: ContainerFormat is missing. | WARNING | Audio |
-| `ST2067-201:2021:5.3/EssenceContainerInvalid` | IABEssenceDescriptor: ContainerFormat is not the required IAB container UL. | ERROR | Audio |
-| `ST2067-201:2021:5.9/AudioSamplingRateMissing` | IABEssenceDescriptor: AudioSampleRate is missing; shall be 48000/1. | WARNING | Audio |
-| `ST2067-201:2021:5.9/AudioSamplingRateInvalid` | IABEssenceDescriptor: AudioSampleRate shall be 48000/1. | ERROR | Audio |
+| `ST2067-201:2021:5.9/ContainerFormatMissing` | IABEssenceDescriptor: ContainerFormat is missing. | WARNING | Audio |
+| `ST2067-201:2021:5.9/EssenceContainerInvalid` | IABEssenceDescriptor: ContainerFormat is not the required IAB container UL. | ERROR | Audio |
+| `ST2067-201:2021:5.9/AudioSamplingRateMissing` | IABEssenceDescriptor: AudioSampleRate shall be present (§5.9). | ERROR | Audio |
+| `ST2067-201:2021:5.9/AudioSamplingRateInvalid` | IABEssenceDescriptor: AudioSampleRate shall match the bitstream SampleRate — 48 kHz or 96 kHz per ST 2098-2. | ERROR | Audio |
 | `ST2067-201:2021:5.9/SoundCompressionMissing` | IABEssenceDescriptor: SoundCompression is missing. | WARNING | Audio |
 | `ST2067-201:2021:5.9/SoundCompressionInvalid` | IABEssenceDescriptor: SoundCompression is not the required IAB compression UL. | ERROR | Audio |
 | `ST2067-201:2021:5.9/ChannelCountNotZero` | IABEssenceDescriptor: ChannelCount shall be the distinguished value 0 (2019 edition). | ERROR | Audio |
-| `ST2067-201:2021:5.9/SubDescriptorMissing` | IABEssenceDescriptor: IABSoundfieldLabelSubDescriptor shall be present. | ERROR | Audio |
-| `ST2067-201:2021:5.9/MCATagSymbolMissing` | IABSoundfieldLabelSubDescriptor: MCATagSymbol is missing; shall be "IAB". | ERROR | Audio |
-| `ST2067-201:2021:5.9/MCATagSymbolInvalid` | IABSoundfieldLabelSubDescriptor: MCATagSymbol shall be "IAB". | ERROR | Audio |
-| `ST2067-201:2021:5.9/MCATagNameMissing` | IABSoundfieldLabelSubDescriptor: MCATagName is missing; shall be "IAB". | ERROR | Audio |
-| `ST2067-201:2021:5.9/MCATagNameInvalid` | IABSoundfieldLabelSubDescriptor: MCATagName shall be "IAB". | ERROR | Audio |
-| `ST2067-201:2021:5.9/MCALabelDictionaryIDMissing` | IABSoundfieldLabelSubDescriptor: MCALabelDictionaryID is missing. | ERROR | Audio |
-| `ST2067-201:2021:5.9/MCALabelDictionaryIDInvalid` | IABSoundfieldLabelSubDescriptor: MCALabelDictionaryID is not the required IAB label UL. | ERROR | Audio |
+| `ST2067-201:2021:5.10.2/SubDescriptorMissing` | IABEssenceDescriptor: IABSoundfieldLabelSubDescriptor shall be present. | ERROR | Audio |
+| `ST2067-201:2021:5.10.4/MCATagSymbolMissing` | IABSoundfieldLabelSubDescriptor: MCATagSymbol is missing; shall be "IAB". | ERROR | Audio |
+| `ST2067-201:2021:5.10.4/MCATagSymbolInvalid` | IABSoundfieldLabelSubDescriptor: MCATagSymbol shall be "IAB". | ERROR | Audio |
+| `ST2067-201:2021:5.10.3/MCATagNameMissing` | IABSoundfieldLabelSubDescriptor: MCATagName is missing; shall be "IAB". | ERROR | Audio |
+| `ST2067-201:2021:5.10.4/MCATagNameInvalid` | IABSoundfieldLabelSubDescriptor: MCATagName shall be "IAB". | ERROR | Audio |
+| `ST2067-201:2021:5.10.4/MCALabelDictionaryIDMissing` | IABSoundfieldLabelSubDescriptor: MCALabelDictionaryID is missing. | ERROR | Audio |
+| `ST2067-201:2021:5.10.4/MCALabelDictionaryIDInvalid` | IABSoundfieldLabelSubDescriptor: MCALabelDictionaryID is not the required IAB label UL. | ERROR | Audio |
 | `ST2067-201:2021:6.2/IABSequenceNoResources` | IABSequence shall contain at least one Resource (§6.2). | ERROR | Audio |
 | `ST2067-201:2021:6.2/IABSequenceSourceEncodingInvalid` | IABSequence Resource.SourceEncoding does not reference an IABEssenceDescriptor (§6.2). | ERROR | Audio |
 
@@ -373,11 +373,11 @@ Every validation issue emitted by imferno carries a code like `ST2067-2:2020:8.3
 
 | Code | Description | Default Severity | Category |
 |------|-------------|-----------------|----------|
-| `ST2067-202:2022:5/SubDescriptorMissing` | ISXDDataEssenceDescriptor: ContainerConstraintsSubDescriptor shall be present. | ERROR | Data |
-| `ST2067-202:2022:5/NamespaceUriMissing` | ISXDDataEssenceDescriptor: NamespaceURI is absent. | WARNING | Data |
-| `ST2067-202:2022:6/ISXDSequenceNoResources` | ISXDSequence shall contain at least one Resource. | ERROR | Data |
-| `ST2067-202:2022:6/ISXDSequenceSourceEncodingInvalid` | ISXDSequence Resource.SourceEncoding does not reference an ISXDDataEssenceDescriptor. | ERROR | Data |
-| `ST2067-202:2022:6/NamespaceUriMismatch` | Resources in the same ISXDSequence reference descriptors with inconsistent NamespaceURI values. | ERROR | Data |
+| `ST2067-202:2023:9.2/NamespaceUriMissing` | ISXDDataEssenceDescriptor: NamespaceURI shall be present (§9.2 Table 5, Req). | ERROR | Data |
+| `ST2067-202:2023:6/ISXDSequenceNoResources` | ISXDSequence shall contain at least one Resource. | ERROR | Data |
+| `ST2067-202:2023:6/ISXDSequenceSourceEncodingInvalid` | ISXDSequence Resource.SourceEncoding does not reference an ISXDDataEssenceDescriptor. | ERROR | Data |
+| `ST2067-202:2023:6/NamespaceUriMismatch` | All ISXD Track Files referenced by an ISXD Virtual Track shall have an identical NamespaceURI value (§6). | ERROR | Data |
+| `ST2067-202:2023:6/EditRateMismatch` | The Edit Rate of an ISXD Virtual Track shall be equal to the Edit Rate of the Main Image Virtual Track (§6). | ERROR | Data |
 
 ## imferno
 

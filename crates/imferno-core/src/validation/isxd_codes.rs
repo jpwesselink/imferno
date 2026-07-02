@@ -1,4 +1,9 @@
 //! Typed validation-code catalogue for SMPTE ST 2067-202 (ISXD Plug-in).
+//!
+//! Edition note (AUDIT-2): the publication is **ST 2067-202:2023** (title
+//! page of the publication PDF). The XML namespace year is frozen at
+//! `/2022/` (§6 Table 1) — namespace year and edition year deliberately
+//! differ, as with ST 2067-203/-204.
 
 use crate::diagnostics::codes::ValidationCode;
 use crate::diagnostics::{Category, Severity};
@@ -13,16 +18,16 @@ use crate::diagnostics::{Category, Severity};
 /// `&'static str` code without any runtime string building.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum IsxdCode {
-    /// ISXDDataEssenceDescriptor: ContainerConstraintsSubDescriptor shall be present (§5).
-    SubDescriptorMissing,
-    /// ISXDDataEssenceDescriptor: NamespaceURI is absent (§5).
+    /// ISXDDataEssenceDescriptor: NamespaceURI is absent — Req item per §9.2 Table 5.
     NamespaceUriMissing,
     /// ISXDSequence shall contain at least one Resource (§6).
     ISXDSequenceNoResources,
     /// ISXDSequence Resource.SourceEncoding does not reference an ISXDDataEssenceDescriptor (§6).
     ISXDSequenceSourceEncodingInvalid,
-    /// Resources in the same ISXDSequence reference descriptors with inconsistent NamespaceURI values (§6).
+    /// ISXD Track Files referenced by the same ISXD Virtual Track have inconsistent NamespaceURI values (§6).
     NamespaceUriMismatch,
+    /// ISXD Virtual Track Edit Rate shall equal the Main Image Virtual Track Edit Rate (§6).
+    EditRateMismatch,
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -35,47 +40,47 @@ macro_rules! define_isxd_enum {
         #[doc = $prefix]
         #[derive(Debug, Clone, Copy, PartialEq, Eq, strum::EnumIter)]
         pub enum $name {
-            /// ISXDDataEssenceDescriptor: ContainerConstraintsSubDescriptor shall be present (§5).
-            SubDescriptorMissing,
-            /// ISXDDataEssenceDescriptor: NamespaceURI is absent (§5).
+            /// ISXDDataEssenceDescriptor: NamespaceURI is absent — Req item per §9.2 Table 5.
             NamespaceUriMissing,
             /// ISXDSequence shall contain at least one Resource (§6).
             ISXDSequenceNoResources,
             /// ISXDSequence Resource.SourceEncoding does not reference an ISXDDataEssenceDescriptor (§6).
             ISXDSequenceSourceEncodingInvalid,
-            /// Resources in the same ISXDSequence reference descriptors with inconsistent NamespaceURI values (§6).
+            /// ISXD Track Files referenced by the same ISXD Virtual Track have inconsistent NamespaceURI values (§6).
             NamespaceUriMismatch,
+            /// ISXD Virtual Track Edit Rate shall equal the Main Image Virtual Track Edit Rate (§6).
+            EditRateMismatch,
         }
 
         impl ValidationCode for $name {
             fn code(&self) -> &'static str {
                 match self {
-                    Self::SubDescriptorMissing              => concat!($prefix, ":5/SubDescriptorMissing"),
-                    Self::NamespaceUriMissing               => concat!($prefix, ":5/NamespaceUriMissing"),
+                    Self::NamespaceUriMissing               => concat!($prefix, ":9.2/NamespaceUriMissing"),
                     Self::ISXDSequenceNoResources           => concat!($prefix, ":6/ISXDSequenceNoResources"),
                     Self::ISXDSequenceSourceEncodingInvalid => concat!($prefix, ":6/ISXDSequenceSourceEncodingInvalid"),
                     Self::NamespaceUriMismatch              => concat!($prefix, ":6/NamespaceUriMismatch"),
+                    Self::EditRateMismatch                  => concat!($prefix, ":6/EditRateMismatch"),
                 }
             }
             fn description(&self) -> &'static str {
                 match self {
-                    Self::SubDescriptorMissing =>
-                        "ISXDDataEssenceDescriptor: ContainerConstraintsSubDescriptor shall be present.",
                     Self::NamespaceUriMissing =>
-                        "ISXDDataEssenceDescriptor: NamespaceURI is absent.",
+                        "ISXDDataEssenceDescriptor: NamespaceURI shall be present (§9.2 Table 5, Req).",
                     Self::ISXDSequenceNoResources =>
                         "ISXDSequence shall contain at least one Resource.",
                     Self::ISXDSequenceSourceEncodingInvalid =>
                         "ISXDSequence Resource.SourceEncoding does not reference an ISXDDataEssenceDescriptor.",
                     Self::NamespaceUriMismatch =>
-                        "Resources in the same ISXDSequence reference descriptors with inconsistent NamespaceURI values.",
+                        "All ISXD Track Files referenced by an ISXD Virtual Track shall have an identical NamespaceURI value (§6).",
+                    Self::EditRateMismatch =>
+                        "The Edit Rate of an ISXD Virtual Track shall be equal to the Edit Rate of the Main Image Virtual Track (§6).",
                 }
             }
             fn default_severity(&self) -> Severity {
-                match self {
-                    Self::NamespaceUriMissing => Severity::Warning,
-                    _ => Severity::Error,
-                }
+                // All of these are SHALL statements (§6, §9.2 Table 5 Req) —
+                // Error across the board (AUDIT-20 fixed the previous
+                // NamespaceUriMissing Warning).
+                Severity::Error
             }
             fn category(&self) -> Category {
                 // ISXD carries dynamic data essence (sidecar metadata
@@ -84,8 +89,6 @@ macro_rules! define_isxd_enum {
             }
             fn example(&self) -> Option<&'static str> {
                 Some(match self {
-                    Self::SubDescriptorMissing =>
-                        "<ISXDDataEssenceDescriptor>…</ISXDDataEssenceDescriptor>  <!-- no ContainerConstraintsSubDescriptor inside -->",
                     Self::NamespaceUriMissing =>
                         "<ISXDDataEssenceDescriptor>  <!-- missing required <NamespaceURI>… --> </ISXDDataEssenceDescriptor>",
                     Self::ISXDSequenceNoResources =>
@@ -93,29 +96,31 @@ macro_rules! define_isxd_enum {
                     Self::ISXDSequenceSourceEncodingInvalid =>
                         "<ISXDSequence>…<SourceEncoding>urn:uuid:…</SourceEncoding></ISXDSequence>  <!-- UUID doesn't resolve to an ISXDDataEssenceDescriptor -->",
                     Self::NamespaceUriMismatch =>
-                        "Two Resources in the same ISXDSequence point at descriptors whose <NamespaceURI> differs.",
+                        "Two ISXDSequences with the same TrackId point at descriptors whose <NamespaceURI> differs.",
+                    Self::EditRateMismatch =>
+                        "ISXDSequence Resource with <EditRate>48 1</EditRate> in a Composition whose Main Image Virtual Track runs at 24000/1001.",
                 })
             }
         }
 
         impl $name {
             pub const ALL: &'static [Self] = &[
-                Self::SubDescriptorMissing,
                 Self::NamespaceUriMissing,
                 Self::ISXDSequenceNoResources,
                 Self::ISXDSequenceSourceEncodingInvalid,
                 Self::NamespaceUriMismatch,
+                Self::EditRateMismatch,
             ];
 
             /// Dispatch from the spec-agnostic [`IsxdCode`] to this
             /// edition's static code string. Used by the shared validator helpers.
             pub fn for_code(r: IsxdCode) -> &'static str {
                 match r {
-                    IsxdCode::SubDescriptorMissing              => concat!($prefix, ":5/SubDescriptorMissing"),
-                    IsxdCode::NamespaceUriMissing               => concat!($prefix, ":5/NamespaceUriMissing"),
+                    IsxdCode::NamespaceUriMissing               => concat!($prefix, ":9.2/NamespaceUriMissing"),
                     IsxdCode::ISXDSequenceNoResources           => concat!($prefix, ":6/ISXDSequenceNoResources"),
                     IsxdCode::ISXDSequenceSourceEncodingInvalid => concat!($prefix, ":6/ISXDSequenceSourceEncodingInvalid"),
                     IsxdCode::NamespaceUriMismatch              => concat!($prefix, ":6/NamespaceUriMismatch"),
+                    IsxdCode::EditRateMismatch                  => concat!($prefix, ":6/EditRateMismatch"),
                 }
             }
         }
@@ -128,4 +133,4 @@ macro_rules! define_isxd_enum {
     };
 }
 
-define_isxd_enum!(St2067_202_2022, "ST2067-202:2022");
+define_isxd_enum!(St2067_202_2023, "ST2067-202:2023");

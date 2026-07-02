@@ -24,7 +24,7 @@ use imferno_core::package::codes::ImfernoCode;
 use imferno_core::scm::codes::St2067_9_2018;
 use imferno_core::validation::codes::{St2067_21_2020, St2067_21_2023, St2067_21_2025};
 use imferno_core::validation::iab_codes::{St2067_201_2019, St2067_201_2021, St2067_201_2026Delta};
-use imferno_core::validation::isxd_codes::St2067_202_2022;
+use imferno_core::validation::isxd_codes::St2067_202_2023;
 use imferno_core::xsd::codes::XsdConstraintCode;
 
 fn check_all<C: ValidationCode>(codes: &[C], expected: IssueSource) {
@@ -114,7 +114,7 @@ fn every_code_has_a_populated_example() {
     check_all_have_examples(St2067_201_2019::ALL);
     check_all_have_examples(St2067_201_2021::ALL);
     check_all_have_examples(St2067_201_2026Delta::ALL);
-    check_all_have_examples(St2067_202_2022::ALL);
+    check_all_have_examples(St2067_202_2023::ALL);
 }
 
 #[test]
@@ -136,5 +136,5 @@ fn spec_codes_infer_as_prose_rule() {
     check_all(St2067_201_2019::ALL, IssueSource::ProseRule);
     check_all(St2067_201_2021::ALL, IssueSource::ProseRule);
     check_all(St2067_201_2026Delta::ALL, IssueSource::ProseRule);
-    check_all(St2067_202_2022::ALL, IssueSource::ProseRule);
+    check_all(St2067_202_2023::ALL, IssueSource::ProseRule);
 }

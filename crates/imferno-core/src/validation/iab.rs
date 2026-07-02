@@ -250,21 +250,26 @@ fn validate_iab_descriptors(
             );
         }
 
-        // §5.9: ElectrospatialFormulation shall NOT be present.
-        if iab.electrospatial_formulation.is_some() {
-            issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Audio,
-                    code(IabCode::ElectrospatialFormulationForbidden),
-                    format!(
-                        "IABEssenceDescriptor {}: ElectrospatialFormulation shall not be \
-                         present (ST 2067-201 §5.9)",
-                        ed.id,
-                    ),
-                )
-                .with_location(ed_loc.clone()),
-            );
+        // §5.9: "If present, the Electro-Spatial Formulation item of the
+        // IAB Essence Descriptor shall be set to a value of 15
+        // (multi-channel mode default)." Presence is legal (AUDIT-15
+        // fixed the inverted shall-not-be-present check).
+        if let Some(esf) = iab.electrospatial_formulation {
+            if esf != 15 {
+                issues.push(
+                    ValidationIssue::new(
+                        Severity::Error,
+                        Category::Audio,
+                        code(IabCode::ElectrospatialFormulationInvalid),
+                        format!(
+                            "IABEssenceDescriptor {}: ElectrospatialFormulation {} shall be 15 \
+                             — multi-channel mode default (ST 2067-201 §5.9)",
+                            ed.id, esf,
+                        ),
+                    )
+                    .with_location(ed_loc.clone()),
+                );
+            }
         }
 
         // §5.9: QuantizationBits shall be 24.
@@ -302,7 +307,7 @@ fn validate_iab_descriptors(
             _ => {}
         }
 
-        // §5.3: ContainerFormat shall be the IAB essence container UL.
+        // §5.9 Table 4.5: ContainerFormat shall be the IAB essence container UL.
         match &iab.container_format {
             None => {
                 issues.push(
@@ -328,7 +333,7 @@ fn validate_iab_descriptors(
                         format!(
                             "IABEssenceDescriptor {}: ContainerFormat `{cf}` is not the \
                              required IAB container UL {IAB_CONTAINER_FORMAT} \
-                             (ST 2067-201 §5.3)",
+                             (ST 2067-201 §5.9 Table 4.5)",
                             ed.id,
                         ),
                     )
@@ -338,31 +343,41 @@ fn validate_iab_descriptors(
             _ => {}
         }
 
-        // §5.9: AudioSampleRate shall be 48000/1.
+        // §5.9: "The Audio Sampling Rate item of the IAB Essence
+        // Descriptor shall be present and shall be set to a value
+        // corresponding to ... the first instance of SampleRate in the
+        // Immersive Audio Bitstream" (ST 2098-2 §10.2.2). The bitstream
+        // is not parsed at CPL level, so the value check constrains to
+        // the ST 2098-2 sampling rates: 48 kHz and 96 kHz (AUDIT-16
+        // removed the 48000/1 hardcode; Missing is a SHALL → Error).
         match &iab.audio_sample_rate {
             None => {
                 issues.push(
                     ValidationIssue::new(
-                        Severity::Warning,
+                        Severity::Error,
                         Category::Audio,
                         code(IabCode::AudioSamplingRateMissing),
                         format!(
                             "IABEssenceDescriptor {}: AudioSampleRate is missing; \
-                             ST 2067-201 §5.9 requires 48000/1",
+                             ST 2067-201 §5.9 requires it to be present",
                             ed.id,
                         ),
                     )
                     .with_location(ed_loc.clone()),
                 );
             }
-            Some(rate) if rate.numerator != 48000 || rate.denominator != 1 => {
+            Some(rate)
+                if rate.denominator != 1
+                    || (rate.numerator != 48000 && rate.numerator != 96000) =>
+            {
                 issues.push(
                     ValidationIssue::new(
                         Severity::Error,
                         Category::Audio,
                         code(IabCode::AudioSamplingRateInvalid),
                         format!(
-                            "IABEssenceDescriptor {}: AudioSampleRate {}/{} is not 48000/1 \
+                            "IABEssenceDescriptor {}: AudioSampleRate {}/{} is not an \
+                             ST 2098-2 sampling rate (48000/1 or 96000/1) \
                              (ST 2067-201 §5.9)",
                             ed.id, rate.numerator, rate.denominator,
                         ),
@@ -430,7 +445,7 @@ fn validate_iab_descriptors(
             }
         }
 
-        // §5.9: IABSoundfieldLabelSubDescriptor shall be present.
+        // §5.10.2: exactly one IABSoundfieldLabelSubDescriptor shall be present.
         let soundfield = iab
             .sub_descriptors
             .as_ref()
@@ -444,7 +459,7 @@ fn validate_iab_descriptors(
                     code(IabCode::SubDescriptorMissing),
                     format!(
                         "IABEssenceDescriptor {}: IABSoundfieldLabelSubDescriptor shall be \
-                         present (ST 2067-201 §5.9)",
+                         present (ST 2067-201 §5.10.2)",
                         ed.id,
                     ),
                 )
@@ -459,7 +474,7 @@ fn validate_iab_descriptors(
             ed.id
         ));
 
-        // §5.9: MCATagSymbol shall be "IAB".
+        // §5.10.4 Table 4.8: MCATagSymbol shall be "IAB".
         match &sf.mca_tag_symbol {
             None => {
                 issues.push(
@@ -469,7 +484,7 @@ fn validate_iab_descriptors(
                         code(IabCode::MCATagSymbolMissing),
                         format!(
                             "IABEssenceDescriptor {}: IABSoundfieldLabelSubDescriptor \
-                             MCATagSymbol shall be \"IAB\" (ST 2067-201 §5.9)",
+                             MCATagSymbol shall be \"IAB\" (ST 2067-201 §5.10.4)",
                             ed.id,
                         ),
                     )
@@ -485,7 +500,7 @@ fn validate_iab_descriptors(
                         format!(
                             "IABEssenceDescriptor {}: IABSoundfieldLabelSubDescriptor \
                              MCATagSymbol shall be \"IAB\", got \"{sym:?}\" \
-                             (ST 2067-201 §5.9)",
+                             (ST 2067-201 §5.10.4)",
                             ed.id,
                         ),
                     )
@@ -495,7 +510,7 @@ fn validate_iab_descriptors(
             _ => {}
         }
 
-        // §5.9: MCATagName shall be "IAB".
+        // §5.10.3/§5.10.4: MCATagName shall be present, with value "IAB".
         match sf.mca_tag_name.as_deref() {
             None => {
                 issues.push(
@@ -505,7 +520,7 @@ fn validate_iab_descriptors(
                         code(IabCode::MCATagNameMissing),
                         format!(
                             "IABEssenceDescriptor {}: IABSoundfieldLabelSubDescriptor \
-                             MCATagName shall be \"IAB\" (ST 2067-201 §5.9)",
+                             MCATagName shall be present (ST 2067-201 §5.10.3) with value \"IAB\" (§5.10.4)",
                             ed.id,
                         ),
                     )
@@ -521,7 +536,7 @@ fn validate_iab_descriptors(
                         format!(
                             "IABEssenceDescriptor {}: IABSoundfieldLabelSubDescriptor \
                              MCATagName shall be \"IAB\", got \"{name}\" \
-                             (ST 2067-201 §5.9)",
+                             (ST 2067-201 §5.10.4)",
                             ed.id,
                         ),
                     )
@@ -531,7 +546,7 @@ fn validate_iab_descriptors(
             _ => {}
         }
 
-        // §5.9: MCALabelDictionaryID shall be the IAB label UL.
+        // §5.10.4 Table 4.9: MCALabelDictionaryID shall be the IAB Soundfield UL.
         match sf.mca_label_dictionary_id.as_deref() {
             None => {
                 issues.push(
@@ -542,7 +557,7 @@ fn validate_iab_descriptors(
                         format!(
                             "IABEssenceDescriptor {}: IABSoundfieldLabelSubDescriptor \
                              MCALabelDictionaryID is missing; shall be {IAB_MCA_LABEL_DICT_ID} \
-                             (ST 2067-201 §5.9)",
+                             (ST 2067-201 §5.10.4)",
                             ed.id,
                         ),
                     )
@@ -558,7 +573,7 @@ fn validate_iab_descriptors(
                         format!(
                             "IABEssenceDescriptor {}: IABSoundfieldLabelSubDescriptor \
                              MCALabelDictionaryID `{id}` shall be {IAB_MCA_LABEL_DICT_ID} \
-                             (ST 2067-201 §5.9)",
+                             (ST 2067-201 §5.10.4)",
                             ed.id,
                         ),
                     )
@@ -700,8 +715,8 @@ mod plugin_2026_tests {
         )
     }
 
-    /// 2026 fires the Annex E warning when the IAB descriptor has zero
-    /// `IABChannelSubDescriptor` entries.
+    /// 2026 fires the §5.10.2 recommendation warning when the IAB
+    /// descriptor has zero `IABChannelSubDescriptor` entries.
     #[test]
     fn plugin_2026_warns_when_iab_channel_subdescriptors_absent() {
         let xml = cpl_xml_with_iab_subdescriptors("<IABSoundfieldLabelSubDescriptor/>");
@@ -709,8 +724,11 @@ mod plugin_2026_tests {
         let issues = AppIabPlugin2026.validate_cpl(&cpl);
         let hit = issues
             .iter()
-            .find(|i| i.code == "ST2067-201:2026:Annex-E/IabChannelSubDescriptorRecommended");
-        assert!(hit.is_some(), "expected Annex E warning, got: {issues:#?}");
+            .find(|i| i.code == "ST2067-201:2026:5.10.2/IabChannelSubDescriptorRecommended");
+        assert!(
+            hit.is_some(),
+            "expected the §5.10.2 IABChannelSubDescriptor warning, got: {issues:#?}"
+        );
         assert_eq!(hit.unwrap().severity, Severity::Warning);
     }
 

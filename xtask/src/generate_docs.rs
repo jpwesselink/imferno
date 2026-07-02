@@ -16,7 +16,7 @@ use imferno_core::package::codes::ImfernoCode;
 use imferno_core::scm::codes::St2067_9_2018;
 use imferno_core::validation::codes::{St2067_21_2020, St2067_21_2023, St2067_21_2025};
 use imferno_core::validation::iab_codes::{St2067_201_2019, St2067_201_2021};
-use imferno_core::validation::isxd_codes::St2067_202_2022;
+use imferno_core::validation::isxd_codes::St2067_202_2023;
 
 use std::fs;
 use std::path::Path;
@@ -146,7 +146,7 @@ fn codes_page() -> String {
 
     // ── ST 2067-202 ──
     s.push_str("## ST 2067-202 — ISXD Plug-in\n\n");
-    s.push_str(&code_table(St2067_202_2022::ALL));
+    s.push_str(&code_table(St2067_202_2023::ALL));
     s.push('\n');
 
     // ── imferno ──

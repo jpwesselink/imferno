@@ -192,13 +192,12 @@ pub fn check_audio_mca(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
         }
     }
 
-    // ST 377-4 §6.3.2 — every AudioChannelLabelSubDescriptor MUST
-    // carry an MCALinkID that points to its enclosing SoundfieldGroup,
-    // and the SoundfieldGroupLabelSubDescriptor MUST carry its own
-    // MCALinkID. We count occurrences relative to the count of each
-    // sub-descriptor type; a deficit means at least one label is
-    // missing the linking UUID — the SoundfieldGroupLinkID field on
-    // an AudioChannelLabelSubDescriptor must be non-null.
+    // ST 377-4 §6.3 Table 3 — MCALinkID is a required ("Req") item on
+    // every MCALabelSubDescriptor: each AudioChannelLabelSubDescriptor
+    // and the SoundfieldGroupLabelSubDescriptor shall carry one. We
+    // count occurrences relative to the count of each sub-descriptor
+    // type; a deficit means at least one label is missing the linking
+    // UUID.
     //
     // Skip for ADM (ST 2067-204) tracks — §5.4.1 prohibits the plain
     // MCA sub-descriptors these linking rules apply to.
@@ -210,8 +209,8 @@ pub fn check_audio_mca(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
                 St377_4_2012::MCALinkIDMissing,
                 format!(
                     "MXF {} carries {} MCALinkID(s) but expected {} ({} channel-label + {} \
-                     soundfield-group). ST 377-4 §6.3.2 requires every MCA sub-descriptor to \
-                     carry an MCALinkID.",
+                     soundfield-group). ST 377-4 §6.3 Table 3 requires every MCA \
+                     sub-descriptor to carry an MCALinkID.",
                     path.display(),
                     mca_link_count,
                     expected_link_count,
@@ -223,10 +222,34 @@ pub fn check_audio_mca(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
         );
     }
 
-    // ST 377-4 §6.3.2 — each AudioChannelLabelSubDescriptor's
-    // SoundfieldGroupLinkID MUST equal the SoundfieldGroup's MCALinkID
-    // so the channel's group membership is unambiguous. Skipped for
-    // ADM (ST 2067-204) tracks.
+    // ST 2067-2 §5.3.6.5 Table 7 — SoundfieldGroupLinkID "Shall be
+    // present" on every AudioChannelLabelSubDescriptor (see §5.3.6.3:
+    // all channel labels reference the single SoundfieldGroup).
+    // Counted like MCALinkID above; a deficit means at least one
+    // channel label omits it. Skipped for ADM (ST 2067-204) tracks.
+    let sf_link_count = count_elements(regxml, "SoundfieldGroupLinkID");
+    if !is_adm_audio && sf_link_count < channel_labels {
+        issues.push(
+            ValidationIssue::from_code(
+                St2067_2_2016::SoundfieldGroupLinkIDMissing,
+                format!(
+                    "MXF {} carries {} SoundfieldGroupLinkID(s) across {} \
+                     AudioChannelLabelSubDescriptor(s) — every channel label shall carry a \
+                     SoundfieldGroupLinkID per ST 2067-2 §5.3.6.5 Table 7.",
+                    path.display(),
+                    sf_link_count,
+                    channel_labels,
+                ),
+            )
+            .with_location(Location::new().with_file(path.to_path_buf())),
+        );
+    }
+
+    // ST 377-4 §6.4.1 — each AudioChannelLabelSubDescriptor's
+    // SoundfieldGroupLinkID shall be the MCA Link ID of the
+    // SoundfieldGroupLabelSubDescriptor the channel belongs to, so the
+    // channel's group membership is unambiguous. Skipped for ADM
+    // (ST 2067-204) tracks.
     if !is_adm_audio {
         if let Some(sg_link) = extract_field(regxml, "MCALinkID") {
             // Walk every SoundfieldGroupLinkID and confirm it matches
@@ -241,7 +264,7 @@ pub fn check_audio_mca(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
                             format!(
                                 "MXF {} carries an AudioChannelLabelSubDescriptor with \
                                  SoundfieldGroupLinkID '{}' that doesn't match the SoundfieldGroup \
-                                 MCALinkID '{}' (ST 377-4 §6.3.2).",
+                                 MCALinkID '{}' (ST 377-4 §6.4.1).",
                                 path.display(),
                                 sf_link.trim(),
                                 sg_link.trim(),
@@ -255,9 +278,13 @@ pub fn check_audio_mca(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
         }
     }
 
-    // ST 2067-2 §5.3.6.2 — every channel ID 1..ChannelCount must have
-    // an AudioChannelLabelSubDescriptor. ADM (ST 2067-204) tracks skip
-    // — §5.4.1 prohibits per-channel AudioChannelLabelSubDescriptors.
+    // ST 2067-2 §5.3.6.5 Table 7 — MCAChannelID "Shall be present
+    // unless the channel ID of the associated audio channel is equal
+    // to 1, in which case the item may be omitted". So channels
+    // 2..ChannelCount must each be identified by an MCAChannelID;
+    // channel 1 is exempt (AUDIT-9 fixed the channel-1 false
+    // positive). ADM (ST 2067-204) tracks skip — §5.4.1 prohibits
+    // per-channel AudioChannelLabelSubDescriptors.
     if !is_adm_audio {
         if let Some(cc) = channel_count {
             let channel_ids: std::collections::HashSet<u32> =
@@ -265,7 +292,7 @@ pub fn check_audio_mca(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
                     .into_iter()
                     .filter_map(|s| s.trim().parse::<u32>().ok())
                     .collect();
-            for expected in 1..=cc {
+            for expected in 2..=cc {
                 if !channel_ids.contains(&expected) {
                     issues.push(
                         ValidationIssue::from_code(
@@ -273,7 +300,8 @@ pub fn check_audio_mca(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
                             format!(
                                 "MXF {} declares ChannelCount = {} but no \
                                  AudioChannelLabelSubDescriptor carries MCAChannelID = {} — \
-                                 every channel 1..N must have a label per ST 2067-2 §5.3.6.2.",
+                                 channels 2..N shall be identified per ST 2067-2 §5.3.6.5 \
+                                 Table 7 (only channel 1 may omit MCAChannelID).",
                                 path.display(),
                                 cc,
                                 expected,
@@ -286,32 +314,50 @@ pub fn check_audio_mca(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
         }
     }
 
-    // ST 2067-2 §5.3.4.2 — ChannelAssignment UL must be one of the
-    // SMPTE 428-12 MCA channel-layout ULs (prefix
-    // `urn:smpte:ul:060e2b34.0401010d.04020210.…`). Anything else
-    // breaks downstream channel-layout-aware tooling.
-    if let Some(ca) = extract_field(regxml, "ChannelAssignment") {
-        let ca = ca.trim();
-        // Tolerate the variable byte-7 (registry version) by checking
-        // both the documented `0401010d` form and any future
-        // `0401010X` revision, plus the structural body bytes that
-        // identify ST 428-12 MCA layouts.
-        let prefix_ok =
-            ca.starts_with("urn:smpte:ul:060e2b34.0401010") && ca.contains(".04020210.");
-        if !prefix_ok {
+    // ST 2067-2 §5.3.4.2 — "The Channel Assignment item shall be
+    // present and shall be equal to the UL specified in Table 5":
+    // 060e2b34.0401010d.04020210.04010000 (byte 13 = 04h identifies
+    // ST 2067-2 sound channel labeling; AUDIT-10 replaced the loose
+    // any-`04020210.*` prefix check that also admitted e.g. the ADM
+    // label, byte 13 = 05h). The registry-version byte 8 is tolerated
+    // per usual UL-comparison practice. ADM (ST 2067-204) tracks are
+    // exempt — they carry the ST 2131 label instead.
+    match extract_field(regxml, "ChannelAssignment") {
+        None if !is_adm_audio => {
             issues.push(
                 ValidationIssue::from_code(
-                    St2067_2_2016::ChannelAssignmentNotMCA,
+                    St2067_2_2016::ChannelAssignmentMissing,
                     format!(
-                        "MXF {} declares ChannelAssignment = {} — ST 2067-2 §5.3.4.2 \
-                         requires a SMPTE 428-12 MCA channel-layout UL.",
+                        "MXF {} sound descriptor has no ChannelAssignment — ST 2067-2 \
+                         §5.3.4.2 requires the item to be present.",
                         path.display(),
-                        ca
                     ),
                 )
                 .with_location(Location::new().with_file(path.to_path_buf())),
             );
         }
+        Some(ca) if !is_adm_audio => {
+            let ca = ca.trim();
+            let table5_ok = parse_ul_bytes(ca).is_some_and(|b| {
+                b[0..7] == [0x06, 0x0e, 0x2b, 0x34, 0x04, 0x01, 0x01]
+                    && b[8..16] == [0x04, 0x02, 0x02, 0x10, 0x04, 0x01, 0x00, 0x00]
+            });
+            if !table5_ok {
+                issues.push(
+                    ValidationIssue::from_code(
+                        St2067_2_2016::ChannelAssignmentNotMCA,
+                        format!(
+                            "MXF {} declares ChannelAssignment = {ca} — ST 2067-2 §5.3.4.2 \
+                             requires the Table 5 channel-assignment label \
+                             (060e2b34.0401010d.04020210.04010000, byte 13 = 04h).",
+                            path.display(),
+                        ),
+                    )
+                    .with_location(Location::new().with_file(path.to_path_buf())),
+                );
+            }
+        }
+        _ => {}
     }
 
     // ST 2067-2 §5.3.3 / ST 382:2007 §10 — audio essence MUST be
@@ -359,11 +405,11 @@ pub fn check_audio_mca(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
         );
     }
 
-    // ST 2067-2 §5.3.6.5 — delivery-grade audio MCA: SoundfieldGroup
-    // SHALL carry MCATitle, MCATitleVersion, MCAAudioContentKind,
-    // MCAAudioElementKind. Emitted as Warning since not every IMF
-    // profile requires them, but mainstream delivery pipelines
-    // (Netflix etc.) do.
+    // ST 2067-2 §5.3.6.5 Table 7 — the SoundfieldGroup column marks
+    // MCATitle, MCATitleVersion, MCAAudioContentKind and
+    // MCAAudioElementKind "Shall be present" — Error severity via the
+    // catalogue (AUDIT-11 corrected the former Warning/"recommends"
+    // treatment).
     if soundfield_count > 0 {
         // Pair each field name (used to grep the RegXML + render the
         // diagnostic message) with the typed enum variant that carries
@@ -389,8 +435,8 @@ pub fn check_audio_mca(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
                         *code,
                         format!(
                             "MXF {} SoundfieldGroupLabelSubDescriptor is missing {} — \
-                             ST 2067-2 §5.3.6.5 recommends this field for delivery-grade \
-                             audio MCA.",
+                             ST 2067-2 §5.3.6.5 Table 7 requires the item on the \
+                             SoundfieldGroup label.",
                             path.display(),
                             required,
                         ),
@@ -606,30 +652,33 @@ mod tests {
         // channel-label count, soundfield-group count, MCALinkID
         // presence, SoundfieldGroupLinkID match, MCAChannelID coverage).
         //
-        // It legitimately lacks Netflix-grade Warning fields (MCATitle
-        // et al. per §5.3.6.5) since it's a regxmllib test asset, not a
-        // Netflix delivery. So we filter to Error severity here —
-        // Warnings are allowed and tested separately in
-        // `audio1_fires_warnings_for_missing_netflix_grade_mca_fields`.
+        // It lacks the §5.3.6.5 Table 7 SoundfieldGroup items (MCATitle
+        // et al.) since it's a regxmllib test asset, not a full IMF
+        // deliverable. Table 7 marks those SHALL (AUDIT-11), so they now
+        // fire as Errors — they're asserted separately in
+        // `audio1_fires_errors_for_missing_table7_sfg_items` and
+        // excluded here.
         let (xml, path) = audio1_regxml();
         let issues = check_audio_mca(&xml, &path);
         let errors: Vec<_> = issues
             .iter()
             .filter(|i| i.severity == Severity::Error || i.severity == Severity::Critical)
+            .filter(|i| !i.code.contains("SoundfieldGroupMissing/"))
             .collect();
         assert!(
             errors.is_empty(),
-            "audio1.mxf should pass all Error-level §5.3 checks. Got Errors: {:#?}",
+            "audio1.mxf should pass all other Error-level §5.3 checks. Got Errors: {:#?}",
             errors
         );
     }
 
     #[test]
-    fn audio1_fires_warnings_for_missing_netflix_grade_mca_fields() {
+    fn audio1_fires_errors_for_missing_table7_sfg_items() {
         // audio1.mxf doesn't carry MCATitle / MCATitleVersion /
-        // MCAAudioContentKind / MCAAudioElementKind — these are
-        // Netflix-grade requirements per §5.3.6.5 and fire as
-        // Warnings on this fixture.
+        // MCAAudioContentKind / MCAAudioElementKind — §5.3.6.5 Table 7
+        // marks all four "Shall be present" on the SoundfieldGroup
+        // label, so they fire as Errors (AUDIT-11 corrected the former
+        // Warning severity).
         let (xml, path) = audio1_regxml();
         let issues = check_audio_mca(&xml, &path);
         for field in &[
@@ -638,13 +687,19 @@ mod tests {
             "MCAAudioContentKind",
             "MCAAudioElementKind",
         ] {
-            assert!(
-                issues
-                    .iter()
-                    .any(|i| i.code.contains(&format!("SoundfieldGroupMissing/{field}"))),
-                "expected SoundfieldGroupMissing/{field} warning on audio1.mxf, got: {:#?}",
-                issues
-            );
+            let hit = issues
+                .iter()
+                .find(|i| i.code.contains(&format!("SoundfieldGroupMissing/{field}")));
+            match hit {
+                Some(i) => assert_eq!(
+                    i.severity,
+                    Severity::Error,
+                    "SoundfieldGroupMissing/{field} is a Table 7 SHALL — Error severity"
+                ),
+                None => panic!(
+                    "expected SoundfieldGroupMissing/{field} error on audio1.mxf, got: {issues:#?}"
+                ),
+            }
         }
     }
 

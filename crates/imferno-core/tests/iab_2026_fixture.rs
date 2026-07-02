@@ -19,7 +19,7 @@ const CPL_CONFORMANT: &str = include_str!("fixtures/iab/cpl-iab-2026-conformant.
 const CPL_NON_CONFORMANT: &str =
     include_str!("fixtures/iab/cpl-iab-2026-missing-channel-subdescriptors.xml");
 
-const ANNEX_E_CODE: &str = "ST2067-201:2026:Annex-E/IabChannelSubDescriptorRecommended";
+const ANNEX_E_CODE: &str = "ST2067-201:2026:5.10.2/IabChannelSubDescriptorRecommended";
 
 #[test]
 fn fixture_conformant_passes_under_2026_plugin() {

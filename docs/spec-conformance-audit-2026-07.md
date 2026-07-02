@@ -128,9 +128,9 @@ dispatch arms (the -203 sequence namespace to match is
 | # | Finding | Action | Status |
 |---|---|---|---|
 | AUDIT-0 | dispatch gap | PR #66 | merged |
-| AUDIT-1 | IAB WAVE-PCM false positive | guard `IABEssenceDescriptor` in audio_mca | open — after #65 |
-| AUDIT-2 | ISXD edition label | rename :2022 → :2023 (codes + spec_id + docs) | open — breaking, coordinate release |
-| AUDIT-3 | vendored XSD provenance | swap to canonical + CHECKSUMS | open |
+| AUDIT-1 | IAB WAVE-PCM false positive | guard `IABEssenceDescriptor` in audio_mca | fixed — PR #69 |
+| AUDIT-2 | ISXD edition label | rename :2022 → :2023 (codes + spec_id + docs) | fixed — audit P2 batch (breaking: code prefixes renamed) |
+| AUDIT-3 | vendored XSD provenance | swap to canonical + CHECKSUMS | fixed — audit P2 batch |
 | AUDIT-4 | ST 2067-204 | scope catalogue (after -203) | backlog |
 | AUDIT-5 | ST 377-4 edition | verify §6.3.2 delta in :2021 | Phase 3 |
 
@@ -240,14 +240,21 @@ transcripts. Findings numbered on from AUDIT-6.
 
 | # | What | Class |
 |---|---|---|
-| AUDIT-14 | remove invented MainAudioMissing + revert corpus pin | P1 false positive |
-| AUDIT-7 | timed-text UL byte index | P1 false positive |
-| AUDIT-8 | replace Mode A gate with ADM/ST 2131 markers | P1 under-enforcement |
-| AUDIT-9 | MCAChannelID channel-1 exemption | false positive |
-| AUDIT-15/16 | IAB electro-spatial + sampling-rate conditions | false positive / over-constraint |
-| AUDIT-11/20 | SHALL-as-Warning severity corrections | severity |
-| AUDIT-10/12/17 | § citation corrections + Table 5 UL exactness | citations |
-| AUDIT-19 | re-home or delete ISXD SubDescriptorMissing | unsupported rule |
+| AUDIT-14 | remove invented MainAudioMissing + revert corpus pin | P1 false positive — **fixed, PR #71** |
+| AUDIT-7 | timed-text UL byte index | P1 false positive — **fixed, PR #71** |
+| AUDIT-8 | replace Mode A gate with ADM/ST 2131 markers | P1 under-enforcement — **fixed, PR #71** |
+| AUDIT-9 | MCAChannelID channel-1 exemption | false positive — **fixed, audit P2 batch** |
+| AUDIT-15/16 | IAB electro-spatial + sampling-rate conditions | false positive / over-constraint — **fixed, audit P2 batch** |
+| AUDIT-11/20 | SHALL-as-Warning severity corrections | severity — **fixed, audit P2 batch** |
+| AUDIT-10/12/17 | § citation corrections + Table 5 UL exactness | citations — **fixed, audit P2 batch** (incl. ChannelAssignment presence + per-ACLSD SoundfieldGroupLinkID presence companion gaps) |
+| AUDIT-19 | re-home or delete ISXD SubDescriptorMissing | unsupported rule — **deleted, audit P2 batch** (re-home lands with the ST 2127/-203 catalogue, AUDIT-22) |
+
+Audit P2 batch also closed two AUDIT-21 items: ISXD sequences joined the
+generic per-track edit-rate loop, and the §6 ISXD-vs-Main-Image edit-rate
+SHALL is now `ST2067-202:2023:6/EditRateMismatch`. Still open: AUDIT-4
+(-204 plug-in), AUDIT-13 (§5.4:2020 edition model), AUDIT-18 (IAB gaps),
+remaining AUDIT-21 items (ISXD-track-required, §9.3/§9.1 ULs), AUDIT-22
+(-203 catalogue; blocked on ST 2127-1/-10 staging).
 | AUDIT-2 | :2022→:2023 rename | breaking, own release |
 | AUDIT-18/21 | new-rule gaps (IAB + ISXD) | gaps |
 | AUDIT-22 | ST 2067-203 catalogue | feature |

@@ -31,6 +31,6 @@ canonical source.
   with **zero** `IABChannelSubDescriptor` entries (only the
   `IABSoundfieldLabelSubDescriptor` carried over from 2021). Annex E
   recommendation violated; `AppIabPlugin2026` emits the
-  `ST2067-201:2026:Annex-E/IabChannelSubDescriptorRecommended` Warning.
+  `ST2067-201:2026:5.10.2/IabChannelSubDescriptorRecommended` Warning.
   `AppIabPlugin2021` is silent on the same input (verified by
   `tests/iab_2026_fixture.rs`).

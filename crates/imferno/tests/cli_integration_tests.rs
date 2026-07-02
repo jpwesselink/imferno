@@ -105,7 +105,7 @@ fn test_cli_cpl_invalid_uuid() {
 #[test]
 fn test_cli_validate_success() {
     // The MERIDIAN reference fixture fires
-    // `ST377-4:2012:6.3.2/SoundfieldGroupLinkIDMismatch` — a real (Photon-
+    // `ST377-4:2012:6.4.1/SoundfieldGroupLinkIDMismatch` — a real (Photon-
     // injected) audio metadata defect we model since the photon-parity
     // pass. Suppress that one rule via `--rule` so the test continues to
     // verify the end-to-end CLI flow rather than re-litigating the

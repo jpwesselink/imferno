@@ -73,6 +73,11 @@
     "label": "beta (3.0.2)",
     "path": "/beta/"
   },
-  "prs": [],
+  "prs": [
+    {
+      "label": "#65 feat/fraunhofer-corpus-end-to-end",
+      "path": "/pr-65/"
+    }
+  ],
   "latest": "/v3.0.1/"
 }

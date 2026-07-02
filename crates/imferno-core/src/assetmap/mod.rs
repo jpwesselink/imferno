@@ -1146,7 +1146,7 @@ fn parse_opl_macros(xml_content: &str) -> Result<Vec<OplMacro>, quick_xml::Error
     use quick_xml::reader::Reader;
 
     let mut reader = Reader::from_str(xml_content);
-    reader.trim_text(true);
+    reader.config_mut().trim_text(true);
 
     let mut macros: Vec<OplMacro> = Vec::new();
     let mut buf = Vec::new();
@@ -1231,7 +1231,11 @@ fn parse_opl_macros(xml_content: &str) -> Result<Vec<OplMacro>, quick_xml::Error
             }
             Ok(Event::Text(t)) => {
                 if let (Some(builder), Some(target)) = (current.as_mut(), text_target.as_ref()) {
-                    let text = t.unescape().unwrap_or_default().into_owned();
+                    let text = t
+                        .decode()
+                        .ok()
+                        .and_then(|s| quick_xml::escape::unescape(&s).ok().map(|u| u.into_owned()))
+                        .unwrap_or_default();
                     match target.as_str() {
                         "Name" => builder.name.push_str(&text),
                         "Annotation" => {

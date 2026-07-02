@@ -20,6 +20,9 @@ Every validation issue emitted by imferno carries a code like `ST2067-2:2020:8.3
 | `ST377-1:2011:5/ParseError` | MXF file could not be parsed; it may be truncated or corrupt. | WARNING | Asset |
 | `ST377-1:2011:11/NoEssenceContainers` | MXF file contains no essence containers. | WARNING | Encoding |
 | `ST377-1:2011:7/OP1a` | MXF operational pattern must be OP1a for IMF packages. | ERROR | Encoding |
+| `ST377-1:2011:6.4/NonHeaderFirstPartition` | The first partition in an MXF file must be the Header partition. | ERROR | Container |
+| `ST377-1:2011:8.3.3/HeaderPartitionOpen` | The header partition status should be ClosedComplete for finished deliveries. | WARNING | Container |
+| `ST377-1:2011:8.3.3/MissingHeaderMetadata` | The header partition must carry header metadata (HeaderByteCount > 0). | ERROR | Container |
 
 ## ST 2067-2 — Core Constraints & Packing List
 
@@ -38,6 +41,9 @@ Every validation issue emitted by imferno carries a code like `ST2067-2:2020:8.3
 | `ST2067-2:2020:7/DuplicateUuid` | Two or more assets within the package share the same UUID. | ERROR | Reference |
 | `IMF:General/IoError` | An I/O error prevented the asset from being read. | ERROR | Asset |
 | `ST2067-2:2020:6.4.2/EssenceDescriptorList` | EssenceDescriptorList element is required per ST 2067-2:2020 §6.4.2. | ERROR | Structure |
+| `ST2067-2:2020:9/PklUnknownNamespace` | PKL document namespace is not one of the published SMPTE PKL namespaces. | ERROR | Structure |
+| `ST429-9:2014:6.3/AssetMapHasNoPackingList` | AssetMap declares no asset as a PackingList (ST 429-9 §6.3). | CRITICAL | Structure |
+| `ST429-9:2014:6.3/PklIdNotInAssetMap` | PKL document Id is not declared as a PackingList asset in the AssetMap. | ERROR | Reference |
 
 ### Core Constraints — 2013
 
@@ -48,15 +54,15 @@ Every validation issue emitted by imferno carries a code like `ST2067-2:2020:8.3
 | `ST2067-2:2013:XSD/TotalRunningTime-Format` | TotalRunningTime does not match required format HH:MM:SS. | ERROR | Structure |
 | `ST2067-2:2013:XSD/SegmentList` | SegmentList shall contain at least one Segment. | CRITICAL | Structure |
 | `ST2067-2:2013:XSD/Segment` | A Segment contains no sequences. | ERROR | Structure |
-| `ST2067-2:2013:XSD-88/EditRate` | CPL EditRate is required (XSD schema §88). | ERROR | Structure |
-| `ST2067-2:2013:XSD-66/IssueDate` | IssueDate shall not be empty. | ERROR | Metadata |
-| `ST2067-2:2013:XSD-66/IssueDate-Format` | IssueDate is not a valid xs:dateTime format. | WARNING | Metadata |
-| `ST2067-2:2013:XSD-121-127/CompositionTimecode-DropFrame` | CompositionTimecode.TimecodeDropFrame is required when CompositionTimecode is present. | ERROR | Timing |
-| `ST2067-2:2013:XSD-121-127/CompositionTimecode-Rate` | CompositionTimecode.TimecodeRate is required when CompositionTimecode is present. | ERROR | Timing |
-| `ST2067-2:2013:XSD-121-127/CompositionTimecode-StartAddress` | CompositionTimecode.TimecodeStartAddress is required when CompositionTimecode is present. | ERROR | Timing |
-| `ST2067-2:2013:XSD-121-127/CompositionTimecode-Rate-Zero` | CompositionTimecode.TimecodeRate shall be a positive integer. | ERROR | Timing |
-| `ST2067-2:2013:XSD-121-127/CompositionTimecode-StartAddress-Format` | TimecodeStartAddress does not match SMPTE timecode format HH:MM:SS:FF. | ERROR | Timing |
-| `ST2067-2:2013:XSD-121-127/CompositionTimecode-RateMismatch` | CompositionTimecode.TimecodeRate does not match the CPL EditRate. | WARNING | Metadata |
+| `ST2067-2:2013:XSD/CompositionPlaylist/EditRate` | CPL EditRate is required (XSD schema §88). | ERROR | Structure |
+| `ST2067-2:2013:XSD/CompositionPlaylist/IssueDate` | IssueDate shall not be empty. | ERROR | Metadata |
+| `ST2067-2:2013:XSD/CompositionPlaylist/IssueDate-Format` | IssueDate is not a valid xs:dateTime format. | WARNING | Metadata |
+| `ST2067-2:2013:XSD/CompositionTimecode/DropFrame` | CompositionTimecode.TimecodeDropFrame is required when CompositionTimecode is present. | ERROR | Timing |
+| `ST2067-2:2013:XSD/CompositionTimecode/Rate` | CompositionTimecode.TimecodeRate is required when CompositionTimecode is present. | ERROR | Timing |
+| `ST2067-2:2013:XSD/CompositionTimecode/StartAddress` | CompositionTimecode.TimecodeStartAddress is required when CompositionTimecode is present. | ERROR | Timing |
+| `ST2067-2:2013:XSD/CompositionTimecode/Rate-Zero` | CompositionTimecode.TimecodeRate shall be a positive integer. | ERROR | Timing |
+| `ST2067-2:2013:XSD/CompositionTimecode/StartAddress-Format` | TimecodeStartAddress does not match SMPTE timecode format HH:MM:SS:FF. | ERROR | Timing |
+| `ST2067-2:2013:XSD/CompositionTimecode/Rate-Mismatch` | CompositionTimecode.TimecodeRate does not match the CPL EditRate. | WARNING | Metadata |
 | `ST2067-2:2013:XSD/LocaleList-NonEmpty` | LocaleList shall contain at least one Locale. | ERROR | Structure |
 | `ST2067-2:2013:6.1/UniqueSegmentId` | Duplicate Segment Id within the CPL. | ERROR | Structure |
 | `ST2067-2:2013:6.1/UniqueEssenceDescriptorId` | Duplicate EssenceDescriptor Id within the CPL. | ERROR | Structure |
@@ -91,15 +97,15 @@ Every validation issue emitted by imferno carries a code like `ST2067-2:2020:8.3
 | `ST2067-2:2016:XSD/TotalRunningTime-Format` | TotalRunningTime does not match required format HH:MM:SS. | ERROR | Structure |
 | `ST2067-2:2016:XSD/SegmentList` | SegmentList shall contain at least one Segment. | CRITICAL | Structure |
 | `ST2067-2:2016:XSD/Segment` | A Segment contains no sequences. | ERROR | Structure |
-| `ST2067-2:2016:XSD-88/EditRate` | CPL EditRate is required (XSD schema §88). | ERROR | Structure |
-| `ST2067-2:2016:XSD-66/IssueDate` | IssueDate shall not be empty. | ERROR | Metadata |
-| `ST2067-2:2016:XSD-66/IssueDate-Format` | IssueDate is not a valid xs:dateTime format. | WARNING | Metadata |
-| `ST2067-2:2016:XSD-121-127/CompositionTimecode-DropFrame` | CompositionTimecode.TimecodeDropFrame is required when CompositionTimecode is present. | ERROR | Timing |
-| `ST2067-2:2016:XSD-121-127/CompositionTimecode-Rate` | CompositionTimecode.TimecodeRate is required when CompositionTimecode is present. | ERROR | Timing |
-| `ST2067-2:2016:XSD-121-127/CompositionTimecode-StartAddress` | CompositionTimecode.TimecodeStartAddress is required when CompositionTimecode is present. | ERROR | Timing |
-| `ST2067-2:2016:XSD-121-127/CompositionTimecode-Rate-Zero` | CompositionTimecode.TimecodeRate shall be a positive integer. | ERROR | Timing |
-| `ST2067-2:2016:XSD-121-127/CompositionTimecode-StartAddress-Format` | TimecodeStartAddress does not match SMPTE timecode format HH:MM:SS:FF. | ERROR | Timing |
-| `ST2067-2:2016:XSD-121-127/CompositionTimecode-RateMismatch` | CompositionTimecode.TimecodeRate does not match the CPL EditRate. | WARNING | Metadata |
+| `ST2067-2:2016:XSD/CompositionPlaylist/EditRate` | CPL EditRate is required (XSD schema §88). | ERROR | Structure |
+| `ST2067-2:2016:XSD/CompositionPlaylist/IssueDate` | IssueDate shall not be empty. | ERROR | Metadata |
+| `ST2067-2:2016:XSD/CompositionPlaylist/IssueDate-Format` | IssueDate is not a valid xs:dateTime format. | WARNING | Metadata |
+| `ST2067-2:2016:XSD/CompositionTimecode/DropFrame` | CompositionTimecode.TimecodeDropFrame is required when CompositionTimecode is present. | ERROR | Timing |
+| `ST2067-2:2016:XSD/CompositionTimecode/Rate` | CompositionTimecode.TimecodeRate is required when CompositionTimecode is present. | ERROR | Timing |
+| `ST2067-2:2016:XSD/CompositionTimecode/StartAddress` | CompositionTimecode.TimecodeStartAddress is required when CompositionTimecode is present. | ERROR | Timing |
+| `ST2067-2:2016:XSD/CompositionTimecode/Rate-Zero` | CompositionTimecode.TimecodeRate shall be a positive integer. | ERROR | Timing |
+| `ST2067-2:2016:XSD/CompositionTimecode/StartAddress-Format` | TimecodeStartAddress does not match SMPTE timecode format HH:MM:SS:FF. | ERROR | Timing |
+| `ST2067-2:2016:XSD/CompositionTimecode/Rate-Mismatch` | CompositionTimecode.TimecodeRate does not match the CPL EditRate. | WARNING | Metadata |
 | `ST2067-2:2016:XSD/LocaleList-NonEmpty` | LocaleList shall contain at least one Locale. | ERROR | Structure |
 | `ST2067-2:2016:6.1/UniqueSegmentId` | Duplicate Segment Id within the CPL. | ERROR | Structure |
 | `ST2067-2:2016:6.1/UniqueEssenceDescriptorId` | Duplicate EssenceDescriptor Id within the CPL. | ERROR | Structure |
@@ -134,15 +140,15 @@ Every validation issue emitted by imferno carries a code like `ST2067-2:2020:8.3
 | `ST2067-2:2020:XSD/TotalRunningTime-Format` | TotalRunningTime does not match required format HH:MM:SS. | ERROR | Structure |
 | `ST2067-2:2020:XSD/SegmentList` | SegmentList shall contain at least one Segment. | CRITICAL | Structure |
 | `ST2067-2:2020:XSD/Segment` | A Segment contains no sequences. | ERROR | Structure |
-| `ST2067-2:2020:XSD-88/EditRate` | CPL EditRate is required (XSD schema §88). | ERROR | Structure |
-| `ST2067-2:2020:XSD-66/IssueDate` | IssueDate shall not be empty. | ERROR | Metadata |
-| `ST2067-2:2020:XSD-66/IssueDate-Format` | IssueDate is not a valid xs:dateTime format. | WARNING | Metadata |
-| `ST2067-2:2020:XSD-121-127/CompositionTimecode-DropFrame` | CompositionTimecode.TimecodeDropFrame is required when CompositionTimecode is present. | ERROR | Timing |
-| `ST2067-2:2020:XSD-121-127/CompositionTimecode-Rate` | CompositionTimecode.TimecodeRate is required when CompositionTimecode is present. | ERROR | Timing |
-| `ST2067-2:2020:XSD-121-127/CompositionTimecode-StartAddress` | CompositionTimecode.TimecodeStartAddress is required when CompositionTimecode is present. | ERROR | Timing |
-| `ST2067-2:2020:XSD-121-127/CompositionTimecode-Rate-Zero` | CompositionTimecode.TimecodeRate shall be a positive integer. | ERROR | Timing |
-| `ST2067-2:2020:XSD-121-127/CompositionTimecode-StartAddress-Format` | TimecodeStartAddress does not match SMPTE timecode format HH:MM:SS:FF. | ERROR | Timing |
-| `ST2067-2:2020:XSD-121-127/CompositionTimecode-RateMismatch` | CompositionTimecode.TimecodeRate does not match the CPL EditRate. | WARNING | Metadata |
+| `ST2067-2:2020:XSD/CompositionPlaylist/EditRate` | CPL EditRate is required (XSD schema §88). | ERROR | Structure |
+| `ST2067-2:2020:XSD/CompositionPlaylist/IssueDate` | IssueDate shall not be empty. | ERROR | Metadata |
+| `ST2067-2:2020:XSD/CompositionPlaylist/IssueDate-Format` | IssueDate is not a valid xs:dateTime format. | WARNING | Metadata |
+| `ST2067-2:2020:XSD/CompositionTimecode/DropFrame` | CompositionTimecode.TimecodeDropFrame is required when CompositionTimecode is present. | ERROR | Timing |
+| `ST2067-2:2020:XSD/CompositionTimecode/Rate` | CompositionTimecode.TimecodeRate is required when CompositionTimecode is present. | ERROR | Timing |
+| `ST2067-2:2020:XSD/CompositionTimecode/StartAddress` | CompositionTimecode.TimecodeStartAddress is required when CompositionTimecode is present. | ERROR | Timing |
+| `ST2067-2:2020:XSD/CompositionTimecode/Rate-Zero` | CompositionTimecode.TimecodeRate shall be a positive integer. | ERROR | Timing |
+| `ST2067-2:2020:XSD/CompositionTimecode/StartAddress-Format` | TimecodeStartAddress does not match SMPTE timecode format HH:MM:SS:FF. | ERROR | Timing |
+| `ST2067-2:2020:XSD/CompositionTimecode/Rate-Mismatch` | CompositionTimecode.TimecodeRate does not match the CPL EditRate. | WARNING | Metadata |
 | `ST2067-2:2020:XSD/LocaleList-NonEmpty` | LocaleList shall contain at least one Locale. | ERROR | Structure |
 | `ST2067-2:2020:6.1/UniqueSegmentId` | Duplicate Segment Id within the CPL. | ERROR | Structure |
 | `ST2067-2:2020:6.1/UniqueEssenceDescriptorId` | Duplicate EssenceDescriptor Id within the CPL. | ERROR | Structure |
@@ -189,7 +195,7 @@ Every validation issue emitted by imferno carries a code like `ST2067-2:2020:8.3
 | `ST2067-3:2013:6.1.9/ContentVersionIdDuplicate` | No two ContentVersion elements shall have identical Id values. | ERROR | Structure |
 | `ST2067-3:2013:7.3/SegmentDurationIntegerEditUnits` | Sequence duration shall be an integer number of Composition Edit Units. | ERROR | Timing |
 
-### 2016
+### 2016 / 2020
 
 | Code | Description | Default Severity | Category |
 |------|-------------|-----------------|----------|
@@ -207,25 +213,6 @@ Every validation issue emitted by imferno carries a code like `ST2067-2:2020:8.3
 | `ST2067-3:2016:7.2.2/SegmentDuration` | All virtual tracks in a segment must span the same number of edit units. | ERROR | Timing |
 | `ST2067-3:2016:6.1.9/ContentVersionIdDuplicate` | No two ContentVersion elements shall have identical Id values. | ERROR | Structure |
 | `ST2067-3:2016:7.3/SegmentDurationIntegerEditUnits` | Sequence duration shall be an integer number of Composition Edit Units. | ERROR | Timing |
-
-### 2020
-
-| Code | Description | Default Severity | Category |
-|------|-------------|-----------------|----------|
-| `ST2067-3:2020:5.5.1.2/ContentKindUnknown` | ContentKind uses an unrecognized value under the SMPTE scope. | WARNING | Metadata |
-| `ST2067-3:2020:6.4.2/SourceEncodingNoEssenceDescriptorList` | SourceEncoding present but EssenceDescriptorList absent. | ERROR | Reference |
-| `ST2067-3:2020:6.4.2/SourceEncodingUnresolved` | SourceEncoding does not match any EssenceDescriptor Id. | ERROR | Reference |
-| `ST2067-3:2020:6.4.2/EssenceDescriptorListEmpty` | EssenceDescriptorList present but contains no descriptors. | ERROR | Structure |
-| `ST2067-3:2020:6.11/ContentVersionListEmpty` | ContentVersionList present but empty. | ERROR | Structure |
-| `ST2067-3:2020:6.11/ContentVersionIdInvalid` | ContentVersion/Id is empty (shall be a URI). | ERROR | Metadata |
-| `ST2067-3:2020:6.11/ContentVersionLabelTextMissing` | ContentVersion/LabelText is absent. | WARNING | Metadata |
-| `ST2067-3:2020:6.12/LocaleLanguageTagInvalid` | Locale language tag does not conform to RFC 5646. | WARNING | Metadata |
-| `ST2067-3:2020:7.3/TrackIdNotUnique` | TrackId is not unique within a segment. | ERROR | Structure |
-| `ST2067-3:2020:7.4/MarkerOffsetOutOfRange` | Marker offset exceeds resource effective duration. | ERROR | Timing |
-| `ST2067-3:2020:7.4/MarkerLabelUnknown` | Marker label is not a recognized SMPTE standard value. | WARNING | Metadata |
-| `ST2067-3:2020:7.2.2/SegmentDuration` | All virtual tracks in a segment must span the same number of edit units. | ERROR | Timing |
-| `ST2067-3:2020:6.1.9/ContentVersionIdDuplicate` | No two ContentVersion elements shall have identical Id values. | ERROR | Structure |
-| `ST2067-3:2020:7.3/SegmentDurationIntegerEditUnits` | Sequence duration shall be an integer number of Composition Edit Units. | ERROR | Timing |
 
 ## ST 2067-9 — Sidecar Composition Map
 
@@ -269,8 +256,8 @@ Every validation issue emitted by imferno carries a code like `ST2067-2:2020:8.3
 | `ST2067-21:2023:6.5/Required-ChannelCount` | WavePCM descriptor is missing the required ChannelCount field. | ERROR | Audio |
 | `ST2067-21:2023:6.5/Required-QuantizationBits` | WavePCM descriptor is missing the required QuantizationBits field. | ERROR | Audio |
 | `ST2067-21:2023:6.2.1/AlphaTransparency` | Alpha transparency mode is not permitted in App2E. | ERROR | Video |
-| `ST2067-21:2023:6.2.1/CodingEquations` | CodingEquations field is absent from the picture descriptor (Table 8). | ERROR | Video |
-| `ST2067-21:2023:6.2.1/ColorPrimaries` | ColorPrimaries field is absent from the picture descriptor (Table 8). | ERROR | Video |
+| `ST2067-21:2023:6.2.1/CodingEquationsMissing` | CodingEquations field is absent from the picture descriptor (Table 8). | ERROR | Video |
+| `ST2067-21:2023:6.2.1/ColorPrimariesMissing` | ColorPrimaries field is absent from the picture descriptor (Table 8). | ERROR | Video |
 | `ST2067-21:2023:6.2.1/FieldDominance` | FieldDominance value is not permitted for the declared FrameLayout. | ERROR | Video |
 | `ST2067-21:2023:6.2.1/FrameLayout` | FrameLayout value is not in the permitted set for App2E. | ERROR | Video |
 | `ST2067-21:2023:6.2.1/FrameLayoutInterlaced` | FrameLayout declares interlaced content, which is not permitted in App2E. | ERROR | Video |
@@ -282,10 +269,10 @@ Every validation issue emitted by imferno carries a code like `ST2067-2:2020:8.3
 | `ST2067-21:2023:6.2.1/SampledXOffset` | SampledXOffset must be zero. | ERROR | Video |
 | `ST2067-21:2023:6.2.1/SampledYOffset` | SampledYOffset must be zero. | ERROR | Video |
 | `ST2067-21:2023:6.2.1/StoredF2Offset` | StoredF2Offset must be zero. | ERROR | Video |
-| `ST2067-21:2023:6.2.1/TransferCharacteristic` | TransferCharacteristic field is absent from the picture descriptor (Table 8). | ERROR | Video |
-| `ST2067-21:2023:6.2.2/TransferCharacteristic` | TransferCharacteristic UL is present but not a recognized value. | ERROR | Video |
-| `ST2067-21:2023:6.2.3/CodingEquations` | CodingEquations UL is present but not a recognized value. | ERROR | Video |
-| `ST2067-21:2023:6.2.4/ColorPrimaries` | ColorPrimaries UL is present but not a recognized value. | ERROR | Video |
+| `ST2067-21:2023:6.2.1/TransferCharacteristicMissing` | TransferCharacteristic field is absent from the picture descriptor (Table 8). | ERROR | Video |
+| `ST2067-21:2023:6.2.2/TransferCharacteristicUnknown` | TransferCharacteristic UL is present but not a recognized value. | ERROR | Video |
+| `ST2067-21:2023:6.2.3/CodingEquationsUnknown` | CodingEquations UL is present but not a recognized value. | ERROR | Video |
+| `ST2067-21:2023:6.2.4/ColorPrimariesUnknown` | ColorPrimaries UL is present but not a recognized value. | ERROR | Video |
 | `ST2067-21:2023:6.2.5/J2KRequired` | Video essence is not JPEG 2000 encoded as required by App2E. | ERROR | Encoding |
 | `ST2067-21:2023:6.3/AlphaMaxRef` | AlphaMaxRef value is not permitted. | ERROR | Video |
 | `ST2067-21:2023:6.3/AlphaMinRef` | AlphaMinRef value is not permitted. | ERROR | Video |
@@ -354,7 +341,6 @@ Every validation issue emitted by imferno carries a code like `ST2067-2:2020:8.3
 | `ST2067-201:2019:5.9/MCATagNameInvalid` | IABSoundfieldLabelSubDescriptor: MCATagName shall be "IAB". | ERROR | Audio |
 | `ST2067-201:2019:5.9/MCALabelDictionaryIDMissing` | IABSoundfieldLabelSubDescriptor: MCALabelDictionaryID is missing. | ERROR | Audio |
 | `ST2067-201:2019:5.9/MCALabelDictionaryIDInvalid` | IABSoundfieldLabelSubDescriptor: MCALabelDictionaryID is not the required IAB label UL. | ERROR | Audio |
-| `ST2067-201:2019:6.2/MainAudioMissing` | Segment has IABSequence but no MainAudioSequence (§6.2). | ERROR | Audio |
 | `ST2067-201:2019:6.2/IABSequenceNoResources` | IABSequence shall contain at least one Resource (§6.2). | ERROR | Audio |
 | `ST2067-201:2019:6.2/IABSequenceSourceEncodingInvalid` | IABSequence Resource.SourceEncoding does not reference an IABEssenceDescriptor (§6.2). | ERROR | Audio |
 
@@ -380,7 +366,6 @@ Every validation issue emitted by imferno carries a code like `ST2067-2:2020:8.3
 | `ST2067-201:2021:5.9/MCATagNameInvalid` | IABSoundfieldLabelSubDescriptor: MCATagName shall be "IAB". | ERROR | Audio |
 | `ST2067-201:2021:5.9/MCALabelDictionaryIDMissing` | IABSoundfieldLabelSubDescriptor: MCALabelDictionaryID is missing. | ERROR | Audio |
 | `ST2067-201:2021:5.9/MCALabelDictionaryIDInvalid` | IABSoundfieldLabelSubDescriptor: MCALabelDictionaryID is not the required IAB label UL. | ERROR | Audio |
-| `ST2067-201:2021:6.2/MainAudioMissing` | Segment has IABSequence but no MainAudioSequence (§6.2). | ERROR | Audio |
 | `ST2067-201:2021:6.2/IABSequenceNoResources` | IABSequence shall contain at least one Resource (§6.2). | ERROR | Audio |
 | `ST2067-201:2021:6.2/IABSequenceSourceEncodingInvalid` | IABSequence Resource.SourceEncoding does not reference an IABEssenceDescriptor (§6.2). | ERROR | Audio |
 
@@ -388,11 +373,11 @@ Every validation issue emitted by imferno carries a code like `ST2067-2:2020:8.3
 
 | Code | Description | Default Severity | Category |
 |------|-------------|-----------------|----------|
-| `ST2067-202:2022:5/SubDescriptorMissing` | ISXDDataEssenceDescriptor: ContainerConstraintsSubDescriptor shall be present. | ERROR | Audio |
-| `ST2067-202:2022:5/NamespaceUriMissing` | ISXDDataEssenceDescriptor: NamespaceURI is absent. | WARNING | Audio |
-| `ST2067-202:2022:6/ISXDSequenceNoResources` | ISXDSequence shall contain at least one Resource. | ERROR | Audio |
-| `ST2067-202:2022:6/ISXDSequenceSourceEncodingInvalid` | ISXDSequence Resource.SourceEncoding does not reference an ISXDDataEssenceDescriptor. | ERROR | Audio |
-| `ST2067-202:2022:6/NamespaceUriMismatch` | Resources in the same ISXDSequence reference descriptors with inconsistent NamespaceURI values. | ERROR | Audio |
+| `ST2067-202:2022:5/SubDescriptorMissing` | ISXDDataEssenceDescriptor: ContainerConstraintsSubDescriptor shall be present. | ERROR | Data |
+| `ST2067-202:2022:5/NamespaceUriMissing` | ISXDDataEssenceDescriptor: NamespaceURI is absent. | WARNING | Data |
+| `ST2067-202:2022:6/ISXDSequenceNoResources` | ISXDSequence shall contain at least one Resource. | ERROR | Data |
+| `ST2067-202:2022:6/ISXDSequenceSourceEncodingInvalid` | ISXDSequence Resource.SourceEncoding does not reference an ISXDDataEssenceDescriptor. | ERROR | Data |
+| `ST2067-202:2022:6/NamespaceUriMismatch` | Resources in the same ISXDSequence reference descriptors with inconsistent NamespaceURI values. | ERROR | Data |
 
 ## imferno
 
@@ -401,7 +386,7 @@ Codes emitted by imferno's package-level logic for conditions that don't map to 
 | Code | Description | Default Severity | Category |
 |------|-------------|-----------------|----------|
 | `IMFERNO:Package/UnreferencedAsset` | Asset is present in the AssetMap but not referenced by any CPL Virtual Track and has no SCM declaration. Likely a sidecar essence without an SCM. | INFO | Structure |
-| `IMFERNO:Package/UnlistedEssence` | MXF file is present in the package directory but not listed in the AssetMap. The file is invisible to any conforming IMF reader. | WARNING | Structure |
+| `IMFERNO:Package/UnlistedEssence` | File is present in the package directory but not listed in the AssetMap. The file is invisible to any conforming IMF reader. | WARNING | Structure |
 | `IMFERNO:Package/ParseError` | IMF package failed to parse due to a structural error. | CRITICAL | Structure |
 | `IMFERNO:Package/PklParseError` | A Packing List referenced by the AssetMap could not be parsed. | ERROR | Structure |
 | `IMFERNO:Package/XmlAssetParseError` | An XML asset could not be parsed as CPL, OPL, or SCM. | WARNING | Structure |

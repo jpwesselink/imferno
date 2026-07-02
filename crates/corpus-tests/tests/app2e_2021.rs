@@ -74,25 +74,19 @@ fn app2e2021_bad_color() {
 /// Our validator models namespace mismatches as warnings, not errors.
 ///
 /// The fixture also carries an `ns6:IABSequence` with no accompanying
-/// MainAudioSequence. Since IAB plug-in dispatch was wired up
-/// (sequence-presence dispatch), the ST 2067-201 §6.2 rule correctly
-/// fires on it — that error is expected and pinned here; anything else
-/// is a regression.
+/// MainAudioSequence. An earlier pin expected the (since removed)
+/// `MainAudioMissing` error here; that rule was invented — no edition of
+/// ST 2067-201 (nor ST 2067-2:2020 §6.3.2, "zero or more Audio Virtual
+/// Tracks") requires a MainAudioSequence alongside an IABSequence — and
+/// was deleted per AUDIT-14, so the CPL validates clean again.
 #[test]
 fn app2e2021_cc_namespaces() {
     let cpl =
         read_cpl("Application2E2021/CPL_3714715a-af0c-4a89-9cc9-c99f61e7eb6d_CC-Namespaces.xml");
     let issues = validate_cpl(&cpl);
-    let errs = errors(&issues);
     assert!(
-        errs.iter()
-            .all(|i| i.code == "ST2067-201:2021:6.2/MainAudioMissing"),
-        "only the genuine IAB §6.2 MainAudioMissing error is expected for the \
-         CC-Namespaces CPL; got: {errs:#?}"
-    );
-    assert_eq!(
-        errs.len(),
-        1,
-        "expected exactly the IAB §6.2 error; got: {errs:#?}"
+        errors(&issues).is_empty(),
+        "expected no errors for the CC-Namespaces CPL; got: {:#?}",
+        errors(&issues)
     );
 }

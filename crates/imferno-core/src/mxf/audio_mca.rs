@@ -124,33 +124,40 @@ pub fn check_audio_mca(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
         }
     }
 
-    // ST 2067-2 §5.3.6 supports two channel-labeling modes:
+    // ST 2067-204 (ADM audio) carve-out — AUDIT-8.
     //
-    //   - **Mode A** — the WAVEPCMDescriptor declares a
-    //     `ChannelAssignment` UL pointing at a SMPTE-registered
-    //     channel layout (e.g. `urn:smpte:ul:…04020210.05010000`
-    //     for an ADM channel layout). The standard label is
-    //     authoritative; no per-channel sub-descriptors are required.
-    //   - **Mode B** — `AudioChannelLabelSubDescriptor` per
-    //     channel + exactly one `SoundfieldGroupLabelSubDescriptor`,
-    //     each with an `MCALinkID` linking them.
+    // ST 2067-2 §5.3.6.2/.3 are unconditional for WAVE PCM audio: one
+    // `AudioChannelLabelSubDescriptor` per channel plus exactly one
+    // `SoundfieldGroupLabelSubDescriptor`. (`ChannelAssignment` is
+    // mandatory on every audio file per §5.3.4.2, so its mere presence
+    // proves nothing.) The legitimate exception is an ST 2067-204 ADM
+    // audio track file: §5.1 identifies ADM essence via the ST 2131
+    // ADM audio-labeling framework, and §5.4.1 explicitly prohibits
+    // plain AudioChannelLabelSubDescriptors on such files — they carry
+    // ADM* MCA sub-descriptors and/or the ST 2131 ADM label in
+    // `ChannelAssignment` instead (mirroring the MGA/S-ADM and IAB
+    // gates above).
     //
-    // The §5.3.6.2 / §5.3.6.3 rules below only apply in Mode B.
-    // We detect Mode A by: `ChannelAssignment` present and no
-    // `AudioChannelLabelSubDescriptor` elements (a deliberate
-    // omission, not an accidental one). Surfaced by the Fraunhofer
-    // SMPTE WG ST 2067-204 corpus, where bed-channel audio tracks
-    // use Mode A.
+    // Detection, verified against the Fraunhofer SMPTE WG ST 2067-204
+    // corpus (whose files carry ChannelAssignment =
+    // urn:smpte:ul:060e2b34.0401010d.04020210.05010000 and empty
+    // SubDescriptors): ADM sub-descriptor elements present, or the
+    // ChannelAssignment UL is the ST 2131 ADM audio-labeling framework
+    // label (bytes 9–13, 1-indexed, = 04.02.02.10.05).
     let channel_count =
         extract_field(regxml, "ChannelCount").and_then(|c| c.trim().parse::<u32>().ok());
     let channel_labels = count_elements(regxml, "AudioChannelLabelSubDescriptor");
     let soundfield_count = count_elements(regxml, "SoundfieldGroupLabelSubDescriptor");
-    let channel_assignment = extract_field(regxml, "ChannelAssignment")
-        .map(|s| s.trim().to_string())
-        .filter(|s| !s.is_empty());
-    let is_mode_a = channel_labels == 0 && channel_assignment.is_some();
+    let adm_channel_assignment = extract_field(regxml, "ChannelAssignment")
+        .as_deref()
+        .map(str::trim)
+        .and_then(parse_ul_bytes)
+        .is_some_and(|b| b[8..13] == [0x04, 0x02, 0x02, 0x10, 0x05]);
+    let is_adm_audio = regxml.contains("ADMSoundfieldGroupLabelSubDescriptor")
+        || regxml.contains("ADMAudioMetadataSubDescriptor")
+        || adm_channel_assignment;
 
-    if !is_mode_a {
+    if !is_adm_audio {
         // §5.3.6.2 — Mode B: number of AudioChannelLabelSubDescriptors
         // must equal ChannelCount on the WAVEPCMDescriptor.
         if let Some(cc) = channel_count {
@@ -193,12 +200,11 @@ pub fn check_audio_mca(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
     // missing the linking UUID — the SoundfieldGroupLinkID field on
     // an AudioChannelLabelSubDescriptor must be non-null.
     //
-    // Skip in Mode A (ChannelAssignment UL only) — the linking rules
-    // are conditional on the presence of per-channel sub-descriptors,
-    // which don't exist in Mode A.
+    // Skip for ADM (ST 2067-204) tracks — §5.4.1 prohibits the plain
+    // MCA sub-descriptors these linking rules apply to.
     let mca_link_count = count_elements(regxml, "MCALinkID");
     let expected_link_count = channel_labels + soundfield_count;
-    if !is_mode_a && mca_link_count < expected_link_count {
+    if !is_adm_audio && mca_link_count < expected_link_count {
         issues.push(
             ValidationIssue::from_code(
                 St377_4_2012::MCALinkIDMissing,
@@ -219,8 +225,9 @@ pub fn check_audio_mca(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
 
     // ST 377-4 §6.3.2 — each AudioChannelLabelSubDescriptor's
     // SoundfieldGroupLinkID MUST equal the SoundfieldGroup's MCALinkID
-    // so the channel's group membership is unambiguous. Mode B only.
-    if !is_mode_a {
+    // so the channel's group membership is unambiguous. Skipped for
+    // ADM (ST 2067-204) tracks.
+    if !is_adm_audio {
         if let Some(sg_link) = extract_field(regxml, "MCALinkID") {
             // Walk every SoundfieldGroupLinkID and confirm it matches
             // the SoundfieldGroup's MCALinkID (the first MCALinkID in
@@ -249,10 +256,9 @@ pub fn check_audio_mca(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
     }
 
     // ST 2067-2 §5.3.6.2 — every channel ID 1..ChannelCount must have
-    // an AudioChannelLabelSubDescriptor. Mode A skips (no per-channel
-    // descriptors by definition — the ChannelAssignment UL carries the
-    // full layout).
-    if !is_mode_a {
+    // an AudioChannelLabelSubDescriptor. ADM (ST 2067-204) tracks skip
+    // — §5.4.1 prohibits per-channel AudioChannelLabelSubDescriptors.
+    if !is_adm_audio {
         if let Some(cc) = channel_count {
             let channel_ids: std::collections::HashSet<u32> =
                 extract_all_fields(regxml, "MCAChannelID")
@@ -1118,26 +1124,12 @@ mod tests {
         );
     }
 
-    #[test]
-    fn mode_a_channel_assignment_skips_mca_subdescriptor_rules() {
-        // Mode A per ST 2067-2 §5.3.6: the WAVEPCMDescriptor declares a
-        // ChannelAssignment UL naming a SMPTE-registered layout; no
-        // per-channel AudioChannelLabelSubDescriptors are required.
-        // Surfaced by the Fraunhofer ST 2067-204 corpus (bed-channel
-        // WAVE PCM tracks use Mode A) — previously fired a cascade of
-        // ChannelLabelCountMismatch + SoundFieldGroupLabelCount +
-        // MCAChannelIDMissing false positives.
-        let xml = r#"<ns1:Preface>
-            <ns1:WAVEPCMDescriptor>
-                <ns2:AudioSampleRate>48000/1</ns2:AudioSampleRate>
-                <ns2:QuantizationBits>24</ns2:QuantizationBits>
-                <ns2:ChannelCount>5</ns2:ChannelCount>
-                <ns2:ChannelAssignment>urn:smpte:ul:060e2b34.04010101.04020210.05010000</ns2:ChannelAssignment>
-                <ns2:RFC5646SpokenLanguage>en</ns2:RFC5646SpokenLanguage>
-            </ns1:WAVEPCMDescriptor>
-        </ns1:Preface>"#;
-        let issues = check_audio_mca(xml, std::path::Path::new("/mode-a.mxf"));
-        let mode_b_codes: Vec<_> = issues
+    /// Codes that must be gated off on ST 2067-204 ADM tracks (§5.4.1
+    /// prohibits the plain MCA sub-descriptors they check for).
+    fn mca_label_codes(
+        issues: &[crate::diagnostics::ValidationIssue],
+    ) -> Vec<&crate::diagnostics::ValidationIssue> {
+        issues
             .iter()
             .filter(|i| {
                 i.code.contains("ChannelLabelCountMismatch")
@@ -1146,19 +1138,98 @@ mod tests {
                     || i.code.contains("MCALinkIDMissing")
                     || i.code.contains("SoundfieldGroupLinkIDMismatch")
             })
-            .collect();
+            .collect()
+    }
+
+    #[test]
+    fn adm_channel_assignment_label_skips_mca_subdescriptor_rules() {
+        // ST 2067-204 ADM audio (AUDIT-8): the WAVEPCMDescriptor carries
+        // the ST 2131 ADM audio-labeling framework label in
+        // ChannelAssignment (as the Fraunhofer ST 2067-204 corpus does:
+        // urn:smpte:ul:060e2b34.0401010d.04020210.05010000, empty
+        // SubDescriptors). -204 §5.4.1 prohibits plain
+        // AudioChannelLabelSubDescriptors on such files, so the
+        // §5.3.6.2/.3 + ST 377-4 rules must not fire.
+        let xml = r#"<ns1:Preface>
+            <ns1:WAVEPCMDescriptor>
+                <ns2:AudioSampleRate>48000/1</ns2:AudioSampleRate>
+                <ns2:QuantizationBits>24</ns2:QuantizationBits>
+                <ns2:ChannelCount>5</ns2:ChannelCount>
+                <ns2:ChannelAssignment>urn:smpte:ul:060e2b34.0401010d.04020210.05010000</ns2:ChannelAssignment>
+                <ns2:RFC5646SpokenLanguage>en</ns2:RFC5646SpokenLanguage>
+            </ns1:WAVEPCMDescriptor>
+        </ns1:Preface>"#;
+        let issues = check_audio_mca(xml, std::path::Path::new("/adm-label.mxf"));
+        let gated = mca_label_codes(&issues);
         assert!(
-            mode_b_codes.is_empty(),
-            "Mode A (ChannelAssignment UL, no channel labels) must not fire Mode B \
-             sub-descriptor rules: {mode_b_codes:#?}"
+            gated.is_empty(),
+            "ST 2131 ADM ChannelAssignment label must gate off the plain-MCA \
+             sub-descriptor rules: {gated:#?}"
         );
     }
 
     #[test]
-    fn missing_labels_without_channel_assignment_still_fires_mode_b_rules() {
-        // Negative control for the Mode A carve-out: a WAVE PCM
-        // descriptor with NEITHER ChannelAssignment NOR channel labels
-        // is a plain §5.3.6.2 violation — the Mode B rules must fire.
+    fn adm_subdescriptor_markers_skip_mca_subdescriptor_rules() {
+        // Same ST 2067-204 gate, triggered by the ADM MCA sub-descriptors
+        // themselves (ADMSoundfieldGroupLabelSubDescriptor /
+        // ADMAudioMetadataSubDescriptor) rather than the ChannelAssignment
+        // label value.
+        let xml = r#"<ns1:Preface>
+            <ns1:WAVEPCMDescriptor>
+                <ns2:AudioSampleRate>48000/1</ns2:AudioSampleRate>
+                <ns2:QuantizationBits>24</ns2:QuantizationBits>
+                <ns2:ChannelCount>5</ns2:ChannelCount>
+                <ns2:SubDescriptors>
+                    <ns1:ADMSoundfieldGroupLabelSubDescriptor/>
+                    <ns1:ADMAudioMetadataSubDescriptor/>
+                </ns2:SubDescriptors>
+                <ns2:RFC5646SpokenLanguage>en</ns2:RFC5646SpokenLanguage>
+            </ns1:WAVEPCMDescriptor>
+        </ns1:Preface>"#;
+        let issues = check_audio_mca(xml, std::path::Path::new("/adm-subdesc.mxf"));
+        let gated = mca_label_codes(&issues);
+        assert!(
+            gated.is_empty(),
+            "ADM sub-descriptor markers must gate off the plain-MCA \
+             sub-descriptor rules: {gated:#?}"
+        );
+    }
+
+    #[test]
+    fn channel_assignment_without_adm_label_still_fires_mca_rules() {
+        // AUDIT-8 under-enforcement regression: ChannelAssignment is
+        // mandatory on EVERY audio file (§5.3.4.2), so its presence alone
+        // must not disable §5.3.6.2/.3. A WAVE PCM descriptor with a
+        // non-ADM ChannelAssignment, no channel labels, and no ADM
+        // markers is a plain §5.3.6.2 violation.
+        let xml = r#"<ns1:Preface>
+            <ns1:WAVEPCMDescriptor>
+                <ns2:AudioSampleRate>48000/1</ns2:AudioSampleRate>
+                <ns2:QuantizationBits>24</ns2:QuantizationBits>
+                <ns2:ChannelCount>2</ns2:ChannelCount>
+                <ns2:ChannelAssignment>urn:smpte:ul:060e2b34.0401010d.04020210.04010000</ns2:ChannelAssignment>
+            </ns1:WAVEPCMDescriptor>
+        </ns1:Preface>"#;
+        let issues = check_audio_mca(xml, std::path::Path::new("/no-labels-ca.mxf"));
+        assert!(
+            issues
+                .iter()
+                .any(|i| i.code.contains("ChannelLabelCountMismatch")),
+            "unlabeled non-ADM file with ChannelAssignment must fire §5.3.6.2: {issues:#?}"
+        );
+        assert!(
+            issues
+                .iter()
+                .any(|i| i.code.contains("SoundFieldGroupLabelCount")),
+            "unlabeled non-ADM file with ChannelAssignment must fire §5.3.6.3: {issues:#?}"
+        );
+    }
+
+    #[test]
+    fn missing_labels_without_channel_assignment_still_fires_mca_rules() {
+        // A WAVE PCM descriptor with NEITHER ChannelAssignment NOR
+        // channel labels is a plain §5.3.6.2 violation — the MCA
+        // labeling rules must fire.
         let xml = r#"<ns1:Preface>
             <ns1:WAVEPCMDescriptor>
                 <ns2:AudioSampleRate>48000/1</ns2:AudioSampleRate>

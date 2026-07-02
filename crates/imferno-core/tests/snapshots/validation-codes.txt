@@ -28,7 +28,6 @@ ST2067-201:2019:5.9/SoundCompressionMissing
 ST2067-201:2019:5.9/SubDescriptorMissing
 ST2067-201:2019:6.2/IABSequenceNoResources
 ST2067-201:2019:6.2/IABSequenceSourceEncodingInvalid
-ST2067-201:2019:6.2/MainAudioMissing
 ST2067-201:2021:5.3/ContainerFormatMissing
 ST2067-201:2021:5.3/EssenceContainerInvalid
 ST2067-201:2021:5.9/AudioSamplingRateInvalid
@@ -49,7 +48,6 @@ ST2067-201:2021:5.9/SoundCompressionMissing
 ST2067-201:2021:5.9/SubDescriptorMissing
 ST2067-201:2021:6.2/IABSequenceNoResources
 ST2067-201:2021:6.2/IABSequenceSourceEncodingInvalid
-ST2067-201:2021:6.2/MainAudioMissing
 ST2067-201:2026:Annex-E/IabChannelSubDescriptorRecommended
 ST2067-202:2022:5/NamespaceUriMissing
 ST2067-202:2022:5/SubDescriptorMissing

@@ -77,6 +77,10 @@
     {
       "label": "#65 feat/fraunhofer-corpus-end-to-end",
       "path": "/pr-65/"
+    },
+    {
+      "label": "#68 audit/spec-conformance-2026-07",
+      "path": "/pr-68/"
     }
   ],
   "latest": "/v3.0.1/"

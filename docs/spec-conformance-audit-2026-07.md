@@ -133,3 +133,121 @@ dispatch arms (the -203 sequence namespace to match is
 | AUDIT-3 | vendored XSD provenance | swap to canonical + CHECKSUMS | open |
 | AUDIT-4 | ST 2067-204 | scope catalogue (after -203) | backlog |
 | AUDIT-5 | ST 377-4 edition | verify §6.3.2 delta in :2021 | Phase 3 |
+
+## Phase 3 — rule-by-rule prose verification (2026-07-02, firsthand-pdf)
+
+Three parallel verification passes against the staged publication PDFs.
+All quotes verified against pdftotext extractions; full reports in session
+transcripts. Findings numbered on from AUDIT-6.
+
+### ST 2067-2 §5.3/§5.4 + ST 377-4 (audio_mca.rs, timed_text.rs)
+
+- **AUDIT-7 `bug` P1** — `TimedTextMappingKindNot0x13` checks the wrong UL
+  byte (`bytes[14]`, should be `bytes[13]`): ST 429-5's canonical container
+  UL has 0x13 at byte 14 (index 13) and 0x01 at index 14 → **false Error on
+  every conformant IMF timed-text file** (`timed_text.rs:44-63`).
+- **AUDIT-8 `bug` P1** — the Mode A carve-out (PR #65) has **no ST 2067-2
+  basis**: §5.3.6.2/.3 are unconditional in 2016 AND 2020, and
+  ChannelAssignment is mandatory on every audio file (§5.3.4.2 "shall be
+  present"), so the gate silently disables §5.3.6 + ST 377-4 checks on any
+  file that merely omitted its MCA labels. The Fraunhofer files it was built
+  for are ST 2067-204 ADM tracks — -204 §5.1 gates on the ST 2131
+  AudioLabelingFrameworkADMContent label and §5.4.1 explicitly bans plain
+  ACLSDs. Correct gate: ADM markers (ST 2131 ChannelAssignment value /
+  ADMSoundfieldGroupLabelSubDescriptor), mirroring the MGA/IAB gates.
+- **AUDIT-9 `bug`** — `MCAChannelIDMissing` false-positives on channel 1:
+  Table 7 "may be omitted" when channel ID = 1; § should cite 5.3.6.5.
+- **AUDIT-10 `bug`** — `ChannelAssignmentNotMCA` accepts any
+  `…04020210.*` UL (Table 5 requires byte 13 = 04h exactly); message
+  mis-cites "SMPTE 428-12". Companion `gap`: ChannelAssignment *presence*
+  (§5.3.4.2 SHALL) is never checked.
+- **AUDIT-11 `bug` (severity)** — `SoundfieldGroupMissingMCA{Title,
+  TitleVersion,AudioContentKind,AudioElementKind}`: Table 7 says SHALL for
+  the SFG column; emitted as Warning with "recommends" wording.
+- **AUDIT-12 `smell`** — `SoundfieldGroupLinkIDMismatch` cites §6.3.2;
+  rule lives in ST 377-4 §6.4.1. `MCALinkIDMissing` requirement is Table 1
+  "Req"/§5.4. Companion `gap`: per-ACLSD SoundfieldGroupLinkID presence
+  (Table 7 SHALL) unchecked.
+- **AUDIT-13 edition analysis** — §5.3 numbering/substance identical
+  2016↔2020 (pinning :2016 is safe). §5.4 is NOT: 2020 moves to IMSC 1.1,
+  adds font/otf (current whitelist → false Error on valid 2020 files),
+  adds §5.4.1 DataEssenceCoding prohibition + §5.4.7 root-container rule.
+  `TimedTextNamespaceNotIMSC` mixes editions; `TimedTextUCSEncodingNotUTF8`
+  mis-attributes to §5.4 (source is ST 429-5).
+- **AUDIT-5 RESOLVED** — ST 377-4 §6.3.2/§6.4.1 unchanged 2012→2021
+  (clarifications only); :2012 citations remain valid.
+- Verified `OK`: SoundDescriptorNotWAVEPCM §5.3.4.1, AudioSampleRate
+  §5.3.2.2 (48k/96k IS in 2067-2 prose), QuantizationBits §5.3.2.3,
+  clip-wrap §5.3.3, ChannelLabelCount §5.3.6.2, SoundfieldGroupLabelCount
+  §5.3.6.3.
+
+### ST 2067-201 IAB (iab.rs, iab_codes.rs)
+
+- **AUDIT-14 `bug` P1** — `MainAudioMissing` (§6.2) is an **invented
+  rule**: no edition of -201 (nor ST 2067-2:2020 §6.3.2, "zero or more
+  Audio Virtual Tracks") requires a MainAudioSequence alongside an
+  IABSequence. Actively firing on user content since the dispatch fix
+  (#66); the CC-Namespaces corpus pin added in #66 pinned a false
+  positive and must be reverted with the rule.
+- **AUDIT-15 `bug`** — `ElectrospatialFormulationForbidden` inverts the
+  spec: §5.9 (both editions) "If present … shall be set to a value of 15".
+  Presence is legal; check value==15.
+- **AUDIT-16 `bug`** — `AudioSamplingRateInvalid` hardcodes 48000/1;
+  prose ties the value to the bitstream SampleRate ("48" has zero hits in
+  either edition; 96k legal per ST 2098-2). `AudioSamplingRateMissing` is
+  a SHALL emitted as Warning.
+- **AUDIT-17 `bug` (citations)** — container-label rules cite §5.3
+  (→§5.9 Table 4.5); subdescriptor/MCA rules cite §5.9 (→§5.10.2/.3/.4);
+  2026 recommendation cites "Annex E §E.2" (→§5.10.2). All UL values
+  verified correct.
+- **AUDIT-18 `gap`s** — §5.10.2 prohibition of plain
+  AudioChannelLabel/SoundfieldGroup/GroupOfSoundfieldGroups subdescriptors;
+  "exactly one" IAB SFL upper bound; Annex C.2 MCAChannelID prohibition;
+  §6.2 edit-rate integer-multiple-of-Main-Image; Electro-Spatial ==15
+  check (replacement for AUDIT-15).
+- Verified `OK`: 2019↔2021 edition model (single delta: ChannelCount),
+  CodecForbidden, SoundCompression UL, ChannelCountNotZero (2019),
+  IABSequenceNoResources. 2026: namespace reuse confirmed; doc comment
+  "no normative changes 2021→2026" overclaims (bitstream-level SHALLs
+  added) but implemented rule set unaffected.
+
+### ST 2067-202 ISXD + ST 2067-203 S-ADM (isxd.rs, isxd_codes.rs)
+
+- **AUDIT-2 (expanded)** — :2022→:2023 mislabel at ~15 sites incl.
+  spec_id, all code prefixes, napi/TS codegen, snapshot tests. Namespace
+  `/2022/` confirmed correct per §6 Table 1.
+- **AUDIT-19 `bug`** — `SubDescriptorMissing` (Error): "ContainerConstraints"
+  appears nowhere in -202 prose; §9.2 says descriptors "may extend" and
+  readers "shall ignore unrecognized SubDescriptors". Requirement belongs
+  to ST 2127 lineage, not -202 §5.
+- **AUDIT-20 `bug`s** — `NamespaceUriMissing`: §5.3/§9.2 SHALL emitted as
+  Warning. All 5 emission sites hardcode `Category::Audio`, contradicting
+  the catalogue's deliberate `Category::Data`. `NamespaceUriMismatch`
+  scoped per-sequence; §6 scopes per-Virtual-Track.
+- **AUDIT-21 `gap`s** — §6 ISXD edit rate SHALL equal Main Image edit
+  rate (isxd_sequences also missing from the generic per-track edit-rate
+  loop at validation/mod.rs:1083-1111); composition-references-ISXD ⇒
+  ISXD Virtual Track required; §9.3 DataEssenceCoding UL; §9.1/9.2
+  container/descriptor ULs.
+- **AUDIT-22 (FIX-16b scoped)** — full ST 2067-203 catalogue extracted:
+  15 CPL-level + ~28 MXF-level SHALL/SHOULDs with § cites, mapped 1:1 to
+  the 22 test-data/SADM fixtures (map in session transcript / Phase 3
+  agent report). `ContainerConstraintsSubDescriptor` and
+  `MGAAudioMetadataSubDescriptor` come from ST 2127-1/-10 (not staged) —
+  fetch before implementing those two.
+
+### Fix queue additions (priority order)
+
+| # | What | Class |
+|---|---|---|
+| AUDIT-14 | remove invented MainAudioMissing + revert corpus pin | P1 false positive |
+| AUDIT-7 | timed-text UL byte index | P1 false positive |
+| AUDIT-8 | replace Mode A gate with ADM/ST 2131 markers | P1 under-enforcement |
+| AUDIT-9 | MCAChannelID channel-1 exemption | false positive |
+| AUDIT-15/16 | IAB electro-spatial + sampling-rate conditions | false positive / over-constraint |
+| AUDIT-11/20 | SHALL-as-Warning severity corrections | severity |
+| AUDIT-10/12/17 | § citation corrections + Table 5 UL exactness | citations |
+| AUDIT-19 | re-home or delete ISXD SubDescriptorMissing | unsupported rule |
+| AUDIT-2 | :2022→:2023 rename | breaking, own release |
+| AUDIT-18/21 | new-rule gaps (IAB + ISXD) | gaps |
+| AUDIT-22 | ST 2067-203 catalogue | feature |

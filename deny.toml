@@ -5,6 +5,15 @@ exclude = ["corpus-tests", "imf-benchmarks", "xtask"]
 
 [advisories]
 version = 2
+# quick-xml 0.37.5 is pulled transitively via regxml 0.1.1 / regxml-dict
+# 0.1.1 (our own published crates). imferno-core's own quick-xml is 0.41
+# (advisory-clean). Mirror of the ignores in .cargo/audit.toml — see the
+# risk assessment there. Remove both once regxml/regxml-dict 0.1.2 ship
+# with quick-xml >= 0.41.
+ignore = [
+    "RUSTSEC-2026-0194", # quick-xml 0.37 — quadratic dup-attribute check
+    "RUSTSEC-2026-0195", # quick-xml 0.37 — unbounded xmlns allocation
+]
 
 [bans]
 multiple-versions = "warn"

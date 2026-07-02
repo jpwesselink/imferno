@@ -77,10 +77,6 @@
     {
       "label": "#65 feat/fraunhofer-corpus-end-to-end",
       "path": "/pr-65/"
-    },
-    {
-      "label": "#66 fix/register-iab-isxd-plugins",
-      "path": "/pr-66/"
     }
   ],
   "latest": "/v3.0.1/"

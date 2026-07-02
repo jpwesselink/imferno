@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.1.0](https://github.com/jpwesselink/imferno/compare/imferno-core-v3.0.1...imferno-core-v3.1.0) - 2026-07-02
+
+### Added
+
+- *(xsd)* emit Info notice when the schema pre-pass is skipped + e2e PatternInvalid pin
+
+### Fixed
+
+- *(validation)* audit P1 batch — invented IAB rule, timed-text UL byte, ADM-gated Mode A
+- *(audio)* skip §5.3 WAVE-PCM rules on ST 2067-201 IAB essence (AUDIT-1)
+
+### Other
+
+- Merge branch 'main' into feat/fraunhofer-corpus-end-to-end
+- Merge branch 'main' into feat/fraunhofer-corpus-end-to-end
+- *(deps)* quick-xml 0.31 → 0.41 (RUSTSEC-2026-0194/-0195)
+- refresh stale "MXF header partition only" claim
+
 ## [3.0.1](https://github.com/jpwesselink/imferno/compare/imferno-core-v3.0.0...imferno-core-v3.0.1) - 2026-06-19
 
 ### Fixed

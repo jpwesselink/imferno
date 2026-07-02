@@ -7,6 +7,71 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.1.0](https://github.com/jpwesselink/imferno/compare/imferno-wasm-v3.0.1...imferno-wasm-v3.1.0) - 2026-07-02
+
+### Added
+
+- *(napi)* listRules() exposes the full validation rule catalogue
+- *(napi)* [**breaking**] explicit S3 credentials option for validateUri
+- add validate() as primary API — returns { package, validation }
+- expose full Imferno struct through WASM and NAPI
+- [**breaking**] document v2 API entry points ([#13](https://github.com/jpwesselink/imferno/pull/13))
+- unified buildReport API, timeline sequences, and docs playground overhaul
+- typed validation code constants for Rust and TypeScript
+- [**breaking**] v1.0.0 — unified validate() API, remove SourceAsset/delivery
+- migrate npm packages to @imferno scope
+- initial release of imferno-core, imferno, and imferno-wasm
+
+### Fixed
+
+- *(validation)* audit P1 batch — invented IAB rule, timed-text UL byte, ADM-gated Mode A
+- *(core)* gate uppsala element_path access behind `uppsala-patched` feature
+- *(ci)* rustfmt, wasm temp_dir panic, CLI test fixture override
+- *(napi)* platform packages now ship their .node binary ([#43](https://github.com/jpwesselink/imferno/pull/43))
+- *(napi)* align imferno-napi Cargo.toml version with workspace (2.1.1) ([#41](https://github.com/jpwesselink/imferno/pull/41))
+- remaining review findings — type safety, dedup, and encapsulation
+- address all code review findings across 5 agents
+- update WASM tests and wrapper for buildReport API ([#9](https://github.com/jpwesselink/imferno/pull/9))
+- update docs to use imferno_wasm module and fix property name casing
+- adjust ASSETMAP null check in test to handle undefined
+- serialize validate() result as plain JS objects, not Maps
+- resolve all clippy warnings across workspace
+- update imferno-wasm README with correct API and usage
+- ship prebuilt wasm binary in npm package
+- update wasm package name and imports to imferno
+- remove stale st2067-3 reference from wasm build script
+- add version to imferno-core path dependencies
+
+### Other
+
+- release v3.0.0
+- *(wasm)* photon corpus smoke validation under wasm bundle
+- *(release)* bump imferno-core, imferno-napi, imferno, imferno-wasm to 3.0.0
+- expose aggregateRepeats option
+- migrate ST 2067-2 XSD-line-range codes to structural ids
+- re-tag ISXD, disambiguate §6.2.1 presence-vs-validity codes
+- release v2.4.1
+- release v2.4.0
+- deprecate ImfReport, build_report(), and format_report()
+- release v2.1.0
+- rebuild WASM with CplSequence.language field
+- update all documentation for v2 API
+- release
+- bump version references to 1.1.0
+- bump all crates to v1.1.0
+- release
+- update documentation and fix consistency issues
+- release
+- *(imferno-wasm)* release v0.1.3
+- update README and docs for @imferno npm ecosystem
+- bump imferno-wasm to 0.1.3 for @imferno/wasm publish
+- release
+- release ([#2](https://github.com/jpwesselink/imferno/pull/2))
+- add vitest suite for imferno-wasm and wire into CI
+- bump imferno-wasm to 0.1.2
+- bump imferno-wasm to 0.1.1
+- release v0.1.0
+
 ## [3.0.1](https://github.com/jpwesselink/imferno/compare/imferno-wasm-v3.0.0...imferno-wasm-v3.0.1) - 2026-06-19
 
 ### Added

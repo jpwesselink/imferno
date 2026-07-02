@@ -77,6 +77,10 @@
     {
       "label": "#70 audit/phase-3-findings",
       "path": "/pr-70/"
+    },
+    {
+      "label": "#71 fix/audit-p1-batch",
+      "path": "/pr-71/"
     }
   ],
   "latest": "/v3.0.1/"

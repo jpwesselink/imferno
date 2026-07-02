@@ -23,4 +23,20 @@ ignore = [
     "RUSTSEC-2026-0098", # rustls-webpki — name constraints for URI names
     "RUSTSEC-2026-0099", # rustls-webpki — wildcard name constraints
     "RUSTSEC-2026-0104", # rustls-webpki — reachable panic in CRL parsing
+
+    # quick-xml 0.37.5 — pulled transitively via regxml 0.1.1 and
+    # regxml-dict 0.1.1 (our own published crates). imferno-core's OWN
+    # quick-xml is at 0.41 (fixed in the same commit that added these
+    # ignores); they cover only the transitive 0.37.5 copy until
+    # regxml/regxml-dict 0.1.2 ship with quick-xml >= 0.41. Remove both
+    # ignores at that bump.
+    #
+    # Risk assessment: both advisories are DoS-class (quadratic time on
+    # duplicate attribute names; unbounded namespace-declaration
+    # allocation). The regxml path only parses the SMPTE register XMLs
+    # we embed at compile time (trusted, fixed inputs) and MXF-embedded
+    # KLV-derived metadata — not attacker-supplied XML documents.
+
+    "RUSTSEC-2026-0194", # quick-xml 0.37 — quadratic dup-attribute check
+    "RUSTSEC-2026-0195", # quick-xml 0.37 — unbounded xmlns allocation
 ]

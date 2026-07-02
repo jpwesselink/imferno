@@ -52,8 +52,17 @@ pub fn check_audio_mca(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
     //
     // ST 2067-203 native validation is tracked separately; this branch
     // only suppresses the WAVE-PCM-specific rules that don't apply.
-    let is_mga_essence = regxml.contains("MGASoundEssenceDescriptor");
-    if is_mga_essence {
+    //
+    // ST 2067-201 (IAB) opens the same kind of parallel audio essence
+    // path: IAB tracks carry an `IABEssenceDescriptor` (+
+    // `IABSoundfieldLabelSubDescriptor`), not a WAVEPCMDescriptor —
+    // confirmed against the real Atmos track in the IAB CompleteIMP
+    // corpus fixture. The IAB descriptor has its own rule set in
+    // `validation/iab.rs` (ST 2067-201 §5.9); the §5.3 WAVE PCM rules
+    // below don't apply to it either. (Spec-conformance audit AUDIT-1.)
+    let is_plugin_audio_essence =
+        regxml.contains("MGASoundEssenceDescriptor") || regxml.contains("IABEssenceDescriptor");
+    if is_plugin_audio_essence {
         return issues;
     }
 
@@ -1053,6 +1062,59 @@ mod tests {
             issues.is_empty(),
             "MGA/SADM RegXML should produce no audio diagnostics (WAVE PCM rules don't apply), got: {:#?}",
             issues
+        );
+    }
+
+    #[test]
+    fn skips_when_iab_essence_descriptor_present() {
+        // ST 2067-201 IAB audio carries an `IABEssenceDescriptor`
+        // (+ IABSoundfieldLabelSubDescriptor), not a WAVEPCMDescriptor.
+        // Same false-positive class as the SADM case: the §5.3 rules
+        // must not fire. Shape mirrors the RegXML emitted for the real
+        // Atmos track in test-data/IAB/CompleteIMP. (AUDIT-1.)
+        let xml = r#"<ns1:Preface>
+            <ns1:IABEssenceDescriptor>
+                <ns2:AudioSampleRate>48000/1</ns2:AudioSampleRate>
+                <ns2:ChannelCount>0</ns2:ChannelCount>
+                <ns2:SubDescriptors>
+                    <ns1:IABSoundfieldLabelSubDescriptor/>
+                </ns2:SubDescriptors>
+            </ns1:IABEssenceDescriptor>
+        </ns1:Preface>"#;
+        let issues = check_audio_mca(xml, std::path::Path::new("/iab.mxf"));
+        assert!(
+            issues.is_empty(),
+            "IAB RegXML should produce no §5.3 audio diagnostics (WAVE PCM rules don't apply), got: {:#?}",
+            issues
+        );
+    }
+
+    #[test]
+    fn real_iab_fixture_produces_no_wave_pcm_false_positive() {
+        // End-to-end against the real Atmos MXF from the IAB CompleteIMP
+        // corpus package.
+        let path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../test-data/IAB/CompleteIMP/meridian_2398_Atmos_20190603_first10s.mxf");
+        if !path.exists() {
+            // Corpus MXFs are fetched via scripts/fetch-test-data.sh —
+            // skip quietly when absent (same convention as the other
+            // fixture-gated tests).
+            return;
+        }
+        let xml = parse_mxf_to_regxml(
+            &path,
+            regxml::MxfFragmentOptions {
+                partition: regxml::PartitionTarget::Header,
+                ..Default::default()
+            },
+        )
+        .expect("IAB Atmos MXF → RegXML");
+        let issues = check_audio_mca(&xml, &path);
+        assert!(
+            !issues
+                .iter()
+                .any(|i| i.code.contains("SoundDescriptorNotWAVEPCM")),
+            "IAB essence must not fire SoundDescriptorNotWAVEPCM: {issues:#?}"
         );
     }
 

@@ -23,11 +23,13 @@
 //! ## Diagnostic mapping
 //!
 //! uppsala returns `Vec<ValidationError>` with `{ message, line, column }`.
-//! `translate()` classifies each error into one of 5 catalogue codes
+//! `translate()` classifies each error into one of 5 constraint codes
 //! (`XSD/PatternInvalid`, `XSD/ElementMissing`, `XSD/TypeInvalid`,
 //! `XSD/UnexpectedElement`, `XSD/SchemaConstraintFailed`) and wraps
 //! it as a `ValidationIssue` carrying the original uppsala message
-//! as the diagnostic body.
+//! as the diagnostic body. A sixth code, `XSD/NotValidated` (Info),
+//! marks documents whose namespace has no vendored schema — the
+//! pre-pass was skipped, not passed.
 //!
 //! ## Schema composition limitation
 //!
@@ -114,8 +116,23 @@ pub fn validate_parsed_cpl(cpl: &crate::cpl::CompositionPlaylist) -> Vec<Validat
     let primary_xsd = match &cpl.namespace {
         crate::cpl::CplNamespace::Smpte2067_3_2013 => IMF_CPL_2013_XSD,
         crate::cpl::CplNamespace::Smpte2067_3_2016 => IMF_CPL_2016_XSD,
-        // No vendored XSD for DCI / Unknown — skip rather than fail loudly
-        _ => return Vec::new(),
+        // No vendored XSD for DCI / Unknown. Don't fail — the semantic
+        // prose-rule layer still runs — but say so: a silent skip reads
+        // as "schema-clean" when the schema pre-pass never ran at all.
+        // Emitted as Info (`XSD/NotValidated`); operators can silence it
+        // with `XSD/NotValidated=off`.
+        other => {
+            return vec![ValidationIssue::from_code(
+                XsdConstraintCode::NotValidated,
+                format!(
+                    "XSD validation skipped for CPL {}: no vendored schema covers namespace '{}' ({})",
+                    cpl.id,
+                    other,
+                    other.spec_id(),
+                ),
+            )
+            .with_location(Location::new().with_cpl(cpl.id))];
+        }
     };
     validate_against_schema(source_xml, primary_xsd, Some(cpl.id))
 }
@@ -777,5 +794,119 @@ mod tests {
                 "expected XSD/* codes only, got {i:#?}"
             );
         }
+    }
+
+    // ── Classifier e2e pin: PatternInvalid ──────────────────────────────────
+    //
+    // The FIX-6 pins above assert `classify()` against hard-coded message
+    // strings — they can't catch uppsala re-wording its emissions. The
+    // ElementMissing / UnexpectedElement / TypeInvalid shapes each have an
+    // end-to-end test (real uppsala emission → classified code) but
+    // PatternInvalid did not: an uppsala upgrade that re-worded its
+    // pattern-facet message would silently reroute those violations to
+    // SchemaConstraintFailed with no test failing. This closes that hole.
+
+    #[test]
+    fn pattern_violation_classifies_as_pattern_invalid_end_to_end() {
+        let pattern_xsd = r#"<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+          <xs:element name="tag">
+            <xs:simpleType>
+              <xs:restriction base="xs:string">
+                <xs:pattern value="urn:uuid:[0-9a-f-]{36}"/>
+              </xs:restriction>
+            </xs:simpleType>
+          </xs:element>
+        </xs:schema>"#;
+        let issues = validate_against_schema("<tag>not-a-uuid</tag>", pattern_xsd, None);
+        assert!(
+            issues.iter().any(|i| i.code.contains("PatternInvalid")),
+            "uppsala's pattern-facet message must classify as XSD/PatternInvalid — \
+             if this fails after an uppsala upgrade, update classify()'s substring \
+             match to the new message shape: {issues:#?}"
+        );
+    }
+
+    // ── Unknown-namespace skip notice ────────────────────────────────────────
+
+    #[test]
+    fn dci_namespace_cpl_emits_not_validated_info() {
+        let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<CompositionPlaylist xmlns="http://www.smpte-ra.org/schemas/429-7/2006/CPL">
+    <Id>urn:uuid:00000000-0000-0000-0000-000000000001</Id>
+    <IssueDate>2024-01-01T00:00:00Z</IssueDate>
+    <ContentTitle>DCI Era</ContentTitle>
+    <EditRate>24 1</EditRate>
+    <SegmentList><Segment>
+        <Id>urn:uuid:00000000-0000-0000-0000-000000000002</Id>
+        <SequenceList/>
+    </Segment></SegmentList>
+</CompositionPlaylist>"#;
+        let cpl = crate::cpl::parse_cpl(xml).expect("DCI CPL should parse");
+        let issues = validate_parsed_cpl(&cpl);
+        assert_eq!(
+            issues.len(),
+            1,
+            "expected exactly the skip notice: {issues:#?}"
+        );
+        assert_eq!(issues[0].code, "XSD/NotValidated");
+        assert_eq!(issues[0].severity, Severity::Info);
+        assert!(
+            issues[0].message.contains("429-7/2006"),
+            "message should name the skipped namespace: {}",
+            issues[0].message
+        );
+    }
+
+    #[test]
+    fn unknown_namespace_cpl_emits_not_validated_info() {
+        let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<CompositionPlaylist xmlns="http://example.com/not-a-smpte-namespace">
+    <Id>urn:uuid:00000000-0000-0000-0000-000000000001</Id>
+    <IssueDate>2024-01-01T00:00:00Z</IssueDate>
+    <ContentTitle>Mystery</ContentTitle>
+    <EditRate>24 1</EditRate>
+    <SegmentList><Segment>
+        <Id>urn:uuid:00000000-0000-0000-0000-000000000002</Id>
+        <SequenceList/>
+    </Segment></SegmentList>
+</CompositionPlaylist>"#;
+        let cpl = match crate::cpl::parse_cpl(xml) {
+            Ok(c) => c,
+            // If the parser rejects unknown namespaces outright the skip
+            // notice is unreachable for this input — that's fine, the DCI
+            // test above still covers the branch.
+            Err(_) => return,
+        };
+        let issues = validate_parsed_cpl(&cpl);
+        assert_eq!(
+            issues.len(),
+            1,
+            "expected exactly the skip notice: {issues:#?}"
+        );
+        assert_eq!(issues[0].code, "XSD/NotValidated");
+        assert_eq!(issues[0].severity, Severity::Info);
+    }
+
+    #[test]
+    fn known_namespace_cpl_does_not_emit_not_validated() {
+        // Clean 2013-namespace CPL — the schema pre-pass runs, so no
+        // skip notice may appear regardless of what else fires.
+        let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<CompositionPlaylist xmlns="http://www.smpte-ra.org/schemas/2067-3/2013">
+    <Id>urn:uuid:00000000-0000-0000-0000-000000000001</Id>
+    <IssueDate>2024-01-01T00:00:00Z</IssueDate>
+    <ContentTitle>Modern</ContentTitle>
+    <EditRate>24 1</EditRate>
+    <SegmentList><Segment>
+        <Id>urn:uuid:00000000-0000-0000-0000-000000000002</Id>
+        <SequenceList/>
+    </Segment></SegmentList>
+</CompositionPlaylist>"#;
+        let cpl = crate::cpl::parse_cpl(xml).expect("2013 CPL should parse");
+        let issues = validate_parsed_cpl(&cpl);
+        assert!(
+            !issues.iter().any(|i| i.code == "XSD/NotValidated"),
+            "known namespace must not emit the skip notice: {issues:#?}"
+        );
     }
 }

@@ -3072,7 +3072,7 @@ fn validate_basic_schema_constraints(cpl: &CompositionPlaylist) -> Result<(), Cp
 
 fn collect_unknown_xml_tokens(xml: &str) -> Result<BTreeSet<String>, String> {
     let mut reader = quick_xml::Reader::from_str(xml);
-    reader.trim_text(true);
+    reader.config_mut().trim_text(true);
 
     let allowed_elements: BTreeSet<&'static str> = [
         "CompositionPlaylist",

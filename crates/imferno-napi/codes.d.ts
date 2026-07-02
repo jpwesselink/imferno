@@ -9,6 +9,9 @@ export declare const codes: {
     readonly ParseError: "ST377-1:2011:5/ParseError";
     readonly NoEssenceContainers: "ST377-1:2011:11/NoEssenceContainers";
     readonly OP1a: "ST377-1:2011:7/OP1a";
+    readonly NonHeaderFirstPartition: "ST377-1:2011:6.4/NonHeaderFirstPartition";
+    readonly HeaderPartitionOpen: "ST377-1:2011:8.3.3/HeaderPartitionOpen";
+    readonly MissingHeaderMetadata: "ST377-1:2011:8.3.3/MissingHeaderMetadata";
   };
   readonly ST2067_2_2020: {
     readonly AssetMap: "ST2067-2:2020:7/AssetMap";
@@ -22,6 +25,9 @@ export declare const codes: {
     readonly DuplicateUuid: "ST2067-2:2020:7/DuplicateUuid";
     readonly IoError: "IMF:General/IoError";
     readonly EssenceDescriptorList: "ST2067-2:2020:6.4.2/EssenceDescriptorList";
+    readonly PklUnknownNamespace: "ST2067-2:2020:9/PklUnknownNamespace";
+    readonly AssetMapHasNoPackingList: "ST429-9:2014:6.3/AssetMapHasNoPackingList";
+    readonly PklIdNotInAssetMap: "ST429-9:2014:6.3/PklIdNotInAssetMap";
   };
   readonly ST2067_2_2013_Core: {
     readonly ResourceListEmpty: "ST2067-2:2013:XSD/ResourceList-Empty";
@@ -175,22 +181,6 @@ export declare const codes: {
     readonly ContentVersionIdDuplicate: "ST2067-3:2016:6.1.9/ContentVersionIdDuplicate";
     readonly SegmentDurationIntegerEditUnits: "ST2067-3:2016:7.3/SegmentDurationIntegerEditUnits";
   };
-  readonly ST2067_3_2020: {
-    readonly ContentKindUnknown: "ST2067-3:2020:5.5.1.2/ContentKindUnknown";
-    readonly SourceEncodingNoEssenceDescriptorList: "ST2067-3:2020:6.4.2/SourceEncodingNoEssenceDescriptorList";
-    readonly SourceEncodingUnresolved: "ST2067-3:2020:6.4.2/SourceEncodingUnresolved";
-    readonly EssenceDescriptorListEmpty: "ST2067-3:2020:6.4.2/EssenceDescriptorListEmpty";
-    readonly ContentVersionListEmpty: "ST2067-3:2020:6.11/ContentVersionListEmpty";
-    readonly ContentVersionIdInvalid: "ST2067-3:2020:6.11/ContentVersionIdInvalid";
-    readonly ContentVersionLabelTextMissing: "ST2067-3:2020:6.11/ContentVersionLabelTextMissing";
-    readonly LocaleLanguageTagInvalid: "ST2067-3:2020:6.12/LocaleLanguageTagInvalid";
-    readonly TrackIdNotUnique: "ST2067-3:2020:7.3/TrackIdNotUnique";
-    readonly MarkerOffsetOutOfRange: "ST2067-3:2020:7.4/MarkerOffsetOutOfRange";
-    readonly MarkerLabelUnknown: "ST2067-3:2020:7.4/MarkerLabelUnknown";
-    readonly SegmentDuration: "ST2067-3:2020:7.2.2/SegmentDuration";
-    readonly ContentVersionIdDuplicate: "ST2067-3:2020:6.1.9/ContentVersionIdDuplicate";
-    readonly SegmentDurationIntegerEditUnits: "ST2067-3:2020:7.3/SegmentDurationIntegerEditUnits";
-  };
   readonly ST2067_9_2018: {
     readonly MalformedXml: "ST2067-9:2018:6.1/MalformedXml";
     readonly SidecarAssetReferencedByVirtualTrack: "ST2067-9:2018:5/SidecarAssetReferencedByVirtualTrack";
@@ -299,7 +289,6 @@ export declare const codes: {
     readonly MCATagNameInvalid: "ST2067-201:2019:5.9/MCATagNameInvalid";
     readonly MCALabelDictionaryIDMissing: "ST2067-201:2019:5.9/MCALabelDictionaryIDMissing";
     readonly MCALabelDictionaryIDInvalid: "ST2067-201:2019:5.9/MCALabelDictionaryIDInvalid";
-    readonly MainAudioMissing: "ST2067-201:2019:6.2/MainAudioMissing";
     readonly IABSequenceNoResources: "ST2067-201:2019:6.2/IABSequenceNoResources";
     readonly IABSequenceSourceEncodingInvalid: "ST2067-201:2019:6.2/IABSequenceSourceEncodingInvalid";
   };
@@ -322,7 +311,6 @@ export declare const codes: {
     readonly MCATagNameInvalid: "ST2067-201:2021:5.9/MCATagNameInvalid";
     readonly MCALabelDictionaryIDMissing: "ST2067-201:2021:5.9/MCALabelDictionaryIDMissing";
     readonly MCALabelDictionaryIDInvalid: "ST2067-201:2021:5.9/MCALabelDictionaryIDInvalid";
-    readonly MainAudioMissing: "ST2067-201:2021:6.2/MainAudioMissing";
     readonly IABSequenceNoResources: "ST2067-201:2021:6.2/IABSequenceNoResources";
     readonly IABSequenceSourceEncodingInvalid: "ST2067-201:2021:6.2/IABSequenceSourceEncodingInvalid";
   };

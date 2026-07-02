@@ -37,22 +37,24 @@ pub fn check_timed_text(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
         return issues;
     }
 
-    // §5.4 / ST 429-5 §7 — timed-text essence container UL byte 15
-    // (Mapping Kind, 1-indexed) must be 0x13 for IMSC text. This is
-    // the same UL position the audio module checks for the wrapping
-    // octet — different value per essence type.
+    // §5.4 / ST 429-5 §7 — timed-text essence container UL byte 14
+    // (Mapping Kind, 1-indexed; index 13) must be 0x13 for IMSC text.
+    // The canonical ST 429-5 container UL is
+    // 060e2b34.0401010a.0d010301.02130101: 0x13 sits at index 13 and
+    // index 14 is 0x01 (AUDIT-7 — checking index 14 false-positived on
+    // every conformant timed-text file).
     if let Some(cf) = extract_field(regxml, "ContainerFormat") {
         if let Some(bytes) = crate::mxf::audio_mca::parse_ul_bytes(&cf) {
-            if bytes[14] != 0x13 {
+            if bytes[13] != 0x13 {
                 issues.push(
                     ValidationIssue::from_code(
                         St2067_2_2016::TimedTextMappingKindNot0x13,
                         format!(
-                            "MXF {} timed-text ContainerFormat UL byte 15 = 0x{:02x} \
+                            "MXF {} timed-text ContainerFormat UL byte 14 = 0x{:02x} \
                              — ST 429-5 §7 requires Mapping Kind = 0x13 for IMSC. \
                              ContainerFormat = {}",
                             path.display(),
-                            bytes[14],
+                            bytes[13],
                             cf.trim(),
                         ),
                     )
@@ -152,9 +154,10 @@ mod tests {
 
     #[test]
     fn flags_timed_text_mapping_kind_not_0x13() {
-        // ContainerFormat byte 14 (zero-indexed) = 0x12, not 0x13.
+        // Mapping Kind (index 13, zero-indexed) = 0x12, not 0x13; index 14
+        // is 0x01 as in the canonical UL, so only the correct byte trips it.
         let xml = r#"<ns1:TimedTextDescriptor>
-            <ns2:ContainerFormat>urn:smpte:ul:060e2b34.04010101.0d010301.02061200</ns2:ContainerFormat>
+            <ns2:ContainerFormat>urn:smpte:ul:060e2b34.0401010a.0d010301.02120101</ns2:ContainerFormat>
             <ns2:UCSEncoding>UTF-8</ns2:UCSEncoding>
             <ns2:NamespaceURI>http://www.w3.org/ns/ttml/profile/imsc1/text</ns2:NamespaceURI>
         </ns1:TimedTextDescriptor>"#;
@@ -164,6 +167,28 @@ mod tests {
                 .iter()
                 .any(|i| i.code.contains("TimedTextMappingKindNot0x13")),
             "expected TimedTextMappingKindNot0x13, got: {:#?}",
+            issues
+        );
+    }
+
+    /// AUDIT-7 regression: the canonical ST 429-5 container UL
+    /// (060e2b34.0401010a.0d010301.02130101 — Mapping Kind 0x13 at
+    /// index 13, 0x01 at index 14) must NOT trip the check. The old
+    /// code compared `bytes[14]` and false-positived on every
+    /// conformant IMF timed-text file.
+    #[test]
+    fn accepts_canonical_st429_5_container_ul() {
+        let xml = r#"<ns1:TimedTextDescriptor>
+            <ns2:ContainerFormat>urn:smpte:ul:060e2b34.0401010a.0d010301.02130101</ns2:ContainerFormat>
+            <ns2:UCSEncoding>UTF-8</ns2:UCSEncoding>
+            <ns2:NamespaceURI>http://www.w3.org/ns/ttml/profile/imsc1/text</ns2:NamespaceURI>
+        </ns1:TimedTextDescriptor>"#;
+        let issues = check_timed_text(xml, std::path::Path::new("/synth.mxf"));
+        assert!(
+            !issues
+                .iter()
+                .any(|i| i.code.contains("TimedTextMappingKindNot0x13")),
+            "canonical ST 429-5 UL must not trip Mapping Kind check (AUDIT-7), got: {:#?}",
             issues
         );
     }

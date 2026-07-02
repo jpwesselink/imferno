@@ -572,7 +572,6 @@ fn validate_iab_descriptors(
 
 /// ST 2067-201 §6.2: Validate IABSequence constraints at the CPL timeline level.
 ///
-/// - Each segment with an IABSequence shall also have a MainAudioSequence.
 /// - Each IABSequence shall contain at least one Resource.
 /// - Each IABSequence Resource.SourceEncoding shall reference an IABEssenceDescriptor.
 fn validate_iab_sequences(
@@ -597,27 +596,6 @@ fn validate_iab_sequences(
 
         if sl.iab_sequences.is_empty() {
             continue;
-        }
-
-        let seg_loc = Location::new()
-            .with_cpl(cpl.id)
-            .with_path(format!("Segment/{}", segment.id));
-
-        // §6.2: MainAudioSequence shall accompany IABSequence in the same segment.
-        if sl.main_audio_sequences.is_empty() {
-            issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Audio,
-                    code(IabCode::MainAudioMissing),
-                    format!(
-                        "Segment {}: IABSequence present but no MainAudioSequence found; \
-                         ST 2067-201 §6.2 requires a MainAudioSequence alongside IABSequence",
-                        segment.id,
-                    ),
-                )
-                .with_location(seg_loc.clone()),
-            );
         }
 
         for iab_seq in &sl.iab_sequences {

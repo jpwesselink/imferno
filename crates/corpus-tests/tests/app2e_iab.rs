@@ -130,19 +130,20 @@ fn iab2021_invalid_iabsequence_wrong_trackfile() {
     );
 }
 
-/// ST 2067-201 §6.2: `IABSequence` shall be accompanied by a `MainAudioSequence`
-/// in the same `Segment`.
-///
-/// Canonical code: `ST2067-201:2021:6.2/MainAudioMissing`
+/// AUDIT-14 regression guard: an `IABSequence` with no `MainAudioSequence`
+/// in the same `Segment` is CONFORMANT. The former `MainAudioMissing` rule
+/// was invented — no edition of ST 2067-201 (nor ST 2067-2:2020 §6.3.2,
+/// "zero or more Audio Virtual Tracks") requires the pairing — and was
+/// removed. This fixture must no longer produce that error.
 #[test]
-fn iab2021_invalid_missing_audio() {
+fn iab2021_missing_audio_is_conformant() {
     let cpl = read_cpl("IAB/CPL/IAB_CPL_invalid_missing_audio.xml");
     let issues = AppIabPlugin2021.validate_cpl(&cpl);
     assert!(
-        errors(&issues)
+        !errors(&issues)
             .iter()
-            .any(|i| i.code.contains("6.2/MainAudioMissing")),
-        "expected MainAudioMissing; got: {:#?}",
+            .any(|i| i.code.contains("MainAudioMissing")),
+        "invented MainAudioMissing rule (AUDIT-14) must not fire; got: {:#?}",
         errors(&issues)
     );
 }

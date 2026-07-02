@@ -165,7 +165,7 @@ pub enum St2067_2_2016 {
     /// §5.4.5/6 — TimeTextResourceSubDescriptor.MIMEType must be
     /// image/png or application/x-font-opentype.
     TimedTextResourceMIMETypeUnsupported,
-    /// §5.4 / ST 429-5 §7 — timed-text ContainerFormat UL byte 15
+    /// §5.4 / ST 429-5 §7 — timed-text ContainerFormat UL byte 14
     /// (Mapping Kind) must be 0x13 for IMSC.
     TimedTextMappingKindNot0x13,
 }
@@ -319,7 +319,7 @@ impl ValidationCode for St2067_2_2016 {
             Self::TimedTextResourceMIMETypeUnsupported =>
                 "<TimeTextResourceSubDescriptor><MIMEType>application/json</MIMEType></TimeTextResourceSubDescriptor>",
             Self::TimedTextMappingKindNot0x13 =>
-                "Timed-text ContainerFormat UL byte 15 (Mapping Kind) = 0x12 instead of 0x13 (IMSC)",
+                "Timed-text ContainerFormat UL byte 14 (Mapping Kind) = 0x12 instead of 0x13 (IMSC)",
         })
     }
 }

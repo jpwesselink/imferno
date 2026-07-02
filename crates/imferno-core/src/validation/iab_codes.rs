@@ -1,6 +1,6 @@
 //! Typed validation-code catalogue for SMPTE ST 2067-201 (IAB Level 0 Plug-in).
 //!
-//! The same 21 reason codes apply to both the 2019 and 2021 editions; a
+//! The same 20 reason codes apply to both the 2019 and 2021 editions; a
 //! `macro_rules!` generates `St2067_201_2019` and `St2067_201_2021` from a
 //! single source-of-truth variant list.  Each edition enum also exposes
 //! `for_code` so that shared helper functions can produce the right
@@ -55,8 +55,6 @@ pub enum IabCode {
     MCALabelDictionaryIDMissing,
     /// IABSoundfieldLabelSubDescriptor: MCALabelDictionaryID is not the required IAB label UL (§5.9).
     MCALabelDictionaryIDInvalid,
-    /// Segment has IABSequence but no MainAudioSequence (§6.2).
-    MainAudioMissing,
     /// IABSequence shall contain at least one Resource (§6.2).
     IABSequenceNoResources,
     /// IABSequence Resource.SourceEncoding does not reference an IABEssenceDescriptor (§6.2).
@@ -118,8 +116,6 @@ macro_rules! define_iab_enum {
             MCALabelDictionaryIDMissing,
             /// IABSoundfieldLabelSubDescriptor: MCALabelDictionaryID is not the required IAB label UL (§5.9).
             MCALabelDictionaryIDInvalid,
-            /// Segment has IABSequence but no MainAudioSequence (§6.2).
-            MainAudioMissing,
             /// IABSequence shall contain at least one Resource (§6.2).
             IABSequenceNoResources,
             /// IABSequence Resource.SourceEncoding does not reference an IABEssenceDescriptor (§6.2).
@@ -147,7 +143,6 @@ macro_rules! define_iab_enum {
                     Self::MCATagNameInvalid              => concat!($prefix, ":5.9/MCATagNameInvalid"),
                     Self::MCALabelDictionaryIDMissing    => concat!($prefix, ":5.9/MCALabelDictionaryIDMissing"),
                     Self::MCALabelDictionaryIDInvalid    => concat!($prefix, ":5.9/MCALabelDictionaryIDInvalid"),
-                    Self::MainAudioMissing               => concat!($prefix, ":6.2/MainAudioMissing"),
                     Self::IABSequenceNoResources         => concat!($prefix, ":6.2/IABSequenceNoResources"),
                     Self::IABSequenceSourceEncodingInvalid => concat!($prefix, ":6.2/IABSequenceSourceEncodingInvalid"),
                 }
@@ -172,7 +167,6 @@ macro_rules! define_iab_enum {
                     Self::MCATagNameInvalid              => "IABSoundfieldLabelSubDescriptor: MCATagName shall be \"IAB\".",
                     Self::MCALabelDictionaryIDMissing    => "IABSoundfieldLabelSubDescriptor: MCALabelDictionaryID is missing.",
                     Self::MCALabelDictionaryIDInvalid    => "IABSoundfieldLabelSubDescriptor: MCALabelDictionaryID is not the required IAB label UL.",
-                    Self::MainAudioMissing               => "Segment has IABSequence but no MainAudioSequence (§6.2).",
                     Self::IABSequenceNoResources         => "IABSequence shall contain at least one Resource (§6.2).",
                     Self::IABSequenceSourceEncodingInvalid => "IABSequence Resource.SourceEncoding does not reference an IABEssenceDescriptor (§6.2).",
                 }
@@ -230,8 +224,6 @@ macro_rules! define_iab_enum {
                         "IABSoundfieldLabelSubDescriptor with no MCALabelDictionaryID UL.",
                     Self::MCALabelDictionaryIDInvalid =>
                         "IABSoundfieldLabelSubDescriptor with MCALabelDictionaryID set to a 5.1 surround UL instead of the IAB label UL.",
-                    Self::MainAudioMissing =>
-                        "Segment contains an IABSequence but no MainAudioSequence — required pairing per §6.2.",
                     Self::IABSequenceNoResources =>
                         "An IABSequence with an empty `<ResourceList>`.",
                     Self::IABSequenceSourceEncodingInvalid =>
@@ -260,7 +252,6 @@ macro_rules! define_iab_enum {
                 Self::MCATagNameInvalid,
                 Self::MCALabelDictionaryIDMissing,
                 Self::MCALabelDictionaryIDInvalid,
-                Self::MainAudioMissing,
                 Self::IABSequenceNoResources,
                 Self::IABSequenceSourceEncodingInvalid,
             ];
@@ -287,7 +278,6 @@ macro_rules! define_iab_enum {
                     IabCode::MCATagNameInvalid                 => concat!($prefix, ":5.9/MCATagNameInvalid"),
                     IabCode::MCALabelDictionaryIDMissing       => concat!($prefix, ":5.9/MCALabelDictionaryIDMissing"),
                     IabCode::MCALabelDictionaryIDInvalid       => concat!($prefix, ":5.9/MCALabelDictionaryIDInvalid"),
-                    IabCode::MainAudioMissing                  => concat!($prefix, ":6.2/MainAudioMissing"),
                     IabCode::IABSequenceNoResources            => concat!($prefix, ":6.2/IABSequenceNoResources"),
                     IabCode::IABSequenceSourceEncodingInvalid  => concat!($prefix, ":6.2/IABSequenceSourceEncodingInvalid"),
                 }

@@ -115,41 +115,65 @@ pub fn check_audio_mca(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
         }
     }
 
-    // §5.3.6.2 — number of AudioChannelLabelSubDescriptors must equal
-    // ChannelCount on the WAVEPCMDescriptor.
+    // ST 2067-2 §5.3.6 supports two channel-labeling modes:
+    //
+    //   - **Mode A** — the WAVEPCMDescriptor declares a
+    //     `ChannelAssignment` UL pointing at a SMPTE-registered
+    //     channel layout (e.g. `urn:smpte:ul:…04020210.05010000`
+    //     for an ADM channel layout). The standard label is
+    //     authoritative; no per-channel sub-descriptors are required.
+    //   - **Mode B** — `AudioChannelLabelSubDescriptor` per
+    //     channel + exactly one `SoundfieldGroupLabelSubDescriptor`,
+    //     each with an `MCALinkID` linking them.
+    //
+    // The §5.3.6.2 / §5.3.6.3 rules below only apply in Mode B.
+    // We detect Mode A by: `ChannelAssignment` present and no
+    // `AudioChannelLabelSubDescriptor` elements (a deliberate
+    // omission, not an accidental one). Surfaced by the Fraunhofer
+    // SMPTE WG ST 2067-204 corpus, where bed-channel audio tracks
+    // use Mode A.
     let channel_count =
         extract_field(regxml, "ChannelCount").and_then(|c| c.trim().parse::<u32>().ok());
     let channel_labels = count_elements(regxml, "AudioChannelLabelSubDescriptor");
-    if let Some(cc) = channel_count {
-        if (channel_labels as u32) != cc {
+    let soundfield_count = count_elements(regxml, "SoundfieldGroupLabelSubDescriptor");
+    let channel_assignment = extract_field(regxml, "ChannelAssignment")
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty());
+    let is_mode_a = channel_labels == 0 && channel_assignment.is_some();
+
+    if !is_mode_a {
+        // §5.3.6.2 — Mode B: number of AudioChannelLabelSubDescriptors
+        // must equal ChannelCount on the WAVEPCMDescriptor.
+        if let Some(cc) = channel_count {
+            if (channel_labels as u32) != cc {
+                issues.push(
+                    ValidationIssue::from_code(St2067_2_2016::ChannelLabelCountMismatch,
+                        format!(
+                            "MXF {} declares ChannelCount = {} but carries {} AudioChannelLabelSubDescriptor(s) — \
+                             ST 2067-2 §5.3.6.2 requires one label per channel",
+                            path.display(),
+                            cc,
+                            channel_labels,
+                        ),
+                    )
+                    .with_location(Location::new().with_file(path.to_path_buf())),
+                );
+            }
+        }
+
+        // §5.3.6.3 — Mode B: exactly one SoundfieldGroupLabelSubDescriptor.
+        if soundfield_count != 1 {
             issues.push(
-                ValidationIssue::from_code(St2067_2_2016::ChannelLabelCountMismatch,
+                ValidationIssue::from_code(St2067_2_2016::SoundFieldGroupLabelCount,
                     format!(
-                        "MXF {} declares ChannelCount = {} but carries {} AudioChannelLabelSubDescriptor(s) — \
-                         ST 2067-2 §5.3.6.2 requires one label per channel",
+                        "MXF {} carries {} SoundfieldGroupLabelSubDescriptor(s) — ST 2067-2 §5.3.6.3 requires exactly one",
                         path.display(),
-                        cc,
-                        channel_labels,
+                        soundfield_count,
                     ),
                 )
                 .with_location(Location::new().with_file(path.to_path_buf())),
             );
         }
-    }
-
-    // §5.3.6.3 — exactly one SoundfieldGroupLabelSubDescriptor.
-    let soundfield_count = count_elements(regxml, "SoundfieldGroupLabelSubDescriptor");
-    if soundfield_count != 1 {
-        issues.push(
-            ValidationIssue::from_code(St2067_2_2016::SoundFieldGroupLabelCount,
-                format!(
-                    "MXF {} carries {} SoundfieldGroupLabelSubDescriptor(s) — ST 2067-2 §5.3.6.3 requires exactly one",
-                    path.display(),
-                    soundfield_count,
-                ),
-            )
-            .with_location(Location::new().with_file(path.to_path_buf())),
-        );
     }
 
     // ST 377-4 §6.3.2 — every AudioChannelLabelSubDescriptor MUST
@@ -159,9 +183,13 @@ pub fn check_audio_mca(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
     // sub-descriptor type; a deficit means at least one label is
     // missing the linking UUID — the SoundfieldGroupLinkID field on
     // an AudioChannelLabelSubDescriptor must be non-null.
+    //
+    // Skip in Mode A (ChannelAssignment UL only) — the linking rules
+    // are conditional on the presence of per-channel sub-descriptors,
+    // which don't exist in Mode A.
     let mca_link_count = count_elements(regxml, "MCALinkID");
     let expected_link_count = channel_labels + soundfield_count;
-    if mca_link_count < expected_link_count {
+    if !is_mode_a && mca_link_count < expected_link_count {
         issues.push(
             ValidationIssue::from_code(
                 St377_4_2012::MCALinkIDMissing,
@@ -182,58 +210,63 @@ pub fn check_audio_mca(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
 
     // ST 377-4 §6.3.2 — each AudioChannelLabelSubDescriptor's
     // SoundfieldGroupLinkID MUST equal the SoundfieldGroup's MCALinkID
-    // so the channel's group membership is unambiguous.
-    if let Some(sg_link) = extract_field(regxml, "MCALinkID") {
-        // Walk every SoundfieldGroupLinkID and confirm it matches the
-        // SoundfieldGroup's MCALinkID (the first MCALinkID in the
-        // RegXML emit-order is the SoundfieldGroup's, since that
-        // descriptor is emitted before its channel children).
-        for sf_link in extract_all_fields(regxml, "SoundfieldGroupLinkID") {
-            if sf_link.trim() != sg_link.trim() {
-                issues.push(
-                    ValidationIssue::from_code(
-                        St377_4_2012::SoundfieldGroupLinkIDMismatch,
-                        format!(
-                            "MXF {} carries an AudioChannelLabelSubDescriptor with \
-                             SoundfieldGroupLinkID '{}' that doesn't match the SoundfieldGroup \
-                             MCALinkID '{}' (ST 377-4 §6.3.2).",
-                            path.display(),
-                            sf_link.trim(),
-                            sg_link.trim(),
-                        ),
-                    )
-                    .with_location(Location::new().with_file(path.to_path_buf())),
-                );
-                break; // one diagnostic is enough; aggregation collapses repeats
+    // so the channel's group membership is unambiguous. Mode B only.
+    if !is_mode_a {
+        if let Some(sg_link) = extract_field(regxml, "MCALinkID") {
+            // Walk every SoundfieldGroupLinkID and confirm it matches
+            // the SoundfieldGroup's MCALinkID (the first MCALinkID in
+            // the RegXML emit-order is the SoundfieldGroup's, since
+            // that descriptor is emitted before its channel children).
+            for sf_link in extract_all_fields(regxml, "SoundfieldGroupLinkID") {
+                if sf_link.trim() != sg_link.trim() {
+                    issues.push(
+                        ValidationIssue::from_code(
+                            St377_4_2012::SoundfieldGroupLinkIDMismatch,
+                            format!(
+                                "MXF {} carries an AudioChannelLabelSubDescriptor with \
+                                 SoundfieldGroupLinkID '{}' that doesn't match the SoundfieldGroup \
+                                 MCALinkID '{}' (ST 377-4 §6.3.2).",
+                                path.display(),
+                                sf_link.trim(),
+                                sg_link.trim(),
+                            ),
+                        )
+                        .with_location(Location::new().with_file(path.to_path_buf())),
+                    );
+                    break; // one diagnostic is enough; aggregation collapses repeats
+                }
             }
         }
     }
 
     // ST 2067-2 §5.3.6.2 — every channel ID 1..ChannelCount must have
-    // an AudioChannelLabelSubDescriptor. The actual MCAChannelID
-    // field carries the channel index for each label.
-    if let Some(cc) = channel_count {
-        let channel_ids: std::collections::HashSet<u32> =
-            extract_all_fields(regxml, "MCAChannelID")
-                .into_iter()
-                .filter_map(|s| s.trim().parse::<u32>().ok())
-                .collect();
-        for expected in 1..=cc {
-            if !channel_ids.contains(&expected) {
-                issues.push(
-                    ValidationIssue::from_code(
-                        St2067_2_2016::MCAChannelIDMissing,
-                        format!(
-                            "MXF {} declares ChannelCount = {} but no \
-                             AudioChannelLabelSubDescriptor carries MCAChannelID = {} — \
-                             every channel 1..N must have a label per ST 2067-2 §5.3.6.2.",
-                            path.display(),
-                            cc,
-                            expected,
-                        ),
-                    )
-                    .with_location(Location::new().with_file(path.to_path_buf())),
-                );
+    // an AudioChannelLabelSubDescriptor. Mode A skips (no per-channel
+    // descriptors by definition — the ChannelAssignment UL carries the
+    // full layout).
+    if !is_mode_a {
+        if let Some(cc) = channel_count {
+            let channel_ids: std::collections::HashSet<u32> =
+                extract_all_fields(regxml, "MCAChannelID")
+                    .into_iter()
+                    .filter_map(|s| s.trim().parse::<u32>().ok())
+                    .collect();
+            for expected in 1..=cc {
+                if !channel_ids.contains(&expected) {
+                    issues.push(
+                        ValidationIssue::from_code(
+                            St2067_2_2016::MCAChannelIDMissing,
+                            format!(
+                                "MXF {} declares ChannelCount = {} but no \
+                                 AudioChannelLabelSubDescriptor carries MCAChannelID = {} — \
+                                 every channel 1..N must have a label per ST 2067-2 §5.3.6.2.",
+                                path.display(),
+                                cc,
+                                expected,
+                            ),
+                        )
+                        .with_location(Location::new().with_file(path.to_path_buf())),
+                    );
+                }
             }
         }
     }
@@ -1020,6 +1053,69 @@ mod tests {
             issues.is_empty(),
             "MGA/SADM RegXML should produce no audio diagnostics (WAVE PCM rules don't apply), got: {:#?}",
             issues
+        );
+    }
+
+    #[test]
+    fn mode_a_channel_assignment_skips_mca_subdescriptor_rules() {
+        // Mode A per ST 2067-2 §5.3.6: the WAVEPCMDescriptor declares a
+        // ChannelAssignment UL naming a SMPTE-registered layout; no
+        // per-channel AudioChannelLabelSubDescriptors are required.
+        // Surfaced by the Fraunhofer ST 2067-204 corpus (bed-channel
+        // WAVE PCM tracks use Mode A) — previously fired a cascade of
+        // ChannelLabelCountMismatch + SoundFieldGroupLabelCount +
+        // MCAChannelIDMissing false positives.
+        let xml = r#"<ns1:Preface>
+            <ns1:WAVEPCMDescriptor>
+                <ns2:AudioSampleRate>48000/1</ns2:AudioSampleRate>
+                <ns2:QuantizationBits>24</ns2:QuantizationBits>
+                <ns2:ChannelCount>5</ns2:ChannelCount>
+                <ns2:ChannelAssignment>urn:smpte:ul:060e2b34.04010101.04020210.05010000</ns2:ChannelAssignment>
+                <ns2:RFC5646SpokenLanguage>en</ns2:RFC5646SpokenLanguage>
+            </ns1:WAVEPCMDescriptor>
+        </ns1:Preface>"#;
+        let issues = check_audio_mca(xml, std::path::Path::new("/mode-a.mxf"));
+        let mode_b_codes: Vec<_> = issues
+            .iter()
+            .filter(|i| {
+                i.code.contains("ChannelLabelCountMismatch")
+                    || i.code.contains("SoundFieldGroupLabelCount")
+                    || i.code.contains("MCAChannelIDMissing")
+                    || i.code.contains("MCALinkIDMissing")
+                    || i.code.contains("SoundfieldGroupLinkIDMismatch")
+            })
+            .collect();
+        assert!(
+            mode_b_codes.is_empty(),
+            "Mode A (ChannelAssignment UL, no channel labels) must not fire Mode B \
+             sub-descriptor rules: {mode_b_codes:#?}"
+        );
+    }
+
+    #[test]
+    fn missing_labels_without_channel_assignment_still_fires_mode_b_rules() {
+        // Negative control for the Mode A carve-out: a WAVE PCM
+        // descriptor with NEITHER ChannelAssignment NOR channel labels
+        // is a plain §5.3.6.2 violation — the Mode B rules must fire.
+        let xml = r#"<ns1:Preface>
+            <ns1:WAVEPCMDescriptor>
+                <ns2:AudioSampleRate>48000/1</ns2:AudioSampleRate>
+                <ns2:QuantizationBits>24</ns2:QuantizationBits>
+                <ns2:ChannelCount>2</ns2:ChannelCount>
+            </ns1:WAVEPCMDescriptor>
+        </ns1:Preface>"#;
+        let issues = check_audio_mca(xml, std::path::Path::new("/no-labels.mxf"));
+        assert!(
+            issues
+                .iter()
+                .any(|i| i.code.contains("ChannelLabelCountMismatch")),
+            "missing labels with no ChannelAssignment must still fire §5.3.6.2: {issues:#?}"
+        );
+        assert!(
+            issues
+                .iter()
+                .any(|i| i.code.contains("SoundFieldGroupLabelCount")),
+            "missing soundfield group must still fire §5.3.6.3: {issues:#?}"
         );
     }
 }

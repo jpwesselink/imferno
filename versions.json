@@ -81,6 +81,10 @@
     {
       "label": "#66 fix/register-iab-isxd-plugins",
       "path": "/pr-66/"
+    },
+    {
+      "label": "#67 chore/quick-xml-0.41",
+      "path": "/pr-67/"
     }
   ],
   "latest": "/v3.0.1/"

@@ -21,6 +21,10 @@ pub mod codes;
 /// `target_arch = "wasm32"`.
 #[cfg(not(target_arch = "wasm32"))]
 pub mod essence;
+// Native-only like the rest of the RegXML-driven essence rules: it
+// imports `audio_mca` helpers and walks MXF-derived RegXML, neither of
+// which exist on wasm32 (browsers don't see MXF binaries).
+#[cfg(not(target_arch = "wasm32"))]
 pub mod iab_labeling;
 /// MXF header-metadata extraction via `regxml` — converts the full
 /// Preface tree (MaterialPackage, descriptors, MCA sub-descriptors)

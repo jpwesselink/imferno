@@ -45,12 +45,18 @@ impl ConstraintsValidator for AppIsxdPlugin2023 {
 
 pub const URI_2022: &str = "http://www.smpte-ra.org/ns/2067-202/2022";
 
+/// ST 2067-202:2023 §9.3 Table 6 — UTF-8 Text Data Essence Coding UL.
+const UTF8_TEXT_DATA_ESSENCE_CODING: &str = "urn:smpte:ul:060e2b34.04010105.0e090606.00000000";
+
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
 /// Validate ISXDDataEssenceDescriptor-level constraints.
 ///
 /// For every EssenceDescriptor that carries an ISXDDataEssenceDescriptor:
 /// - `NamespaceURI` shall be present (§9.2 Table 5, Req) → `NamespaceUriMissing`
+/// - `DataEssenceCoding` shall be present and shall be the UTF-8 Text Data
+///   Essence Coding UL (§9.3 Table 6) → `DataEssenceCodingMissing`/`Invalid`
+///   (AUDIT-21)
 ///
 /// AUDIT-19: the former `SubDescriptorMissing` rule (required a
 /// `ContainerConstraintsSubDescriptor`) was deleted — "ContainerConstraints"
@@ -88,6 +94,39 @@ fn validate_isxd_descriptors(
                 ),
             ));
         }
+
+        // §9.3: "The DataEssenceCoding item shall be present in the
+        // ISXDDataEssenceDescriptor. The value ... shall be as defined in
+        // Table 6": urn:smpte:ul:060e2b34.04010105.0e090606.00000000
+        // (UTF-8 Text Data Essence Coding).
+        match isxd.data_essence_coding.as_deref().map(str::trim) {
+            None | Some("") => {
+                issues.push(ValidationIssue::new(
+                    Severity::Error,
+                    Category::Data,
+                    code(IsxdCode::DataEssenceCodingMissing),
+                    format!(
+                        "ISXDDataEssenceDescriptor (EssenceDescriptor Id={}) is missing \
+                         DataEssenceCoding (ST 2067-202 §9.3).",
+                        ed.id
+                    ),
+                ));
+            }
+            Some(ul) if !ul.eq_ignore_ascii_case(UTF8_TEXT_DATA_ESSENCE_CODING) => {
+                issues.push(ValidationIssue::new(
+                    Severity::Error,
+                    Category::Data,
+                    code(IsxdCode::DataEssenceCodingInvalid),
+                    format!(
+                        "ISXDDataEssenceDescriptor (EssenceDescriptor Id={}) DataEssenceCoding \
+                         `{ul}` is not the UTF-8 Text Data Essence Coding UL \
+                         {UTF8_TEXT_DATA_ESSENCE_CODING} (ST 2067-202 §9.3 Table 6).",
+                        ed.id
+                    ),
+                ));
+            }
+            _ => {}
+        }
     }
 }
 
@@ -102,6 +141,8 @@ fn validate_isxd_descriptors(
 ///   not per sequence (AUDIT-20).
 /// - §6: "The Edit Rate of an ISXD Virtual Track shall be equal to the Edit
 ///   Rate of the Main Image Virtual Track" → `EditRateMismatch` (AUDIT-21).
+/// - §6: "A Composition ... that references an ISXD Track File, shall contain
+///   one or more ISXD Virtual Tracks" → `ISXDVirtualTrackMissing` (AUDIT-21).
 fn validate_isxd_sequences(
     cpl: &CompositionPlaylist,
     code: fn(IsxdCode) -> &'static str,
@@ -207,6 +248,38 @@ fn validate_isxd_sequences(
                     }
                 }
             }
+        }
+    }
+
+    // §6: "A Composition, as defined in SMPTE ST 2067-3, that references an
+    // ISXD Track File, shall contain one or more ISXD Virtual Tracks." If any
+    // resource (in any sequence type) resolves to an ISXDDataEssenceDescriptor
+    // but the CPL has no ISXDSequence, the ISXD Track File is being referenced
+    // outside an ISXD Virtual Track.
+    let has_isxd_sequence = cpl
+        .segment_list
+        .segments
+        .iter()
+        .any(|seg| !seg.sequence_list.isxd_sequences.is_empty());
+    if !has_isxd_sequence && !isxd_descriptor_map.is_empty() {
+        let references_isxd = cpl.segment_list.segments.iter().any(|seg| {
+            seg.sequence_list.all_sequences().iter().any(|seq| {
+                seq.resource_list().resources.iter().any(|r| {
+                    r.source_encoding
+                        .as_ref()
+                        .is_some_and(|se| isxd_descriptor_map.contains_key(&se.to_string()))
+                })
+            })
+        });
+        if references_isxd {
+            issues.push(ValidationIssue::new(
+                Severity::Error,
+                Category::Data,
+                code(IsxdCode::ISXDVirtualTrackMissing),
+                "Composition references an ISXD Track File but contains no ISXD Virtual \
+                 Track — ST 2067-202 §6 requires one or more ISXD Virtual Tracks."
+                    .to_string(),
+            ));
         }
     }
 

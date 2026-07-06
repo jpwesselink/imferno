@@ -96,12 +96,14 @@ fn iab2021_invalid_homogeneous() {
     );
 }
 
-/// ST 2067-201 §5.9: IABEssenceDescriptor has `AudioSampleRate = 23000/1` (not 48000/1).
+/// ST 2067-201 §5.9 + §6.2: the IABEssenceDescriptor carries an
+/// `AudioSampleRate` outside the ST 2098-2 set, and the IABSequence
+/// Resource EditRate (23000/1000) is not an integer multiple of the Main
+/// Image Virtual Track Edit Rate (24000/1001) — the §6.2 rule landed with
+/// AUDIT-18.
 ///
-/// This fixture also has a mismatched IAB/Main Image edit rate per §6.2,
-/// but the edit-rate check is not yet implemented; the descriptor error fires first.
-///
-/// Canonical code: `ST2067-201:2021:5.9/AudioSamplingRateInvalid`
+/// Canonical codes: `ST2067-201:2021:5.9/AudioSamplingRateInvalid`,
+/// `ST2067-201:2021:6.2/EditRateNotIntegerMultiple`
 #[test]
 fn iab2021_invalid_iabsequence_wrong_editrate_main() {
     let cpl = read_cpl("IAB/CPL/IAB_CPL_invalid_iabsequence_wrong_editrate_main.xml");
@@ -111,6 +113,13 @@ fn iab2021_invalid_iabsequence_wrong_editrate_main() {
             .iter()
             .any(|i| i.code.contains("5.9/AudioSamplingRateInvalid")),
         "expected AudioSamplingRateInvalid; got: {:#?}",
+        errors(&issues)
+    );
+    assert!(
+        errors(&issues)
+            .iter()
+            .any(|i| i.code.contains("6.2/EditRateNotIntegerMultiple")),
+        "expected EditRateNotIntegerMultiple (§6.2, AUDIT-18); got: {:#?}",
         errors(&issues)
     );
 }

@@ -90,6 +90,43 @@ fn isxd_sequence_wrong_source_encoding() {
     );
 }
 
+/// ST 2067-202 §9.3: DataEssenceCoding shall be the UTF-8 Text Data Essence
+/// Coding UL (Table 6). The fixture carries the ISXD *container* UL instead
+/// (AUDIT-21 gap fix).
+///
+/// Canonical code: `ST2067-202:2023:9.3/DataEssenceCodingInvalid`
+#[test]
+fn isxd_wrong_data_essence_coding() {
+    let cpl = read_cpl("ISXD/CPL_ISXD_TEST_WrongDataEssenceCoding.xml");
+    let issues = AppIsxdPlugin2023.validate_cpl(&cpl);
+    assert!(
+        errors(&issues)
+            .iter()
+            .any(|i| i.code.contains("9.3/DataEssenceCodingInvalid")),
+        "expected DataEssenceCodingInvalid (§9.3 Table 6); got: {:#?}",
+        errors(&issues)
+    );
+}
+
+/// ST 2067-202 §6: "A Composition ... that references an ISXD Track File,
+/// shall contain one or more ISXD Virtual Tracks." The fixture references
+/// the ISXDDataEssenceDescriptor from a MainAudioSequence and carries no
+/// ISXDSequence (AUDIT-21 gap fix).
+///
+/// Canonical code: `ST2067-202:2023:6/ISXDVirtualTrackMissing`
+#[test]
+fn isxd_referenced_without_isxd_virtual_track() {
+    let cpl = read_cpl("ISXD/CPL_ISXD_TEST_NoIsxdTrack.xml");
+    let issues = AppIsxdPlugin2023.validate_cpl(&cpl);
+    assert!(
+        errors(&issues)
+            .iter()
+            .any(|i| i.code.contains("6/ISXDVirtualTrackMissing")),
+        "expected ISXDVirtualTrackMissing (§6); got: {:#?}",
+        errors(&issues)
+    );
+}
+
 /// ST 2067-202 §6: "The Edit Rate of an ISXD Virtual Track shall be equal
 /// to the Edit Rate of the Main Image Virtual Track." The resource declares
 /// EditRate 48/1 against a 24/1 Main Image track (AUDIT-21 gap fix — this

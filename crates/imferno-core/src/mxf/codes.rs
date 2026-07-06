@@ -170,7 +170,7 @@ pub enum St2067_2_2016 {
     /// §5.4 — timed text NamespaceURI must be an IMSC1 profile.
     TimedTextNamespaceNotIMSC,
     /// §5.4.5/6 — TimeTextResourceSubDescriptor.MIMEType must be
-    /// image/png or application/x-font-opentype.
+    /// image/png, font/otf (2020 §5.4.6) or application/x-font-opentype.
     TimedTextResourceMIMETypeUnsupported,
     /// §5.4 / ST 429-5 §7 — timed-text ContainerFormat UL byte 14
     /// (Mapping Kind) must be 0x13 for IMSC.
@@ -252,7 +252,7 @@ impl ValidationCode for St2067_2_2016 {
             Self::TimedTextNamespaceNotIMSC =>
                 "TimedTextDescriptor NamespaceURI must be one of the IMSC1 profile namespaces.",
             Self::TimedTextResourceMIMETypeUnsupported =>
-                "TimeTextResourceSubDescriptor MIMEType must be image/png or application/x-font-opentype.",
+                "TimeTextResourceSubDescriptor MIMEType must be image/png, font/otf (2020) or application/x-font-opentype.",
             Self::TimedTextMappingKindNot0x13 =>
                 "Timed-text ContainerFormat UL Mapping Kind byte must be 0x13 (IMSC).",
         }

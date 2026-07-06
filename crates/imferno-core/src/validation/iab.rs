@@ -589,6 +589,10 @@ fn validate_iab_descriptors(
 ///
 /// - Each IABSequence shall contain at least one Resource.
 /// - Each IABSequence Resource.SourceEncoding shall reference an IABEssenceDescriptor.
+/// - The referenced IAB Track File Edit Rate shall be an integer multiple of the
+///   Main Image Virtual Track Edit Rate (AUDIT-18; resource EditRate mirrors the
+///   essence track rate per §6.2, absent EditRate inherits the CPL edit rate per
+///   ST 2067-3 §6.9.3).
 fn validate_iab_sequences(
     cpl: &CompositionPlaylist,
     code: fn(IabCode) -> &'static str,
@@ -605,6 +609,18 @@ fn validate_iab_sequences(
                 .collect()
         })
         .unwrap_or_default();
+
+    // §6.2: "The IAB Virtual Track shall reference an IAB Track File whose
+    // Edit Rate ... is an integer multiple of the Edit Rate of the Main
+    // Image Virtual Track." The Resource EditRate is constrained by §6.2 to
+    // equal the essence track rate, so it is the CPL-visible proxy.
+    let main_image_edit_rate = cpl
+        .segment_list
+        .segments
+        .iter()
+        .flat_map(|seg| &seg.sequence_list.main_image_sequences)
+        .flat_map(|seq| &seq.resource_list.resources)
+        .find_map(|r| r.edit_rate.or(cpl.edit_rate));
 
     for segment in &cpl.segment_list.segments {
         let sl = &segment.sequence_list;
@@ -637,6 +653,36 @@ fn validate_iab_sequences(
 
             // §6.2: Each Resource.SourceEncoding shall reference an IABEssenceDescriptor.
             for resource in &iab_seq.resource_list.resources {
+                // §6.2: IAB edit rate = integer multiple of Main Image edit rate.
+                if let (Some(main_er), Some(iab_er)) =
+                    (main_image_edit_rate, resource.edit_rate.or(cpl.edit_rate))
+                {
+                    let lhs = u64::from(iab_er.numerator) * u64::from(main_er.denominator);
+                    let rhs = u64::from(main_er.numerator) * u64::from(iab_er.denominator);
+                    let integer_multiple = rhs != 0 && lhs % rhs == 0 && lhs / rhs >= 1;
+                    if !integer_multiple {
+                        issues.push(
+                            ValidationIssue::new(
+                                Severity::Error,
+                                Category::Audio,
+                                code(IabCode::EditRateNotIntegerMultiple),
+                                format!(
+                                    "IABSequence {}: Resource {} EditRate {}/{} is not an \
+                                     integer multiple of the Main Image Virtual Track Edit \
+                                     Rate {}/{} (ST 2067-201 §6.2)",
+                                    iab_seq.id,
+                                    resource.id,
+                                    iab_er.numerator,
+                                    iab_er.denominator,
+                                    main_er.numerator,
+                                    main_er.denominator,
+                                ),
+                            )
+                            .with_location(seq_loc.clone()),
+                        );
+                    }
+                }
+
                 if let Some(ref se) = resource.source_encoding {
                     let se_str = se.to_string();
                     if !iab_ed_ids.contains(&se_str) {

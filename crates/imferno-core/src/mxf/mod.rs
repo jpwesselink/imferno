@@ -21,6 +21,7 @@ pub mod codes;
 /// `target_arch = "wasm32"`.
 #[cfg(not(target_arch = "wasm32"))]
 pub mod essence;
+pub mod iab_labeling;
 /// MXF header-metadata extraction via `regxml` — converts the full
 /// Preface tree (MaterialPackage, descriptors, MCA sub-descriptors)
 /// to RegXML for typed essence-rule application. Native-only.

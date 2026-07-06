@@ -28,6 +28,12 @@ pub enum IsxdCode {
     NamespaceUriMismatch,
     /// ISXD Virtual Track Edit Rate shall equal the Main Image Virtual Track Edit Rate (§6).
     EditRateMismatch,
+    /// Composition references an ISXD Track File but contains no ISXD Virtual Track (§6).
+    ISXDVirtualTrackMissing,
+    /// ISXDDataEssenceDescriptor: DataEssenceCoding shall be present (§9.3).
+    DataEssenceCodingMissing,
+    /// ISXDDataEssenceDescriptor: DataEssenceCoding is not the UTF-8 Text Data Essence Coding UL (§9.3 Table 6).
+    DataEssenceCodingInvalid,
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -50,6 +56,12 @@ macro_rules! define_isxd_enum {
             NamespaceUriMismatch,
             /// ISXD Virtual Track Edit Rate shall equal the Main Image Virtual Track Edit Rate (§6).
             EditRateMismatch,
+            /// Composition references an ISXD Track File but contains no ISXD Virtual Track (§6).
+            ISXDVirtualTrackMissing,
+            /// ISXDDataEssenceDescriptor: DataEssenceCoding shall be present (§9.3).
+            DataEssenceCodingMissing,
+            /// ISXDDataEssenceDescriptor: DataEssenceCoding is not the UTF-8 Text Data Essence Coding UL (§9.3 Table 6).
+            DataEssenceCodingInvalid,
         }
 
         impl ValidationCode for $name {
@@ -60,6 +72,9 @@ macro_rules! define_isxd_enum {
                     Self::ISXDSequenceSourceEncodingInvalid => concat!($prefix, ":6/ISXDSequenceSourceEncodingInvalid"),
                     Self::NamespaceUriMismatch              => concat!($prefix, ":6/NamespaceUriMismatch"),
                     Self::EditRateMismatch                  => concat!($prefix, ":6/EditRateMismatch"),
+                    Self::ISXDVirtualTrackMissing           => concat!($prefix, ":6/ISXDVirtualTrackMissing"),
+                    Self::DataEssenceCodingMissing          => concat!($prefix, ":9.3/DataEssenceCodingMissing"),
+                    Self::DataEssenceCodingInvalid          => concat!($prefix, ":9.3/DataEssenceCodingInvalid"),
                 }
             }
             fn description(&self) -> &'static str {
@@ -74,6 +89,12 @@ macro_rules! define_isxd_enum {
                         "All ISXD Track Files referenced by an ISXD Virtual Track shall have an identical NamespaceURI value (§6).",
                     Self::EditRateMismatch =>
                         "The Edit Rate of an ISXD Virtual Track shall be equal to the Edit Rate of the Main Image Virtual Track (§6).",
+                    Self::ISXDVirtualTrackMissing =>
+                        "A Composition that references an ISXD Track File shall contain one or more ISXD Virtual Tracks (§6).",
+                    Self::DataEssenceCodingMissing =>
+                        "ISXDDataEssenceDescriptor: DataEssenceCoding shall be present (§9.3).",
+                    Self::DataEssenceCodingInvalid =>
+                        "ISXDDataEssenceDescriptor: DataEssenceCoding shall be the UTF-8 Text Data Essence Coding UL (§9.3 Table 6).",
                 }
             }
             fn default_severity(&self) -> Severity {
@@ -99,6 +120,12 @@ macro_rules! define_isxd_enum {
                         "Two ISXDSequences with the same TrackId point at descriptors whose <NamespaceURI> differs.",
                     Self::EditRateMismatch =>
                         "ISXDSequence Resource with <EditRate>48 1</EditRate> in a Composition whose Main Image Virtual Track runs at 24000/1001.",
+                    Self::ISXDVirtualTrackMissing =>
+                        "A MainImageSequence Resource whose SourceEncoding resolves to an ISXDDataEssenceDescriptor, in a CPL with no ISXDSequence.",
+                    Self::DataEssenceCodingMissing =>
+                        "<ISXDDataEssenceDescriptor>  <!-- no <DataEssenceCoding> UL --> </ISXDDataEssenceDescriptor>",
+                    Self::DataEssenceCodingInvalid =>
+                        "<DataEssenceCoding>urn:smpte:ul:060e2b34.04010105.0e090607.01010103</DataEssenceCoding>  <!-- container UL instead of 0e090606 coding UL -->",
                 })
             }
         }
@@ -110,6 +137,9 @@ macro_rules! define_isxd_enum {
                 Self::ISXDSequenceSourceEncodingInvalid,
                 Self::NamespaceUriMismatch,
                 Self::EditRateMismatch,
+                Self::ISXDVirtualTrackMissing,
+                Self::DataEssenceCodingMissing,
+                Self::DataEssenceCodingInvalid,
             ];
 
             /// Dispatch from the spec-agnostic [`IsxdCode`] to this
@@ -121,6 +151,9 @@ macro_rules! define_isxd_enum {
                     IsxdCode::ISXDSequenceSourceEncodingInvalid => concat!($prefix, ":6/ISXDSequenceSourceEncodingInvalid"),
                     IsxdCode::NamespaceUriMismatch              => concat!($prefix, ":6/NamespaceUriMismatch"),
                     IsxdCode::EditRateMismatch                  => concat!($prefix, ":6/EditRateMismatch"),
+                    IsxdCode::ISXDVirtualTrackMissing           => concat!($prefix, ":6/ISXDVirtualTrackMissing"),
+                    IsxdCode::DataEssenceCodingMissing          => concat!($prefix, ":9.3/DataEssenceCodingMissing"),
+                    IsxdCode::DataEssenceCodingInvalid          => concat!($prefix, ":9.3/DataEssenceCodingInvalid"),
                 }
             }
         }

@@ -1,6 +1,6 @@
 //! Typed validation-code catalogue for SMPTE ST 2067-201 (IAB Level 0 Plug-in).
 //!
-//! The same 20 reason codes apply to both the 2019 and 2021 editions; a
+//! The same 24 reason codes apply to both the 2019 and 2021 editions; a
 //! `macro_rules!` generates `St2067_201_2019` and `St2067_201_2021` from a
 //! single source-of-truth variant list.  Each edition enum also exposes
 //! `for_code` so that shared helper functions can produce the right
@@ -59,6 +59,17 @@ pub enum IabCode {
     IABSequenceNoResources,
     /// IABSequence Resource.SourceEncoding does not reference an IABEssenceDescriptor (§6.2).
     IABSequenceSourceEncodingInvalid,
+    /// IAB Track File shall not contain plain AudioChannelLabel/SoundfieldGroupLabel/
+    /// GroupOfSoundfieldGroupsLabel SubDescriptors (§5.10.2).
+    ForbiddenMCASubDescriptor,
+    /// IAB Track File shall contain exactly one IABSoundfieldLabelSubDescriptor — more
+    /// than one found (§5.10.2).
+    SubDescriptorDuplicate,
+    /// MCAChannelID shall not be present in the IAB Soundfield Label SubDescriptor (Annex C.2).
+    MCAChannelIDForbidden,
+    /// IAB Track File Edit Rate shall be an integer multiple of the Main Image Virtual
+    /// Track Edit Rate (§6.2).
+    EditRateNotIntegerMultiple,
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -120,6 +131,17 @@ macro_rules! define_iab_enum {
             IABSequenceNoResources,
             /// IABSequence Resource.SourceEncoding does not reference an IABEssenceDescriptor (§6.2).
             IABSequenceSourceEncodingInvalid,
+            /// IAB Track File shall not contain plain AudioChannelLabel/SoundfieldGroupLabel/
+            /// GroupOfSoundfieldGroupsLabel SubDescriptors (§5.10.2).
+            ForbiddenMCASubDescriptor,
+            /// IAB Track File shall contain exactly one IABSoundfieldLabelSubDescriptor — more
+            /// than one found (§5.10.2).
+            SubDescriptorDuplicate,
+            /// MCAChannelID shall not be present in the IAB Soundfield Label SubDescriptor (Annex C.2).
+            MCAChannelIDForbidden,
+            /// IAB Track File Edit Rate shall be an integer multiple of the Main Image Virtual
+            /// Track Edit Rate (§6.2).
+            EditRateNotIntegerMultiple,
         }
 
         impl ValidationCode for $name {
@@ -145,6 +167,10 @@ macro_rules! define_iab_enum {
                     Self::MCALabelDictionaryIDInvalid    => concat!($prefix, ":5.10.4/MCALabelDictionaryIDInvalid"),
                     Self::IABSequenceNoResources         => concat!($prefix, ":6.2/IABSequenceNoResources"),
                     Self::IABSequenceSourceEncodingInvalid => concat!($prefix, ":6.2/IABSequenceSourceEncodingInvalid"),
+                    Self::ForbiddenMCASubDescriptor       => concat!($prefix, ":5.10.2/ForbiddenMCASubDescriptor"),
+                    Self::SubDescriptorDuplicate          => concat!($prefix, ":5.10.2/SubDescriptorDuplicate"),
+                    Self::MCAChannelIDForbidden           => concat!($prefix, ":C.2/MCAChannelIDForbidden"),
+                    Self::EditRateNotIntegerMultiple      => concat!($prefix, ":6.2/EditRateNotIntegerMultiple"),
                 }
             }
             fn description(&self) -> &'static str {
@@ -169,6 +195,10 @@ macro_rules! define_iab_enum {
                     Self::MCALabelDictionaryIDInvalid    => "IABSoundfieldLabelSubDescriptor: MCALabelDictionaryID is not the required IAB label UL.",
                     Self::IABSequenceNoResources         => "IABSequence shall contain at least one Resource (§6.2).",
                     Self::IABSequenceSourceEncodingInvalid => "IABSequence Resource.SourceEncoding does not reference an IABEssenceDescriptor (§6.2).",
+                    Self::ForbiddenMCASubDescriptor       => "IAB Track File shall not contain AudioChannelLabel, SoundfieldGroupLabel or GroupOfSoundfieldGroupsLabel SubDescriptors (§5.10.2).",
+                    Self::SubDescriptorDuplicate          => "IAB Track File shall contain exactly one IABSoundfieldLabelSubDescriptor (§5.10.2).",
+                    Self::MCAChannelIDForbidden           => "MCAChannelID shall not be present in the IAB Soundfield Label SubDescriptor (Annex C.2).",
+                    Self::EditRateNotIntegerMultiple      => "IAB Track File Edit Rate shall be an integer multiple of the Main Image Virtual Track Edit Rate (§6.2).",
                 }
             }
             fn default_severity(&self) -> Severity {
@@ -229,6 +259,14 @@ macro_rules! define_iab_enum {
                         "An IABSequence with an empty `<ResourceList>`.",
                     Self::IABSequenceSourceEncodingInvalid =>
                         "An IABSequence Resource whose SourceEncoding references a WAVEPCMDescriptor instead of an IABEssenceDescriptor.",
+                    Self::ForbiddenMCASubDescriptor =>
+                        "IAB Track File header metadata carrying an AudioChannelLabelSubDescriptor alongside the IABSoundfieldLabelSubDescriptor.",
+                    Self::SubDescriptorDuplicate =>
+                        "IAB Track File header metadata with two IABSoundfieldLabelSubDescriptor instances.",
+                    Self::MCAChannelIDForbidden =>
+                        "IABSoundfieldLabelSubDescriptor carrying <MCAChannelID>1</MCAChannelID> — the item is excluded by Annex C Table C.1.",
+                    Self::EditRateNotIntegerMultiple =>
+                        "IABSequence Resource with EditRate 25/1 against a 24/1 Main Image Virtual Track (25 is not an integer multiple of 24).",
                 })
             }
         }
@@ -255,6 +293,10 @@ macro_rules! define_iab_enum {
                 Self::MCALabelDictionaryIDInvalid,
                 Self::IABSequenceNoResources,
                 Self::IABSequenceSourceEncodingInvalid,
+                Self::ForbiddenMCASubDescriptor,
+                Self::SubDescriptorDuplicate,
+                Self::MCAChannelIDForbidden,
+                Self::EditRateNotIntegerMultiple,
             ];
 
             /// Dispatch from the spec-agnostic [`IabCode`] to this
@@ -281,6 +323,10 @@ macro_rules! define_iab_enum {
                     IabCode::MCALabelDictionaryIDInvalid       => concat!($prefix, ":5.10.4/MCALabelDictionaryIDInvalid"),
                     IabCode::IABSequenceNoResources            => concat!($prefix, ":6.2/IABSequenceNoResources"),
                     IabCode::IABSequenceSourceEncodingInvalid  => concat!($prefix, ":6.2/IABSequenceSourceEncodingInvalid"),
+                    IabCode::ForbiddenMCASubDescriptor         => concat!($prefix, ":5.10.2/ForbiddenMCASubDescriptor"),
+                    IabCode::SubDescriptorDuplicate            => concat!($prefix, ":5.10.2/SubDescriptorDuplicate"),
+                    IabCode::MCAChannelIDForbidden             => concat!($prefix, ":C.2/MCAChannelIDForbidden"),
+                    IabCode::EditRateNotIntegerMultiple        => concat!($prefix, ":6.2/EditRateNotIntegerMultiple"),
                 }
             }
         }

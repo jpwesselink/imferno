@@ -2048,6 +2048,14 @@ impl Imferno {
                                 let issue = issue.with_context("asset_uuid", asset.id.to_string());
                                 report.add(issue);
                             }
+                            // ST 2067-201 §5.10.2 / Annex C.2 IAB labeling
+                            // rules (AUDIT-18) — no-op unless the file
+                            // carries an IABEssenceDescriptor.
+                            for issue in crate::mxf::iab_labeling::check_iab_labeling(&regxml, path)
+                            {
+                                let issue = issue.with_context("asset_uuid", asset.id.to_string());
+                                report.add(issue);
+                            }
                         }
                         Err(e) => {
                             report.add(

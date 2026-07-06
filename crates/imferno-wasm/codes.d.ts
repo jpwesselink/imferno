@@ -291,6 +291,10 @@ export declare const codes: {
     readonly MCALabelDictionaryIDInvalid: "ST2067-201:2019:5.10.4/MCALabelDictionaryIDInvalid";
     readonly IABSequenceNoResources: "ST2067-201:2019:6.2/IABSequenceNoResources";
     readonly IABSequenceSourceEncodingInvalid: "ST2067-201:2019:6.2/IABSequenceSourceEncodingInvalid";
+    readonly ForbiddenMCASubDescriptor: "ST2067-201:2019:5.10.2/ForbiddenMCASubDescriptor";
+    readonly SubDescriptorDuplicate: "ST2067-201:2019:5.10.2/SubDescriptorDuplicate";
+    readonly MCAChannelIDForbidden: "ST2067-201:2019:C.2/MCAChannelIDForbidden";
+    readonly EditRateNotIntegerMultiple: "ST2067-201:2019:6.2/EditRateNotIntegerMultiple";
   };
   readonly ST2067_201_2021: {
     readonly CodecForbidden: "ST2067-201:2021:5.9/CodecForbidden";
@@ -313,6 +317,10 @@ export declare const codes: {
     readonly MCALabelDictionaryIDInvalid: "ST2067-201:2021:5.10.4/MCALabelDictionaryIDInvalid";
     readonly IABSequenceNoResources: "ST2067-201:2021:6.2/IABSequenceNoResources";
     readonly IABSequenceSourceEncodingInvalid: "ST2067-201:2021:6.2/IABSequenceSourceEncodingInvalid";
+    readonly ForbiddenMCASubDescriptor: "ST2067-201:2021:5.10.2/ForbiddenMCASubDescriptor";
+    readonly SubDescriptorDuplicate: "ST2067-201:2021:5.10.2/SubDescriptorDuplicate";
+    readonly MCAChannelIDForbidden: "ST2067-201:2021:C.2/MCAChannelIDForbidden";
+    readonly EditRateNotIntegerMultiple: "ST2067-201:2021:6.2/EditRateNotIntegerMultiple";
   };
   readonly ST2067_202_2023: {
     readonly NamespaceUriMissing: "ST2067-202:2023:9.2/NamespaceUriMissing";
@@ -320,6 +328,9 @@ export declare const codes: {
     readonly ISXDSequenceSourceEncodingInvalid: "ST2067-202:2023:6/ISXDSequenceSourceEncodingInvalid";
     readonly NamespaceUriMismatch: "ST2067-202:2023:6/NamespaceUriMismatch";
     readonly EditRateMismatch: "ST2067-202:2023:6/EditRateMismatch";
+    readonly ISXDVirtualTrackMissing: "ST2067-202:2023:6/ISXDVirtualTrackMissing";
+    readonly DataEssenceCodingMissing: "ST2067-202:2023:9.3/DataEssenceCodingMissing";
+    readonly DataEssenceCodingInvalid: "ST2067-202:2023:9.3/DataEssenceCodingInvalid";
   };
   readonly Imferno: {
     readonly UnreferencedAsset: "IMFERNO:Package/UnreferencedAsset";

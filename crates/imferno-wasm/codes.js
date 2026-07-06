@@ -291,6 +291,10 @@ export const codes = {
     MCALabelDictionaryIDInvalid: "ST2067-201:2019:5.10.4/MCALabelDictionaryIDInvalid",
     IABSequenceNoResources: "ST2067-201:2019:6.2/IABSequenceNoResources",
     IABSequenceSourceEncodingInvalid: "ST2067-201:2019:6.2/IABSequenceSourceEncodingInvalid",
+    ForbiddenMCASubDescriptor: "ST2067-201:2019:5.10.2/ForbiddenMCASubDescriptor",
+    SubDescriptorDuplicate: "ST2067-201:2019:5.10.2/SubDescriptorDuplicate",
+    MCAChannelIDForbidden: "ST2067-201:2019:C.2/MCAChannelIDForbidden",
+    EditRateNotIntegerMultiple: "ST2067-201:2019:6.2/EditRateNotIntegerMultiple",
   },
   ST2067_201_2021: {
     CodecForbidden: "ST2067-201:2021:5.9/CodecForbidden",
@@ -313,6 +317,10 @@ export const codes = {
     MCALabelDictionaryIDInvalid: "ST2067-201:2021:5.10.4/MCALabelDictionaryIDInvalid",
     IABSequenceNoResources: "ST2067-201:2021:6.2/IABSequenceNoResources",
     IABSequenceSourceEncodingInvalid: "ST2067-201:2021:6.2/IABSequenceSourceEncodingInvalid",
+    ForbiddenMCASubDescriptor: "ST2067-201:2021:5.10.2/ForbiddenMCASubDescriptor",
+    SubDescriptorDuplicate: "ST2067-201:2021:5.10.2/SubDescriptorDuplicate",
+    MCAChannelIDForbidden: "ST2067-201:2021:C.2/MCAChannelIDForbidden",
+    EditRateNotIntegerMultiple: "ST2067-201:2021:6.2/EditRateNotIntegerMultiple",
   },
   ST2067_202_2023: {
     NamespaceUriMissing: "ST2067-202:2023:9.2/NamespaceUriMissing",
@@ -320,6 +328,9 @@ export const codes = {
     ISXDSequenceSourceEncodingInvalid: "ST2067-202:2023:6/ISXDSequenceSourceEncodingInvalid",
     NamespaceUriMismatch: "ST2067-202:2023:6/NamespaceUriMismatch",
     EditRateMismatch: "ST2067-202:2023:6/EditRateMismatch",
+    ISXDVirtualTrackMissing: "ST2067-202:2023:6/ISXDVirtualTrackMissing",
+    DataEssenceCodingMissing: "ST2067-202:2023:9.3/DataEssenceCodingMissing",
+    DataEssenceCodingInvalid: "ST2067-202:2023:9.3/DataEssenceCodingInvalid",
   },
   Imferno: {
     UnreferencedAsset: "IMFERNO:Package/UnreferencedAsset",

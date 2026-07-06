@@ -343,6 +343,10 @@ Every validation issue emitted by imferno carries a code like `ST2067-2:2020:8.3
 | `ST2067-201:2019:5.10.4/MCALabelDictionaryIDInvalid` | IABSoundfieldLabelSubDescriptor: MCALabelDictionaryID is not the required IAB label UL. | ERROR | Audio |
 | `ST2067-201:2019:6.2/IABSequenceNoResources` | IABSequence shall contain at least one Resource (§6.2). | ERROR | Audio |
 | `ST2067-201:2019:6.2/IABSequenceSourceEncodingInvalid` | IABSequence Resource.SourceEncoding does not reference an IABEssenceDescriptor (§6.2). | ERROR | Audio |
+| `ST2067-201:2019:5.10.2/ForbiddenMCASubDescriptor` | IAB Track File shall not contain AudioChannelLabel, SoundfieldGroupLabel or GroupOfSoundfieldGroupsLabel SubDescriptors (§5.10.2). | ERROR | Audio |
+| `ST2067-201:2019:5.10.2/SubDescriptorDuplicate` | IAB Track File shall contain exactly one IABSoundfieldLabelSubDescriptor (§5.10.2). | ERROR | Audio |
+| `ST2067-201:2019:C.2/MCAChannelIDForbidden` | MCAChannelID shall not be present in the IAB Soundfield Label SubDescriptor (Annex C.2). | ERROR | Audio |
+| `ST2067-201:2019:6.2/EditRateNotIntegerMultiple` | IAB Track File Edit Rate shall be an integer multiple of the Main Image Virtual Track Edit Rate (§6.2). | ERROR | Audio |
 
 ### 2021
 
@@ -368,6 +372,10 @@ Every validation issue emitted by imferno carries a code like `ST2067-2:2020:8.3
 | `ST2067-201:2021:5.10.4/MCALabelDictionaryIDInvalid` | IABSoundfieldLabelSubDescriptor: MCALabelDictionaryID is not the required IAB label UL. | ERROR | Audio |
 | `ST2067-201:2021:6.2/IABSequenceNoResources` | IABSequence shall contain at least one Resource (§6.2). | ERROR | Audio |
 | `ST2067-201:2021:6.2/IABSequenceSourceEncodingInvalid` | IABSequence Resource.SourceEncoding does not reference an IABEssenceDescriptor (§6.2). | ERROR | Audio |
+| `ST2067-201:2021:5.10.2/ForbiddenMCASubDescriptor` | IAB Track File shall not contain AudioChannelLabel, SoundfieldGroupLabel or GroupOfSoundfieldGroupsLabel SubDescriptors (§5.10.2). | ERROR | Audio |
+| `ST2067-201:2021:5.10.2/SubDescriptorDuplicate` | IAB Track File shall contain exactly one IABSoundfieldLabelSubDescriptor (§5.10.2). | ERROR | Audio |
+| `ST2067-201:2021:C.2/MCAChannelIDForbidden` | MCAChannelID shall not be present in the IAB Soundfield Label SubDescriptor (Annex C.2). | ERROR | Audio |
+| `ST2067-201:2021:6.2/EditRateNotIntegerMultiple` | IAB Track File Edit Rate shall be an integer multiple of the Main Image Virtual Track Edit Rate (§6.2). | ERROR | Audio |
 
 ## ST 2067-202 — ISXD Plug-in
 
@@ -378,6 +386,9 @@ Every validation issue emitted by imferno carries a code like `ST2067-2:2020:8.3
 | `ST2067-202:2023:6/ISXDSequenceSourceEncodingInvalid` | ISXDSequence Resource.SourceEncoding does not reference an ISXDDataEssenceDescriptor. | ERROR | Data |
 | `ST2067-202:2023:6/NamespaceUriMismatch` | All ISXD Track Files referenced by an ISXD Virtual Track shall have an identical NamespaceURI value (§6). | ERROR | Data |
 | `ST2067-202:2023:6/EditRateMismatch` | The Edit Rate of an ISXD Virtual Track shall be equal to the Edit Rate of the Main Image Virtual Track (§6). | ERROR | Data |
+| `ST2067-202:2023:6/ISXDVirtualTrackMissing` | A Composition that references an ISXD Track File shall contain one or more ISXD Virtual Tracks (§6). | ERROR | Data |
+| `ST2067-202:2023:9.3/DataEssenceCodingMissing` | ISXDDataEssenceDescriptor: DataEssenceCoding shall be present (§9.3). | ERROR | Data |
+| `ST2067-202:2023:9.3/DataEssenceCodingInvalid` | ISXDDataEssenceDescriptor: DataEssenceCoding shall be the UTF-8 Text Data Essence Coding UL (§9.3 Table 6). | ERROR | Data |
 
 ## imferno
 

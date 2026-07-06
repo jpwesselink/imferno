@@ -251,10 +251,32 @@ transcripts. Findings numbered on from AUDIT-6.
 
 Audit P2 batch also closed two AUDIT-21 items: ISXD sequences joined the
 generic per-track edit-rate loop, and the §6 ISXD-vs-Main-Image edit-rate
-SHALL is now `ST2067-202:2023:6/EditRateMismatch`. Still open: AUDIT-4
-(-204 plug-in), AUDIT-13 (§5.4:2020 edition model), AUDIT-18 (IAB gaps),
-remaining AUDIT-21 items (ISXD-track-required, §9.3/§9.1 ULs), AUDIT-22
-(-203 catalogue; blocked on ST 2127-1/-10 staging).
+SHALL is now `ST2067-202:2023:6/EditRateMismatch`.
+
+Audit P3 batch (gap rules, all firsthand-pdf):
+
+- **AUDIT-18 closed** — `mxf/iab_labeling.rs`: §5.10.2 prohibition of plain
+  ACLSD/SFGLSD/GoSFGLSD (`:5.10.2/ForbiddenMCASubDescriptor`), §5.10.2
+  exactly-one IAB SFL (missing + `:5.10.2/SubDescriptorDuplicate`), Annex
+  C.2 `:C.2/MCAChannelIDForbidden`; CPL-level §6.2
+  `:6.2/EditRateNotIntegerMultiple` (integer multiple of Main Image VT).
+- **AUDIT-21 closed (CPL-visible items)** — §6
+  `ST2067-202:2023:6/ISXDVirtualTrackMissing` (composition references an
+  ISXD Track File without an ISXD VT) and §9.3
+  `:9.3/DataEssenceCodingMissing`/`Invalid` (UTF-8 Text Data Essence Coding
+  UL, Table 6). §9.1/§9.2 container/descriptor-key ULs remain open: they
+  are MXF-set-key level and not visible in the CPL descriptor model.
+- **AUDIT-13 (partial)** — `font/otf` accepted for timed-text font
+  resources per ST 2067-2:2020 §5.4.6 (whitelist is now the
+  union-of-editions; rejecting it false-Errored on valid 2020 files). The
+  full §5.4:2020 edition model (IMSC 1.1 namespaces, §5.4.1, §5.4.7)
+  remains open.
+
+Still open: AUDIT-4 (-204 plug-in — needs ADMAudioSequence +
+ADMAudioVirtualTrackParameterSet CPL parser support; sequenced after -203),
+AUDIT-13 remainder (§5.4:2020 edition model), AUDIT-21 remainder (§9.1/§9.2
+set-key ULs, MXF level), AUDIT-22 (-203 catalogue; blocked on ST 2127-1/-10
+staging).
 | AUDIT-2 | :2022→:2023 rename | breaking, own release |
 | AUDIT-18/21 | new-rule gaps (IAB + ISXD) | gaps |
 | AUDIT-22 | ST 2067-203 catalogue | feature |

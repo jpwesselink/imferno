@@ -108,19 +108,28 @@ pub fn check_timed_text(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
         }
     }
 
-    // §5.4.5/6 — TimeTextResourceSubDescriptor MIME types must be
-    // image/png (sub-image resources) or application/x-font-opentype
-    // (font resources). Anything else breaks IMSC playback.
+    // §5.4.5/6 — TimeTextResourceSubDescriptor MIME types: image/png
+    // (image resources) or an OpenType font MIME (font resources).
+    //
+    // Edition note (AUDIT-13): 2016 allows only
+    // application/x-font-opentype; 2020 §5.4.6 allows "font/otf, as
+    // specified in RFC 8081, or application/x-font-opentype" (and says
+    // x-font-opentype "should not be used" except for backwards
+    // compatibility). MXF-level checks can't see the CPL edition, so the
+    // whitelist is the union of the editions — rejecting font/otf would
+    // false-Error on every valid 2020-edition file. The full §5.4:2020
+    // edition model (IMSC 1.1, §5.4.1/§5.4.7) is tracked in AUDIT-13.
     for mime in extract_all_fields(regxml, "MIMEType") {
         let mime = mime.trim();
-        const ACCEPTABLE: &[&str] = &["image/png", "application/x-font-opentype"];
+        const ACCEPTABLE: &[&str] = &["image/png", "application/x-font-opentype", "font/otf"];
         if !ACCEPTABLE.contains(&mime) {
             issues.push(
                 ValidationIssue::from_code(
                     St2067_2_2016::TimedTextResourceMIMETypeUnsupported,
                     format!(
                         "MXF {} TimeTextResourceSubDescriptor MIMEType = '{}' — ST 2067-2 \
-                         §5.4.5/6 requires image/png or application/x-font-opentype.",
+                         §5.4.5/6 requires image/png, font/otf (2020) or \
+                         application/x-font-opentype.",
                         path.display(),
                         mime,
                     ),
@@ -261,6 +270,27 @@ mod tests {
             issues.is_empty(),
             "clean IMSC1.1 + acceptable MIME types should produce zero diagnostics, got: {:#?}",
             issues
+        );
+    }
+
+    /// AUDIT-13 regression: ST 2067-2:2020 §5.4.6 allows "font/otf, as
+    /// specified in RFC 8081, or application/x-font-opentype" for font
+    /// resources — font/otf must not draw a MIME-type Error.
+    #[test]
+    fn accepts_font_otf_mime_type_2020() {
+        let xml = r#"<ns1:TimedTextDescriptor>
+            <ns2:UCSEncoding>UTF-8</ns2:UCSEncoding>
+            <ns2:NamespaceURI>http://www.w3.org/ns/ttml/profile/imsc1.1/text</ns2:NamespaceURI>
+            <ns1:TimeTextResourceSubDescriptor>
+                <ns2:MIMEType>font/otf</ns2:MIMEType>
+            </ns1:TimeTextResourceSubDescriptor>
+        </ns1:TimedTextDescriptor>"#;
+        let issues = check_timed_text(xml, std::path::Path::new("/synth.mxf"));
+        assert!(
+            !issues
+                .iter()
+                .any(|i| i.code.contains("TimedTextResourceMIMETypeUnsupported")),
+            "font/otf is valid per ST 2067-2:2020 §5.4.6 (AUDIT-13), got: {issues:#?}"
         );
     }
 }

@@ -150,9 +150,8 @@ export default function Homepage() {
               <tr><td>ST 2067-202:2022</td><td>ISXD Plug-in</td><td><span className="badge done">Complete</span></td></tr>
               <tr><td>ST 377-1:2011</td><td>MXF File Format (KLV, partition packs, header metadata via RegXML — essence sample decoding is the codec spec's job, see below)</td><td><span className="badge done">Complete</span></td></tr>
               <tr><td>ST 377-4:2012</td><td>MXF MCA (Multi-Channel Audio) Labeling</td><td><span className="badge done">Complete</span></td></tr>
-              <tr><td colSpan={3} className="section-row">Partial</td></tr>
-              <tr><td>ST 2067-203:2023</td><td>S-ADM Audio Plug-in (essence-layer MGA/S-ADM detection; CPL-level plug-in semantics pending)</td><td><span className="badge partial">Partial</span></td></tr>
-              <tr><td>ST 2067-204:2023</td><td>ADM Audio Plug-in (essence-layer ST 2131 ADM detection; CPL-level plug-in semantics pending)</td><td><span className="badge partial">Partial</span></td></tr>
+              <tr><td>ST 2067-203:2023</td><td>S-ADM Audio Plug-in (essence-layer MGA/S-ADM detection + CPL-level §5.4 VirtualTrackParameterSet cross-reference)</td><td><span className="badge done">Complete</span></td></tr>
+              <tr><td>ST 2067-204:2023</td><td>ADM Audio Plug-in (essence-layer ST 2131 ADM detection + CPL-level §5.4 VirtualTrackParameterSet cross-reference)</td><td><span className="badge done">Complete</span></td></tr>
               <tr><td colSpan={3} className="section-row">Not implemented</td></tr>
               <tr><td>ST 429-8</td><td>D-Cinema Packing List</td><td><span className="badge none">Not implemented</span></td></tr>
               <tr><td>ST 2067-100:2014</td><td>Output Profile List</td><td><span className="badge none">Not implemented</span></td></tr>

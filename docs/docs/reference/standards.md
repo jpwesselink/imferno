@@ -16,8 +16,8 @@ description: Which SMPTE ST-2067 standards imferno implements and to what degree
 | ST 429-8 | D-Cinema Packing List | 2007 | Not implemented |
 | ST 2067-100 | Output Profile List | 2014 | Not implemented |
 | ST 2067-202 | ISXD Plug-in | 2022 | Complete |
-| ST 2067-203 | S-ADM Audio Plug-in | 2023 | Partial — MGA/S-ADM audio descriptors detected via `MGASoundEssenceDescriptor`; ST 2067-2 §5.3 WAVE-PCM-only rules correctly stand down. Verified against the Fraunhofer SMPTE working-group corpus (2 S-ADM audio tracks parse clean). CPL-level plug-in semantics (SADM VirtualTrack, MGASoundfield labeling, ADM metadata structure) not yet enforced. |
-| ST 2067-204 | ADM Audio Plug-in | 2023 | Partial — ADM audio detected via ST 2131 `ChannelAssignment` label (bytes 9–13 = `04.02.02.10.05`) or `ADM*SubDescriptor` elements; §5.4.1 prohibition on plain MCA sub-descriptors respected. Verified against the Fraunhofer SMPTE working-group corpus (2 ADM audio tracks parse clean bar an RFC 5646 language-tag recommendation). CPL-level plug-in semantics not yet enforced. |
+| ST 2067-203 | S-ADM Audio Plug-in | 2023 | Complete — essence-layer MGA/S-ADM detection (WAVE-PCM rules correctly stand down) plus CPL-level §5.3 / §5.4 plug-in semantics: `MGASADMSignalSequence` parsed as first-class sequence, `MGASADMVirtualTrackParameterSet` cross-referenced via `TrackId`, orphaned-parameter-set + missing-parameter-set + empty-operational-mode + orphaned-SoundfieldGroupSelector.ResourceId all enforced. Verified against the Fraunhofer SMPTE working-group corpus. |
+| ST 2067-204 | ADM Audio Plug-in | 2023 | Complete — mirror of the ST 2067-203 implementation: essence-layer ADM detection via ST 2131 `ChannelAssignment` label (bytes 9–13 = `04.02.02.10.05`) or `ADM*SubDescriptor` elements, plus CPL-level `ADMAudioSequence` + `ADMAudioVirtualTrackParameterSet` §5.4 cross-reference enforcement. Verified against the Fraunhofer SMPTE working-group corpus. |
 | ST 377-41 | MXF MGA / S-ADM Virtual Tracks | — | Not implemented |
 | ST 379-2 | MXF Generic Container | 2010 | Not implemented |
 | ST 422 | JPEG 2000 in MXF | 2014 | Not implemented |
@@ -29,7 +29,7 @@ Standards not listed are not implemented and not on the roadmap. The "Not implem
 - Essence samples inside MXF body partitions are not decoded — that's the domain of the codec-specific specs (**ST 422** JPEG 2000 in MXF, **ST 382** AES-3 audio in MXF, **ST 379-2** Generic Container), all listed as "Not implemented" above. ST 377-1 structural validation (KLV, partitions, metadata) is complete; a JPEG 2000 or PCM byte-level decoder is a separate concern
 - Multi-volume packages (volumeIndex > 1) parse but are not fully validated
 - Output Profile List (OPL) transformation is not implemented
-- CPL-level plug-in semantics for ST 2067-203 (SADM VirtualTrack, MGA metadata linking) and ST 2067-204 (ADM AudioProgramme structure) are pending — the essence-layer detection + rule-standdown is complete
+- Deep MXF ↔ CPL cross-references for ST 2067-203/-204 (matching a `MGASADMSoundfieldGroupSelector.MGASoundfieldGroupLinkID` to the target MXF's `MGASoundfieldGroupLabelSubDescriptor.MCALinkID`) are not yet enforced — the CPL-side selector→resource cross-check is complete, but the descriptor-side link isn't verified against the MXF header metadata
 
 ## Test corpus
 

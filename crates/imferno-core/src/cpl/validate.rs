@@ -588,6 +588,7 @@ mod tests {
             forced_narrative_sequences: vec![],
             iab_sequences: vec![],
             isxd_sequences: vec![],
+            ..Default::default()
         }
     }
 

@@ -148,8 +148,9 @@ export default function Homepage() {
               <tr><td>ST 2067-201:2019, :2021, :2026</td><td>IAB Level 0 Plug-in (incl. 2026 Annex E IABChannelSubDescriptor recommendation)</td><td><span className="badge done">Complete</span></td></tr>
               <tr><td>ST 2067-9:2018</td><td>Sidecar Composition Map</td><td><span className="badge done">Complete</span></td></tr>
               <tr><td>ST 2067-202:2022</td><td>ISXD Plug-in</td><td><span className="badge done">Complete</span></td></tr>
+              <tr><td>ST 377-1:2011</td><td>MXF File Format (KLV, partition packs, header metadata via RegXML — essence sample decoding is the codec spec's job, see below)</td><td><span className="badge done">Complete</span></td></tr>
+              <tr><td>ST 377-4:2012</td><td>MXF MCA (Multi-Channel Audio) Labeling</td><td><span className="badge done">Complete</span></td></tr>
               <tr><td colSpan={3} className="section-row">Partial</td></tr>
-              <tr><td>ST 377-1:2011</td><td>MXF File Format (header metadata via RegXML; no essence sample decoding)</td><td><span className="badge partial">Partial</span></td></tr>
               <tr><td>ST 2067-203:2023</td><td>S-ADM Audio Plug-in (essence-layer MGA/S-ADM detection; CPL-level plug-in semantics pending)</td><td><span className="badge partial">Partial</span></td></tr>
               <tr><td>ST 2067-204:2023</td><td>ADM Audio Plug-in (essence-layer ST 2131 ADM detection; CPL-level plug-in semantics pending)</td><td><span className="badge partial">Partial</span></td></tr>
               <tr><td colSpan={3} className="section-row">Not implemented</td></tr>

@@ -15,7 +15,7 @@ aws-s3 = ["imferno-core/aws-s3"]
 crate-type = ["cdylib"]
 
 [dependencies]
-imferno-core = { path = "../imferno-core", version = "3.0.1", features = ["uppsala-patched"] }
+imferno-core = { path = "../imferno-core", version = "3.1.0", features = ["uppsala-patched"] }
 napi = { version = "3", default-features = false, features = ["napi9", "serde-json"] }
 napi-derive = "3"
 serde = { workspace = true }

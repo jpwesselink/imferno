@@ -73,11 +73,11 @@ export default function Homepage() {
         <div className="card-grid four">
           <a className="feat-card" href={`${base}reference/standards`}>
             <h3>IMF core + applications</h3>
-            <p>Parse AssetMaps, PKLs, and CPLs per SMPTE ST 2067-2, ST 2067-3, and Application profiles including ST 2067-21 and ST 2067-201 (through the 2026 IAB revision).</p>
+            <p>Parse AssetMaps, PKLs, CPLs, and Sidecar Composition Maps across the IMF core (ST 2067-2/-3/-9, ST 429-9) plus application profiles: App #2E (ST 2067-21), IAB Level 0 through the 2026 Annex E revision (ST 2067-201), ISXD (ST 2067-202), and S-ADM/ADM audio essence detection (ST 2067-203/-204). MXF header metadata via RegXML (ST 377-1/-4).</p>
           </a>
           <a className="feat-card" href={`${base}guide/config`}>
             <h3>Flexible strictness</h3>
-            <p>250+ validation rules across 8 SMPTE standards. Tune each rule individually: set any code to <code className="icode">off</code>, <code className="icode">info</code>, <code className="icode">warn</code>, <code className="icode">error</code>, or <code className="icode">critical</code> to match your workflow.</p>
+            <p>180+ typed validation rules across 10 SMPTE standards, plus XSD pre-pass and imferno-native structural checks. Tune each rule individually: set any code to <code className="icode">off</code>, <code className="icode">info</code>, <code className="icode">warn</code>, <code className="icode">error</code>, or <code className="icode">critical</code> to match your workflow.</p>
           </a>
           <a className="feat-card" href={`${base}guide/quick-start`}>
             <h3>Rust, Node.js &amp; WASM</h3>
@@ -85,7 +85,7 @@ export default function Homepage() {
           </a>
           <a className="feat-card" href={`${base}guide/validation`}>
             <h3>IMF reference corpus</h3>
-            <p>Tested against the Netflix Photon MERIDIAN reference corpus. ST 2067-2, ST 2067-3, ST 2067-21, and ST 2067-201 fully covered.</p>
+            <p>Tested against the Netflix Photon MERIDIAN corpus, the Fraunhofer SMPTE working-group ST 2067-203/-204 corpus, and vendored fixtures for App #2E, App5 (IMAX HDR), IAB, ISXD, HT (JPEG 2000 High Throughput), S-ADM, and Netflix–Sony Plugfest.</p>
           </a>
         </div>
       </section>

@@ -77,6 +77,10 @@
     {
       "label": "#72 release-plz-2026-07-02T15-10-09Z",
       "path": "/pr-72/"
+    },
+    {
+      "label": "#76 docs/fraunhofer-corpus-standards-table",
+      "path": "/pr-76/"
     }
   ],
   "latest": "/v3.0.1/"

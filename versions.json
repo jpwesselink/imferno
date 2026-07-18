@@ -77,6 +77,10 @@
     {
       "label": "#72 release-plz-2026-07-02T15-10-09Z",
       "path": "/pr-72/"
+    },
+    {
+      "label": "#77 feat/st2067-203-204-cpl-plugin-semantics",
+      "path": "/pr-77/"
     }
   ],
   "latest": "/v3.0.1/"

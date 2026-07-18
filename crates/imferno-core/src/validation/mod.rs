@@ -32,9 +32,12 @@ pub mod iab;
 pub mod iab_codes;
 pub mod isxd;
 pub mod isxd_codes;
+pub mod sadm;
+pub mod sadm_codes;
 
 pub use iab::{AppIabPlugin2019, AppIabPlugin2021, AppIabPlugin2026, URI_2019, URI_2019_SCHEMAS};
 pub use isxd::{AppIsxdPlugin2023, URI_2022};
+pub use sadm::{AppAdmPlugin2023, AppSadmPlugin2023, URI_2067_203_2022, URI_2067_204_2022};
 
 use std::collections::{HashMap, HashSet};
 
@@ -134,6 +137,28 @@ fn push_sequence_presence_plugins(
         .segments
         .iter()
         .any(|s| !s.sequence_list.isxd_sequences.is_empty());
+    let has_sadm = cpl
+        .segment_list
+        .segments
+        .iter()
+        .any(|s| !s.sequence_list.mga_sadm_signal_sequences.is_empty());
+    let has_adm = cpl
+        .segment_list
+        .segments
+        .iter()
+        .any(|s| !s.sequence_list.adm_audio_sequences.is_empty());
+    // Also fire the S-ADM / ADM plug-in validators when the CPL has
+    // no SignalSequence yet but *does* declare a VirtualTrackParameterSet —
+    // that's an §5.4 orphan-parameter-set case worth catching, and it
+    // wouldn't reach validation without an explicit dispatch signal.
+    let has_sadm_params = cpl
+        .extension_properties
+        .as_ref()
+        .is_some_and(|e| !e.mga_sadm_virtual_track_parameter_sets.is_empty());
+    let has_adm_params = cpl
+        .extension_properties
+        .as_ref()
+        .is_some_and(|e| !e.adm_audio_virtual_track_parameter_sets.is_empty());
 
     let already = |needle: &str, validators: &[Box<dyn ConstraintsValidator>]| {
         validators.iter().any(|v| v.spec_id().contains(needle))
@@ -152,6 +177,12 @@ fn push_sequence_presence_plugins(
     }
     if has_isxd && !already("2067-202", validators) {
         validators.push(Box::new(AppIsxdPlugin2023));
+    }
+    if (has_sadm || has_sadm_params) && !already("2067-203", validators) {
+        validators.push(Box::new(AppSadmPlugin2023));
+    }
+    if (has_adm || has_adm_params) && !already("2067-204", validators) {
+        validators.push(Box::new(AppAdmPlugin2023));
     }
 }
 
@@ -178,6 +209,10 @@ impl ValidatorRegistry for BuiltinValidatorRegistry {
             iab::URI_2019 | iab::URI_2019_SCHEMAS => Some(Box::new(AppIabPlugin2021)),
             // ST 2067-202 ISXD plug-in.
             isxd::URI_2022 => Some(Box::new(AppIsxdPlugin2023)),
+            // ST 2067-203 S-ADM plug-in (namespace year frozen at /2022/).
+            sadm::URI_2067_203_2022 => Some(Box::new(AppSadmPlugin2023)),
+            // ST 2067-204 ADM plug-in (namespace year frozen at /2022/).
+            sadm::URI_2067_204_2022 => Some(Box::new(AppAdmPlugin2023)),
             _ => None,
         }
     }
@@ -4190,6 +4225,7 @@ mod tests {
             forced_narrative_sequences: vec![],
             iab_sequences: vec![],
             isxd_sequences: vec![],
+            ..Default::default()
         }
     }
 
@@ -4473,6 +4509,7 @@ mod tests {
             application_identification: Some("http://www.smpte-ra.org/ns/2067-21/2021".to_string()),
             max_cll: None,
             max_fall: None,
+            ..Default::default()
         });
         let validators = get_validators_for_cpl(&cpl);
         assert_eq!(validators.len(), 2);
@@ -4489,6 +4526,7 @@ mod tests {
             ),
             max_cll: None,
             max_fall: None,
+            ..Default::default()
         });
         let registry = BuiltinValidatorRegistry;
         let validators = registry.resolve_for_cpl(&cpl);
@@ -4504,6 +4542,7 @@ mod tests {
             application_identification: Some("http://www.smpte-ra.org/ns/2067-21/2021".to_string()),
             max_cll: None,
             max_fall: None,
+            ..Default::default()
         });
 
         let via_factory = get_validators_for_cpl(&cpl);
@@ -4555,6 +4594,7 @@ mod tests {
             application_identification: Some("http://www.smpte-ra.org/ns/2067-21/2021".to_string()),
             max_cll: None,
             max_fall: None,
+            ..Default::default()
         });
 
         let registry = BuiltinValidatorRegistry;
@@ -4612,6 +4652,7 @@ mod tests {
             ),
             max_cll: None,
             max_fall: None,
+            ..Default::default()
         });
         let validators = get_validators_for_cpl(&cpl);
         assert_eq!(validators.len(), 2);
@@ -4627,6 +4668,7 @@ mod tests {
             application_identification: Some("http://www.smpte-ra.org/ns/2067-21/2021".to_string()),
             max_cll: None,
             max_fall: None,
+            ..Default::default()
         });
         let registry = ConfigurableValidatorRegistry::new(ValidatorSelection {
             app_specs: Some(vec![]),
@@ -5010,6 +5052,7 @@ mod tests {
             application_identification: Some("http://www.smpte-ra.org/ns/2067-21/2021".to_string()),
             max_cll: Some(1000),
             max_fall: Some(400),
+            ..Default::default()
         });
         let v = App2E2021;
         let issues = v.validate_cpl(&cpl);
@@ -5196,6 +5239,7 @@ mod tests {
             application_identification: Some("http://www.smpte-ra.org/ns/2067-21/2021".to_string()),
             max_cll: None,
             max_fall: None,
+            ..Default::default()
         });
         let validators = get_validators_for_cpl(&cpl);
         assert_eq!(validators.len(), 2, "Should dispatch both core and app2e");
@@ -6473,6 +6517,7 @@ mod tests {
                 marker_sequences: vec![],
                 iab_sequences: vec![],
                 isxd_sequences: vec![],
+                ..Default::default()
             },
         });
 
@@ -6522,6 +6567,7 @@ mod tests {
                 marker_sequences: vec![],
                 iab_sequences: vec![],
                 isxd_sequences: vec![],
+                ..Default::default()
             },
         });
 
@@ -6580,6 +6626,7 @@ mod tests {
                 marker_sequences: vec![],
                 iab_sequences: vec![],
                 isxd_sequences: vec![],
+                ..Default::default()
             },
         });
 
@@ -6643,6 +6690,7 @@ mod tests {
                 marker_sequences: vec![],
                 iab_sequences: vec![],
                 isxd_sequences: vec![],
+                ..Default::default()
             },
         });
 
@@ -8112,6 +8160,7 @@ mod tests {
             application_identification: Some(APP2E_APPLICATION_IDENTIFICATION.to_string()),
             max_cll: None,
             max_fall: None,
+            ..Default::default()
         });
         cpl.essence_descriptor_list = Some(EssenceDescriptorList {
             essence_descriptors: vec![EssenceDescriptor {
@@ -8398,6 +8447,7 @@ mod tests {
             application_identification: Some(APP2E_APPLICATION_IDENTIFICATION.to_string()),
             max_cll: None,
             max_fall: None,
+            ..Default::default()
         });
         cpl.essence_descriptor_list = Some(EssenceDescriptorList {
             essence_descriptors: vec![
@@ -8456,6 +8506,7 @@ mod tests {
             application_identification: Some(APP2E_APPLICATION_IDENTIFICATION.to_string()),
             max_cll: None,
             max_fall: None,
+            ..Default::default()
         });
         cpl.essence_descriptor_list = Some(EssenceDescriptorList {
             essence_descriptors: vec![
@@ -8516,6 +8567,7 @@ mod tests {
             application_identification: Some(APP2E_APPLICATION_IDENTIFICATION.to_string()),
             max_cll: None,
             max_fall: None,
+            ..Default::default()
         });
         cpl.essence_descriptor_list = Some(EssenceDescriptorList {
             essence_descriptors: vec![EssenceDescriptor {
@@ -8576,6 +8628,7 @@ mod tests {
             application_identification: Some(APP2E_APPLICATION_IDENTIFICATION.to_string()),
             max_cll: None,
             max_fall: None,
+            ..Default::default()
         });
         cpl.essence_descriptor_list = Some(EssenceDescriptorList {
             essence_descriptors: vec![EssenceDescriptor {
@@ -8638,6 +8691,7 @@ mod tests {
             application_identification: Some(APP2E_APPLICATION_IDENTIFICATION.to_string()),
             max_cll: None,
             max_fall: None,
+            ..Default::default()
         });
         cpl.essence_descriptor_list = Some(EssenceDescriptorList {
             essence_descriptors: vec![EssenceDescriptor {
@@ -8701,6 +8755,7 @@ mod tests {
             application_identification: None,
             max_cll: None,
             max_fall: None,
+            ..Default::default()
         });
         let v = App2E2021;
         let issues = v.validate_cpl(&cpl);
@@ -8724,6 +8779,7 @@ mod tests {
             application_identification: Some(APP2E_APPLICATION_IDENTIFICATION.to_string()),
             max_cll: None,
             max_fall: None,
+            ..Default::default()
         });
         cpl.locale_list = Some(LocaleList {
             locales: vec![Locale {
@@ -8754,6 +8810,7 @@ mod tests {
             application_identification: Some(APP2E_APPLICATION_IDENTIFICATION.to_string()),
             max_cll: None,
             max_fall: None,
+            ..Default::default()
         });
         cpl.locale_list = Some(LocaleList {
             locales: vec![Locale {
@@ -8782,6 +8839,7 @@ mod tests {
             application_identification: Some(APP2E_APPLICATION_IDENTIFICATION.to_string()),
             max_cll: None,
             max_fall: None,
+            ..Default::default()
         });
         cpl.locale_list = Some(LocaleList {
             locales: vec![Locale {

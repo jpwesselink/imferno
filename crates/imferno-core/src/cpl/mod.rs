@@ -1337,7 +1337,7 @@ pub struct RegionList {
 // =============================================================================
 
 #[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[derive(Debug, Default, Serialize, Deserialize, PartialEq, Clone)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
 #[cfg_attr(feature = "wasm", derive(Tsify))]
@@ -1367,6 +1367,177 @@ pub struct ExtensionProperties {
         serde(rename = "maxFALL", alias = "MaxFALL", default)
     )]
     pub max_fall: Option<u32>,
+
+    /// ST 2067-203:2023 §5.4 — S-ADM per-track parameter set.
+    /// Namespace `http://www.smpte-ra.org/ns/2067-203/2022`. Cross-refs
+    /// its `TrackId` back to one of the CPL's `MGASADMSignalSequence`
+    /// track IDs. Multiple sets can appear (one per S-ADM VirtualTrack).
+    #[cfg_attr(
+        not(feature = "wasm"),
+        serde(rename = "MGASADMVirtualTrackParameterSet", default)
+    )]
+    #[cfg_attr(
+        feature = "wasm",
+        serde(
+            rename = "mgaSadmVirtualTrackParameterSets",
+            alias = "MGASADMVirtualTrackParameterSet",
+            default
+        )
+    )]
+    pub mga_sadm_virtual_track_parameter_sets: Vec<MGASADMVirtualTrackParameterSet>,
+
+    /// ST 2067-204:2023 §5.4 — ADM per-track parameter set. Structurally
+    /// identical to the S-ADM variant above, in the sibling namespace
+    /// `http://www.smpte-ra.org/ns/2067-204/2022`.
+    #[cfg_attr(
+        not(feature = "wasm"),
+        serde(rename = "ADMAudioVirtualTrackParameterSet", default)
+    )]
+    #[cfg_attr(
+        feature = "wasm",
+        serde(
+            rename = "admAudioVirtualTrackParameterSets",
+            alias = "ADMAudioVirtualTrackParameterSet",
+            default
+        )
+    )]
+    pub adm_audio_virtual_track_parameter_sets: Vec<ADMAudioVirtualTrackParameterSet>,
+}
+
+/// ST 2067-203:2023 §5.4 — per-S-ADM-VirtualTrack parameter set.
+///
+/// - `id`: the parameter set's own UUID
+/// - `track_id`: cross-refs a `MGASADMSignalSequence` in the CPL's
+///   SequenceList; must match one of them exactly
+/// - `mga_sadm_operational_mode`: URI naming the S-ADM operational mode
+///   (SMPTE registered)
+/// - `mga_sadm_soundfield_group_selector`: 0..N selectors that bind
+///   Resource IDs to `MGASoundfieldGroupLinkID` values on the target
+///   MXF's MGA sub-descriptors
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[cfg_attr(feature = "typescript", derive(TS))]
+#[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
+#[cfg_attr(feature = "wasm", derive(Tsify))]
+#[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
+pub struct MGASADMVirtualTrackParameterSet {
+    #[cfg_attr(not(feature = "wasm"), serde(rename = "Id"))]
+    #[cfg_attr(feature = "wasm", serde(rename = "id", alias = "Id"))]
+    pub id: ImfUuid,
+
+    #[cfg_attr(not(feature = "wasm"), serde(rename = "TrackId"))]
+    #[cfg_attr(feature = "wasm", serde(rename = "trackId", alias = "TrackId"))]
+    pub track_id: ImfUuid,
+
+    #[cfg_attr(not(feature = "wasm"), serde(rename = "MGASADMOperationalMode"))]
+    #[cfg_attr(
+        feature = "wasm",
+        serde(rename = "mgaSadmOperationalMode", alias = "MGASADMOperationalMode")
+    )]
+    pub mga_sadm_operational_mode: String,
+
+    #[cfg_attr(
+        not(feature = "wasm"),
+        serde(rename = "MGASADMSoundfieldGroupSelector", default)
+    )]
+    #[cfg_attr(
+        feature = "wasm",
+        serde(
+            rename = "mgaSadmSoundfieldGroupSelectors",
+            alias = "MGASADMSoundfieldGroupSelector",
+            default
+        )
+    )]
+    pub mga_sadm_soundfield_group_selector: Vec<MGASADMSoundfieldGroupSelector>,
+}
+
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[cfg_attr(feature = "typescript", derive(TS))]
+#[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
+#[cfg_attr(feature = "wasm", derive(Tsify))]
+#[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
+pub struct MGASADMSoundfieldGroupSelector {
+    #[cfg_attr(not(feature = "wasm"), serde(rename = "ResourceId"))]
+    #[cfg_attr(feature = "wasm", serde(rename = "resourceId", alias = "ResourceId"))]
+    pub resource_id: ImfUuid,
+
+    /// One or more `MGASoundfieldGroupLinkID` values that must match
+    /// `MGASoundfieldGroupLinkID` fields carried on the MXF's
+    /// `MGASoundfieldGroupLabelSubDescriptor` (per ST 2067-203 §5.4.2).
+    #[cfg_attr(not(feature = "wasm"), serde(rename = "MGASoundfieldGroupLinkID"))]
+    #[cfg_attr(
+        feature = "wasm",
+        serde(
+            rename = "mgaSoundfieldGroupLinkIds",
+            alias = "MGASoundfieldGroupLinkID"
+        )
+    )]
+    pub mga_soundfield_group_link_id: Vec<ImfUuid>,
+}
+
+/// ST 2067-204:2023 §5.4 — per-ADM-VirtualTrack parameter set.
+/// Structurally identical to [`MGASADMVirtualTrackParameterSet`] modulo
+/// the `MGA` prefix — cross-refs an `ADMAudioSequence` in the CPL and
+/// binds resources to `ADMSoundfieldGroupLinkID` values on the target
+/// MXF's `ADMSoundfieldGroupLabelSubDescriptor`.
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[cfg_attr(feature = "typescript", derive(TS))]
+#[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
+#[cfg_attr(feature = "wasm", derive(Tsify))]
+#[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
+pub struct ADMAudioVirtualTrackParameterSet {
+    #[cfg_attr(not(feature = "wasm"), serde(rename = "Id"))]
+    #[cfg_attr(feature = "wasm", serde(rename = "id", alias = "Id"))]
+    pub id: ImfUuid,
+
+    #[cfg_attr(not(feature = "wasm"), serde(rename = "TrackId"))]
+    #[cfg_attr(feature = "wasm", serde(rename = "trackId", alias = "TrackId"))]
+    pub track_id: ImfUuid,
+
+    #[cfg_attr(not(feature = "wasm"), serde(rename = "ADMOperationalMode"))]
+    #[cfg_attr(
+        feature = "wasm",
+        serde(rename = "admOperationalMode", alias = "ADMOperationalMode")
+    )]
+    pub adm_operational_mode: String,
+
+    #[cfg_attr(
+        not(feature = "wasm"),
+        serde(rename = "ADMSoundfieldGroupSelector", default)
+    )]
+    #[cfg_attr(
+        feature = "wasm",
+        serde(
+            rename = "admSoundfieldGroupSelectors",
+            alias = "ADMSoundfieldGroupSelector",
+            default
+        )
+    )]
+    pub adm_soundfield_group_selector: Vec<ADMSoundfieldGroupSelector>,
+}
+
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[cfg_attr(feature = "typescript", derive(TS))]
+#[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
+#[cfg_attr(feature = "wasm", derive(Tsify))]
+#[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
+pub struct ADMSoundfieldGroupSelector {
+    #[cfg_attr(not(feature = "wasm"), serde(rename = "ResourceId"))]
+    #[cfg_attr(feature = "wasm", serde(rename = "resourceId", alias = "ResourceId"))]
+    pub resource_id: ImfUuid,
+
+    #[cfg_attr(not(feature = "wasm"), serde(rename = "ADMSoundfieldGroupLinkID"))]
+    #[cfg_attr(
+        feature = "wasm",
+        serde(
+            rename = "admSoundfieldGroupLinkIds",
+            alias = "ADMSoundfieldGroupLinkID"
+        )
+    )]
+    pub adm_soundfield_group_link_id: Vec<ImfUuid>,
 }
 
 // =============================================================================
@@ -2594,7 +2765,7 @@ pub struct Segment {
 }
 
 #[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Default, Serialize, Deserialize, PartialEq)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
 #[cfg_attr(feature = "wasm", derive(Tsify))]
@@ -2677,6 +2848,35 @@ pub struct SequenceList {
         serde(rename = "isxdSequences", alias = "ISXDSequence", default)
     )]
     pub isxd_sequences: Vec<ISXDSequence>,
+
+    /// ST 2067-203:2023 §5.3 — S-ADM audio virtual track sequence
+    /// (namespace `http://www.smpte-ra.org/ns/2067-203/2022`,
+    /// `xs:element name="MGASADMSignalSequence" type="cpl:SequenceType"`).
+    /// Carries S-ADM audio essence in an MGA MXF container.
+    #[cfg_attr(
+        not(feature = "wasm"),
+        serde(rename = "MGASADMSignalSequence", default)
+    )]
+    #[cfg_attr(
+        feature = "wasm",
+        serde(
+            rename = "mgaSadmSignalSequences",
+            alias = "MGASADMSignalSequence",
+            default
+        )
+    )]
+    pub mga_sadm_signal_sequences: Vec<MGASADMSignalSequence>,
+
+    /// ST 2067-204:2023 §5.3 — ADM audio virtual track sequence
+    /// (namespace `http://www.smpte-ra.org/ns/2067-204/2022`,
+    /// `xs:element name="ADMAudioSequence" type="cpl:SequenceType"`).
+    /// Carries ADM-labeled WAVE PCM audio using ST 2131 channel labels.
+    #[cfg_attr(not(feature = "wasm"), serde(rename = "ADMAudioSequence", default))]
+    #[cfg_attr(
+        feature = "wasm",
+        serde(rename = "admAudioSequences", alias = "ADMAudioSequence", default)
+    )]
+    pub adm_audio_sequences: Vec<ADMAudioSequence>,
 }
 
 impl SequenceList {
@@ -2702,6 +2902,12 @@ impl SequenceList {
             v.push(s);
         }
         for s in &self.isxd_sequences {
+            v.push(s);
+        }
+        for s in &self.mga_sadm_signal_sequences {
+            v.push(s);
+        }
+        for s in &self.adm_audio_sequences {
             v.push(s);
         }
         v
@@ -2730,6 +2936,12 @@ impl SequenceList {
         }
         for s in &self.isxd_sequences {
             v.push((s, "ISXD"));
+        }
+        for s in &self.mga_sadm_signal_sequences {
+            v.push((s, "MGASADMSignal"));
+        }
+        for s in &self.adm_audio_sequences {
+            v.push((s, "ADMAudio"));
         }
         v
     }
@@ -2790,6 +3002,8 @@ define_sequence_type!(HearingImpairedCaptionsSequence);
 define_sequence_type!(ForcedNarrativeSequence);
 define_sequence_type!(IABSequence);
 define_sequence_type!(ISXDSequence);
+define_sequence_type!(MGASADMSignalSequence);
+define_sequence_type!(ADMAudioSequence);
 
 // =============================================================================
 // Resource types
@@ -3122,6 +3336,17 @@ fn collect_unknown_xml_tokens(xml: &str) -> Result<BTreeSet<String>, String> {
         "ForcedNarrativeSequence",
         "IABSequence",
         "ISXDSequence",
+        "MGASADMSignalSequence",
+        "ADMAudioSequence",
+        "MGASADMVirtualTrackParameterSet",
+        "ADMAudioVirtualTrackParameterSet",
+        "MGASADMOperationalMode",
+        "ADMOperationalMode",
+        "MGASADMSoundfieldGroupSelector",
+        "ADMSoundfieldGroupSelector",
+        "MGASoundfieldGroupLinkID",
+        "ADMSoundfieldGroupLinkID",
+        "ResourceId",
         "TrackId",
         "ResourceList",
         "Resource",
@@ -3690,6 +3915,7 @@ mod tests {
                 track_id: uuid(),
                 resource_list: rl(),
             }],
+            ..Default::default()
         }
     }
 
@@ -3726,6 +3952,7 @@ mod tests {
             forced_narrative_sequences: vec![],
             iab_sequences: vec![],
             isxd_sequences: vec![],
+            ..Default::default()
         };
         assert!(sl.all_sequences().is_empty());
         assert!(sl.all_sequences_typed().is_empty());

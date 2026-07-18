@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.1.0](https://github.com/jpwesselink/imferno/compare/imferno-v3.0.1...imferno-v3.1.0) - 2026-07-18
+
+### Fixed
+
+- *(validation)* audit P2 batch — 9 spec-conformance findings across audio MCA, IAB, ISXD
+
 ## [2.4.0](https://github.com/jpwesselink/imferno/compare/imferno-v2.3.0...imferno-v2.4.0) - 2026-05-11
 
 ### Added

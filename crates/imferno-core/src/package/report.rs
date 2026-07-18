@@ -1061,7 +1061,8 @@ fn video_info_from_descriptor(ed: &EssenceDescriptor) -> Option<VideoInfo> {
                 d.component_depth,
                 d.sub_descriptors.as_ref(),
             )
-        } else if let Some(ref d) = ed.rgba_descriptor {
+        } else {
+            let d = ed.rgba_descriptor.as_ref()?;
             (
                 d.stored_width,
                 d.stored_height,
@@ -1071,8 +1072,6 @@ fn video_info_from_descriptor(ed: &EssenceDescriptor) -> Option<VideoInfo> {
                 None,
                 d.sub_descriptors.as_ref(),
             )
-        } else {
-            return None;
         };
 
     let resolution = match (width, height) {

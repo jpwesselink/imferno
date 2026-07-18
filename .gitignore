@@ -11,6 +11,10 @@
 # Fixture media (large production IMF packages)
 fixture/
 
+# Fraunhofer SMPTE ST 2067-203/-204 corpus — fetched via
+# scripts/fetch-fraunhofer-corpus.sh, CC-BY-NC-ND 4.0, not vendored.
+test-data/Fraunhofer-SMPTE-ST2067-203-204/
+
 # Large / copyrighted SMPTE registers go elsewhere — see specs/README.md.
 # specs/ itself is checked in: the SMPTE XSDs are BSD-licensed
 # (redistribution permitted with the copyright notice retained).

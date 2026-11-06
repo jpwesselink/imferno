@@ -1018,8 +1018,8 @@ fn validate_virtual_track_continuity(
 
 /// All resources in a virtual track shall have the same edit rate.
 ///
-/// ST 2067-2 §6.9.3: "The value of the EditRate element within each Resource
-/// of a Virtual Track shall be identical."
+/// Applies to image, audio, IAB and ISXD virtual tracks. Timed Text virtual
+/// tracks are excluded (ST 2067-2:2020 §6.3.3: any edit rate).
 fn validate_virtual_track_edit_rates(
     cpl: &CompositionPlaylist,
     code: fn(CoreConstraintsCode) -> &'static str,
@@ -1087,25 +1087,10 @@ fn validate_virtual_track_edit_rates(
         for seq in &sl.main_audio_sequences {
             check_sequence(seq, "MainAudioSequence", issues, &mut track_edit_rates);
         }
-        for seq in &sl.subtitles_sequences {
-            check_sequence(seq, "SubtitlesSequence", issues, &mut track_edit_rates);
-        }
-        for seq in &sl.hearing_impaired_captions_sequences {
-            check_sequence(
-                seq,
-                "HearingImpairedCaptionsSequence",
-                issues,
-                &mut track_edit_rates,
-            );
-        }
-        for seq in &sl.forced_narrative_sequences {
-            check_sequence(
-                seq,
-                "ForcedNarrativeSequence",
-                issues,
-                &mut track_edit_rates,
-            );
-        }
+        // Timed Text virtual tracks (Subtitles, HearingImpairedCaptions,
+        // ForcedNarrative) are not checked: ST 2067-2:2020 §6.3.3 lets their
+        // Resource edit rate be any value, and 2013/2016 §6.3.3 set no
+        // edit-rate constraint on these tracks.
         for seq in &sl.iab_sequences {
             check_sequence(seq, "IABSequence", issues, &mut track_edit_rates);
         }
@@ -6550,6 +6535,82 @@ mod tests {
             "Edit rate mismatch in virtual track should be flagged: {:#?}",
             issues,
         );
+    }
+
+    /// ST 2067-2:2020 §6.3.3: Timed Text resource edit rates may be any
+    /// value (2013/2016 §6.3.3 set no edit-rate constraint on these tracks
+    /// either), so mixed edit rates in a Subtitles / HearingImpairedCaptions /
+    /// ForcedNarrative virtual track are not flagged.
+    #[test]
+    fn core_accepts_mixed_edit_rates_in_timed_text_virtual_track() {
+        use crate::cpl::{
+            ForcedNarrativeSequence, HearingImpairedCaptionsSequence, Segment, SubtitlesSequence,
+        };
+
+        let resource = |id: u8, er: u32| {
+            let mut r = make_resource(None);
+            r.id = uuid(id);
+            r.edit_rate = Some(EditRate::new(er, 1));
+            r
+        };
+        let mut cpl = minimal_cpl();
+        cpl.edit_rate = Some(EditRate::new(24, 1));
+        let mut sl1 = empty_sequence_list();
+        let mut sl2 = empty_sequence_list();
+        sl1.subtitles_sequences.push(SubtitlesSequence {
+            id: uuid(10),
+            track_id: uuid(40),
+            resource_list: ResourceList {
+                resources: vec![resource(90, 24), resource(91, 1000)],
+            },
+        });
+        sl2.subtitles_sequences.push(SubtitlesSequence {
+            id: uuid(11),
+            track_id: uuid(40),
+            resource_list: ResourceList {
+                resources: vec![resource(92, 25)],
+            },
+        });
+        sl1.hearing_impaired_captions_sequences
+            .push(HearingImpairedCaptionsSequence {
+                id: uuid(12),
+                track_id: uuid(41),
+                resource_list: ResourceList {
+                    resources: vec![resource(93, 24), resource(94, 30)],
+                },
+            });
+        sl1.forced_narrative_sequences
+            .push(ForcedNarrativeSequence {
+                id: uuid(13),
+                track_id: uuid(42),
+                resource_list: ResourceList {
+                    resources: vec![resource(95, 24), resource(96, 60)],
+                },
+            });
+        cpl.segment_list.segments = vec![
+            Segment {
+                id: uuid(30),
+                sequence_list: sl1,
+            },
+            Segment {
+                id: uuid(31),
+                sequence_list: sl2,
+            },
+        ];
+
+        for issues in [
+            CoreConstraints2013.validate_cpl(&cpl),
+            CoreConstraints2016.validate_cpl(&cpl),
+            CoreConstraints2020.validate_cpl(&cpl),
+        ] {
+            assert!(
+                !issues
+                    .iter()
+                    .any(|i| i.code.contains("VirtualTrackEditRate")),
+                "Timed text edit rates must not be flagged: {:#?}",
+                issues,
+            );
+        }
     }
 
     /// ST 2067-3 §6.9.3 / XSD: Resource EditRate is optional (minOccurs="0").

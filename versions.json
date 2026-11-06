@@ -81,10 +81,6 @@
     {
       "label": "#77 feat/st2067-203-204-cpl-plugin-semantics",
       "path": "/pr-77/"
-    },
-    {
-      "label": "#91 chore/remove-claude-refs",
-      "path": "/pr-91/"
     }
   ],
   "latest": "/v3.0.1/"

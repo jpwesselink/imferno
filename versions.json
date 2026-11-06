@@ -81,6 +81,10 @@
     {
       "label": "#77 feat/st2067-203-204-cpl-plugin-semantics",
       "path": "/pr-77/"
+    },
+    {
+      "label": "#93 chore/minor-dep-bumps",
+      "path": "/pr-93/"
     }
   ],
   "latest": "/v3.0.1/"

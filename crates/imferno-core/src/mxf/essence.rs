@@ -16,7 +16,10 @@ use std::io::{Read, Seek};
 use std::path::Path;
 
 use smpte_klv::KlvStream;
-use smpte_mxf::{seek_header_partition, MxfError, PartitionKind, PartitionPack, PartitionStatus};
+use smpte_mxf::{
+    seek_footer_partition, seek_header_partition, MxfError, PartitionKind, PartitionPack,
+    PartitionStatus,
+};
 
 use crate::diagnostics::{Location, ValidationIssue};
 use crate::mxf::codes::{ImfernoMxf, St2067_2_2016, St377_1_2011};
@@ -51,7 +54,22 @@ pub fn validate_mxf_essence(path: &Path) -> Vec<ValidationIssue> {
     let mut reader = std::io::BufReader::new(file);
     match parse_header_pack(&mut reader) {
         Ok(pack) => {
-            issues.extend(check_partition_pack(path, &pack));
+            // ST 377-1 §6.2.4: an Open header partition is fine when a
+            // Closed footer partition carries header metadata. Only read
+            // the footer when the header is Open.
+            let closed_footer_with_metadata = is_open(pack.status)
+                && parse_footer_pack(&mut reader)
+                    .map(|footer| {
+                        matches!(footer.kind, PartitionKind::Footer)
+                            && !is_open(footer.status)
+                            && footer.header_byte_count > 0
+                    })
+                    .unwrap_or(false);
+            issues.extend(check_partition_pack(
+                path,
+                &pack,
+                closed_footer_with_metadata,
+            ));
         }
         Err(e) => {
             issues.push(parse_failure_issue(path, &e));
@@ -75,7 +93,35 @@ fn parse_header_pack<R: Read + Seek>(reader: &mut R) -> Result<PartitionPack, Mx
     ))
 }
 
-fn check_partition_pack(path: &Path, pack: &PartitionPack) -> Vec<ValidationIssue> {
+fn is_open(status: PartitionStatus) -> bool {
+    matches!(
+        status,
+        PartitionStatus::OpenIncomplete | PartitionStatus::OpenComplete
+    )
+}
+
+fn parse_footer_pack<R: Read + Seek>(reader: &mut R) -> Result<PartitionPack, MxfError> {
+    let footer_offset = seek_footer_partition(reader)?;
+    reader.seek(std::io::SeekFrom::Start(footer_offset))?;
+    let mut stream = KlvStream::new(reader);
+    let triplet = stream
+        .read_triplet()
+        .map_err(MxfError::from)?
+        .ok_or(MxfError::Truncated(
+            "expected partition pack triplet at footer offset",
+        ))?;
+    PartitionPack::from_triplet(&triplet)?.ok_or(MxfError::Truncated(
+        "footer triplet was not a partition pack",
+    ))
+}
+
+/// `closed_footer_with_metadata`: whether a Closed footer partition with
+/// header metadata was found (only looked up when the header is Open).
+fn check_partition_pack(
+    path: &Path,
+    pack: &PartitionPack,
+    closed_footer_with_metadata: bool,
+) -> Vec<ValidationIssue> {
     let mut issues = Vec::new();
 
     // ST 2067-5:2013 §5.1.5 / ST 377-1 §6.4: the header partition MUST
@@ -111,19 +157,18 @@ fn check_partition_pack(path: &Path, pack: &PartitionPack) -> Vec<ValidationIssu
         );
     }
 
-    // ST 377-1 §8.3.3: Header partition status SHOULD be Closed +
-    // Complete in a finished IMF MXF. We flag Open partitions as
-    // warnings because some authoring pipelines ship Open intentionally
-    // for streaming-first delivery — operators can `Off` this rule
-    // via their `RulesConfig` if their pipeline does that legitimately.
-    if matches!(
-        pack.status,
-        PartitionStatus::OpenIncomplete | PartitionStatus::OpenComplete
-    ) {
+    // ST 377-1 §6.2.5: the Header Partition may be Open or Closed.
+    // §6.2.4: a file is Closed if it has a Closed Header Partition or a
+    // Closed Footer Partition containing Header Metadata; delivered
+    // files shall be Closed. Flag only an Open header with no such
+    // footer, i.e. an Open MXF file.
+    if is_open(pack.status) && !closed_footer_with_metadata {
         issues.push(
-            ValidationIssue::from_code(St377_1_2011::HeaderPartitionOpen,
+            ValidationIssue::from_code(
+                St377_1_2011::HeaderPartitionOpen,
                 format!(
-                    "Header partition in MXF file at {} is {:?} — finished IMF deliveries should be ClosedComplete",
+                    "Header partition in MXF file at {} is {:?} and no Closed footer partition \
+                     with header metadata was found, so the file is Open (ST 377-1 §6.2.4)",
                     path.display(),
                     pack.status,
                 ),
@@ -225,13 +270,22 @@ mod tests {
     /// essence container UL. Used to keep tests independent of any
     /// real MXF fixture (which we don't vendor).
     fn synthetic_header_partition(op_ul: &[u8; 16], header_byte_count: u64) -> Vec<u8> {
+        synthetic_partition(op_ul, header_byte_count, 0)
+    }
+
+    /// Partition pack value with an explicit FooterPartition offset.
+    fn synthetic_partition(
+        op_ul: &[u8; 16],
+        header_byte_count: u64,
+        footer_partition: u64,
+    ) -> Vec<u8> {
         let mut value = Vec::new();
         value.extend_from_slice(&0x0102u16.to_be_bytes()); // major.minor
         value.extend_from_slice(&0u16.to_be_bytes()); // minor (unused; major-minor laid out as u16 pair)
         value.extend_from_slice(&1u32.to_be_bytes()); // kag_size
         value.extend_from_slice(&0u64.to_be_bytes()); // this_partition
         value.extend_from_slice(&0u64.to_be_bytes()); // previous_partition
-        value.extend_from_slice(&0u64.to_be_bytes()); // footer_partition
+        value.extend_from_slice(&footer_partition.to_be_bytes());
         value.extend_from_slice(&header_byte_count.to_be_bytes());
         value.extend_from_slice(&0u64.to_be_bytes()); // index_byte_count
         value.extend_from_slice(&0u32.to_be_bytes()); // index_sid
@@ -327,6 +381,80 @@ mod tests {
             "expected MissingHeaderMetadata, got: {:#?}",
             issues
         );
+    }
+
+    /// Build a file with an Open header partition followed by a footer
+    /// partition pack with the given status byte and HeaderByteCount.
+    fn open_header_with_footer(footer_status: u8, footer_header_bytes: u64) -> Vec<u8> {
+        // Header value length is fixed, so compute the header KLV size
+        // first to know where the footer starts.
+        let header_len = {
+            let mut probe = Vec::new();
+            let mut key = Vec::new();
+            write_partition_key(&mut key, 0x02, 0x01);
+            write_klv(
+                &mut probe,
+                &key,
+                &synthetic_partition(&OP1A_UL_BYTES, 1024, 0),
+            );
+            probe.len() as u64
+        };
+        let mut buf = Vec::new();
+        let mut key = Vec::new();
+        write_partition_key(&mut key, 0x02, 0x01); // header, open+incomplete
+        write_klv(
+            &mut buf,
+            &key,
+            &synthetic_partition(&OP1A_UL_BYTES, 1024, header_len),
+        );
+        let mut key = Vec::new();
+        write_partition_key(&mut key, 0x04, footer_status); // footer
+        write_klv(
+            &mut buf,
+            &key,
+            &synthetic_partition(&OP1A_UL_BYTES, footer_header_bytes, header_len),
+        );
+        buf
+    }
+
+    fn has_header_partition_open(issues: &[ValidationIssue]) -> bool {
+        issues
+            .iter()
+            .any(|i| i.code.contains("HeaderPartitionOpen"))
+    }
+
+    /// ST 377-1:2011 §6.2.5: the Header Partition may be Open; §6.2.4: a
+    /// file is Closed if it has a Closed Footer Partition with Header
+    /// Metadata. Such a file must not be flagged.
+    #[test]
+    fn open_header_with_closed_footer_metadata_is_not_flagged() {
+        let tmp = dump_to_temp(&open_header_with_footer(0x04, 2048));
+        let issues = validate_mxf_essence(tmp.path());
+        assert!(
+            !has_header_partition_open(&issues),
+            "Open header + Closed footer with header metadata is a Closed file: {issues:#?}",
+        );
+    }
+
+    /// ST 377-1:2011 §6.2.4: without a Closed Header Partition or a Closed
+    /// Footer Partition containing Header Metadata the file is Open.
+    #[test]
+    fn open_header_without_closed_footer_metadata_is_flagged() {
+        // Closed footer but no header metadata in it.
+        let tmp = dump_to_temp(&open_header_with_footer(0x04, 0));
+        assert!(has_header_partition_open(&validate_mxf_essence(tmp.path())));
+
+        // No footer at all.
+        let mut buf = Vec::new();
+        let mut key = Vec::new();
+        write_partition_key(&mut key, 0x02, 0x01);
+        write_klv(
+            &mut buf,
+            &key,
+            &synthetic_header_partition(&OP1A_UL_BYTES, 1024),
+        );
+        let tmp = dump_to_temp(&buf);
+        assert!(has_header_partition_open(&validate_mxf_essence(tmp.path())));
     }
 
     #[test]

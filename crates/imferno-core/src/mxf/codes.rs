@@ -26,8 +26,8 @@ pub enum St377_1_2011 {
     /// First partition in the file is not the Header partition
     /// (ST 377-1 §6.4 requires header-first ordering).
     NonHeaderFirstPartition,
-    /// Header partition is Open (in-progress) — finished IMF
-    /// deliveries should be ClosedComplete per ST 377-1 §8.3.3.
+    /// Header partition is Open and no Closed footer partition with
+    /// header metadata exists, so the file is Open (ST 377-1 §6.2.4).
     HeaderPartitionOpen,
     /// Header partition declares zero header metadata
     /// (HeaderByteCount = 0) — ST 377-1 §8.3.3 requires header
@@ -57,7 +57,7 @@ impl ValidationCode for St377_1_2011 {
                 "The first partition in an MXF file must be the Header partition."
             }
             Self::HeaderPartitionOpen => {
-                "The header partition status should be ClosedComplete for finished deliveries."
+                "The header partition is Open and no Closed footer partition carries header metadata, so the MXF file is Open."
             }
             Self::MissingHeaderMetadata => {
                 "The header partition must carry header metadata (HeaderByteCount > 0)."
@@ -95,7 +95,7 @@ impl ValidationCode for St377_1_2011 {
             Self::NonHeaderFirstPartition =>
                 "An authoring tool wrote a Body partition before the Header partition, violating ST 377-1 ordering.",
             Self::HeaderPartitionOpen =>
-                "A live-streaming export shipped a Header partition with OpenIncomplete status instead of finalising to ClosedComplete.",
+                "A live-streaming export shipped an OpenIncomplete Header partition and no Closed Footer partition with header metadata.",
             Self::MissingHeaderMetadata =>
                 "An MXF file whose Header partition advertises HeaderByteCount = 0 — no metadata sets follow the partition pack.",
         })

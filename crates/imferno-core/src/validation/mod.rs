@@ -3292,7 +3292,7 @@ impl App2E2021 {
         self.validate_image_resolution(cpl, issues);
         // Tables 4-6: Image frame rate
         self.validate_image_frame_rate(cpl, issues);
-        // §6.5: Audio sample rate (48000 Hz)
+        // ST 2067-2 §5.3.2.2: Audio sample rate (48000 or 96000 Hz)
         self.validate_audio_sample_rate(cpl, issues);
         // §6.2: Essence descriptor completeness
         self.validate_descriptor_completeness(cpl, issues);
@@ -3598,7 +3598,8 @@ impl App2E2021 {
         }
     }
 
-    /// ST 2067-21 §6.5: AudioSampleRate shall be 48000 Hz.
+    /// AudioSampleRate shall be 48000 Hz or 96000 Hz
+    /// (ST 2067-2:2020 §5.3.2.2, applied by ST 2067-21 §4).
     fn validate_audio_sample_rate(
         &self,
         cpl: &CompositionPlaylist,
@@ -3616,15 +3617,16 @@ impl App2E2021 {
             };
 
             if let Some(ref rate) = wave.audio_sample_rate {
-                // 48000 Hz = 48000/1
-                if rate.numerator != 48000 || rate.denominator != 1 {
+                let hz = (rate.denominator != 0 && rate.numerator % rate.denominator == 0)
+                    .then(|| rate.numerator / rate.denominator);
+                if !matches!(hz, Some(48000) | Some(96000)) {
                     issues.push(
                         ValidationIssue::new(
                             Severity::Error,
                             Category::Audio,
                             St2067_21_2023::AudioSampleRate.code().to_string(),
                             format!(
-                                "WAVEPCMDescriptor {}: AudioSampleRate {}/{} ({} Hz) is not 48000 Hz",
+                                "WAVEPCMDescriptor {}: AudioSampleRate {}/{} ({} Hz) is not 48000 Hz or 96000 Hz",
                                 ed.id, rate.numerator, rate.denominator,
                                 rate.numerator / rate.denominator.max(1)
                             ),
@@ -7555,8 +7557,9 @@ mod tests {
         );
     }
 
+    /// ST 2067-2:2020 §5.3.2.2 permits 48000 Hz or 96000 Hz.
     #[test]
-    fn app2e_rejects_96000hz_audio() {
+    fn app2e_accepts_96000hz_audio() {
         let cpl = cpl_with_audio(WAVEPCMDescriptor {
             instance_id: None,
             sample_rate: None,
@@ -7568,8 +7571,8 @@ mod tests {
         });
         let issues = App2E2021.validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| i.code.contains("AudioSampleRate")),
-            "96000 Hz should be rejected: {:#?}",
+            !issues.iter().any(|i| i.code.contains("AudioSampleRate")),
+            "96000 Hz should be accepted: {:#?}",
             issues,
         );
     }

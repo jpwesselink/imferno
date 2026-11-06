@@ -206,7 +206,7 @@ pub enum St2067_21_2023 {
     WhiteRefLevel,
 
     // ── §6.5 Audio ───────────────────────────────────────────────────────────
-    /// Audio sample rate is not 48 kHz as required.
+    /// Audio sample rate is not 48 kHz or 96 kHz (ST 2067-2 §5.3.2.2).
     AudioSampleRate,
     /// `QuantizationBits` value is not in the permitted set (16/24).
     QuantizationBits,
@@ -395,7 +395,7 @@ impl ValidationCode for St2067_21_2023 {
             Self::BlackRefLevel => "BlackRefLevel value is inconsistent with ComponentDepth.",
             Self::ColorRange => "ColorRange value is not in the permitted set.",
             Self::WhiteRefLevel => "WhiteRefLevel value is inconsistent with ComponentDepth.",
-            Self::AudioSampleRate => "Audio sample rate must be 48 000 Hz.",
+            Self::AudioSampleRate => "Audio sample rate must be 48 000 Hz or 96 000 Hz.",
             Self::QuantizationBits => "QuantizationBits must be 16 or 24.",
             Self::CodingStyle => "JPEG 2000 codestream coding style is not compliant.",
             Self::J2CLayout => "JPEG 2000 codestream layout does not meet App2E requirements.",
@@ -573,7 +573,7 @@ impl ValidationCode for St2067_21_2023 {
             Self::WhiteRefLevel =>
                 "<ComponentDepth>10</ComponentDepth><WhiteRefLevel>235</WhiteRefLevel>  <!-- expected 940 for 10-bit -->",
             Self::AudioSampleRate =>
-                "<AudioSampleRate>44100/1</AudioSampleRate>  <!-- must be 48000/1 -->",
+                "<AudioSampleRate>44100/1</AudioSampleRate>  <!-- must be 48000/1 or 96000/1 -->",
             Self::QuantizationBits =>
                 "<QuantizationBits>32</QuantizationBits>  <!-- not in {16,24} -->",
             Self::CodingStyle =>

@@ -4033,21 +4033,23 @@ impl App2E2021 {
         cpl: &CompositionPlaylist,
         issues: &mut Vec<ValidationIssue>,
     ) {
-        // App2E requires ApplicationIdentification when ExtensionProperties is present.
-        // If ExtensionProperties is absent, the check is deferred (CPL may lack it
-        // because it's being tested for other properties only).
-        if let Some(ref ext) = cpl.extension_properties {
-            if ext.application_identification.is_none() {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Metadata,
-                        St2067_21_2023::ApplicationIdentification.code(),
-                        "ApplicationIdentification is required for App2E compositions",
-                    )
-                    .with_location(Location::new().with_cpl(cpl.id)),
-                );
-            }
+        // ST 2067-2 §6.1: ExtensionProperties shall include a single
+        // ApplicationIdentification (and ST 2067-21 §7.1 its Table 15 value),
+        // so a CPL without ExtensionProperties lacks it as well.
+        let has_app_id = cpl
+            .extension_properties
+            .as_ref()
+            .is_some_and(|ext| ext.application_identification.is_some());
+        if !has_app_id {
+            issues.push(
+                ValidationIssue::new(
+                    Severity::Error,
+                    Category::Metadata,
+                    St2067_21_2023::ApplicationIdentification.code(),
+                    "ApplicationIdentification is required for App2E compositions",
+                )
+                .with_location(Location::new().with_cpl(cpl.id)),
+            );
         }
 
         // Validate ContentMaturityRating entries in each Locale
@@ -4992,14 +4994,25 @@ mod tests {
 
     // ── App2E Tests ──────────────────────────────────────────────────────────
 
+    /// Add the ST 2067-21:2023 Table 15 ApplicationIdentification, which
+    /// ST 2067-2 §6.1 requires, so "no errors" fixtures are conforming.
+    fn with_app2e_app_id(mut cpl: CompositionPlaylist) -> CompositionPlaylist {
+        cpl.extension_properties = Some(ExtensionProperties {
+            application_identification: Some(APP2E_APPLICATION_IDENTIFICATION.to_string()),
+            max_cll: None,
+            max_fall: None,
+        });
+        cpl
+    }
+
     #[test]
     fn app2e_validates_valid_color3_hd() {
-        let cpl = cpl_with_cdci_descriptor(
+        let cpl = with_app2e_app_id(cpl_with_cdci_descriptor(
             ColorPrimaries::Bt709,
             TransferCharacteristic::Bt709,
             CodingEquations::Bt709,
             10,
-        );
+        ));
         let v = App2E2021;
         let issues = v.validate_cpl(&cpl);
         // COLOR.3 with 10-bit J2K should have no App2E errors
@@ -5327,7 +5340,7 @@ mod tests {
         };
 
         let ed_id = uuid(10);
-        let mut cpl = minimal_cpl();
+        let mut cpl = with_app2e_app_id(minimal_cpl());
         cpl.essence_descriptor_list = Some(EssenceDescriptorList {
             essence_descriptors: vec![EssenceDescriptor {
                 id: ed_id,
@@ -8519,7 +8532,7 @@ mod tests {
             EditRate::new(30, 1),
             EditRate::new(30000, 1001),
         ] {
-            let issues = v.validate_cpl(&cpl_1080i(rate));
+            let issues = v.validate_cpl(&with_app2e_app_id(cpl_1080i(rate)));
             let errors: Vec<_> = issues
                 .iter()
                 .filter(|i| matches!(i.severity, Severity::Error | Severity::Critical))
@@ -9152,6 +9165,25 @@ mod tests {
             "Missing ApplicationIdentification should be flagged: {:#?}",
             issues,
         );
+    }
+
+    /// ST 2067-2:2020 §6.1 (p18): ExtensionProperties "shall include a
+    /// single instance" of ApplicationIdentification, and ST 2067-21 §7.1
+    /// requires it to include the Table 15 value. A CPL with no
+    /// ExtensionProperties at all therefore lacks it too.
+    #[test]
+    fn app2e_flags_missing_extension_properties() {
+        let mut cpl = minimal_cpl();
+        cpl.edit_rate = Some(EditRate::new(24, 1));
+        cpl.extension_properties = None;
+        for issues in [App2E2021.validate_cpl(&cpl), App2E2020.validate_cpl(&cpl)] {
+            assert!(
+                issues
+                    .iter()
+                    .any(|i| i.code == St2067_21_2023::ApplicationIdentification.code()),
+                "Missing ExtensionProperties/ApplicationIdentification should be flagged: {issues:#?}",
+            );
+        }
     }
 
     // ── #47: LocaleList / RFC 5646 / ISO 3166-1 validation ──────────────

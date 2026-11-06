@@ -87,10 +87,27 @@ fn parse_header_pack<R: Read + Seek>(reader: &mut R) -> Result<(u64, PartitionPa
     Ok((header_offset, pack))
 }
 
+/// Upper bound for a partition pack value: 88 fixed bytes plus a batch
+/// of 16-byte essence container ULs (ST 377-1 §7.1). Generous on purpose.
+const MAX_PARTITION_PACK_VALUE_LEN: u64 = 64 * 1024;
+
+/// Read the partition pack at `offset`, which may point at arbitrary bytes.
+/// The 16-byte key and BER length are checked first, so a non-partition
+/// KLV (or an implausibly long one) is rejected without reading its value.
 fn read_partition_pack_at<R: Read + Seek>(
     reader: &mut R,
     offset: u64,
 ) -> Result<Option<PartitionPack>, MxfError> {
+    reader.seek(std::io::SeekFrom::Start(offset))?;
+    let mut key = [0u8; 16];
+    reader.read_exact(&mut key)?;
+    if !is_partition_pack_key(&Ul::from_bytes(key)) {
+        return Ok(None);
+    }
+    match read_ber_length(reader) {
+        Some((len, _)) if len <= MAX_PARTITION_PACK_VALUE_LEN => {}
+        _ => return Ok(None),
+    }
     reader.seek(std::io::SeekFrom::Start(offset))?;
     let mut stream = KlvStream::new(reader);
     let triplet = stream
@@ -610,6 +627,70 @@ mod tests {
         assert!(
             !has_header_partition_open(&issues),
             "footer offset is relative to the header partition: {issues:#?}",
+        );
+    }
+
+    /// Read+Seek wrapper counting the bytes actually read.
+    struct CountingReader {
+        inner: std::io::Cursor<Vec<u8>>,
+        bytes_read: usize,
+    }
+
+    impl Read for CountingReader {
+        fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+            let n = self.inner.read(buf)?;
+            self.bytes_read += n;
+            Ok(n)
+        }
+    }
+
+    impl Seek for CountingReader {
+        fn seek(&mut self, pos: std::io::SeekFrom) -> std::io::Result<u64> {
+            self.inner.seek(pos)
+        }
+    }
+
+    /// A FooterPartition offset (or RIP entry) may point at arbitrary
+    /// bytes. A non-partition KLV there with a huge declared length must be
+    /// rejected from its 16-byte key, without reading its value.
+    #[test]
+    fn footer_offset_at_huge_non_partition_klv_is_not_read() {
+        let mut header = Vec::new();
+        let mut key = Vec::new();
+        write_partition_key(&mut key, 0x02, 0x01); // header, open
+        write_klv(
+            &mut header,
+            &key,
+            &synthetic_partition(&OP1A_UL_BYTES, 1024, 0),
+        );
+        let junk_offset = header.len() as u64;
+        // Rebuild the header with FooterPartition pointing at the junk KLV.
+        let mut buf = Vec::new();
+        write_klv(
+            &mut buf,
+            &key,
+            &synthetic_partition(&OP1A_UL_BYTES, 1024, junk_offset),
+        );
+        assert_eq!(buf.len() as u64, junk_offset);
+        // Non-partition key, declared length 32 MiB, 1 MiB actually present.
+        buf.extend_from_slice(&[0x06, 0x0e, 0x2b, 0x34, 0x01, 0x02, 0x01, 0x01]);
+        buf.extend_from_slice(&[0x0d, 0x01, 0x03, 0x01, 0x15, 0x01, 0x05, 0x00]);
+        buf.push(0x84);
+        buf.extend_from_slice(&(32u32 << 20).to_be_bytes());
+        buf.extend(std::iter::repeat_n(0u8, 1 << 20));
+
+        let mut reader = CountingReader {
+            inner: std::io::Cursor::new(buf),
+            bytes_read: 0,
+        };
+        let header_pack = read_partition_pack_at(&mut reader, 0).unwrap().unwrap();
+        reader.bytes_read = 0;
+        let result = locate_footer(&mut reader, 0, &header_pack);
+        assert!(matches!(result, FooterSearch::Unknown));
+        assert!(
+            reader.bytes_read < 64 * 1024,
+            "footer lookup read {} bytes; the junk value must not be read",
+            reader.bytes_read
         );
     }
 

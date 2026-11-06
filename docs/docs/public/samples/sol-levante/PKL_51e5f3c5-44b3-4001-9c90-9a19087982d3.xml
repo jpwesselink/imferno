@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PackingList xmlns="http://www.smpte-ra.org/schemas/2067-2/2016/PKL">
+  <Id>urn:uuid:51e5f3c5-44b3-4001-9c90-9a19087982d3</Id>
+  <AnnotationText>SolLevante_UHD_P3PQ_01</AnnotationText>
+  <IssueDate>2020-04-01T14:28:30</IssueDate>
+  <Issuer>Netflix</Issuer>
+  <Creator>Blackmagic Design DaVinci Resolve Studio 16.0.0.060</Creator>
+  <AssetList>
+    <Asset>
+      <Id>urn:uuid:e4da5fcd-5ffc-4713-bcdd-95ea579d790b</Id>
+      <AnnotationText>VIDEO_e4da5fcd-5ffc-4713-bcdd-95ea579d790b.mxf</AnnotationText>
+      <Hash>Ru6jnvrMQoprgOUYf+tkmxiwZis=</Hash>
+      <Size>18521903620</Size>
+      <Type>application/mxf</Type>
+      <OriginalFileName>VIDEO_e4da5fcd-5ffc-4713-bcdd-95ea579d790b.mxf</OriginalFileName>
+      <HashAlgorithm Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/>
+    </Asset>
+    <Asset>
+      <Id>urn:uuid:c2d618d0-b775-47c2-ac45-8eccb9afc40a</Id>
+      <AnnotationText>AUDIO_c2d618d0-b775-47c2-ac45-8eccb9afc40a.mxf</AnnotationText>
+      <Hash>LFOHdMF0B9aMLe7cfa77ofeB8M0=</Hash>
+      <Size>227570824</Size>
+      <Type>application/mxf</Type>
+      <OriginalFileName>AUDIO_c2d618d0-b775-47c2-ac45-8eccb9afc40a.mxf</OriginalFileName>
+      <HashAlgorithm Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/>
+    </Asset>
+    <Asset>
+      <Id>urn:uuid:4467fc2f-2536-44ba-b1f9-010e0ae3f6b1</Id>
+      <AnnotationText>AUDIO_4467fc2f-2536-44ba-b1f9-010e0ae3f6b1.mxf</AnnotationText>
+      <Hash>U7RXF60+HL9psXK4CRrx1Q8+F7E=</Hash>
+      <Size>76034824</Size>
+      <Type>application/mxf</Type>
+      <OriginalFileName>AUDIO_4467fc2f-2536-44ba-b1f9-010e0ae3f6b1.mxf</OriginalFileName>
+      <HashAlgorithm Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/>
+    </Asset>
+    <Asset>
+      <Id>urn:uuid:0a207596-a0f5-458a-811e-a97a4286d00c</Id>
+      <AnnotationText>SolLevante_UHD_P3PQ_01</AnnotationText>
+      <Hash>1noF56WinFwrLJ76XwE4DtOyAis=</Hash>
+      <Size>21589</Size>
+      <Type>text/xml</Type>
+      <OriginalFileName>CPL_0a207596-a0f5-458a-811e-a97a4286d00c.xml</OriginalFileName>
+      <HashAlgorithm Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/>
+    </Asset>
+    <Asset>
+      <Id>urn:uuid:0a39a10c-d1da-4e53-b32c-1ceab7d94cf0</Id>
+      <AnnotationText>SolLevante_UHD_P3PQ_01</AnnotationText>
+      <Hash>Vr2K7zPQsv4aZB1p52Ap3+Og8hQ=</Hash>
+      <Size>699</Size>
+      <Type>text/xml</Type>
+      <OriginalFileName>OPL_0a39a10c-d1da-4e53-b32c-1ceab7d94cf0.xml</OriginalFileName>
+      <HashAlgorithm Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/>
+    </Asset>
+  </AssetList>
+</PackingList>

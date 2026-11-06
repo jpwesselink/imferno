@@ -9,6 +9,23 @@ const CONFIGURABLE_RULES: Array<{ code: string; label: string; hint: string }> =
     { code: 'ST2067-3:2020:7.2.2/SegmentDuration',   label: 'SegmentDuration',   hint: 'Unequal segment durations across tracks' },
 ];
 import IMFPackageViewer from './IMFPackageViewer';
+import PackageFileBrowser, { type BrowserFile } from './PackageFileBrowser';
+import { base } from './base';
+
+// ─── sample packages (docs/public/samples/<id>/) ─────────────────────────────
+
+const SAMPLES: Array<{ id: string; label: string }> = [
+    { id: 'sol-levante', label: 'Sol Levante' },
+    { id: 'meridian', label: 'Meridian' },
+];
+
+interface SampleIndex {
+    title: string;
+    description: string;
+    attribution: string;
+    attributionUrl: string;
+    files: string[];
+}
 
 // ─── global WASM handle ───────────────────────────────────────────────────────
 
@@ -314,6 +331,9 @@ export default function ImfPlayground() {
     rulesConfigRef.current = rulesConfig;
     const [showRules, setShowRules] = useState(false);
     const xmlMapRef = useRef<Record<string, string>>({});
+    const [browserFiles, setBrowserFiles] = useState<BrowserFile[]>([]);
+    const [sample, setSample] = useState<SampleIndex | null>(null);
+    const [loadingSample, setLoadingSample] = useState<string | null>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
     // Sync with the WASM module loaded by the is:inline script in index.astro.
@@ -373,6 +393,7 @@ export default function ImfPlayground() {
             }
         }
         xmlMapRef.current = xmlMap;
+        setBrowserFiles(Object.entries(xmlMap).map(([name, text]) => ({ name, text })));
 
         // Build report from all files at once
         const mod = getWasmModule();
@@ -390,7 +411,34 @@ export default function ImfPlayground() {
     const onDrop = useCallback((e: React.DragEvent) => {
         e.preventDefault();
         setDragging(false);
+        setSample(null);
         processFiles(e.dataTransfer.files);
+    }, [processFiles]);
+
+    // Fetch a bundled sample package and run it through the same path as
+    // dropped files.
+    const loadSample = useCallback(async (id: string) => {
+        setLoadingSample(id);
+        setParseError(null);
+        try {
+            const dir = `${base}samples/${id}/`;
+            const indexRes = await fetch(`${dir}index.json`);
+            if (!indexRes.ok) throw new Error(`index.json: HTTP ${indexRes.status}`);
+            const index: SampleIndex = await indexRes.json();
+            const fetched = await Promise.all(
+                index.files.map(async (name) => {
+                    const res = await fetch(dir + name);
+                    if (!res.ok) throw new Error(`${name}: HTTP ${res.status}`);
+                    return new File([await res.text()], name, { type: 'application/xml' });
+                }),
+            );
+            setSample(index);
+            await processFiles(fetched);
+        } catch (e) {
+            setParseError(`Could not load sample package: ${e}`);
+        } finally {
+            setLoadingSample(null);
+        }
     }, [processFiles]);
 
     const onDragOver = useCallback((e: React.DragEvent) => {
@@ -401,6 +449,7 @@ export default function ImfPlayground() {
     const onDragLeave = useCallback(() => setDragging(false), []);
 
     const onInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+        setSample(null);
         if (e.target.files) processFiles(e.target.files);
         e.target.value = '';
     }, [processFiles]);
@@ -476,6 +525,28 @@ export default function ImfPlayground() {
                             or click to browse · max 2 MB per file · drop all files from a package to see the full view
                         </p>
                     </>
+                )}
+            </div>
+
+            {/* Sample packages */}
+            <div className="pg-sample">
+                <span className="pg-sample-note">No IMF package at hand? Try a public one:</span>
+                {SAMPLES.map(({ id, label }) => (
+                    <button
+                        key={id}
+                        type="button"
+                        className="pg-sample-btn"
+                        disabled={!wasmReady || loadingSample !== null}
+                        onClick={() => loadSample(id)}
+                    >
+                        {loadingSample === id ? 'Loading…' : `Try ${label}`}
+                    </button>
+                ))}
+                {sample && (
+                    <span className="pg-sample-note">
+                        {sample.description} {sample.attribution}{' '}
+                        <a href={sample.attributionUrl} target="_blank" rel="noreferrer">Netflix Open Content</a>
+                    </span>
                 )}
             </div>
 
@@ -596,6 +667,9 @@ export default function ImfPlayground() {
                             <IMFPackageViewer data={packageData} />
                         </div>
                     )}
+
+                    {/* Raw manifests */}
+                    <PackageFileBrowser files={browserFiles} />
                 </>
             )}
         </section>

@@ -85,9 +85,21 @@ const CONTENT_KINDS_TABLE_4_2016: &[&str] = &["supplemental", "documentary"];
 
 const CONTENT_KIND_SCOPE_2016: &str = "http://www.smpte-ra.org/schemas/2067-3/2016#content-kind";
 
-/// Raw text of the CompositionPlaylist's top-level `ContentKind` element
-/// (trimmed), or `None` if it cannot be found.
-fn raw_content_kind_text(xml: &str) -> Option<String> {
+/// The CompositionPlaylist's top-level `ContentKind` element in the source XML.
+enum RawContentKind {
+    /// Element present; its text, trimmed.
+    Present(String),
+    /// The root element closed without a `ContentKind` child.
+    Absent,
+    /// The XML could not be scanned.
+    Unreadable,
+}
+
+fn raw_content_kind(xml: &str) -> RawContentKind {
+    raw_content_kind_text(xml).unwrap_or(RawContentKind::Unreadable)
+}
+
+fn raw_content_kind_text(xml: &str) -> Option<RawContentKind> {
     use quick_xml::events::Event;
     let mut reader = quick_xml::Reader::from_str(xml);
     let mut depth = 0usize;
@@ -103,13 +115,16 @@ fn raw_content_kind_text(xml: &str) -> Option<String> {
             }
             Event::End(_) => {
                 if in_content_kind && depth == 2 {
-                    return Some(text.trim().to_string());
+                    return Some(RawContentKind::Present(text.trim().to_string()));
+                }
+                if depth == 1 {
+                    return Some(RawContentKind::Absent);
                 }
                 depth = depth.saturating_sub(1);
             }
             Event::Empty(e) => {
                 if depth == 1 && e.local_name().as_ref() == "ContentKind" {
-                    return Some(String::new());
+                    return Some(RawContentKind::Present(String::new()));
                 }
             }
             Event::Text(t) if in_content_kind => {
@@ -151,16 +166,29 @@ fn validate_content_kind_vocabulary(
         return;
     };
 
+    use RawContentKind::{Absent, Present, Unreadable};
     // "shall match" is an exact, case-sensitive comparison. `ContentKind::parse`
     // folds case variants and synonyms ("Feature", "PSA", ...) into named
     // variants, so compare the raw element text from the source XML when
     // it is available. Leading/trailing whitespace is ignored.
-    let value = match cpl.source_xml.as_deref().and_then(raw_content_kind_text) {
-        Some(raw) => raw,
-        // No source XML (e.g. a CPL built in memory or deserialised from
-        // JSON): best effort from the parsed variant. Folded spellings
-        // cannot be recovered here.
-        None => match &cpl.content_kind.kind {
+    let raw = cpl
+        .source_xml
+        .as_deref()
+        .map_or(RawContentKind::Unreadable, raw_content_kind);
+    let value = match raw {
+        Present(raw) => raw,
+        // ContentKind is optional (minOccurs="0" in the 2013 and 2016
+        // schemas): nothing to check.
+        Absent => return,
+        // No usable source XML (e.g. a CPL built in memory or deserialised
+        // from JSON): best effort from the parsed variant. Folded
+        // spellings cannot be recovered here, and the parser's default for
+        // a missing element (`Other("unknown")`, no scope) is treated as
+        // absent.
+        Unreadable => match &cpl.content_kind.kind {
+            ContentKind::Other(s) if s == "unknown" && cpl.content_kind.scope.is_none() => {
+                return;
+            }
             ContentKind::Feature => "feature".to_string(),
             ContentKind::Trailer => "trailer".to_string(),
             ContentKind::Test => "test".to_string(),
@@ -1136,6 +1164,46 @@ mod tests {
             has_content_kind_unknown(&cpl),
             "'Documentary' is not a Table 4 value"
         );
+    }
+
+    /// ContentKind is optional (minOccurs="0" in the ST 2067-3:2013 and
+    /// 2016 CompositionPlaylistType schema), so an absent element is not
+    /// an unknown value.
+    #[test]
+    fn content_kind_absent_is_not_flagged() {
+        for ns_uri in [
+            "http://www.smpte-ra.org/schemas/2067-3/2013",
+            "http://www.smpte-ra.org/schemas/2067-3/2016",
+        ] {
+            let xml = format!(
+                r#"<?xml version="1.0" encoding="UTF-8"?>
+<CompositionPlaylist xmlns="{ns_uri}">
+  <Id>urn:uuid:00000000-0000-0000-0000-000000000001</Id>
+  <IssueDate>2024-01-01T00:00:00Z</IssueDate>
+  <ContentTitle>Test</ContentTitle>
+  <EditRate>24 1</EditRate>
+  <SegmentList>
+    <Segment>
+      <Id>urn:uuid:00000000-0000-0000-0000-000000000002</Id>
+      <SequenceList/>
+    </Segment>
+  </SegmentList>
+</CompositionPlaylist>"#
+            );
+            let cpl = crate::cpl::parse_cpl(&xml).expect("parse failed");
+            assert!(
+                !has_content_kind_unknown(&cpl),
+                "absent ContentKind ({ns_uri}) must not be flagged",
+            );
+        }
+
+        // Same for an in-memory CPL left at the parser's default.
+        let mut cpl = minimal_cpl();
+        cpl.content_kind = crate::cpl::ContentKindElement {
+            kind: ContentKind::Other("unknown".to_string()),
+            scope: None,
+        };
+        assert!(!has_content_kind_unknown(&cpl));
     }
 
     #[test]

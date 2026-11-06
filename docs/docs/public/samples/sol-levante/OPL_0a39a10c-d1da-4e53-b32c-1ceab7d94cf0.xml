@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OutputProfileList xmlns="http://www.smpte-ra.org/schemas/2067-100/2014" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <Id>urn:uuid:0a39a10c-d1da-4e53-b32c-1ceab7d94cf0</Id>
+  <Annotation>SolLevante_UHD_P3PQ_01</Annotation>
+  <IssueDate>2020-04-01T14:28:30</IssueDate>
+  <Issuer>Netflix</Issuer>
+  <Creator>Blackmagic Design DaVinci Resolve Studio 16.0.0.060</Creator>
+  <CompositionPlaylistId>urn:uuid:0a207596-a0f5-458a-811e-a97a4286d00c</CompositionPlaylistId>
+  <AliasList/>
+  <MacroList>
+    <Macro xsi:type="PresetMacroType">
+      <Name>preset-macro</Name>
+      <Preset>playback_cpl</Preset>
+    </Macro>
+  </MacroList>
+</OutputProfileList>

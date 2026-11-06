@@ -209,7 +209,7 @@ const CplCard = ({cpl,isOpen,onToggle}: any) => {
   );
 };
 
-export default function IMFPackageViewer({data}: {data: any}) {
+export default function IMFPackageViewer({data, children}: {data: any; children?: React.ReactNode}) {
   const [openCpls,setOpenCpls]=useState<Set<string>>(()=>new Set([data?.cpls?.[0]?.id].filter(Boolean)));
   const [showValidation,setShowValidation]=useState(false);
   const dataId=data?.package?.assetMapId;
@@ -272,6 +272,7 @@ export default function IMFPackageViewer({data}: {data: any}) {
         </div>
       </div>
       <div className="flex flex-col gap-3">{(data.cpls||[]).map((cpl: any)=><CplCard key={cpl.id} cpl={cpl} isOpen={openCpls.has(cpl.id)} onToggle={()=>toggleCpl(cpl.id)}/>)}</div>
+      {children}
     </div>
   );
 }

@@ -2,13 +2,37 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 
 // ─── configurable rules ───────────────────────────────────────────────────────
 
-type RuleSeverity = 'off' | 'info' | 'warn' | 'error' | 'critical';
+import { AdvancedRules, SeverityControl, type RuleSeverity } from './RuleSettings';
+
+// Playground defaults: the bundled samples (and most drops) have no MXF
+// essence, so a missing asset file is informational here.
+const DEFAULT_RULES: Record<string, RuleSeverity> = {
+    'ST2067-2:2020:8.3/FileNotFound': 'info',
+};
 
 const CONFIGURABLE_RULES: Array<{ code: string; label: string; hint: string }> = [
     { code: 'ST2067-2:2020:8.3/FileNotFound',        label: 'FileNotFound',      hint: 'Asset file not found on disk' },
-    { code: 'ST2067-3:2020:7.2.2/SegmentDuration',   label: 'SegmentDuration',   hint: 'Unequal segment durations across tracks' },
+    { code: 'ST2067-3:*:7.2.2/SegmentDuration',      label: 'SegmentDuration',   hint: 'Unequal segment durations across tracks (all ST 2067-3 editions)' },
 ];
 import IMFPackageViewer from './IMFPackageViewer';
+import PackageFileBrowser, { type BrowserFile } from './PackageFileBrowser';
+import { base } from './base';
+
+// ─── sample packages (docs/public/samples/<id>/) ─────────────────────────────
+
+const SAMPLES: Array<{ id: string; label: string; year: string; tags: string[] }> = [
+    { id: 'sol-levante', label: 'Sol Levante', year: '2020', tags: ['UHD', '24 fps', 'Dolby Vision', '2× JA audio'] },
+    { id: 'meridian', label: 'Meridian', year: '2016', tags: ['UHD', '59.94 fps', '5.1 audio', 'Timed text'] },
+];
+
+interface SampleIndex {
+    id: string;
+    title: string;
+    description: string;
+    attribution: string;
+    attributionUrl: string;
+    files: string[];
+}
 
 // ─── global WASM handle ───────────────────────────────────────────────────────
 
@@ -307,13 +331,26 @@ export default function ImfPlayground() {
     const [packageData, setPackageData] = useState<any | null>(null);
     const [parseError, setParseError] = useState<string | null>(null);
     const [skippedCount, setSkippedCount] = useState<number>(0);
-    const [rulesConfig, setRulesConfig] = useState<Record<string, RuleSeverity>>({
-        'ST2067-2:2020:8.3/FileNotFound': 'info',
-    });
+    const [rulesConfig, setRulesConfig] = useState<Record<string, RuleSeverity>>(DEFAULT_RULES);
+    const [showAdvanced, setShowAdvanced] = useState(false);
+    const setRule = useCallback((code: string, severity: RuleSeverity | null) => {
+        setRulesConfig(prev => {
+            const next = { ...prev };
+            if (severity === null) delete next[code];
+            else next[code] = severity;
+            return next;
+        });
+    }, []);
+    const rulesPristine =
+        Object.keys(rulesConfig).length === Object.keys(DEFAULT_RULES).length &&
+        Object.entries(DEFAULT_RULES).every(([k, v]) => rulesConfig[k] === v);
     const rulesConfigRef = useRef<Record<string, RuleSeverity>>({});
     rulesConfigRef.current = rulesConfig;
     const [showRules, setShowRules] = useState(false);
     const xmlMapRef = useRef<Record<string, string>>({});
+    const [browserFiles, setBrowserFiles] = useState<BrowserFile[]>([]);
+    const [sample, setSample] = useState<SampleIndex | null>(null);
+    const [loadingSample, setLoadingSample] = useState<string | null>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
     // Sync with the WASM module loaded by the is:inline script in index.astro.
@@ -373,6 +410,7 @@ export default function ImfPlayground() {
             }
         }
         xmlMapRef.current = xmlMap;
+        setBrowserFiles(Object.entries(xmlMap).map(([name, text]) => ({ name, text })));
 
         // Build report from all files at once
         const mod = getWasmModule();
@@ -390,7 +428,34 @@ export default function ImfPlayground() {
     const onDrop = useCallback((e: React.DragEvent) => {
         e.preventDefault();
         setDragging(false);
+        setSample(null);
         processFiles(e.dataTransfer.files);
+    }, [processFiles]);
+
+    // Fetch a bundled sample package and run it through the same path as
+    // dropped files.
+    const loadSample = useCallback(async (id: string) => {
+        setLoadingSample(id);
+        setParseError(null);
+        try {
+            const dir = `${base}samples/${id}/`;
+            const indexRes = await fetch(`${dir}index.json`);
+            if (!indexRes.ok) throw new Error(`index.json: HTTP ${indexRes.status}`);
+            const index: SampleIndex = await indexRes.json();
+            const fetched = await Promise.all(
+                index.files.map(async (name) => {
+                    const res = await fetch(dir + name);
+                    if (!res.ok) throw new Error(`${name}: HTTP ${res.status}`);
+                    return new File([await res.text()], name, { type: 'application/xml' });
+                }),
+            );
+            setSample(index);
+            await processFiles(fetched);
+        } catch (e) {
+            setParseError(`Could not load sample package: ${e}`);
+        } finally {
+            setLoadingSample(null);
+        }
     }, [processFiles]);
 
     const onDragOver = useCallback((e: React.DragEvent) => {
@@ -401,6 +466,7 @@ export default function ImfPlayground() {
     const onDragLeave = useCallback(() => setDragging(false), []);
 
     const onInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+        setSample(null);
         if (e.target.files) processFiles(e.target.files);
         e.target.value = '';
     }, [processFiles]);
@@ -479,6 +545,56 @@ export default function ImfPlayground() {
                 )}
             </div>
 
+            {/* Sample packages */}
+            <div className="mb-4">
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-2">
+                    Or try a public package
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {SAMPLES.map(({ id, label, year, tags }) => {
+                        const isLoading = loadingSample === id;
+                        const isLoaded = sample?.id === id && !isLoading;
+                        return (
+                            <button
+                                key={id}
+                                type="button"
+                                disabled={!wasmReady || loadingSample !== null}
+                                onClick={() => loadSample(id)}
+                                className={`group flex items-center gap-3 px-4 py-3 text-left rounded-xl border bg-white dark:bg-zinc-900 transition-all cursor-pointer disabled:cursor-default ${
+                                    isLoaded
+                                        ? 'border-amber-600/60 ring-1 ring-amber-600/20'
+                                        : 'border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600'
+                                }`}
+                            >
+                                <span className="w-8 h-8 flex-shrink-0 rounded-lg bg-amber-600/10 text-amber-600 flex items-center justify-center">
+                                    <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                                        <rect width="18" height="18" x="3" y="3" rx="2" /><path d="M7 3v18" /><path d="M3 7.5h4" /><path d="M3 12h18" /><path d="M3 16.5h4" /><path d="M17 3v18" /><path d="M17 7.5h4" /><path d="M17 16.5h4" />
+                                    </svg>
+                                </span>
+                                <span className="flex-1 min-w-0">
+                                    <span className="flex items-baseline gap-1.5">
+                                        <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{label}</span>
+                                        <span className="text-[11px] text-zinc-400 dark:text-zinc-500">Netflix · {year}</span>
+                                    </span>
+                                    <span className="mt-1 flex flex-wrap gap-1">
+                                        {tags.map(t => (
+                                            <span key={t} className="inline-flex items-center px-1.5 rounded-md text-[10px] font-medium leading-[18px] bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400">{t}</span>
+                                        ))}
+                                    </span>
+                                </span>
+                                <span className={`flex-shrink-0 text-[11px] font-medium transition-colors ${isLoaded ? 'text-amber-600' : 'text-zinc-400 dark:text-zinc-500 group-hover:text-amber-600'}`}>
+                                    {isLoading ? 'Loading…' : isLoaded ? 'Loaded' : 'Load →'}
+                                </span>
+                            </button>
+                        );
+                    })}
+                </div>
+                <p className="mt-2 mb-0 text-[11px] text-zinc-400 dark:text-zinc-500">
+                    XML manifests only (no MXF essence). © Netflix, CC BY 4.0, via{' '}
+                    <a href="https://opencontent.netflix.com/" target="_blank" rel="noreferrer" className="underline decoration-zinc-300 dark:decoration-zinc-600 hover:text-amber-600">Netflix Open Content</a>.
+                </p>
+            </div>
+
             {/* Rules config panel */}
             {wasmReady && (
                 <div style={{ marginBottom: '16px' }}>
@@ -510,46 +626,47 @@ export default function ImfPlayground() {
                     </button>
 
                     {showRules && (
-                        <div style={{
-                            marginTop: '8px',
-                            padding: '12px 14px',
-                            borderRadius: '10px',
-                            border: '1px solid var(--sl-color-hairline, #2e2e32)',
-                            background: 'var(--hp-card-bg, #202127)',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '10px',
-                        }}>
+                        <div className="mt-2 border border-zinc-200 dark:border-zinc-700 rounded-xl bg-white dark:bg-zinc-900 divide-y divide-zinc-100 dark:divide-zinc-800">
                             {CONFIGURABLE_RULES.map(rule => {
                                 const current = rulesConfig[rule.code] ?? 'error';
                                 return (
-                                    <div key={rule.code} style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                                        <code style={{ fontSize: '11px', fontFamily: 'monospace', color: 'var(--sl-color-accent, #f97316)', flexShrink: 0 }}>{rule.code}</code>
-                                        <span style={{ fontSize: '11px', color: 'var(--sl-color-gray-4, #6a6a71)', flex: 1, minWidth: '100px' }}>{rule.hint}</span>
-                                        <select
+                                    <div key={rule.code} className="flex items-center gap-3 flex-wrap px-4 py-3">
+                                        <div className="flex-1 min-w-[200px]">
+                                            <code className="block text-[11px] font-mono text-zinc-700 dark:text-zinc-300">{rule.code}</code>
+                                            <span className="block text-[11px] text-zinc-400 dark:text-zinc-500 mt-0.5">{rule.hint}</span>
+                                        </div>
+                                        <SeverityControl
+                                            label={`Severity for ${rule.label}`}
                                             value={current}
-                                            onChange={e => setRulesConfig(prev => ({ ...prev, [rule.code]: e.target.value as RuleSeverity }))}
-                                            style={{
-                                                background: 'var(--hp-code-bg, #2a2a30)',
-                                                border: '1px solid var(--sl-color-gray-5, #3c3f44)',
-                                                borderRadius: '6px',
-                                                color: current === 'off' ? 'var(--sl-color-gray-4, #6a6a71)' : current === 'warn' ? '#f59e0b' : current === 'info' ? '#60a5fa' : current === 'critical' ? '#ef4444' : '#f87171',
-                                                fontSize: '11px',
-                                                fontWeight: 600,
-                                                padding: '3px 8px',
-                                                cursor: 'pointer',
-                                                flexShrink: 0,
-                                            }}
-                                        >
-                                            <option value="error">Error</option>
-                                            <option value="warn">Warning</option>
-                                            <option value="info">Info</option>
-                                            <option value="off">Off</option>
-                                            <option value="critical">Critical</option>
-                                        </select>
+                                            onChange={v => setRule(rule.code, v)}
+                                        />
                                     </div>
                                 );
                             })}
+                            <div>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowAdvanced(s => !s)}
+                                    aria-expanded={showAdvanced}
+                                    className="w-full flex items-center gap-2 px-4 py-2.5 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400 hover:text-amber-600 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors cursor-pointer"
+                                >
+                                    <span className={`flex transition-transform duration-200 ${showAdvanced ? '' : '-rotate-90'} ${showAdvanced ? 'text-amber-600' : ''}`}>
+                                        <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>
+                                    </span>
+                                    Advanced
+                                    <span className="font-normal text-zinc-400 dark:text-zinc-500">every rule, per spec</span>
+                                </button>
+                                {showAdvanced && (
+                                    <div className="border-t border-zinc-100 dark:border-zinc-800">
+                                        <AdvancedRules
+                                            config={rulesConfig}
+                                            setRule={setRule}
+                                            resetAll={() => setRulesConfig(DEFAULT_RULES)}
+                                            isPristine={rulesPristine}
+                                        />
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     )}
                 </div>
@@ -593,7 +710,10 @@ export default function ImfPlayground() {
                     {/* Package view */}
                     {packageData && (
                         <div style={{ marginBottom: '20px' }}>
-                            <IMFPackageViewer data={packageData} />
+                            <IMFPackageViewer data={packageData}>
+                                {/* Raw manifests, as a section of the package card */}
+                                <PackageFileBrowser files={browserFiles} />
+                            </IMFPackageViewer>
                         </div>
                     )}
                 </>

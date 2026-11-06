@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import ImfPlayground from './ImfPlayground';
+import { base } from './base';
 import './Homepage.css';
 
 declare global {
@@ -9,9 +10,6 @@ declare global {
   }
 }
 
-// Use Vite's base URL (set by Rspress from rspress.config.ts base), ensure trailing slash
-const rawBase = typeof import.meta !== 'undefined' ? (import.meta as any).env?.BASE_URL || '/imferno/' : '/imferno/';
-const base = rawBase.endsWith('/') ? rawBase : rawBase + '/';
 
 export default function Homepage() {
   // Load WASM module on mount (browser only — skip during SSR)

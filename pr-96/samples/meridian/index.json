@@ -1,0 +1,14 @@
+{
+  "id": "meridian",
+  "title": "Meridian (Netflix)",
+  "description": "UHD 3840x2160 59.94p composition with image, 5.1 audio and timed text: CPL, PKL, OPL, ASSETMAP and VOLINDEX. Essence (MXF) files are not included.",
+  "attribution": "Meridian \u00a9 Netflix, CC BY 4.0. XML manifests from Netflix Photon test resources (Apache-2.0).",
+  "attributionUrl": "https://opencontent.netflix.com/",
+  "files": [
+    "VOLINDEX.xml",
+    "ASSETMAP.xml",
+    "PKL_f5e93462-aed2-44ad-a4ba-2adb65823e7c.xml",
+    "CPL_0eb3d1b9-b77b-4d3f-bbe5-7c69b15dca85.xml",
+    "OPL_8cf83c32-4949-4f00-b081-01e12b18932f.xml"
+  ]
+}

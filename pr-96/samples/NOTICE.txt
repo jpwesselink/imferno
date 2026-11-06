@@ -1,0 +1,12 @@
+Sample IMF packages for the docs playground (XML manifests only; the MXF
+essence files are not included).
+
+sol-levante/  Sol Levante (c) Netflix. Creative Commons Attribution 4.0
+              International. https://opencontent.netflix.com/
+              Source: s3://download.opencontent.netflix.com/SolLevante/imf/
+                      SolLevante_IMF_DolbyVision_PQP3D65_UHD_24fps/
+
+meridian/     Meridian (c) Netflix. Creative Commons Attribution 4.0
+              International. https://opencontent.netflix.com/
+              XML manifests from the Netflix Photon test resources
+              (Apache-2.0), https://github.com/Netflix/photon

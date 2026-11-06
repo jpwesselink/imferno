@@ -1896,10 +1896,12 @@ impl Imferno {
                          .with_context("cpl_id", cpl_id.to_string()));
                     }
 
-                    // Each CPLId must reference a known CPL in the package.
+                    // Flag a CPLId that is not in this package. ST 2067-9
+                    // §8 (Note): the referenced composition need not be in
+                    // the same IMP, so this is a warning.
                     if !self.composition_playlists.contains_key(cpl_id) {
                         report.add(ValidationIssue::new(
-                            Severity::Error,
+                            Severity::Warning,
                             Category::Reference,
                             codes::St2067_9_2018::CplNotFound,
                             format!(

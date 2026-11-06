@@ -246,7 +246,9 @@ fn scm_invalid_sidecar_asset_not_found() {
     );
 }
 
-/// ST 2067-9:2018 §7.3.1.1: SCM CPLId does not reference a known CPL.
+/// ST 2067-9:2018 §7.3.1.1: SCM CPLId does not reference a CPL in this
+/// package. §8 (Note): referenced compositions are not necessarily in the
+/// same IMP, so this is a warning, not an error.
 ///
 /// Canonical code: `ST2067-9:2018:7.3.1.1/CplNotFound`
 #[test]
@@ -254,8 +256,20 @@ fn scm_invalid_cpl_not_found() {
     let report = validate_package(base_package(scm_unknown_cpl()));
     let issues = scm_issues(&report);
     assert!(
-        issues.iter().any(|i| i.code.contains("CplNotFound")),
-        "expected CplNotFound; got: {:#?}",
+        report
+            .warnings
+            .iter()
+            .any(|i| i.code.contains("CplNotFound")),
+        "expected CplNotFound as a warning; got: {:#?}",
+        issues
+    );
+    assert!(
+        !report
+            .errors
+            .iter()
+            .chain(report.critical.iter())
+            .any(|i| i.code.contains("CplNotFound")),
+        "CplNotFound must not be an error; got: {:#?}",
         issues
     );
 }

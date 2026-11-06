@@ -64,6 +64,9 @@ impl ValidationCode for St2067_9_2018 {
     fn default_severity(&self) -> Severity {
         match self {
             Self::MalformedXml => Severity::Critical,
+            // §8 (Note): compositions referenced by an SCM are not
+            // necessarily contained in the same IMP.
+            Self::CplNotFound => Severity::Warning,
             _ => Severity::Error,
         }
     }

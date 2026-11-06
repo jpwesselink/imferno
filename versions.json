@@ -89,10 +89,6 @@
     {
       "label": "#94 chore/uppsala-0.12",
       "path": "/pr-94/"
-    },
-    {
-      "label": "#95 ci/macos-15-runner",
-      "path": "/pr-95/"
     }
   ],
   "latest": "/v3.0.1/"

@@ -4,6 +4,16 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 
 type RuleSeverity = 'off' | 'info' | 'warn' | 'error' | 'critical';
 
+// Segmented-control options, mildest first. Colours match the viewer's
+// issue list (red = error/critical, amber = warning, zinc = info/off).
+const SEVERITY_OPTIONS: Array<{ value: RuleSeverity; label: string; activeClass: string }> = [
+    { value: 'off', label: 'Off', activeClass: 'text-zinc-500 dark:text-zinc-400' },
+    { value: 'info', label: 'Info', activeClass: 'text-blue-500' },
+    { value: 'warn', label: 'Warning', activeClass: 'text-amber-600' },
+    { value: 'error', label: 'Error', activeClass: 'text-red-600' },
+    { value: 'critical', label: 'Critical', activeClass: 'text-red-700 dark:text-red-500' },
+];
+
 const CONFIGURABLE_RULES: Array<{ code: string; label: string; hint: string }> = [
     { code: 'ST2067-2:2020:8.3/FileNotFound',        label: 'FileNotFound',      hint: 'Asset file not found on disk' },
     { code: 'ST2067-3:2020:7.2.2/SegmentDuration',   label: 'SegmentDuration',   hint: 'Unequal segment durations across tracks' },
@@ -581,43 +591,36 @@ export default function ImfPlayground() {
                     </button>
 
                     {showRules && (
-                        <div style={{
-                            marginTop: '8px',
-                            padding: '12px 14px',
-                            borderRadius: '10px',
-                            border: '1px solid var(--sl-color-hairline, #2e2e32)',
-                            background: 'var(--hp-card-bg, #202127)',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '10px',
-                        }}>
+                        <div className="mt-2 border border-zinc-200 dark:border-zinc-700 rounded-xl bg-white dark:bg-zinc-900 divide-y divide-zinc-100 dark:divide-zinc-800">
                             {CONFIGURABLE_RULES.map(rule => {
                                 const current = rulesConfig[rule.code] ?? 'error';
                                 return (
-                                    <div key={rule.code} style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                                        <code style={{ fontSize: '11px', fontFamily: 'monospace', color: 'var(--sl-color-accent, #f97316)', flexShrink: 0 }}>{rule.code}</code>
-                                        <span style={{ fontSize: '11px', color: 'var(--sl-color-gray-4, #6a6a71)', flex: 1, minWidth: '100px' }}>{rule.hint}</span>
-                                        <select
-                                            value={current}
-                                            onChange={e => setRulesConfig(prev => ({ ...prev, [rule.code]: e.target.value as RuleSeverity }))}
-                                            style={{
-                                                background: 'var(--hp-code-bg, #2a2a30)',
-                                                border: '1px solid var(--sl-color-gray-5, #3c3f44)',
-                                                borderRadius: '6px',
-                                                color: current === 'off' ? 'var(--sl-color-gray-4, #6a6a71)' : current === 'warn' ? '#f59e0b' : current === 'info' ? '#60a5fa' : current === 'critical' ? '#ef4444' : '#f87171',
-                                                fontSize: '11px',
-                                                fontWeight: 600,
-                                                padding: '3px 8px',
-                                                cursor: 'pointer',
-                                                flexShrink: 0,
-                                            }}
-                                        >
-                                            <option value="error">Error</option>
-                                            <option value="warn">Warning</option>
-                                            <option value="info">Info</option>
-                                            <option value="off">Off</option>
-                                            <option value="critical">Critical</option>
-                                        </select>
+                                    <div key={rule.code} className="flex items-center gap-3 flex-wrap px-4 py-3">
+                                        <div className="flex-1 min-w-[200px]">
+                                            <code className="block text-[11px] font-mono text-zinc-700 dark:text-zinc-300">{rule.code}</code>
+                                            <span className="block text-[11px] text-zinc-400 dark:text-zinc-500 mt-0.5">{rule.hint}</span>
+                                        </div>
+                                        <div className="flex gap-1 bg-zinc-100 dark:bg-zinc-800 rounded-lg p-1" role="radiogroup" aria-label={`Severity for ${rule.label}`}>
+                                            {SEVERITY_OPTIONS.map(opt => {
+                                                const active = current === opt.value;
+                                                return (
+                                                    <button
+                                                        key={opt.value}
+                                                        type="button"
+                                                        role="radio"
+                                                        aria-checked={active}
+                                                        onClick={() => setRulesConfig(prev => ({ ...prev, [rule.code]: opt.value }))}
+                                                        className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all cursor-pointer ${
+                                                            active
+                                                                ? `bg-white dark:bg-zinc-900 shadow-sm ${opt.activeClass}`
+                                                                : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'
+                                                        }`}
+                                                    >
+                                                        {opt.label}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
                                     </div>
                                 );
                             })}
@@ -664,12 +667,12 @@ export default function ImfPlayground() {
                     {/* Package view */}
                     {packageData && (
                         <div style={{ marginBottom: '20px' }}>
-                            <IMFPackageViewer data={packageData} />
+                            <IMFPackageViewer data={packageData}>
+                                {/* Raw manifests, as a section of the package card */}
+                                <PackageFileBrowser files={browserFiles} />
+                            </IMFPackageViewer>
                         </div>
                     )}
-
-                    {/* Raw manifests */}
-                    <PackageFileBrowser files={browserFiles} />
                 </>
             )}
         </section>

@@ -268,116 +268,15 @@ html:not(.rp-dark) .homepage .badge.none { background: #f3f4f6; color: #9ca3af; 
 .homepage .pg-sample-note { font-size: 12px; color: var(--hp-text-muted); }
 .homepage .pg-sample-note a { color: inherit; text-decoration: underline; }
 
-/* ── Playground: package file browser ── */
-.homepage .pfb {
-  margin-bottom: 20px;
-  border: 1px solid var(--hp-border);
-  border-radius: 12px;
-  background: var(--hp-card-bg);
-  overflow: hidden;
-}
-.homepage .pfb-header {
-  padding: 10px 14px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--hp-text);
-  border-bottom: 1px solid var(--hp-border);
-}
-.homepage .pfb-body {
-  display: grid;
-  grid-template-columns: minmax(200px, 280px) minmax(0, 1fr);
-  min-height: 320px;
-}
-.homepage .pfb-list {
-  list-style: none;
+/* Package file browser: Shiki output (dual themes, defaultColor: false) */
+.homepage .pfb pre.shiki {
   margin: 0;
-  padding: 6px;
-  border-right: 1px solid var(--hp-border);
-  overflow-y: auto;
-  max-height: 520px;
-}
-.homepage .pfb-list li { margin: 0; }
-.homepage .pfb-item {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 7px 8px;
-  border: 0;
-  border-radius: 6px;
-  background: none;
-  color: var(--hp-text);
-  font-size: 12px;
-  text-align: left;
-  cursor: pointer;
-}
-.homepage .pfb-item:hover { background: var(--hp-code-bg); }
-.homepage .pfb-item.is-active { background: var(--hp-code-bg); box-shadow: inset 2px 0 0 var(--hp-accent); }
-.homepage .pfb-kind {
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  padding: 2px 5px;
-  border-radius: 4px;
-  background: var(--hp-code-bg);
-  color: var(--hp-text-muted);
-  width: 72px;
-  box-sizing: border-box;
-  white-space: nowrap;
-  text-align: center;
-}
-.homepage .pfb-kind-cpl { color: var(--hp-accent); }
-.homepage .pfb-name {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.homepage .pfb-size { font-size: 11px; color: var(--hp-text-muted); }
-.homepage .pfb-viewer { display: flex; flex-direction: column; min-width: 0; }
-.homepage .pfb-viewer-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 6px 12px;
-  border-bottom: 1px solid var(--hp-border);
-  font-size: 12px;
-}
-.homepage .pfb-viewer-name {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  color: var(--hp-text-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.homepage .pfb-copy {
-  border: 1px solid var(--hp-border);
-  border-radius: 6px;
-  background: none;
-  color: var(--hp-text);
+  padding: 12px 16px;
   font-size: 11px;
-  padding: 3px 10px;
-  cursor: pointer;
-}
-.homepage .pfb-copy:hover { border-color: var(--hp-accent); }
-.homepage .pfb-code { overflow: auto; max-height: 520px; background: var(--hp-code-bg); flex: 1; }
-.homepage .pfb-code pre {
-  margin: 0;
-  padding: 12px 14px;
-  font-size: 12px;
-  line-height: 1.55;
+  line-height: 1.6;
   background: transparent !important;
   white-space: pre;
 }
-.homepage .pfb-loading { padding: 12px 14px; font-size: 12px; color: var(--hp-text-muted); }
-
-/* Shiki dual themes (defaultColor: false) */
 .homepage .pfb .shiki span { color: var(--shiki-light); }
 html.rp-dark .homepage .pfb .shiki span { color: var(--shiki-dark); }
 
-@media (max-width: 720px) {
-  .homepage .pfb-body { grid-template-columns: 1fr; }
-  .homepage .pfb-list { border-right: 0; border-bottom: 1px solid var(--hp-border); max-height: 200px; }
-}

@@ -11,7 +11,7 @@
 //! - §6.12     Locale language tags (RFC 5646)
 //! - §6.14.1.2 Marker label vocabulary (2013 and 2016 scopes)
 //! - §7.3      TrackId uniqueness within segment; sequence duration integer edit-units
-//! - §7.4      Marker offset bounds
+//! - §6.13     Marker offset bounds
 //!
 //! Note: §7.2.2 (segment duration homogeneity) is enforced by the st2067-21
 //! core structure validator which handles edit-rate normalisation across all
@@ -361,9 +361,9 @@ fn validate_track_id_uniqueness(
     }
 }
 
-// ─── §7.4 Marker offset bounds ───────────────────────────────────────────────
+// ─── §6.13 Marker offset bounds ──────────────────────────────────────────────
 
-/// ST 2067-3 §7.4: Marker offset shall be within the temporal bounds of its resource.
+/// ST 2067-3 §6.13: a Marker Offset shall not exceed the IntrinsicDuration of its resource.
 fn validate_marker_offsets(
     cpl: &CompositionPlaylist,
     code: fn(St2067_3Code) -> &'static str,
@@ -374,20 +374,21 @@ fn validate_marker_offsets(
     for (seg_idx, segment) in cpl.segment_list.segments.iter().enumerate() {
         for seq in &segment.sequence_list.marker_sequences {
             for (res_idx, resource) in seq.resource_list.resources.iter().enumerate() {
-                let effective_duration = resource
-                    .source_duration
-                    .unwrap_or(resource.intrinsic_duration - resource.entry_point.unwrap_or(0));
+                // §6.13: IntrinsicDuration shall be equal or larger than the
+                // largest marker Offset. EntryPoint/SourceDuration (the
+                // playable region) do not constrain Offset.
+                let intrinsic_duration = resource.intrinsic_duration;
 
                 for marker in &resource.markers {
-                    if marker.offset >= effective_duration {
+                    if marker.offset > intrinsic_duration {
                         issues.push(
                             ValidationIssue::new(
                                 Severity::Error,
                                 Category::Timing,
                                 code(St2067_3Code::MarkerOffsetOutOfRange),
                                 format!(
-                                    "Marker '{}' offset {} exceeds resource effective duration {}",
-                                    marker.label, marker.offset, effective_duration,
+                                    "Marker '{}' offset {} exceeds resource IntrinsicDuration {}",
+                                    marker.label, marker.offset, intrinsic_duration,
                                 ),
                             )
                             .with_location(
@@ -404,7 +405,7 @@ fn validate_marker_offsets(
     }
 }
 
-// ─── Marker label vocabulary (§6.14.2 / §6.14.1.2) ────────────────────────────────────────────
+// ─── Marker label vocabulary (§6.14.2 / §6.14.1.2) ───────────────────────────
 
 const SMPTE_MARKER_SCOPE: &str = "http://www.smpte-ra.org/schemas/2067-3/2013#standard-markers";
 
@@ -1051,5 +1052,70 @@ mod tests {
             "anything",
         );
         assert!(!has_content_kind_unknown(&cpl));
+    }
+
+    // ── MarkerOffsetOutOfRange (ST 2067-3 §6.13) ─────────────────────────────
+
+    fn cpl_with_marker_offsets(
+        intrinsic_duration: u64,
+        entry_point: Option<u64>,
+        source_duration: Option<u64>,
+        offsets: &[u64],
+    ) -> CompositionPlaylist {
+        use crate::cpl::{MarkerInfo, MarkerLabel, MarkerLabelElement, MarkerSequence};
+        let mut resource = make_resource(intrinsic_duration, source_duration, None);
+        resource.entry_point = entry_point;
+        resource.markers = offsets
+            .iter()
+            .map(|&offset| MarkerInfo {
+                annotation: None,
+                label: MarkerLabelElement::from(MarkerLabel::Ffoc),
+                offset,
+            })
+            .collect();
+        let mut sl = empty_sequence_list();
+        sl.marker_sequences.push(MarkerSequence {
+            id: dummy_uuid(),
+            track_id: dummy_uuid(),
+            resource_list: ResourceList {
+                resources: vec![resource],
+            },
+        });
+        let mut cpl = minimal_cpl();
+        cpl.segment_list = SegmentList {
+            segments: vec![Segment {
+                id: dummy_uuid(),
+                sequence_list: sl,
+            }],
+        };
+        cpl
+    }
+
+    fn has_marker_offset_out_of_range(cpl: &CompositionPlaylist) -> bool {
+        validate_cpl(cpl)
+            .iter()
+            .any(|i| i.code.contains("MarkerOffsetOutOfRange"))
+    }
+
+    /// §6.13: IntrinsicDuration shall be equal or larger than the largest
+    /// Offset, so Offset == IntrinsicDuration is allowed.
+    #[test]
+    fn marker_offset_equal_to_intrinsic_duration_ok() {
+        let cpl = cpl_with_marker_offsets(100, None, None, &[0, 100]);
+        assert!(!has_marker_offset_out_of_range(&cpl));
+    }
+
+    /// §6.13 bounds Offset by IntrinsicDuration only; markers outside the
+    /// EntryPoint/SourceDuration playable region are not flagged.
+    #[test]
+    fn marker_offset_outside_playable_region_ok() {
+        let cpl = cpl_with_marker_offsets(100, Some(10), Some(20), &[0, 5, 50, 99]);
+        assert!(!has_marker_offset_out_of_range(&cpl));
+    }
+
+    #[test]
+    fn marker_offset_beyond_intrinsic_duration_flagged() {
+        let cpl = cpl_with_marker_offsets(100, None, None, &[101]);
+        assert!(has_marker_offset_out_of_range(&cpl));
     }
 }

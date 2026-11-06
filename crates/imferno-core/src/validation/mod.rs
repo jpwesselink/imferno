@@ -6700,7 +6700,7 @@ mod tests {
                         edit_rate: None,
                         intrinsic_duration: 100,
                         entry_point: Some(10),
-                        source_duration: Some(50), // effective duration = 50
+                        source_duration: Some(50),
                         source_encoding: None,
                         track_file_id: None,
                         repeat_count: None,
@@ -6709,7 +6709,9 @@ mod tests {
                         markers: vec![MarkerInfo {
                             annotation: None,
                             label: MarkerLabelElement::from(MarkerLabel::Ffoc),
-                            offset: 60, // 60 >= 50 → out of bounds
+                            // ST 2067-3 §6.13 bounds Offset by IntrinsicDuration
+                            // (100), not by SourceDuration.
+                            offset: 120,
                         }],
                     }],
                 },

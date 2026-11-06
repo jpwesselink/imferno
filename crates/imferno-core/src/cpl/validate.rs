@@ -22,9 +22,7 @@ use std::collections::HashSet;
 use crate::diagnostics::{Category, Location, Severity, ValidationIssue};
 
 use crate::cpl::codes::St2067_3Code;
-use crate::cpl::{
-    CompositionPlaylist, ContentKind, CplNamespace, MarkerLabel, CONTENT_KIND_DEFAULT_SCOPE,
-};
+use crate::cpl::{CompositionPlaylist, ContentKind, CplNamespace, CONTENT_KIND_DEFAULT_SCOPE};
 
 // ─── Code dispatch helper ─────────────────────────────────────────────────────
 
@@ -351,66 +349,74 @@ fn validate_marker_offsets(
     }
 }
 
-// ─── §7.4 Marker label vocabulary ────────────────────────────────────────────
+// ─── Marker label vocabulary (§6.14.2 / §6.14.1.2) ────────────────────────────────────────────
 
 const SMPTE_MARKER_SCOPE: &str = "http://www.smpte-ra.org/schemas/2067-3/2013#standard-markers";
 
 const SMPTE_MARKER_SCOPE_2016: &str =
     "http://www.smpte-ra.org/schemas/2067-3/2016#standard-markers";
 
-/// ST 2067-3 §7.4: SMPTE marker labels shall use the normative vocabulary.
+/// Labels for the default `2013#standard-markers` scope: ST 2067-3:2013
+/// §6.14.2 Table 19, repeated unchanged in ST 2067-3:2016 §6.14.1.2 Table 21.
+const STANDARD_MARKER_LABELS_2013: &[&str] = &[
+    "FFBT", "FFCB", "FFCL", "FFDL", "FFEC", "FFHS", "FFMC", "FFOB", "FFOC", "FFOI", "FFSP", "FFTC",
+    "FFTS", "FTXC", "FTXE", "FTXM", "LFBT", "LFCB", "LFCL", "LFDL", "LFEC", "LFHS", "LFMC", "LFOB",
+    "LFOC", "LFOI", "LFSP", "LFTC", "LFTS", "LTXC", "LTXE", "LTXM", "FPCI", "FFCO", "LFCO", "FFOA",
+    "LFOA",
+];
+
+/// Labels for the `2016#standard-markers` scope: ST 2067-3:2016 §6.14.1.2
+/// Table 21. This scope does not exist in the 2013 edition.
+const STANDARD_MARKER_LABELS_2016: &[&str] = &["FFDC", "LFDC"];
+
+/// ST 2067-3:2013 §6.14.2 / ST 2067-3:2016 §6.14.1.2: labels under the SMPTE
+/// standard-marker scopes shall use the values of Table 19 / Table 21.
+/// Other scopes are outside the scope of the specification. The 2016 scope is
+/// only checked on 2016 (and later/unknown) CPLs; for a 2013 CPL it is a
+/// non-default scope and therefore out of scope.
 fn validate_marker_labels(
     cpl: &CompositionPlaylist,
     code: fn(St2067_3Code) -> &'static str,
     issues: &mut Vec<ValidationIssue>,
 ) {
     let cpl_id = cpl.id;
+    let check_2016_scope = !matches!(
+        cpl.namespace,
+        CplNamespace::Dci429_7 | CplNamespace::Smpte2067_3_2013
+    );
 
     for (seg_idx, segment) in cpl.segment_list.segments.iter().enumerate() {
         for seq in &segment.sequence_list.marker_sequences {
             for (res_idx, resource) in seq.resource_list.resources.iter().enumerate() {
                 for marker in &resource.markers {
                     let scope = marker.label.effective_scope();
-                    if scope == SMPTE_MARKER_SCOPE {
-                        if let MarkerLabel::Other(ref s) = marker.label.label {
-                            issues.push(
-                                ValidationIssue::new(
-                                    Severity::Warning,
-                                    Category::Metadata,
-                                    code(St2067_3Code::MarkerLabelUnknown),
-                                    format!(
-                                        "Marker label '{s}' is not a recognized SMPTE standard marker \
-                                         (expected: FFOC, LFOC, FFAC, LFAC, FFMC, LFMC, FFHC, LFHC)",
-                                    ),
-                                )
-                                .with_location(
-                                    Location::new()
-                                        .with_cpl(cpl_id)
-                                        .with_segment(seg_idx)
-                                        .with_resource(res_idx),
+                    let (allowed, which) = if scope == SMPTE_MARKER_SCOPE {
+                        (STANDARD_MARKER_LABELS_2013, "SMPTE standard marker")
+                    } else if scope == SMPTE_MARKER_SCOPE_2016 && check_2016_scope {
+                        (STANDARD_MARKER_LABELS_2016, "SMPTE 2016 standard marker")
+                    } else {
+                        continue;
+                    };
+                    let label = marker.label.label.to_string();
+                    if !allowed.contains(&label.as_str()) {
+                        issues.push(
+                            ValidationIssue::new(
+                                Severity::Warning,
+                                Category::Metadata,
+                                code(St2067_3Code::MarkerLabelUnknown),
+                                format!(
+                                    "Marker label '{label}' is not a recognized {which} \
+                                     (expected one of: {})",
+                                    allowed.join(", "),
                                 ),
-                            );
-                        }
-                    } else if scope == SMPTE_MARKER_SCOPE_2016 {
-                        if let MarkerLabel::Other(ref s) = marker.label.label {
-                            issues.push(
-                                ValidationIssue::new(
-                                    Severity::Warning,
-                                    Category::Metadata,
-                                    code(St2067_3Code::MarkerLabelUnknown),
-                                    format!(
-                                        "Marker label '{s}' is not a recognized SMPTE 2016 standard \
-                                         marker (expected: FFDC, LFDC)",
-                                    ),
-                                )
-                                .with_location(
-                                    Location::new()
-                                        .with_cpl(cpl_id)
-                                        .with_segment(seg_idx)
-                                        .with_resource(res_idx),
-                                ),
-                            );
-                        }
+                            )
+                            .with_location(
+                                Location::new()
+                                    .with_cpl(cpl_id)
+                                    .with_segment(seg_idx)
+                                    .with_resource(res_idx),
+                            ),
+                        );
                     }
                 }
             }
@@ -789,5 +795,112 @@ mod tests {
                 .any(|i| i.code.contains("MarkerLabelUnknown") && i.message.contains("FFDC, LFDC")),
             "expected 2016 MarkerLabelUnknown, got: {issues:?}",
         );
+    }
+
+    // ── MarkerLabelUnknown vocabulary (ST 2067-3:2013 Table 19,
+    //    ST 2067-3:2016 Table 21) ────────────────────────────────────────────
+
+    fn cpl_with_marker(ns: &str, scope: Option<&str>, label: &str) -> CompositionPlaylist {
+        let scope_attr = scope
+            .map(|s| format!(r#" scope="{s}""#))
+            .unwrap_or_default();
+        let xml = format!(
+            r#"<?xml version="1.0" encoding="UTF-8"?>
+<CompositionPlaylist xmlns="{ns}">
+  <Id>urn:uuid:00000000-0000-0000-0000-000000000001</Id>
+  <IssueDate>2024-01-01T00:00:00Z</IssueDate>
+  <ContentTitle>Test</ContentTitle>
+  <EditRate>24 1</EditRate>
+  <ContentKind>feature</ContentKind>
+  <SegmentList>
+    <Segment>
+      <Id>urn:uuid:00000000-0000-0000-0000-000000000002</Id>
+      <SequenceList>
+        <MarkerSequence>
+          <Id>urn:uuid:00000000-0000-0000-0000-000000000003</Id>
+          <TrackId>urn:uuid:00000000-0000-0000-0000-000000000004</TrackId>
+          <ResourceList>
+            <Resource>
+              <Id>urn:uuid:00000000-0000-0000-0000-000000000005</Id>
+              <IntrinsicDuration>100</IntrinsicDuration>
+              <Marker>
+                <Label{scope_attr}>{label}</Label>
+                <Offset>0</Offset>
+              </Marker>
+            </Resource>
+          </ResourceList>
+        </MarkerSequence>
+      </SequenceList>
+    </Segment>
+  </SegmentList>
+</CompositionPlaylist>"#
+        );
+        crate::cpl::parse_cpl(&xml).expect("parse failed")
+    }
+
+    const NS_2013: &str = "http://www.smpte-ra.org/schemas/2067-3/2013";
+    const NS_2016: &str = "http://www.smpte-ra.org/schemas/2067-3/2016";
+    const SCOPE_2013: &str = "http://www.smpte-ra.org/schemas/2067-3/2013#standard-markers";
+    const SCOPE_2016: &str = "http://www.smpte-ra.org/schemas/2067-3/2016#standard-markers";
+
+    fn has_marker_label_unknown(cpl: &CompositionPlaylist) -> bool {
+        validate_cpl(cpl)
+            .iter()
+            .any(|i| i.code.contains("MarkerLabelUnknown"))
+    }
+
+    #[test]
+    fn marker_labels_from_spec_table_are_accepted() {
+        for ns in [NS_2013, NS_2016] {
+            for label in [
+                "FFOC", "LFOC", "FFEC", "LFEC", "FFTC", "FPCI", "FTXM", "LTXM", "FFOA", "LFOA",
+                "FFCO", "LFCO",
+            ] {
+                for scope in [None, Some(SCOPE_2013)] {
+                    let cpl = cpl_with_marker(ns, scope, label);
+                    assert!(
+                        !has_marker_label_unknown(&cpl),
+                        "{label} (ns {ns}, scope {scope:?}) is in the spec table and must not be flagged",
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn marker_labels_not_in_spec_table_are_flagged() {
+        for ns in [NS_2013, NS_2016] {
+            for label in ["FFAC", "LFAC", "FFHC", "LFHC", "FFDC"] {
+                let cpl = cpl_with_marker(ns, None, label);
+                assert!(
+                    has_marker_label_unknown(&cpl),
+                    "{label} (ns {ns}) is not in the default-scope table and must be flagged",
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn marker_labels_2016_scope_accepts_ffdc_lfdc() {
+        for label in ["FFDC", "LFDC"] {
+            let cpl = cpl_with_marker(NS_2016, Some(SCOPE_2016), label);
+            assert!(
+                !has_marker_label_unknown(&cpl),
+                "{label} under the 2016 scope must not be flagged",
+            );
+        }
+        let cpl = cpl_with_marker(NS_2016, Some(SCOPE_2016), "FFOC");
+        assert!(
+            has_marker_label_unknown(&cpl),
+            "FFOC is not listed under the 2016 scope",
+        );
+    }
+
+    /// ST 2067-3:2013 §6.14.2: a non-default scope is outside the scope of
+    /// the 2013 edition, so the 2016 scope is not checked on 2013 CPLs.
+    #[test]
+    fn marker_labels_2016_scope_not_checked_on_2013_cpl() {
+        let cpl = cpl_with_marker(NS_2013, Some(SCOPE_2016), "UNKNOWN_LABEL");
+        assert!(!has_marker_label_unknown(&cpl));
     }
 }

@@ -1,0 +1,2228 @@
+{
+  "sections": [
+    {
+      "groups": [
+        {
+          "rules": [
+            {
+              "category": "Structure",
+              "code": "ST429-9:2014:7/VolindexMissing",
+              "defaultSeverity": "info",
+              "description": "No volume-index document found in the package root."
+            },
+            {
+              "category": "Structure",
+              "code": "ST429-9:2014:7/MalformedXml",
+              "defaultSeverity": "error",
+              "description": "The VOLINDEX.xml document is not well-formed XML."
+            }
+          ],
+          "title": null
+        }
+      ],
+      "title": "ST 429-9 — Volume Index"
+    },
+    {
+      "groups": [
+        {
+          "rules": [
+            {
+              "category": "Asset",
+              "code": "ST377-1:2011:5/NotMxf",
+              "defaultSeverity": "warn",
+              "description": "File is not a valid MXF container."
+            },
+            {
+              "category": "Asset",
+              "code": "ST377-1:2011:5/ParseError",
+              "defaultSeverity": "warn",
+              "description": "MXF file could not be parsed; it may be truncated or corrupt."
+            },
+            {
+              "category": "Encoding",
+              "code": "ST377-1:2011:11/NoEssenceContainers",
+              "defaultSeverity": "warn",
+              "description": "MXF file contains no essence containers."
+            },
+            {
+              "category": "Encoding",
+              "code": "ST377-1:2011:7/OP1a",
+              "defaultSeverity": "error",
+              "description": "MXF operational pattern must be OP1a for IMF packages."
+            },
+            {
+              "category": "Container",
+              "code": "ST377-1:2011:6.4/NonHeaderFirstPartition",
+              "defaultSeverity": "error",
+              "description": "The first partition in an MXF file must be the Header partition."
+            },
+            {
+              "category": "Container",
+              "code": "ST377-1:2011:8.3.3/HeaderPartitionOpen",
+              "defaultSeverity": "warn",
+              "description": "The header partition status should be ClosedComplete for finished deliveries."
+            },
+            {
+              "category": "Container",
+              "code": "ST377-1:2011:8.3.3/MissingHeaderMetadata",
+              "defaultSeverity": "error",
+              "description": "The header partition must carry header metadata (HeaderByteCount > 0)."
+            }
+          ],
+          "title": null
+        }
+      ],
+      "title": "ST 377-1 — MXF File Format"
+    },
+    {
+      "groups": [
+        {
+          "rules": [
+            {
+              "category": "Audio",
+              "code": "ST377-4:2012:6.3/MCALinkIDMissing",
+              "defaultSeverity": "error",
+              "description": "Every MCA sub-descriptor shall carry an MCALinkID (§6.3 Table 3, Req)."
+            },
+            {
+              "category": "Audio",
+              "code": "ST377-4:2012:6.4.1/SoundfieldGroupLinkIDMismatch",
+              "defaultSeverity": "error",
+              "description": "AudioChannelLabelSubDescriptor SoundfieldGroupLinkID shall equal the SoundfieldGroup's MCALinkID (§6.4.1)."
+            }
+          ],
+          "title": null
+        }
+      ],
+      "title": "ST 377-4 — MCA Sub-Descriptor Linkage"
+    },
+    {
+      "groups": [
+        {
+          "rules": [
+            {
+              "category": "Structure",
+              "code": "ST2067-2:2020:7/AssetMap",
+              "defaultSeverity": "critical",
+              "description": "AssetMap document is invalid or cannot be parsed."
+            },
+            {
+              "category": "Structure",
+              "code": "ST2067-2:2020:7/MalformedXml",
+              "defaultSeverity": "error",
+              "description": "The ASSETMAP.xml document is not well-formed XML."
+            },
+            {
+              "category": "Structure",
+              "code": "ST2067-2:2020:9/MalformedXml",
+              "defaultSeverity": "error",
+              "description": "A Packing List document is not well-formed XML."
+            },
+            {
+              "category": "Structure",
+              "code": "ST2067-2:2020:7/NoCpls",
+              "defaultSeverity": "critical",
+              "description": "No CPL assets found in the AssetMap."
+            },
+            {
+              "category": "Asset",
+              "code": "ST2067-2:2020:8.3/SizeMismatch",
+              "defaultSeverity": "error",
+              "description": "Declared file size does not match the on-disk size."
+            },
+            {
+              "category": "Asset",
+              "code": "ST2067-2:2020:8.3/FileNotFound",
+              "defaultSeverity": "error",
+              "description": "A referenced asset file is not present at the declared path."
+            },
+            {
+              "category": "Asset",
+              "code": "ST2067-2:2020:8.3/ChecksumMismatch",
+              "defaultSeverity": "error",
+              "description": "File hash does not match the declared SHA-1/SHA-256 checksum."
+            },
+            {
+              "category": "Reference",
+              "code": "ST2067-2:2020:7/UnresolvedUuid",
+              "defaultSeverity": "error",
+              "description": "UUID referenced in the CPL does not resolve to a known asset."
+            },
+            {
+              "category": "Reference",
+              "code": "ST2067-2:2020:7/DuplicateUuid",
+              "defaultSeverity": "error",
+              "description": "Two or more assets within the package share the same UUID."
+            },
+            {
+              "category": "Asset",
+              "code": "IMF:General/IoError",
+              "defaultSeverity": "error",
+              "description": "An I/O error prevented the asset from being read."
+            },
+            {
+              "category": "Structure",
+              "code": "ST2067-2:2020:6.4.2/EssenceDescriptorList",
+              "defaultSeverity": "error",
+              "description": "EssenceDescriptorList element is required per ST 2067-2:2020 §6.4.2."
+            },
+            {
+              "category": "Structure",
+              "code": "ST2067-2:2020:9/PklUnknownNamespace",
+              "defaultSeverity": "error",
+              "description": "PKL document namespace is not one of the published SMPTE PKL namespaces."
+            },
+            {
+              "category": "Structure",
+              "code": "ST429-9:2014:6.3/AssetMapHasNoPackingList",
+              "defaultSeverity": "critical",
+              "description": "AssetMap declares no asset as a PackingList (ST 429-9 §6.3)."
+            },
+            {
+              "category": "Reference",
+              "code": "ST429-9:2014:6.3/PklIdNotInAssetMap",
+              "defaultSeverity": "error",
+              "description": "PKL document Id is not declared as a PackingList asset in the AssetMap."
+            }
+          ],
+          "title": "Package-level (2020)"
+        },
+        {
+          "rules": [
+            {
+              "category": "Structure",
+              "code": "ST2067-2:2013:XSD/ResourceList-Empty",
+              "defaultSeverity": "error",
+              "description": "A Sequence has an empty ResourceList."
+            },
+            {
+              "category": "Metadata",
+              "code": "ST2067-2:2013:XSD/ContentTitle",
+              "defaultSeverity": "error",
+              "description": "ContentTitle shall not be empty."
+            },
+            {
+              "category": "Structure",
+              "code": "ST2067-2:2013:XSD/TotalRunningTime-Format",
+              "defaultSeverity": "error",
+              "description": "TotalRunningTime does not match required format HH:MM:SS."
+            },
+            {
+              "category": "Structure",
+              "code": "ST2067-2:2013:XSD/SegmentList",
+              "defaultSeverity": "critical",
+              "description": "SegmentList shall contain at least one Segment."
+            },
+            {
+              "category": "Structure",
+              "code": "ST2067-2:2013:XSD/Segment",
+              "defaultSeverity": "error",
+              "description": "A Segment contains no sequences."
+            },
+            {
+              "category": "Structure",
+              "code": "ST2067-2:2013:XSD/CompositionPlaylist/EditRate",
+              "defaultSeverity": "error",
+              "description": "CPL EditRate is required (XSD schema §88)."
+            },
+            {
+              "category": "Metadata",
+              "code": "ST2067-2:2013:XSD/CompositionPlaylist/IssueDate",
+              "defaultSeverity": "error",
+              "description": "IssueDate shall not be empty."
+            },
+            {
+              "category": "Metadata",
+              "code": "ST2067-2:2013:XSD/CompositionPlaylist/IssueDate-Format",
+              "defaultSeverity": "warn",
+              "description": "IssueDate is not a valid xs:dateTime format."
+            },
+            {
+              "category": "Timing",
+              "code": "ST2067-2:2013:XSD/CompositionTimecode/DropFrame",
+              "defaultSeverity": "error",
+              "description": "CompositionTimecode.TimecodeDropFrame is required when CompositionTimecode is present."
+            },
+            {
+              "category": "Timing",
+              "code": "ST2067-2:2013:XSD/CompositionTimecode/Rate",
+              "defaultSeverity": "error",
+              "description": "CompositionTimecode.TimecodeRate is required when CompositionTimecode is present."
+            },
+            {
+              "category": "Timing",
+              "code": "ST2067-2:2013:XSD/CompositionTimecode/StartAddress",
+              "defaultSeverity": "error",
+              "description": "CompositionTimecode.TimecodeStartAddress is required when CompositionTimecode is present."
+            },
+            {
+              "category": "Timing",
+              "code": "ST2067-2:2013:XSD/CompositionTimecode/Rate-Zero",
+              "defaultSeverity": "error",
+              "description": "CompositionTimecode.TimecodeRate shall be a positive integer."
+            },
+            {
+              "category": "Timing",
+              "code": "ST2067-2:2013:XSD/CompositionTimecode/StartAddress-Format",
+              "defaultSeverity": "error",
+              "description": "TimecodeStartAddress does not match SMPTE timecode format HH:MM:SS:FF."
+            },
+            {
+              "category": "Metadata",
+              "code": "ST2067-2:2013:XSD/CompositionTimecode/Rate-Mismatch",
+              "defaultSeverity": "warn",
+              "description": "CompositionTimecode.TimecodeRate does not match the CPL EditRate."
+            },
+            {
+              "category": "Structure",
+              "code": "ST2067-2:2013:XSD/LocaleList-NonEmpty",
+              "defaultSeverity": "error",
+              "description": "LocaleList shall contain at least one Locale."
+            },
+            {
+              "category": "Structure",
+              "code": "ST2067-2:2013:6.1/UniqueSegmentId",
+              "defaultSeverity": "error",
+              "description": "Duplicate Segment Id within the CPL."
+            },
+            {
+              "category": "Structure",
+              "code": "ST2067-2:2013:6.1/UniqueEssenceDescriptorId",
+              "defaultSeverity": "error",
+              "description": "Duplicate EssenceDescriptor Id within the CPL."
+            },
+            {
+              "category": "Structure",
+              "code": "ST2067-2:2013:6.1/UniqueResourceId",
+              "defaultSeverity": "error",
+              "description": "Duplicate Resource Id within the CPL."
+            },
+            {
+              "category": "Timing",
+              "code": "ST2067-2:2013:6.10/IntrinsicDuration",
+              "defaultSeverity": "error",
+              "description": "IntrinsicDuration shall be greater than 0."
+            },
+            {
+              "category": "Timing",
+              "code": "ST2067-2:2013:6.10/EntryPoint",
+              "defaultSeverity": "error",
+              "description": "EntryPoint shall be less than IntrinsicDuration."
+            },
+            {
+              "category": "Timing",
+              "code": "ST2067-2:2013:6.10/SourceDuration",
+              "defaultSeverity": "error",
+              "description": "EntryPoint + SourceDuration exceeds IntrinsicDuration."
+            },
+            {
+              "category": "Timing",
+              "code": "ST2067-2:2013:6.10/ResourceDuration",
+              "defaultSeverity": "error",
+              "description": "SourceDuration shall be a positive integer."
+            },
+            {
+              "category": "Timing",
+              "code": "ST2067-2:2013:6.10/RepeatCount",
+              "defaultSeverity": "error",
+              "description": "RepeatCount shall be a positive integer."
+            },
+            {
+              "category": "Reference",
+              "code": "ST2067-2:2013:6.10/TrackFileId",
+              "defaultSeverity": "error",
+              "description": "A non-marker resource is missing a TrackFileId."
+            },
+            {
+              "category": "Structure",
+              "code": "ST2067-2:2013:6.9/VirtualTrackContinuity",
+              "defaultSeverity": "error",
+              "description": "A virtual track is missing from one or more segments."
+            },
+            {
+              "category": "Timing",
+              "code": "ST2067-2:2013:6.9.3/VirtualTrackEditRate",
+              "defaultSeverity": "error",
+              "description": "All resources in a virtual track shall have the same edit rate."
+            },
+            {
+              "category": "Subtitle",
+              "code": "ST2067-2:2013:10/TimedText-SampleRate",
+              "defaultSeverity": "warn",
+              "description": "DCTimedTextDescriptor SampleRate is missing."
+            },
+            {
+              "category": "Subtitle",
+              "code": "ST2067-2:2013:10/TimedText-EmptyLanguageTag",
+              "defaultSeverity": "warn",
+              "description": "Empty language tag in RFC5646LanguageTagList."
+            },
+            {
+              "category": "Subtitle",
+              "code": "ST2067-2:2013:10/TimedText-MalformedLanguageTag",
+              "defaultSeverity": "warn",
+              "description": "Language tag does not start with an ASCII letter (RFC 5646 primary subtag)."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-2:2013:ST377-4/AudioSampleRate",
+              "defaultSeverity": "warn",
+              "description": "WAVEPCMDescriptor has no AudioSampleRate or SampleRate."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-2:2013:ST377-4/ChannelCount",
+              "defaultSeverity": "warn",
+              "description": "WAVEPCMDescriptor ChannelCount is zero or missing."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-2:2013:ST377-4/MCASubDescriptors",
+              "defaultSeverity": "warn",
+              "description": "WAVEPCMDescriptor has no MCA SubDescriptors."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-2:2013:ST377-4/SoundfieldGroup",
+              "defaultSeverity": "warn",
+              "description": "WAVEPCMDescriptor SubDescriptors missing SoundfieldGroupLabelSubDescriptor."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-2:2013:ST377-4/MCATagSymbol",
+              "defaultSeverity": "warn",
+              "description": "SoundfieldGroupLabelSubDescriptor is missing MCATagSymbol."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-2:2013:ST377-4/SoundfieldChannelCount",
+              "defaultSeverity": "error",
+              "description": "Soundfield group channel count is inconsistent with WAVEPCMDescriptor.ChannelCount."
+            },
+            {
+              "category": "Security",
+              "code": "ST2067-2:2013:8/DigitalSignature",
+              "defaultSeverity": "info",
+              "description": "Digital signature validation (ST 2067-2 §8) is not currently performed."
+            },
+            {
+              "category": "Reference",
+              "code": "ST2067-2:2013:6.4.2/DanglingEssenceDescriptor",
+              "defaultSeverity": "error",
+              "description": "EssenceDescriptor present in EssenceDescriptorList but not referenced by any Resource."
+            },
+            {
+              "category": "Structure",
+              "code": "ST2067-2:2013:6.4.2/EssenceDescriptorList",
+              "defaultSeverity": "error",
+              "description": "EssenceDescriptorList is required per ST 2067-2 §6.4.2."
+            }
+          ],
+          "title": "Core Constraints — 2013"
+        },
+        {
+          "rules": [
+            {
+              "category": "Structure",
+              "code": "ST2067-2:2016:XSD/ResourceList-Empty",
+              "defaultSeverity": "error",
+              "description": "A Sequence has an empty ResourceList."
+            },
+            {
+              "category": "Metadata",
+              "code": "ST2067-2:2016:XSD/ContentTitle",
+              "defaultSeverity": "error",
+              "description": "ContentTitle shall not be empty."
+            },
+            {
+              "category": "Structure",
+              "code": "ST2067-2:2016:XSD/TotalRunningTime-Format",
+              "defaultSeverity": "error",
+              "description": "TotalRunningTime does not match required format HH:MM:SS."
+            },
+            {
+              "category": "Structure",
+              "code": "ST2067-2:2016:XSD/SegmentList",
+              "defaultSeverity": "critical",
+              "description": "SegmentList shall contain at least one Segment."
+            },
+            {
+              "category": "Structure",
+              "code": "ST2067-2:2016:XSD/Segment",
+              "defaultSeverity": "error",
+              "description": "A Segment contains no sequences."
+            },
+            {
+              "category": "Structure",
+              "code": "ST2067-2:2016:XSD/CompositionPlaylist/EditRate",
+              "defaultSeverity": "error",
+              "description": "CPL EditRate is required (XSD schema §88)."
+            },
+            {
+              "category": "Metadata",
+              "code": "ST2067-2:2016:XSD/CompositionPlaylist/IssueDate",
+              "defaultSeverity": "error",
+              "description": "IssueDate shall not be empty."
+            },
+            {
+              "category": "Metadata",
+              "code": "ST2067-2:2016:XSD/CompositionPlaylist/IssueDate-Format",
+              "defaultSeverity": "warn",
+              "description": "IssueDate is not a valid xs:dateTime format."
+            },
+            {
+              "category": "Timing",
+              "code": "ST2067-2:2016:XSD/CompositionTimecode/DropFrame",
+              "defaultSeverity": "error",
+              "description": "CompositionTimecode.TimecodeDropFrame is required when CompositionTimecode is present."
+            },
+            {
+              "category": "Timing",
+              "code": "ST2067-2:2016:XSD/CompositionTimecode/Rate",
+              "defaultSeverity": "error",
+              "description": "CompositionTimecode.TimecodeRate is required when CompositionTimecode is present."
+            },
+            {
+              "category": "Timing",
+              "code": "ST2067-2:2016:XSD/CompositionTimecode/StartAddress",
+              "defaultSeverity": "error",
+              "description": "CompositionTimecode.TimecodeStartAddress is required when CompositionTimecode is present."
+            },
+            {
+              "category": "Timing",
+              "code": "ST2067-2:2016:XSD/CompositionTimecode/Rate-Zero",
+              "defaultSeverity": "error",
+              "description": "CompositionTimecode.TimecodeRate shall be a positive integer."
+            },
+            {
+              "category": "Timing",
+              "code": "ST2067-2:2016:XSD/CompositionTimecode/StartAddress-Format",
+              "defaultSeverity": "error",
+              "description": "TimecodeStartAddress does not match SMPTE timecode format HH:MM:SS:FF."
+            },
+            {
+              "category": "Metadata",
+              "code": "ST2067-2:2016:XSD/CompositionTimecode/Rate-Mismatch",
+              "defaultSeverity": "warn",
+              "description": "CompositionTimecode.TimecodeRate does not match the CPL EditRate."
+            },
+            {
+              "category": "Structure",
+              "code": "ST2067-2:2016:XSD/LocaleList-NonEmpty",
+              "defaultSeverity": "error",
+              "description": "LocaleList shall contain at least one Locale."
+            },
+            {
+              "category": "Structure",
+              "code": "ST2067-2:2016:6.1/UniqueSegmentId",
+              "defaultSeverity": "error",
+              "description": "Duplicate Segment Id within the CPL."
+            },
+            {
+              "category": "Structure",
+              "code": "ST2067-2:2016:6.1/UniqueEssenceDescriptorId",
+              "defaultSeverity": "error",
+              "description": "Duplicate EssenceDescriptor Id within the CPL."
+            },
+            {
+              "category": "Structure",
+              "code": "ST2067-2:2016:6.1/UniqueResourceId",
+              "defaultSeverity": "error",
+              "description": "Duplicate Resource Id within the CPL."
+            },
+            {
+              "category": "Timing",
+              "code": "ST2067-2:2016:6.10/IntrinsicDuration",
+              "defaultSeverity": "error",
+              "description": "IntrinsicDuration shall be greater than 0."
+            },
+            {
+              "category": "Timing",
+              "code": "ST2067-2:2016:6.10/EntryPoint",
+              "defaultSeverity": "error",
+              "description": "EntryPoint shall be less than IntrinsicDuration."
+            },
+            {
+              "category": "Timing",
+              "code": "ST2067-2:2016:6.10/SourceDuration",
+              "defaultSeverity": "error",
+              "description": "EntryPoint + SourceDuration exceeds IntrinsicDuration."
+            },
+            {
+              "category": "Timing",
+              "code": "ST2067-2:2016:6.10/ResourceDuration",
+              "defaultSeverity": "error",
+              "description": "SourceDuration shall be a positive integer."
+            },
+            {
+              "category": "Timing",
+              "code": "ST2067-2:2016:6.10/RepeatCount",
+              "defaultSeverity": "error",
+              "description": "RepeatCount shall be a positive integer."
+            },
+            {
+              "category": "Reference",
+              "code": "ST2067-2:2016:6.10/TrackFileId",
+              "defaultSeverity": "error",
+              "description": "A non-marker resource is missing a TrackFileId."
+            },
+            {
+              "category": "Structure",
+              "code": "ST2067-2:2016:6.9/VirtualTrackContinuity",
+              "defaultSeverity": "error",
+              "description": "A virtual track is missing from one or more segments."
+            },
+            {
+              "category": "Timing",
+              "code": "ST2067-2:2016:6.9.3/VirtualTrackEditRate",
+              "defaultSeverity": "error",
+              "description": "All resources in a virtual track shall have the same edit rate."
+            },
+            {
+              "category": "Subtitle",
+              "code": "ST2067-2:2016:10/TimedText-SampleRate",
+              "defaultSeverity": "warn",
+              "description": "DCTimedTextDescriptor SampleRate is missing."
+            },
+            {
+              "category": "Subtitle",
+              "code": "ST2067-2:2016:10/TimedText-EmptyLanguageTag",
+              "defaultSeverity": "warn",
+              "description": "Empty language tag in RFC5646LanguageTagList."
+            },
+            {
+              "category": "Subtitle",
+              "code": "ST2067-2:2016:10/TimedText-MalformedLanguageTag",
+              "defaultSeverity": "warn",
+              "description": "Language tag does not start with an ASCII letter (RFC 5646 primary subtag)."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-2:2016:ST377-4/AudioSampleRate",
+              "defaultSeverity": "warn",
+              "description": "WAVEPCMDescriptor has no AudioSampleRate or SampleRate."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-2:2016:ST377-4/ChannelCount",
+              "defaultSeverity": "warn",
+              "description": "WAVEPCMDescriptor ChannelCount is zero or missing."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-2:2016:ST377-4/MCASubDescriptors",
+              "defaultSeverity": "warn",
+              "description": "WAVEPCMDescriptor has no MCA SubDescriptors."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-2:2016:ST377-4/SoundfieldGroup",
+              "defaultSeverity": "warn",
+              "description": "WAVEPCMDescriptor SubDescriptors missing SoundfieldGroupLabelSubDescriptor."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-2:2016:ST377-4/MCATagSymbol",
+              "defaultSeverity": "warn",
+              "description": "SoundfieldGroupLabelSubDescriptor is missing MCATagSymbol."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-2:2016:ST377-4/SoundfieldChannelCount",
+              "defaultSeverity": "error",
+              "description": "Soundfield group channel count is inconsistent with WAVEPCMDescriptor.ChannelCount."
+            },
+            {
+              "category": "Security",
+              "code": "ST2067-2:2016:8/DigitalSignature",
+              "defaultSeverity": "info",
+              "description": "Digital signature validation (ST 2067-2 §8) is not currently performed."
+            },
+            {
+              "category": "Reference",
+              "code": "ST2067-2:2016:6.4.2/DanglingEssenceDescriptor",
+              "defaultSeverity": "error",
+              "description": "EssenceDescriptor present in EssenceDescriptorList but not referenced by any Resource."
+            },
+            {
+              "category": "Structure",
+              "code": "ST2067-2:2016:6.4.2/EssenceDescriptorList",
+              "defaultSeverity": "error",
+              "description": "EssenceDescriptorList is required per ST 2067-2 §6.4.2."
+            }
+          ],
+          "title": "Core Constraints — 2016"
+        },
+        {
+          "rules": [
+            {
+              "category": "Structure",
+              "code": "ST2067-2:2020:XSD/ResourceList-Empty",
+              "defaultSeverity": "error",
+              "description": "A Sequence has an empty ResourceList."
+            },
+            {
+              "category": "Metadata",
+              "code": "ST2067-2:2020:XSD/ContentTitle",
+              "defaultSeverity": "error",
+              "description": "ContentTitle shall not be empty."
+            },
+            {
+              "category": "Structure",
+              "code": "ST2067-2:2020:XSD/TotalRunningTime-Format",
+              "defaultSeverity": "error",
+              "description": "TotalRunningTime does not match required format HH:MM:SS."
+            },
+            {
+              "category": "Structure",
+              "code": "ST2067-2:2020:XSD/SegmentList",
+              "defaultSeverity": "critical",
+              "description": "SegmentList shall contain at least one Segment."
+            },
+            {
+              "category": "Structure",
+              "code": "ST2067-2:2020:XSD/Segment",
+              "defaultSeverity": "error",
+              "description": "A Segment contains no sequences."
+            },
+            {
+              "category": "Structure",
+              "code": "ST2067-2:2020:XSD/CompositionPlaylist/EditRate",
+              "defaultSeverity": "error",
+              "description": "CPL EditRate is required (XSD schema §88)."
+            },
+            {
+              "category": "Metadata",
+              "code": "ST2067-2:2020:XSD/CompositionPlaylist/IssueDate",
+              "defaultSeverity": "error",
+              "description": "IssueDate shall not be empty."
+            },
+            {
+              "category": "Metadata",
+              "code": "ST2067-2:2020:XSD/CompositionPlaylist/IssueDate-Format",
+              "defaultSeverity": "warn",
+              "description": "IssueDate is not a valid xs:dateTime format."
+            },
+            {
+              "category": "Timing",
+              "code": "ST2067-2:2020:XSD/CompositionTimecode/DropFrame",
+              "defaultSeverity": "error",
+              "description": "CompositionTimecode.TimecodeDropFrame is required when CompositionTimecode is present."
+            },
+            {
+              "category": "Timing",
+              "code": "ST2067-2:2020:XSD/CompositionTimecode/Rate",
+              "defaultSeverity": "error",
+              "description": "CompositionTimecode.TimecodeRate is required when CompositionTimecode is present."
+            },
+            {
+              "category": "Timing",
+              "code": "ST2067-2:2020:XSD/CompositionTimecode/StartAddress",
+              "defaultSeverity": "error",
+              "description": "CompositionTimecode.TimecodeStartAddress is required when CompositionTimecode is present."
+            },
+            {
+              "category": "Timing",
+              "code": "ST2067-2:2020:XSD/CompositionTimecode/Rate-Zero",
+              "defaultSeverity": "error",
+              "description": "CompositionTimecode.TimecodeRate shall be a positive integer."
+            },
+            {
+              "category": "Timing",
+              "code": "ST2067-2:2020:XSD/CompositionTimecode/StartAddress-Format",
+              "defaultSeverity": "error",
+              "description": "TimecodeStartAddress does not match SMPTE timecode format HH:MM:SS:FF."
+            },
+            {
+              "category": "Metadata",
+              "code": "ST2067-2:2020:XSD/CompositionTimecode/Rate-Mismatch",
+              "defaultSeverity": "warn",
+              "description": "CompositionTimecode.TimecodeRate does not match the CPL EditRate."
+            },
+            {
+              "category": "Structure",
+              "code": "ST2067-2:2020:XSD/LocaleList-NonEmpty",
+              "defaultSeverity": "error",
+              "description": "LocaleList shall contain at least one Locale."
+            },
+            {
+              "category": "Structure",
+              "code": "ST2067-2:2020:6.1/UniqueSegmentId",
+              "defaultSeverity": "error",
+              "description": "Duplicate Segment Id within the CPL."
+            },
+            {
+              "category": "Structure",
+              "code": "ST2067-2:2020:6.1/UniqueEssenceDescriptorId",
+              "defaultSeverity": "error",
+              "description": "Duplicate EssenceDescriptor Id within the CPL."
+            },
+            {
+              "category": "Structure",
+              "code": "ST2067-2:2020:6.1/UniqueResourceId",
+              "defaultSeverity": "error",
+              "description": "Duplicate Resource Id within the CPL."
+            },
+            {
+              "category": "Timing",
+              "code": "ST2067-2:2020:6.10/IntrinsicDuration",
+              "defaultSeverity": "error",
+              "description": "IntrinsicDuration shall be greater than 0."
+            },
+            {
+              "category": "Timing",
+              "code": "ST2067-2:2020:6.10/EntryPoint",
+              "defaultSeverity": "error",
+              "description": "EntryPoint shall be less than IntrinsicDuration."
+            },
+            {
+              "category": "Timing",
+              "code": "ST2067-2:2020:6.10/SourceDuration",
+              "defaultSeverity": "error",
+              "description": "EntryPoint + SourceDuration exceeds IntrinsicDuration."
+            },
+            {
+              "category": "Timing",
+              "code": "ST2067-2:2020:6.10/ResourceDuration",
+              "defaultSeverity": "error",
+              "description": "SourceDuration shall be a positive integer."
+            },
+            {
+              "category": "Timing",
+              "code": "ST2067-2:2020:6.10/RepeatCount",
+              "defaultSeverity": "error",
+              "description": "RepeatCount shall be a positive integer."
+            },
+            {
+              "category": "Reference",
+              "code": "ST2067-2:2020:6.10/TrackFileId",
+              "defaultSeverity": "error",
+              "description": "A non-marker resource is missing a TrackFileId."
+            },
+            {
+              "category": "Structure",
+              "code": "ST2067-2:2020:6.9/VirtualTrackContinuity",
+              "defaultSeverity": "error",
+              "description": "A virtual track is missing from one or more segments."
+            },
+            {
+              "category": "Timing",
+              "code": "ST2067-2:2020:6.9.3/VirtualTrackEditRate",
+              "defaultSeverity": "error",
+              "description": "All resources in a virtual track shall have the same edit rate."
+            },
+            {
+              "category": "Subtitle",
+              "code": "ST2067-2:2020:10/TimedText-SampleRate",
+              "defaultSeverity": "warn",
+              "description": "DCTimedTextDescriptor SampleRate is missing."
+            },
+            {
+              "category": "Subtitle",
+              "code": "ST2067-2:2020:10/TimedText-EmptyLanguageTag",
+              "defaultSeverity": "warn",
+              "description": "Empty language tag in RFC5646LanguageTagList."
+            },
+            {
+              "category": "Subtitle",
+              "code": "ST2067-2:2020:10/TimedText-MalformedLanguageTag",
+              "defaultSeverity": "warn",
+              "description": "Language tag does not start with an ASCII letter (RFC 5646 primary subtag)."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-2:2020:ST377-4/AudioSampleRate",
+              "defaultSeverity": "warn",
+              "description": "WAVEPCMDescriptor has no AudioSampleRate or SampleRate."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-2:2020:ST377-4/ChannelCount",
+              "defaultSeverity": "warn",
+              "description": "WAVEPCMDescriptor ChannelCount is zero or missing."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-2:2020:ST377-4/MCASubDescriptors",
+              "defaultSeverity": "warn",
+              "description": "WAVEPCMDescriptor has no MCA SubDescriptors."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-2:2020:ST377-4/SoundfieldGroup",
+              "defaultSeverity": "warn",
+              "description": "WAVEPCMDescriptor SubDescriptors missing SoundfieldGroupLabelSubDescriptor."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-2:2020:ST377-4/MCATagSymbol",
+              "defaultSeverity": "warn",
+              "description": "SoundfieldGroupLabelSubDescriptor is missing MCATagSymbol."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-2:2020:ST377-4/SoundfieldChannelCount",
+              "defaultSeverity": "error",
+              "description": "Soundfield group channel count is inconsistent with WAVEPCMDescriptor.ChannelCount."
+            },
+            {
+              "category": "Security",
+              "code": "ST2067-2:2020:8/DigitalSignature",
+              "defaultSeverity": "info",
+              "description": "Digital signature validation (ST 2067-2 §8) is not currently performed."
+            },
+            {
+              "category": "Reference",
+              "code": "ST2067-2:2020:6.4.2/DanglingEssenceDescriptor",
+              "defaultSeverity": "error",
+              "description": "EssenceDescriptor present in EssenceDescriptorList but not referenced by any Resource."
+            },
+            {
+              "category": "Structure",
+              "code": "ST2067-2:2020:6.4.2/EssenceDescriptorList",
+              "defaultSeverity": "error",
+              "description": "EssenceDescriptorList is required per ST 2067-2 §6.4.2."
+            }
+          ],
+          "title": "Core Constraints — 2020"
+        },
+        {
+          "rules": [
+            {
+              "category": "Container",
+              "code": "ST2067-2:2016:5.2/OperationalPatternNotOP1A",
+              "defaultSeverity": "error",
+              "description": "MXF essence Operational Pattern UL is not OP1a (ST 378:2004)."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-2:2016:5.3.4.1/SoundDescriptorNotWAVEPCM",
+              "defaultSeverity": "error",
+              "description": "Audio essence descriptor must be WAVEPCMDescriptor."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-2:2016:5.3.2.2/AudioSampleRateUnsupported",
+              "defaultSeverity": "error",
+              "description": "AudioSampleRate must be 48000 Hz or 96000 Hz."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-2:2016:5.3.2.3/QuantizationBitsNot24",
+              "defaultSeverity": "error",
+              "description": "QuantizationBits must be 24."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-2:2016:5.3.6.2/ChannelLabelCountMismatch",
+              "defaultSeverity": "error",
+              "description": "Number of AudioChannelLabelSubDescriptors must equal ChannelCount."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-2:2016:5.3.6.5/MCAChannelIDMissing",
+              "defaultSeverity": "error",
+              "description": "MCAChannelID shall be present per channel (channel 1 may omit it) — §5.3.6.5 Table 7."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-2:2016:5.3.6.3/SoundFieldGroupLabelCount",
+              "defaultSeverity": "error",
+              "description": "Exactly one SoundfieldGroupLabelSubDescriptor is required per WAVEPCMDescriptor."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-2:2016:5.3.6.5/SoundfieldGroupLinkIDMissing",
+              "defaultSeverity": "error",
+              "description": "Every AudioChannelLabelSubDescriptor shall carry a SoundfieldGroupLinkID (§5.3.6.5 Table 7)."
+            },
+            {
+              "category": "Container",
+              "code": "ST2067-2:2016:5.3.3/AudioNotClipWrapped",
+              "defaultSeverity": "error",
+              "description": "Audio essence must be Wave Clip-Wrapped (ST 382 §10)."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-2:2016:5.3/RFC5646SpokenLanguageMissing",
+              "defaultSeverity": "warn",
+              "description": "Audio descriptor should carry an RFC-5646 spoken language tag."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-2:2016:5.3.4.2/ChannelAssignmentMissing",
+              "defaultSeverity": "error",
+              "description": "ChannelAssignment shall be present on the audio essence descriptor (§5.3.4.2)."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-2:2016:5.3.4.2/ChannelAssignmentNotMCA",
+              "defaultSeverity": "error",
+              "description": "ChannelAssignment shall equal the ST 2067-2 Table 5 channel-assignment label UL."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-2:2016:5.3.6.5/SoundfieldGroupMissing/MCATitle",
+              "defaultSeverity": "error",
+              "description": "SoundfieldGroupLabelSubDescriptor shall carry MCATitle (§5.3.6.5 Table 7)."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-2:2016:5.3.6.5/SoundfieldGroupMissing/MCATitleVersion",
+              "defaultSeverity": "error",
+              "description": "SoundfieldGroupLabelSubDescriptor shall carry MCATitleVersion (§5.3.6.5 Table 7)."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-2:2016:5.3.6.5/SoundfieldGroupMissing/MCAAudioContentKind",
+              "defaultSeverity": "error",
+              "description": "SoundfieldGroupLabelSubDescriptor shall carry MCAAudioContentKind (§5.3.6.5 Table 7)."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-2:2016:5.3.6.5/SoundfieldGroupMissing/MCAAudioElementKind",
+              "defaultSeverity": "error",
+              "description": "SoundfieldGroupLabelSubDescriptor shall carry MCAAudioElementKind (§5.3.6.5 Table 7)."
+            },
+            {
+              "category": "Subtitle",
+              "code": "ST2067-2:2016:5.4/TimedTextUCSEncodingNotUTF8",
+              "defaultSeverity": "error",
+              "description": "TimedTextDescriptor UCSEncoding must be UTF-8."
+            },
+            {
+              "category": "Subtitle",
+              "code": "ST2067-2:2016:5.4/TimedTextNamespaceNotIMSC",
+              "defaultSeverity": "error",
+              "description": "TimedTextDescriptor NamespaceURI must be one of the IMSC1 profile namespaces."
+            },
+            {
+              "category": "Subtitle",
+              "code": "ST2067-2:2016:5.4.5/TimedTextResourceMIMETypeUnsupported",
+              "defaultSeverity": "error",
+              "description": "TimeTextResourceSubDescriptor MIMEType must be image/png, font/otf (2020) or application/x-font-opentype."
+            },
+            {
+              "category": "Container",
+              "code": "ST2067-2:2016:5.4/TimedTextMappingKindNot0x13",
+              "defaultSeverity": "error",
+              "description": "Timed-text ContainerFormat UL Mapping Kind byte must be 0x13 (IMSC)."
+            }
+          ],
+          "title": "Essence Layer — 2016 (inherited by later editions)"
+        }
+      ],
+      "title": "ST 2067-2 — Core Constraints & Packing List"
+    },
+    {
+      "groups": [
+        {
+          "rules": [
+            {
+              "category": "Metadata",
+              "code": "ST2067-3:2013:5.5.1.2/ContentKindUnknown",
+              "defaultSeverity": "warn",
+              "description": "ContentKind uses an unrecognized value under the SMPTE scope."
+            },
+            {
+              "category": "Reference",
+              "code": "ST2067-3:2013:6.4.2/SourceEncodingNoEssenceDescriptorList",
+              "defaultSeverity": "error",
+              "description": "SourceEncoding present but EssenceDescriptorList absent."
+            },
+            {
+              "category": "Reference",
+              "code": "ST2067-3:2013:6.4.2/SourceEncodingUnresolved",
+              "defaultSeverity": "error",
+              "description": "SourceEncoding does not match any EssenceDescriptor Id."
+            },
+            {
+              "category": "Structure",
+              "code": "ST2067-3:2013:6.4.2/EssenceDescriptorListEmpty",
+              "defaultSeverity": "error",
+              "description": "EssenceDescriptorList present but contains no descriptors."
+            },
+            {
+              "category": "Structure",
+              "code": "ST2067-3:2013:6.11/ContentVersionListEmpty",
+              "defaultSeverity": "error",
+              "description": "ContentVersionList present but empty."
+            },
+            {
+              "category": "Metadata",
+              "code": "ST2067-3:2013:6.11/ContentVersionIdInvalid",
+              "defaultSeverity": "error",
+              "description": "ContentVersion/Id is empty (shall be a URI)."
+            },
+            {
+              "category": "Metadata",
+              "code": "ST2067-3:2013:6.11/ContentVersionLabelTextMissing",
+              "defaultSeverity": "warn",
+              "description": "ContentVersion/LabelText is absent."
+            },
+            {
+              "category": "Metadata",
+              "code": "ST2067-3:2013:6.12/LocaleLanguageTagInvalid",
+              "defaultSeverity": "warn",
+              "description": "Locale language tag does not conform to RFC 5646."
+            },
+            {
+              "category": "Structure",
+              "code": "ST2067-3:2013:7.3/TrackIdNotUnique",
+              "defaultSeverity": "error",
+              "description": "TrackId is not unique within a segment."
+            },
+            {
+              "category": "Timing",
+              "code": "ST2067-3:2013:7.4/MarkerOffsetOutOfRange",
+              "defaultSeverity": "error",
+              "description": "Marker offset exceeds resource effective duration."
+            },
+            {
+              "category": "Metadata",
+              "code": "ST2067-3:2013:7.4/MarkerLabelUnknown",
+              "defaultSeverity": "warn",
+              "description": "Marker label is not a recognized SMPTE standard value."
+            },
+            {
+              "category": "Timing",
+              "code": "ST2067-3:2013:7.2.2/SegmentDuration",
+              "defaultSeverity": "error",
+              "description": "All virtual tracks in a segment must span the same number of edit units."
+            },
+            {
+              "category": "Structure",
+              "code": "ST2067-3:2013:6.1.9/ContentVersionIdDuplicate",
+              "defaultSeverity": "error",
+              "description": "No two ContentVersion elements shall have identical Id values."
+            },
+            {
+              "category": "Timing",
+              "code": "ST2067-3:2013:7.3/SegmentDurationIntegerEditUnits",
+              "defaultSeverity": "error",
+              "description": "Sequence duration shall be an integer number of Composition Edit Units."
+            }
+          ],
+          "title": "2013"
+        },
+        {
+          "rules": [
+            {
+              "category": "Metadata",
+              "code": "ST2067-3:2016:5.5.1.2/ContentKindUnknown",
+              "defaultSeverity": "warn",
+              "description": "ContentKind uses an unrecognized value under the SMPTE scope."
+            },
+            {
+              "category": "Reference",
+              "code": "ST2067-3:2016:6.4.2/SourceEncodingNoEssenceDescriptorList",
+              "defaultSeverity": "error",
+              "description": "SourceEncoding present but EssenceDescriptorList absent."
+            },
+            {
+              "category": "Reference",
+              "code": "ST2067-3:2016:6.4.2/SourceEncodingUnresolved",
+              "defaultSeverity": "error",
+              "description": "SourceEncoding does not match any EssenceDescriptor Id."
+            },
+            {
+              "category": "Structure",
+              "code": "ST2067-3:2016:6.4.2/EssenceDescriptorListEmpty",
+              "defaultSeverity": "error",
+              "description": "EssenceDescriptorList present but contains no descriptors."
+            },
+            {
+              "category": "Structure",
+              "code": "ST2067-3:2016:6.11/ContentVersionListEmpty",
+              "defaultSeverity": "error",
+              "description": "ContentVersionList present but empty."
+            },
+            {
+              "category": "Metadata",
+              "code": "ST2067-3:2016:6.11/ContentVersionIdInvalid",
+              "defaultSeverity": "error",
+              "description": "ContentVersion/Id is empty (shall be a URI)."
+            },
+            {
+              "category": "Metadata",
+              "code": "ST2067-3:2016:6.11/ContentVersionLabelTextMissing",
+              "defaultSeverity": "warn",
+              "description": "ContentVersion/LabelText is absent."
+            },
+            {
+              "category": "Metadata",
+              "code": "ST2067-3:2016:6.12/LocaleLanguageTagInvalid",
+              "defaultSeverity": "warn",
+              "description": "Locale language tag does not conform to RFC 5646."
+            },
+            {
+              "category": "Structure",
+              "code": "ST2067-3:2016:7.3/TrackIdNotUnique",
+              "defaultSeverity": "error",
+              "description": "TrackId is not unique within a segment."
+            },
+            {
+              "category": "Timing",
+              "code": "ST2067-3:2016:7.4/MarkerOffsetOutOfRange",
+              "defaultSeverity": "error",
+              "description": "Marker offset exceeds resource effective duration."
+            },
+            {
+              "category": "Metadata",
+              "code": "ST2067-3:2016:7.4/MarkerLabelUnknown",
+              "defaultSeverity": "warn",
+              "description": "Marker label is not a recognized SMPTE standard value."
+            },
+            {
+              "category": "Timing",
+              "code": "ST2067-3:2016:7.2.2/SegmentDuration",
+              "defaultSeverity": "error",
+              "description": "All virtual tracks in a segment must span the same number of edit units."
+            },
+            {
+              "category": "Structure",
+              "code": "ST2067-3:2016:6.1.9/ContentVersionIdDuplicate",
+              "defaultSeverity": "error",
+              "description": "No two ContentVersion elements shall have identical Id values."
+            },
+            {
+              "category": "Timing",
+              "code": "ST2067-3:2016:7.3/SegmentDurationIntegerEditUnits",
+              "defaultSeverity": "error",
+              "description": "Sequence duration shall be an integer number of Composition Edit Units."
+            }
+          ],
+          "title": "2016 / 2020"
+        }
+      ],
+      "title": "ST 2067-3 — Composition Playlist"
+    },
+    {
+      "groups": [
+        {
+          "rules": [
+            {
+              "category": "Reference",
+              "code": "ST2067-9:2018:6.1/MalformedXml",
+              "defaultSeverity": "critical",
+              "description": "SidecarCompositionMap document is not well-formed XML (§6.1)."
+            },
+            {
+              "category": "Reference",
+              "code": "ST2067-9:2018:5/SidecarAssetReferencedByVirtualTrack",
+              "defaultSeverity": "error",
+              "description": "A sidecar asset shall not be referenced by any Virtual Track in a CPL (§5)."
+            },
+            {
+              "category": "Reference",
+              "code": "ST2067-9:2018:7.2.3/DuplicateAssetId",
+              "defaultSeverity": "error",
+              "description": "Duplicate SidecarAsset Id within SidecarAssetList (§7.2.3)."
+            },
+            {
+              "category": "Reference",
+              "code": "ST2067-9:2018:7.2.4/SignerWithoutSignature",
+              "defaultSeverity": "error",
+              "description": "Signer element is present but the required Signature element is absent (§7.2.4)."
+            },
+            {
+              "category": "Reference",
+              "code": "ST2067-9:2018:7.2.5/SignatureWithoutSigner",
+              "defaultSeverity": "error",
+              "description": "Signature element is present but the required Signer element is absent (§7.2.5)."
+            },
+            {
+              "category": "Reference",
+              "code": "ST2067-9:2018:7.3.1/SidecarAssetNotFound",
+              "defaultSeverity": "error",
+              "description": "SidecarAsset Id is not present in the package AssetMap (§7.3.1)."
+            },
+            {
+              "category": "Reference",
+              "code": "ST2067-9:2018:7.3.1.1/CplNotFound",
+              "defaultSeverity": "error",
+              "description": "CPLId in AssociatedCPLList does not reference a known CPL in this package (§7.3.1.1)."
+            },
+            {
+              "category": "Reference",
+              "code": "ST2067-9:2018:7.3.1.1/DuplicateCplId",
+              "defaultSeverity": "error",
+              "description": "Duplicate CPLId within a single AssociatedCPLList (§7.3.1.1)."
+            }
+          ],
+          "title": null
+        }
+      ],
+      "title": "ST 2067-9 — Sidecar Composition Map"
+    },
+    {
+      "groups": [
+        {
+          "rules": [
+            {
+              "category": "Metadata",
+              "code": "ST2067-21:2020:7.1/AppIdMismatch",
+              "defaultSeverity": "warn",
+              "description": "Application identifier in CPL ExtensionProperties does not match the expected App2E URI."
+            }
+          ],
+          "title": "2020"
+        },
+        {
+          "rules": [
+            {
+              "category": "Video",
+              "code": "ST2067-21:2023:5.2/FrameRate",
+              "defaultSeverity": "error",
+              "description": "Frame rate is not in the permitted set for App2E."
+            },
+            {
+              "category": "Video",
+              "code": "ST2067-21:2023:5.2/Resolution",
+              "defaultSeverity": "error",
+              "description": "Image resolution is not in the permitted set for App2E."
+            },
+            {
+              "category": "Metadata",
+              "code": "ST2067-21:2023:5.3/EmptyLanguageTag",
+              "defaultSeverity": "error",
+              "description": "Locale language tag is empty."
+            },
+            {
+              "category": "Metadata",
+              "code": "ST2067-21:2023:5.3/MalformedLanguageTag",
+              "defaultSeverity": "error",
+              "description": "Locale language tag is not a valid BCP-47 subtag."
+            },
+            {
+              "category": "Metadata",
+              "code": "ST2067-21:2023:5.3/RegionCode",
+              "defaultSeverity": "error",
+              "description": "Region subtag in a language tag is not valid."
+            },
+            {
+              "category": "Video",
+              "code": "ST2067-21:2023:6.2/ColorSystem",
+              "defaultSeverity": "error",
+              "description": "Color system designator is not in the permitted set."
+            },
+            {
+              "category": "Encoding",
+              "code": "ST2067-21:2023:6.2/Required-StoredWidth",
+              "defaultSeverity": "error",
+              "description": "RGBA/CDCI descriptor is missing the required StoredWidth field."
+            },
+            {
+              "category": "Encoding",
+              "code": "ST2067-21:2023:6.2/Required-StoredHeight",
+              "defaultSeverity": "error",
+              "description": "RGBA/CDCI descriptor is missing the required StoredHeight field."
+            },
+            {
+              "category": "Encoding",
+              "code": "ST2067-21:2023:6.2/Required-SampleRate",
+              "defaultSeverity": "error",
+              "description": "RGBA/CDCI descriptor is missing the required SampleRate field."
+            },
+            {
+              "category": "Encoding",
+              "code": "ST2067-21:2023:6.2/Required-FrameLayout",
+              "defaultSeverity": "error",
+              "description": "RGBA/CDCI descriptor is missing the required FrameLayout field."
+            },
+            {
+              "category": "Encoding",
+              "code": "ST2067-21:2023:6.2/Required-ColorPrimaries",
+              "defaultSeverity": "error",
+              "description": "RGBA/CDCI descriptor is missing the required ColorPrimaries field."
+            },
+            {
+              "category": "Encoding",
+              "code": "ST2067-21:2023:6.2/Required-TransferCharacteristic",
+              "defaultSeverity": "error",
+              "description": "RGBA/CDCI descriptor is missing the required TransferCharacteristic field."
+            },
+            {
+              "category": "Encoding",
+              "code": "ST2067-21:2023:6.2/Required-PictureCompression",
+              "defaultSeverity": "error",
+              "description": "RGBA/CDCI descriptor is missing the required PictureCompression field."
+            },
+            {
+              "category": "Encoding",
+              "code": "ST2067-21:2023:6.2/Required-ComponentDepth",
+              "defaultSeverity": "error",
+              "description": "CDCI descriptor is missing the required ComponentDepth field."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-21:2023:6.5/Required-ChannelCount",
+              "defaultSeverity": "error",
+              "description": "WavePCM descriptor is missing the required ChannelCount field."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-21:2023:6.5/Required-QuantizationBits",
+              "defaultSeverity": "error",
+              "description": "WavePCM descriptor is missing the required QuantizationBits field."
+            },
+            {
+              "category": "Video",
+              "code": "ST2067-21:2023:6.2.1/AlphaTransparency",
+              "defaultSeverity": "error",
+              "description": "Alpha transparency mode is not permitted in App2E."
+            },
+            {
+              "category": "Video",
+              "code": "ST2067-21:2023:6.2.1/CodingEquationsMissing",
+              "defaultSeverity": "error",
+              "description": "CodingEquations field is absent from the picture descriptor (Table 8)."
+            },
+            {
+              "category": "Video",
+              "code": "ST2067-21:2023:6.2.1/ColorPrimariesMissing",
+              "defaultSeverity": "error",
+              "description": "ColorPrimaries field is absent from the picture descriptor (Table 8)."
+            },
+            {
+              "category": "Video",
+              "code": "ST2067-21:2023:6.2.1/FieldDominance",
+              "defaultSeverity": "error",
+              "description": "FieldDominance value is not permitted for the declared FrameLayout."
+            },
+            {
+              "category": "Video",
+              "code": "ST2067-21:2023:6.2.1/FrameLayout",
+              "defaultSeverity": "error",
+              "description": "FrameLayout value is not in the permitted set for App2E."
+            },
+            {
+              "category": "Video",
+              "code": "ST2067-21:2023:6.2.1/FrameLayoutInterlaced",
+              "defaultSeverity": "error",
+              "description": "FrameLayout declares interlaced content, which is not permitted in App2E."
+            },
+            {
+              "category": "Video",
+              "code": "ST2067-21:2023:6.2.1/ImageAlignmentOffset",
+              "defaultSeverity": "error",
+              "description": "ImageAlignmentOffset must be zero."
+            },
+            {
+              "category": "Video",
+              "code": "ST2067-21:2023:6.2.1/ImageEndOffset",
+              "defaultSeverity": "error",
+              "description": "ImageEndOffset must be zero."
+            },
+            {
+              "category": "Video",
+              "code": "ST2067-21:2023:6.2.1/ImageStartOffset",
+              "defaultSeverity": "error",
+              "description": "ImageStartOffset must be zero."
+            },
+            {
+              "category": "Video",
+              "code": "ST2067-21:2023:6.2.1/SampledHeight",
+              "defaultSeverity": "error",
+              "description": "SampledHeight must equal StoredHeight."
+            },
+            {
+              "category": "Video",
+              "code": "ST2067-21:2023:6.2.1/SampledWidth",
+              "defaultSeverity": "error",
+              "description": "SampledWidth must equal StoredWidth."
+            },
+            {
+              "category": "Video",
+              "code": "ST2067-21:2023:6.2.1/SampledXOffset",
+              "defaultSeverity": "error",
+              "description": "SampledXOffset must be zero."
+            },
+            {
+              "category": "Video",
+              "code": "ST2067-21:2023:6.2.1/SampledYOffset",
+              "defaultSeverity": "error",
+              "description": "SampledYOffset must be zero."
+            },
+            {
+              "category": "Video",
+              "code": "ST2067-21:2023:6.2.1/StoredF2Offset",
+              "defaultSeverity": "error",
+              "description": "StoredF2Offset must be zero."
+            },
+            {
+              "category": "Video",
+              "code": "ST2067-21:2023:6.2.1/TransferCharacteristicMissing",
+              "defaultSeverity": "error",
+              "description": "TransferCharacteristic field is absent from the picture descriptor (Table 8)."
+            },
+            {
+              "category": "Video",
+              "code": "ST2067-21:2023:6.2.2/TransferCharacteristicUnknown",
+              "defaultSeverity": "error",
+              "description": "TransferCharacteristic UL is present but not a recognized value."
+            },
+            {
+              "category": "Video",
+              "code": "ST2067-21:2023:6.2.3/CodingEquationsUnknown",
+              "defaultSeverity": "error",
+              "description": "CodingEquations UL is present but not a recognized value."
+            },
+            {
+              "category": "Video",
+              "code": "ST2067-21:2023:6.2.4/ColorPrimariesUnknown",
+              "defaultSeverity": "error",
+              "description": "ColorPrimaries UL is present but not a recognized value."
+            },
+            {
+              "category": "Encoding",
+              "code": "ST2067-21:2023:6.2.5/J2KRequired",
+              "defaultSeverity": "error",
+              "description": "Video essence is not JPEG 2000 encoded as required by App2E."
+            },
+            {
+              "category": "Video",
+              "code": "ST2067-21:2023:6.3/AlphaMaxRef",
+              "defaultSeverity": "error",
+              "description": "AlphaMaxRef value is not permitted."
+            },
+            {
+              "category": "Video",
+              "code": "ST2067-21:2023:6.3/AlphaMinRef",
+              "defaultSeverity": "error",
+              "description": "AlphaMinRef value is not permitted."
+            },
+            {
+              "category": "Video",
+              "code": "ST2067-21:2023:6.3/ComponentMaxRef",
+              "defaultSeverity": "error",
+              "description": "ComponentMaxRef value is not in the permitted range."
+            },
+            {
+              "category": "Video",
+              "code": "ST2067-21:2023:6.3/ComponentMinRef",
+              "defaultSeverity": "error",
+              "description": "ComponentMinRef value is not in the permitted range."
+            },
+            {
+              "category": "Video",
+              "code": "ST2067-21:2023:6.3/Palette",
+              "defaultSeverity": "error",
+              "description": "Palette is present; palette images are not permitted in App2E."
+            },
+            {
+              "category": "Video",
+              "code": "ST2067-21:2023:6.3/PaletteLayout",
+              "defaultSeverity": "error",
+              "description": "PaletteLayout is present; palette layout is not permitted in App2E."
+            },
+            {
+              "category": "Video",
+              "code": "ST2067-21:2023:6.3/ScanningDirection",
+              "defaultSeverity": "error",
+              "description": "ScanningDirection value is not in the permitted set."
+            },
+            {
+              "category": "Video",
+              "code": "ST2067-21:2023:6.3.2/ComponentRefValues",
+              "defaultSeverity": "error",
+              "description": "Component max/min reference values are inconsistent with bit depth."
+            },
+            {
+              "category": "Video",
+              "code": "ST2067-21:2023:6.4/AlphaSampleDepth",
+              "defaultSeverity": "error",
+              "description": "AlphaSampleDepth value is not permitted."
+            },
+            {
+              "category": "Video",
+              "code": "ST2067-21:2023:6.4/ColorSiting",
+              "defaultSeverity": "error",
+              "description": "ColorSiting value is not in the permitted set."
+            },
+            {
+              "category": "Video",
+              "code": "ST2067-21:2023:6.4/ComponentDepth",
+              "defaultSeverity": "error",
+              "description": "ComponentDepth value is not in the permitted set (8 / 10 / 12 / 16)."
+            },
+            {
+              "category": "Video",
+              "code": "ST2067-21:2023:6.4/HorizontalSubsampling",
+              "defaultSeverity": "error",
+              "description": "HorizontalSubsampling value is not in the permitted set."
+            },
+            {
+              "category": "Video",
+              "code": "ST2067-21:2023:6.4/PaddingBits",
+              "defaultSeverity": "error",
+              "description": "PaddingBits must be zero."
+            },
+            {
+              "category": "Video",
+              "code": "ST2067-21:2023:6.4/ReversedByteOrder",
+              "defaultSeverity": "error",
+              "description": "ReversedByteOrder flag is set; byte reversal is not permitted."
+            },
+            {
+              "category": "Video",
+              "code": "ST2067-21:2023:6.4/VerticalSubsampling",
+              "defaultSeverity": "error",
+              "description": "VerticalSubsampling value is not in the permitted set."
+            },
+            {
+              "category": "Video",
+              "code": "ST2067-21:2023:6.4.3/BlackRefLevel",
+              "defaultSeverity": "error",
+              "description": "BlackRefLevel value is inconsistent with ComponentDepth."
+            },
+            {
+              "category": "Video",
+              "code": "ST2067-21:2023:6.4.3/ColorRange",
+              "defaultSeverity": "error",
+              "description": "ColorRange value is not in the permitted set."
+            },
+            {
+              "category": "Video",
+              "code": "ST2067-21:2023:6.4.3/WhiteRefLevel",
+              "defaultSeverity": "error",
+              "description": "WhiteRefLevel value is inconsistent with ComponentDepth."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-21:2023:6.5/AudioSampleRate",
+              "defaultSeverity": "error",
+              "description": "Audio sample rate must be 48 000 Hz."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-21:2023:6.5/QuantizationBits",
+              "defaultSeverity": "error",
+              "description": "QuantizationBits must be 16 or 24."
+            },
+            {
+              "category": "Encoding",
+              "code": "ST2067-21:2023:6.5.2/CodingStyle",
+              "defaultSeverity": "error",
+              "description": "JPEG 2000 codestream coding style is not compliant."
+            },
+            {
+              "category": "Encoding",
+              "code": "ST2067-21:2023:6.5.2/J2CLayout",
+              "defaultSeverity": "error",
+              "description": "JPEG 2000 codestream layout does not meet App2E requirements."
+            },
+            {
+              "category": "Encoding",
+              "code": "ST2067-21:2023:6.5.2/J2KExtendedCapabilities",
+              "defaultSeverity": "error",
+              "description": "JPEG 2000 extended capabilities are declared but not permitted."
+            },
+            {
+              "category": "Encoding",
+              "code": "ST2067-21:2023:6.5.2/JPEG2000SubDescriptor",
+              "defaultSeverity": "warn",
+              "description": "JPEG2000SubDescriptor is absent or incomplete."
+            },
+            {
+              "category": "Encoding",
+              "code": "ST2067-21:2023:6.2.5/J2K-HT-Not-Allowed",
+              "defaultSeverity": "error",
+              "description": "JPEG 2000 HT (ISO 15444-15) is not permitted by App2E 2020."
+            },
+            {
+              "category": "Encoding",
+              "code": "ST2067-21:2023:6.2.5/J2K-4K-Resolution",
+              "defaultSeverity": "error",
+              "description": "JPEG 2000 IMF 4K Profile: stored resolution is outside the permitted range."
+            },
+            {
+              "category": "Encoding",
+              "code": "ST2067-21:2023:6.2.5/J2K-2K-Resolution",
+              "defaultSeverity": "error",
+              "description": "JPEG 2000 IMF 2K Profile: stored resolution is outside the permitted range."
+            },
+            {
+              "category": "Encoding",
+              "code": "ST2067-21:2023:6.2.5/J2K-BCP-Resolution",
+              "defaultSeverity": "error",
+              "description": "JPEG 2000 Broadcast Contribution Profile: stored resolution is outside the permitted range."
+            },
+            {
+              "category": "Metadata",
+              "code": "ST2067-21:2023:7.1/ApplicationIdentification",
+              "defaultSeverity": "error",
+              "description": "ApplicationIdentification is required for App2E compositions."
+            },
+            {
+              "category": "Metadata",
+              "code": "ST2067-21:2023:7.1/ContentMaturityRating-Agency",
+              "defaultSeverity": "error",
+              "description": "ContentMaturityRating Agency is empty."
+            },
+            {
+              "category": "Metadata",
+              "code": "ST2067-21:2023:7.1/ContentMaturityRating-Agency-URI",
+              "defaultSeverity": "error",
+              "description": "ContentMaturityRating Agency is not a valid xs:anyURI."
+            },
+            {
+              "category": "Video",
+              "code": "ST2067-21:2023:7.2/HomogeneousImageEssence",
+              "defaultSeverity": "error",
+              "description": "All image essence in a composition shall use the same color system."
+            },
+            {
+              "category": "Metadata",
+              "code": "ST2067-21:2023:7.1/AppIdMismatch",
+              "defaultSeverity": "warn",
+              "description": "Application identifier in CPL ExtensionProperties does not match the expected App2E URI."
+            },
+            {
+              "category": "Timing",
+              "code": "ST2067-21:2023:7.4/SegmentDurationMultiple",
+              "defaultSeverity": "error",
+              "description": "Segment duration must be an integer multiple of 5 edit units."
+            },
+            {
+              "category": "Video",
+              "code": "ST2067-21:2023:7.5/MaxCLLMaxFALL",
+              "defaultSeverity": "info",
+              "description": "MaxCLL / MaxFALL HDR metadata is absent; recommended for HDR content."
+            }
+          ],
+          "title": "2023"
+        },
+        {
+          "rules": [
+            {
+              "category": "Subtitle",
+              "code": "ST2067-21:2025:5.6/FNTimedText",
+              "defaultSeverity": "error",
+              "description": "Timed text track designated as Forced Narrative (FN) does not comply with §5.6."
+            },
+            {
+              "category": "Subtitle",
+              "code": "ST2067-21:2025:5.6/HICTimedText",
+              "defaultSeverity": "error",
+              "description": "Timed text track designated as HI-Caption (HIC) does not comply with §5.6."
+            }
+          ],
+          "title": "2025"
+        }
+      ],
+      "title": "ST 2067-21 — Application #2E"
+    },
+    {
+      "groups": [
+        {
+          "rules": [
+            {
+              "category": "Audio",
+              "code": "ST2067-201:2019:5.9/CodecForbidden",
+              "defaultSeverity": "error",
+              "description": "IABEssenceDescriptor: Codec item shall not be present (§5.9)."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-201:2019:5.9/ElectrospatialFormulationInvalid",
+              "defaultSeverity": "error",
+              "description": "IABEssenceDescriptor: ElectrospatialFormulation, if present, shall be 15 — multi-channel mode default (§5.9)."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-201:2019:5.9/QuantizationBitsMissing",
+              "defaultSeverity": "warn",
+              "description": "IABEssenceDescriptor: QuantizationBits is missing; shall be 24."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-201:2019:5.9/QuantizationBitsInvalid",
+              "defaultSeverity": "error",
+              "description": "IABEssenceDescriptor: QuantizationBits shall be 24."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-201:2019:5.9/ContainerFormatMissing",
+              "defaultSeverity": "warn",
+              "description": "IABEssenceDescriptor: ContainerFormat is missing."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-201:2019:5.9/EssenceContainerInvalid",
+              "defaultSeverity": "error",
+              "description": "IABEssenceDescriptor: ContainerFormat is not the required IAB container UL."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-201:2019:5.9/AudioSamplingRateMissing",
+              "defaultSeverity": "error",
+              "description": "IABEssenceDescriptor: AudioSampleRate shall be present (§5.9)."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-201:2019:5.9/AudioSamplingRateInvalid",
+              "defaultSeverity": "error",
+              "description": "IABEssenceDescriptor: AudioSampleRate shall match the bitstream SampleRate — 48 kHz or 96 kHz per ST 2098-2."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-201:2019:5.9/SoundCompressionMissing",
+              "defaultSeverity": "warn",
+              "description": "IABEssenceDescriptor: SoundCompression is missing."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-201:2019:5.9/SoundCompressionInvalid",
+              "defaultSeverity": "error",
+              "description": "IABEssenceDescriptor: SoundCompression is not the required IAB compression UL."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-201:2019:5.9/ChannelCountNotZero",
+              "defaultSeverity": "error",
+              "description": "IABEssenceDescriptor: ChannelCount shall be the distinguished value 0 (2019 edition)."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-201:2019:5.10.2/SubDescriptorMissing",
+              "defaultSeverity": "error",
+              "description": "IABEssenceDescriptor: IABSoundfieldLabelSubDescriptor shall be present."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-201:2019:5.10.4/MCATagSymbolMissing",
+              "defaultSeverity": "error",
+              "description": "IABSoundfieldLabelSubDescriptor: MCATagSymbol is missing; shall be \"IAB\"."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-201:2019:5.10.4/MCATagSymbolInvalid",
+              "defaultSeverity": "error",
+              "description": "IABSoundfieldLabelSubDescriptor: MCATagSymbol shall be \"IAB\"."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-201:2019:5.10.3/MCATagNameMissing",
+              "defaultSeverity": "error",
+              "description": "IABSoundfieldLabelSubDescriptor: MCATagName is missing; shall be \"IAB\"."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-201:2019:5.10.4/MCATagNameInvalid",
+              "defaultSeverity": "error",
+              "description": "IABSoundfieldLabelSubDescriptor: MCATagName shall be \"IAB\"."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-201:2019:5.10.4/MCALabelDictionaryIDMissing",
+              "defaultSeverity": "error",
+              "description": "IABSoundfieldLabelSubDescriptor: MCALabelDictionaryID is missing."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-201:2019:5.10.4/MCALabelDictionaryIDInvalid",
+              "defaultSeverity": "error",
+              "description": "IABSoundfieldLabelSubDescriptor: MCALabelDictionaryID is not the required IAB label UL."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-201:2019:6.2/IABSequenceNoResources",
+              "defaultSeverity": "error",
+              "description": "IABSequence shall contain at least one Resource (§6.2)."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-201:2019:6.2/IABSequenceSourceEncodingInvalid",
+              "defaultSeverity": "error",
+              "description": "IABSequence Resource.SourceEncoding does not reference an IABEssenceDescriptor (§6.2)."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-201:2019:5.10.2/ForbiddenMCASubDescriptor",
+              "defaultSeverity": "error",
+              "description": "IAB Track File shall not contain AudioChannelLabel, SoundfieldGroupLabel or GroupOfSoundfieldGroupsLabel SubDescriptors (§5.10.2)."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-201:2019:5.10.2/SubDescriptorDuplicate",
+              "defaultSeverity": "error",
+              "description": "IAB Track File shall contain exactly one IABSoundfieldLabelSubDescriptor (§5.10.2)."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-201:2019:C.2/MCAChannelIDForbidden",
+              "defaultSeverity": "error",
+              "description": "MCAChannelID shall not be present in the IAB Soundfield Label SubDescriptor (Annex C.2)."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-201:2019:6.2/EditRateNotIntegerMultiple",
+              "defaultSeverity": "error",
+              "description": "IAB Track File Edit Rate shall be an integer multiple of the Main Image Virtual Track Edit Rate (§6.2)."
+            }
+          ],
+          "title": "2019"
+        },
+        {
+          "rules": [
+            {
+              "category": "Audio",
+              "code": "ST2067-201:2021:5.9/CodecForbidden",
+              "defaultSeverity": "error",
+              "description": "IABEssenceDescriptor: Codec item shall not be present (§5.9)."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-201:2021:5.9/ElectrospatialFormulationInvalid",
+              "defaultSeverity": "error",
+              "description": "IABEssenceDescriptor: ElectrospatialFormulation, if present, shall be 15 — multi-channel mode default (§5.9)."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-201:2021:5.9/QuantizationBitsMissing",
+              "defaultSeverity": "warn",
+              "description": "IABEssenceDescriptor: QuantizationBits is missing; shall be 24."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-201:2021:5.9/QuantizationBitsInvalid",
+              "defaultSeverity": "error",
+              "description": "IABEssenceDescriptor: QuantizationBits shall be 24."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-201:2021:5.9/ContainerFormatMissing",
+              "defaultSeverity": "warn",
+              "description": "IABEssenceDescriptor: ContainerFormat is missing."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-201:2021:5.9/EssenceContainerInvalid",
+              "defaultSeverity": "error",
+              "description": "IABEssenceDescriptor: ContainerFormat is not the required IAB container UL."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-201:2021:5.9/AudioSamplingRateMissing",
+              "defaultSeverity": "error",
+              "description": "IABEssenceDescriptor: AudioSampleRate shall be present (§5.9)."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-201:2021:5.9/AudioSamplingRateInvalid",
+              "defaultSeverity": "error",
+              "description": "IABEssenceDescriptor: AudioSampleRate shall match the bitstream SampleRate — 48 kHz or 96 kHz per ST 2098-2."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-201:2021:5.9/SoundCompressionMissing",
+              "defaultSeverity": "warn",
+              "description": "IABEssenceDescriptor: SoundCompression is missing."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-201:2021:5.9/SoundCompressionInvalid",
+              "defaultSeverity": "error",
+              "description": "IABEssenceDescriptor: SoundCompression is not the required IAB compression UL."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-201:2021:5.9/ChannelCountNotZero",
+              "defaultSeverity": "error",
+              "description": "IABEssenceDescriptor: ChannelCount shall be the distinguished value 0 (2019 edition)."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-201:2021:5.10.2/SubDescriptorMissing",
+              "defaultSeverity": "error",
+              "description": "IABEssenceDescriptor: IABSoundfieldLabelSubDescriptor shall be present."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-201:2021:5.10.4/MCATagSymbolMissing",
+              "defaultSeverity": "error",
+              "description": "IABSoundfieldLabelSubDescriptor: MCATagSymbol is missing; shall be \"IAB\"."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-201:2021:5.10.4/MCATagSymbolInvalid",
+              "defaultSeverity": "error",
+              "description": "IABSoundfieldLabelSubDescriptor: MCATagSymbol shall be \"IAB\"."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-201:2021:5.10.3/MCATagNameMissing",
+              "defaultSeverity": "error",
+              "description": "IABSoundfieldLabelSubDescriptor: MCATagName is missing; shall be \"IAB\"."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-201:2021:5.10.4/MCATagNameInvalid",
+              "defaultSeverity": "error",
+              "description": "IABSoundfieldLabelSubDescriptor: MCATagName shall be \"IAB\"."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-201:2021:5.10.4/MCALabelDictionaryIDMissing",
+              "defaultSeverity": "error",
+              "description": "IABSoundfieldLabelSubDescriptor: MCALabelDictionaryID is missing."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-201:2021:5.10.4/MCALabelDictionaryIDInvalid",
+              "defaultSeverity": "error",
+              "description": "IABSoundfieldLabelSubDescriptor: MCALabelDictionaryID is not the required IAB label UL."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-201:2021:6.2/IABSequenceNoResources",
+              "defaultSeverity": "error",
+              "description": "IABSequence shall contain at least one Resource (§6.2)."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-201:2021:6.2/IABSequenceSourceEncodingInvalid",
+              "defaultSeverity": "error",
+              "description": "IABSequence Resource.SourceEncoding does not reference an IABEssenceDescriptor (§6.2)."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-201:2021:5.10.2/ForbiddenMCASubDescriptor",
+              "defaultSeverity": "error",
+              "description": "IAB Track File shall not contain AudioChannelLabel, SoundfieldGroupLabel or GroupOfSoundfieldGroupsLabel SubDescriptors (§5.10.2)."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-201:2021:5.10.2/SubDescriptorDuplicate",
+              "defaultSeverity": "error",
+              "description": "IAB Track File shall contain exactly one IABSoundfieldLabelSubDescriptor (§5.10.2)."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-201:2021:C.2/MCAChannelIDForbidden",
+              "defaultSeverity": "error",
+              "description": "MCAChannelID shall not be present in the IAB Soundfield Label SubDescriptor (Annex C.2)."
+            },
+            {
+              "category": "Audio",
+              "code": "ST2067-201:2021:6.2/EditRateNotIntegerMultiple",
+              "defaultSeverity": "error",
+              "description": "IAB Track File Edit Rate shall be an integer multiple of the Main Image Virtual Track Edit Rate (§6.2)."
+            }
+          ],
+          "title": "2021"
+        },
+        {
+          "rules": [
+            {
+              "category": "Audio",
+              "code": "ST2067-201:2026:5.10.2/IabChannelSubDescriptorRecommended",
+              "defaultSeverity": "warn",
+              "description": "Track File should carry an IABChannelSubDescriptor for each channel of each BedDefinition (§5.10.2; set defined in Annex E)."
+            }
+          ],
+          "title": "2026"
+        }
+      ],
+      "title": "ST 2067-201 — IAB Plug-in"
+    },
+    {
+      "groups": [
+        {
+          "rules": [
+            {
+              "category": "Data",
+              "code": "ST2067-202:2023:9.2/NamespaceUriMissing",
+              "defaultSeverity": "error",
+              "description": "ISXDDataEssenceDescriptor: NamespaceURI shall be present (§9.2 Table 5, Req)."
+            },
+            {
+              "category": "Data",
+              "code": "ST2067-202:2023:6/ISXDSequenceNoResources",
+              "defaultSeverity": "error",
+              "description": "ISXDSequence shall contain at least one Resource."
+            },
+            {
+              "category": "Data",
+              "code": "ST2067-202:2023:6/ISXDSequenceSourceEncodingInvalid",
+              "defaultSeverity": "error",
+              "description": "ISXDSequence Resource.SourceEncoding does not reference an ISXDDataEssenceDescriptor."
+            },
+            {
+              "category": "Data",
+              "code": "ST2067-202:2023:6/NamespaceUriMismatch",
+              "defaultSeverity": "error",
+              "description": "All ISXD Track Files referenced by an ISXD Virtual Track shall have an identical NamespaceURI value (§6)."
+            },
+            {
+              "category": "Data",
+              "code": "ST2067-202:2023:6/EditRateMismatch",
+              "defaultSeverity": "error",
+              "description": "The Edit Rate of an ISXD Virtual Track shall be equal to the Edit Rate of the Main Image Virtual Track (§6)."
+            },
+            {
+              "category": "Data",
+              "code": "ST2067-202:2023:6/ISXDVirtualTrackMissing",
+              "defaultSeverity": "error",
+              "description": "A Composition that references an ISXD Track File shall contain one or more ISXD Virtual Tracks (§6)."
+            },
+            {
+              "category": "Data",
+              "code": "ST2067-202:2023:9.3/DataEssenceCodingMissing",
+              "defaultSeverity": "error",
+              "description": "ISXDDataEssenceDescriptor: DataEssenceCoding shall be present (§9.3)."
+            },
+            {
+              "category": "Data",
+              "code": "ST2067-202:2023:9.3/DataEssenceCodingInvalid",
+              "defaultSeverity": "error",
+              "description": "ISXDDataEssenceDescriptor: DataEssenceCoding shall be the UTF-8 Text Data Essence Coding UL (§9.3 Table 6)."
+            }
+          ],
+          "title": null
+        }
+      ],
+      "title": "ST 2067-202 — ISXD Plug-in"
+    },
+    {
+      "groups": [
+        {
+          "rules": [
+            {
+              "category": "Schema",
+              "code": "XSD/ElementMissing",
+              "defaultSeverity": "error",
+              "description": "A required element is absent (XSD minOccurs violated)."
+            },
+            {
+              "category": "Schema",
+              "code": "XSD/UnexpectedElement",
+              "defaultSeverity": "error",
+              "description": "An element appears outside its declared content model."
+            },
+            {
+              "category": "Schema",
+              "code": "XSD/PatternInvalid",
+              "defaultSeverity": "error",
+              "description": "A value violates an xs:pattern facet on its type."
+            },
+            {
+              "category": "Schema",
+              "code": "XSD/TypeInvalid",
+              "defaultSeverity": "error",
+              "description": "A value violates its declared XSD type (built-in or restriction)."
+            },
+            {
+              "category": "Schema",
+              "code": "XSD/SchemaConstraintFailed",
+              "defaultSeverity": "error",
+              "description": "An XSD constraint failed; see message for details."
+            },
+            {
+              "category": "Schema",
+              "code": "XSD/NotValidated",
+              "defaultSeverity": "info",
+              "description": "XSD validation was skipped: no vendored schema covers this document's namespace."
+            }
+          ],
+          "title": null
+        }
+      ],
+      "title": "XSD Schema Validation"
+    },
+    {
+      "groups": [
+        {
+          "rules": [
+            {
+              "category": "Structure",
+              "code": "IMFERNO:Package/UnreferencedAsset",
+              "defaultSeverity": "info",
+              "description": "Asset is present in the AssetMap but not referenced by any CPL Virtual Track and has no SCM declaration. Likely a sidecar essence without an SCM."
+            },
+            {
+              "category": "Structure",
+              "code": "IMFERNO:Package/UnlistedEssence",
+              "defaultSeverity": "warn",
+              "description": "File is present in the package directory but not listed in the AssetMap. The file is invisible to any conforming IMF reader."
+            },
+            {
+              "category": "Structure",
+              "code": "IMFERNO:Package/ParseError",
+              "defaultSeverity": "critical",
+              "description": "IMF package failed to parse due to a structural error."
+            },
+            {
+              "category": "Structure",
+              "code": "IMFERNO:Package/PklParseError",
+              "defaultSeverity": "error",
+              "description": "A Packing List referenced by the AssetMap could not be parsed."
+            },
+            {
+              "category": "Structure",
+              "code": "IMFERNO:Package/XmlAssetParseError",
+              "defaultSeverity": "warn",
+              "description": "An XML asset could not be parsed as CPL, OPL, or SCM."
+            },
+            {
+              "category": "Structure",
+              "code": "IMFERNO:Package/XmlReadError",
+              "defaultSeverity": "warn",
+              "description": "An XML file could not be read from disk."
+            },
+            {
+              "category": "Structure",
+              "code": "IMFERNO:Package/ReadDirError",
+              "defaultSeverity": "info",
+              "description": "Could not scan the package directory."
+            },
+            {
+              "category": "Structure",
+              "code": "IMFERNO:Package/DirEntryError",
+              "defaultSeverity": "info",
+              "description": "Could not read a directory entry while scanning for unlisted essences."
+            },
+            {
+              "category": "Structure",
+              "code": "IMFERNO:Package/PathTraversal",
+              "defaultSeverity": "error",
+              "description": "An asset chunk path attempts to escape the package root directory (path traversal)."
+            }
+          ],
+          "title": null
+        },
+        {
+          "rules": [
+            {
+              "category": "Container",
+              "code": "IMFERNO:Mxf/OpenFailed",
+              "defaultSeverity": "critical",
+              "description": "MXF file could not be opened for reading."
+            },
+            {
+              "category": "Container",
+              "code": "IMFERNO:Mxf/PartitionPackParseFailed",
+              "defaultSeverity": "critical",
+              "description": "MXF header partition pack failed to parse."
+            },
+            {
+              "category": "Container",
+              "code": "IMFERNO:Mxf/RegXmlConversionFailed",
+              "defaultSeverity": "warn",
+              "description": "MXF header metadata could not be converted to RegXML."
+            },
+            {
+              "category": "Container",
+              "code": "IMFERNO:Mxf/EssenceContainersDetected",
+              "defaultSeverity": "info",
+              "description": "Informational trace of how many essence containers the MXF declares."
+            }
+          ],
+          "title": null
+        }
+      ],
+      "title": "imferno"
+    }
+  ]
+}

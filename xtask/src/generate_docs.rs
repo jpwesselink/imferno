@@ -1,10 +1,14 @@
-//! Generates `docs/docs/guide/codes.md` — a single page with every
-//! validation code across all supported SMPTE specs.
+//! Generates the validation-code catalogue for the docs site from the spec
+//! crate enums:
+//!
+//! - `docs/docs/guide/codes.md`: the reference page with every code.
+//! - `docs/docs/public/rules.json`: the same catalogue, grouped per spec,
+//!   for the playground's advanced rule settings.
 //!
 //! Each enum exposes a `ALL: &'static [Self]` slice and implements the
 //! `ValidationCode` trait (`code`, `description`, `default_severity`, `category`).
-//! This module iterates those slices to produce one consolidated Markdown
-//! reference page — no hand-editing required.
+//! Both outputs are rendered from one section list (`catalogue()`), so they
+//! can't drift apart — no hand-editing required.
 
 use imferno_core::assetmap::codes::{
     St2067_2_2013_Core, St2067_2_2016_Core, St2067_2_2020, St2067_2_2020_Core, St429_9_2014,
@@ -19,6 +23,7 @@ use imferno_core::validation::iab_codes::{St2067_201_2019, St2067_201_2021, St20
 use imferno_core::validation::isxd_codes::St2067_202_2023;
 use imferno_core::xsd::codes::XsdConstraintCode;
 
+use serde_json::json;
 use std::fs;
 use std::path::Path;
 
@@ -31,39 +36,186 @@ pub fn run() {
         .parent()
         .expect("xtask has a parent directory");
 
+    let sections = catalogue();
+
     let out_dir = workspace_root.join("docs/docs/guide");
     fs::create_dir_all(&out_dir).expect("create output directory");
-
     let path = out_dir.join("codes.md");
-    fs::write(&path, codes_page()).unwrap_or_else(|e| panic!("write codes.md: {e}"));
+    fs::write(&path, codes_page(&sections)).unwrap_or_else(|e| panic!("write codes.md: {e}"));
+    println!("  wrote {}", path.display());
+
+    let public_dir = workspace_root.join("docs/docs/public");
+    fs::create_dir_all(&public_dir).expect("create public directory");
+    let path = public_dir.join("rules.json");
+    fs::write(&path, rules_json(&sections)).unwrap_or_else(|e| panic!("write rules.json: {e}"));
     println!("  wrote {}", path.display());
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Rendering helpers
+// Catalogue model
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Render a ValidationCode slice as a Markdown table.
-fn code_table<C: ValidationCode>(codes: &[C]) -> String {
+struct Row {
+    code: &'static str,
+    description: &'static str,
+    severity: String,
+    category: String,
+}
+
+/// A block of codes; `title` renders as an `###` heading.
+struct Group {
+    title: Option<&'static str>,
+    intro: Option<&'static str>,
+    rows: Vec<Row>,
+}
+
+/// One spec (or engine area); `title` renders as an `##` heading.
+struct Section {
+    title: &'static str,
+    intro: Option<&'static str>,
+    groups: Vec<Group>,
+}
+
+fn rows<C: ValidationCode>(codes: &[C]) -> Vec<Row> {
+    codes
+        .iter()
+        .map(|c| Row {
+            code: c.code(),
+            description: c.description(),
+            severity: c.default_severity().to_string(),
+            category: c.category().to_string(),
+        })
+        .collect()
+}
+
+fn group(title: &'static str, rows: Vec<Row>) -> Group {
+    Group {
+        title: Some(title),
+        intro: None,
+        rows,
+    }
+}
+
+fn untitled(rows: Vec<Row>) -> Group {
+    Group {
+        title: None,
+        intro: None,
+        rows,
+    }
+}
+
+fn section(title: &'static str, groups: Vec<Group>) -> Section {
+    Section {
+        title,
+        intro: None,
+        groups,
+    }
+}
+
+fn catalogue() -> Vec<Section> {
+    vec![
+        section(
+            "ST 429-9 — Volume Index",
+            vec![untitled(rows(St429_9_2014::ALL))],
+        ),
+        section(
+            "ST 377-1 — MXF File Format",
+            vec![untitled(rows(St377_1_2011::ALL))],
+        ),
+        section(
+            "ST 377-4 — MCA Sub-Descriptor Linkage",
+            vec![untitled(rows(St377_4_2012::ALL))],
+        ),
+        section(
+            "ST 2067-2 — Core Constraints & Packing List",
+            vec![
+                group("Package-level (2020)", rows(St2067_2_2020::ALL)),
+                group("Core Constraints — 2013", rows(St2067_2_2013_Core::ALL)),
+                group("Core Constraints — 2016", rows(St2067_2_2016_Core::ALL)),
+                group("Core Constraints — 2020", rows(St2067_2_2020_Core::ALL)),
+                group(
+                    "Essence Layer — 2016 (inherited by later editions)",
+                    rows(St2067_2_2016::ALL),
+                ),
+            ],
+        ),
+        section(
+            "ST 2067-3 — Composition Playlist",
+            vec![
+                group("2013", rows(St2067_3_2013::ALL)),
+                // 2016 covers 2020 too — the 2020 publication's CPL XSD is
+                // byte-identical to 2016 (modulo header) and the catalogue is
+                // bit-for-bit identical.
+                group("2016 / 2020", rows(St2067_3_2016::ALL)),
+            ],
+        ),
+        section(
+            "ST 2067-9 — Sidecar Composition Map",
+            vec![untitled(rows(St2067_9_2018::ALL))],
+        ),
+        section(
+            "ST 2067-21 — Application #2E",
+            vec![
+                group("2020", rows(St2067_21_2020::ALL)),
+                group("2023", rows(St2067_21_2023::ALL)),
+                group("2025", rows(St2067_21_2025::ALL)),
+            ],
+        ),
+        section(
+            "ST 2067-201 — IAB Plug-in",
+            vec![
+                group("2019", rows(St2067_201_2019::ALL)),
+                group("2021", rows(St2067_201_2021::ALL)),
+                Group {
+                    title: Some("2026"),
+                    intro: Some("The 2026 edition inherits every 2021 code above and adds:"),
+                    rows: rows(St2067_201_2026Delta::ALL),
+                },
+            ],
+        ),
+        section(
+            "ST 2067-202 — ISXD Plug-in",
+            vec![untitled(rows(St2067_202_2023::ALL))],
+        ),
+        Section {
+            title: "XSD Schema Validation",
+            intro: Some(
+                "Codes emitted when a document fails validation against its SMPTE XML schema.",
+            ),
+            groups: vec![untitled(rows(XsdConstraintCode::ALL))],
+        },
+        Section {
+            title: "imferno",
+            intro: Some(
+                "Codes emitted by imferno's package-level logic for conditions \
+                 that don't map to a specific SMPTE spec clause.",
+            ),
+            groups: vec![
+                untitled(rows(ImfernoCode::ALL)),
+                untitled(rows(ImfernoMxf::ALL)),
+            ],
+        },
+    ]
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Markdown page
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Render rows as a Markdown table.
+fn code_table(rows: &[Row]) -> String {
     let mut out = String::from(
         "| Code | Description | Default Severity | Category |\n\
          |------|-------------|-----------------|----------|\n",
     );
-    for c in codes {
+    for r in rows {
         out.push_str(&format!(
             "| `{}` | {} | {} | {} |\n",
-            c.code(),
-            c.description(),
-            c.default_severity(),
-            c.category(),
+            r.code, r.description, r.severity, r.category,
         ));
     }
     out
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Single page
-// ─────────────────────────────────────────────────────────────────────────────
 
 const CODE_FORMAT: &str = r#"## Code format
 
@@ -88,7 +240,7 @@ Each spec edition has its own codes, even when a rule is unchanged between editi
 
 "#;
 
-fn codes_page() -> String {
+fn codes_page(sections: &[Section]) -> String {
     let mut s = String::from(
         "---\n\
          title: Validation Codes\n\
@@ -100,104 +252,61 @@ fn codes_page() -> String {
     );
     s.push_str(CODE_FORMAT);
 
-    // ── ST 429-9 ──
-    s.push_str("## ST 429-9 — Volume Index\n\n");
-    s.push_str(&code_table(St429_9_2014::ALL));
-    s.push('\n');
-
-    // ── ST 377-1 ──
-    s.push_str("## ST 377-1 — MXF File Format\n\n");
-    s.push_str(&code_table(St377_1_2011::ALL));
-    s.push('\n');
-
-    // ── ST 377-4 ──
-    s.push_str("## ST 377-4 — MCA Sub-Descriptor Linkage\n\n");
-    s.push_str(&code_table(St377_4_2012::ALL));
-    s.push('\n');
-
-    // ── ST 2067-2 ──
-    s.push_str("## ST 2067-2 — Core Constraints & Packing List\n\n");
-    s.push_str("### Package-level (2020)\n\n");
-    s.push_str(&code_table(St2067_2_2020::ALL));
-    s.push('\n');
-    s.push_str("### Core Constraints — 2013\n\n");
-    s.push_str(&code_table(St2067_2_2013_Core::ALL));
-    s.push('\n');
-    s.push_str("### Core Constraints — 2016\n\n");
-    s.push_str(&code_table(St2067_2_2016_Core::ALL));
-    s.push('\n');
-    s.push_str("### Core Constraints — 2020\n\n");
-    s.push_str(&code_table(St2067_2_2020_Core::ALL));
-    s.push('\n');
-    s.push_str("### Essence Layer — 2016 (inherited by later editions)\n\n");
-    s.push_str(&code_table(St2067_2_2016::ALL));
-    s.push('\n');
-
-    // ── ST 2067-3 ──
-    s.push_str("## ST 2067-3 — Composition Playlist\n\n");
-    s.push_str("### 2013\n\n");
-    s.push_str(&code_table(St2067_3_2013::ALL));
-    s.push('\n');
-    // 2016 covers 2020 too — the 2020 publication's CPL XSD is byte-identical
-    // to 2016 (modulo header) and the catalogue is bit-for-bit identical.
-    s.push_str("### 2016 / 2020\n\n");
-    s.push_str(&code_table(St2067_3_2016::ALL));
-    s.push('\n');
-
-    // ── ST 2067-9 ──
-    s.push_str("## ST 2067-9 — Sidecar Composition Map\n\n");
-    s.push_str(&code_table(St2067_9_2018::ALL));
-    s.push('\n');
-
-    // ── ST 2067-21 ──
-    s.push_str("## ST 2067-21 — Application #2E\n\n");
-    s.push_str("### 2020\n\n");
-    s.push_str(&code_table(St2067_21_2020::ALL));
-    s.push('\n');
-    s.push_str("### 2023\n\n");
-    s.push_str(&code_table(St2067_21_2023::ALL));
-    s.push('\n');
-    s.push_str("### 2025\n\n");
-    s.push_str(&code_table(St2067_21_2025::ALL));
-    s.push('\n');
-
-    // ── ST 2067-201 ──
-    s.push_str("## ST 2067-201 — IAB Plug-in\n\n");
-    s.push_str("### 2019\n\n");
-    s.push_str(&code_table(St2067_201_2019::ALL));
-    s.push('\n');
-    s.push_str("### 2021\n\n");
-    s.push_str(&code_table(St2067_201_2021::ALL));
-    s.push('\n');
-    s.push_str("### 2026\n\n");
-    s.push_str("The 2026 edition inherits every 2021 code above and adds:\n\n");
-    s.push_str(&code_table(St2067_201_2026Delta::ALL));
-    s.push('\n');
-
-    // ── ST 2067-202 ──
-    s.push_str("## ST 2067-202 — ISXD Plug-in\n\n");
-    s.push_str(&code_table(St2067_202_2023::ALL));
-    s.push('\n');
-
-    // ── XSD ──
-    s.push_str("## XSD Schema Validation\n\n");
-    s.push_str(
-        "Codes emitted when a document fails validation against its \
-         SMPTE XML schema.\n\n",
-    );
-    s.push_str(&code_table(XsdConstraintCode::ALL));
-    s.push('\n');
-
-    // ── imferno ──
-    s.push_str("## imferno\n\n");
-    s.push_str(
-        "Codes emitted by imferno's package-level logic for conditions \
-         that don't map to a specific SMPTE spec clause.\n\n",
-    );
-    s.push_str(&code_table(ImfernoCode::ALL));
-    s.push('\n');
-    s.push_str(&code_table(ImfernoMxf::ALL));
-    s.push('\n');
-
+    for sec in sections {
+        s.push_str(&format!("## {}\n\n", sec.title));
+        if let Some(intro) = sec.intro {
+            s.push_str(&format!("{intro}\n\n"));
+        }
+        for g in &sec.groups {
+            if let Some(title) = g.title {
+                s.push_str(&format!("### {title}\n\n"));
+            }
+            if let Some(intro) = g.intro {
+                s.push_str(&format!("{intro}\n\n"));
+            }
+            s.push_str(&code_table(&g.rows));
+            s.push('\n');
+        }
+    }
     s
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// rules.json (playground)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Map a catalogue severity (`Severity`'s Display) onto the rule-config
+/// vocabulary the engine accepts (`off | info | warn | error | critical`).
+fn config_severity(display: &str) -> &'static str {
+    match display {
+        "CRITICAL" => "critical",
+        "ERROR" => "error",
+        "WARNING" => "warn",
+        "INFO" => "info",
+        other => panic!("unmapped severity {other:?}; extend config_severity"),
+    }
+}
+
+fn rules_json(sections: &[Section]) -> String {
+    let sections: Vec<_> = sections
+        .iter()
+        .map(|sec| {
+            json!({
+                "title": sec.title,
+                "groups": sec.groups.iter().map(|g| json!({
+                    "title": g.title,
+                    "rules": g.rows.iter().map(|r| json!({
+                        "code": r.code,
+                        "description": r.description,
+                        "defaultSeverity": config_severity(&r.severity),
+                        "category": r.category,
+                    })).collect::<Vec<_>>(),
+                })).collect::<Vec<_>>(),
+            })
+        })
+        .collect();
+    let mut out = serde_json::to_string_pretty(&json!({ "sections": sections }))
+        .expect("serialise rules.json");
+    out.push('\n');
+    out
 }

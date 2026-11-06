@@ -2,21 +2,17 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 
 // ─── configurable rules ───────────────────────────────────────────────────────
 
-type RuleSeverity = 'off' | 'info' | 'warn' | 'error' | 'critical';
+import { AdvancedRules, SeverityControl, type RuleSeverity } from './RuleSettings';
 
-// Segmented-control options, mildest first. Colours match the viewer's
-// issue list (red = error/critical, amber = warning, zinc = info/off).
-const SEVERITY_OPTIONS: Array<{ value: RuleSeverity; label: string; activeClass: string }> = [
-    { value: 'off', label: 'Off', activeClass: 'text-zinc-500 dark:text-zinc-400' },
-    { value: 'info', label: 'Info', activeClass: 'text-blue-500' },
-    { value: 'warn', label: 'Warning', activeClass: 'text-amber-600' },
-    { value: 'error', label: 'Error', activeClass: 'text-red-600' },
-    { value: 'critical', label: 'Critical', activeClass: 'text-red-700 dark:text-red-500' },
-];
+// Playground defaults: the bundled samples (and most drops) have no MXF
+// essence, so a missing asset file is informational here.
+const DEFAULT_RULES: Record<string, RuleSeverity> = {
+    'ST2067-2:2020:8.3/FileNotFound': 'info',
+};
 
 const CONFIGURABLE_RULES: Array<{ code: string; label: string; hint: string }> = [
     { code: 'ST2067-2:2020:8.3/FileNotFound',        label: 'FileNotFound',      hint: 'Asset file not found on disk' },
-    { code: 'ST2067-3:2020:7.2.2/SegmentDuration',   label: 'SegmentDuration',   hint: 'Unequal segment durations across tracks' },
+    { code: 'ST2067-3:*:7.2.2/SegmentDuration',      label: 'SegmentDuration',   hint: 'Unequal segment durations across tracks (all ST 2067-3 editions)' },
 ];
 import IMFPackageViewer from './IMFPackageViewer';
 import PackageFileBrowser, { type BrowserFile } from './PackageFileBrowser';
@@ -335,9 +331,19 @@ export default function ImfPlayground() {
     const [packageData, setPackageData] = useState<any | null>(null);
     const [parseError, setParseError] = useState<string | null>(null);
     const [skippedCount, setSkippedCount] = useState<number>(0);
-    const [rulesConfig, setRulesConfig] = useState<Record<string, RuleSeverity>>({
-        'ST2067-2:2020:8.3/FileNotFound': 'info',
-    });
+    const [rulesConfig, setRulesConfig] = useState<Record<string, RuleSeverity>>(DEFAULT_RULES);
+    const [showAdvanced, setShowAdvanced] = useState(false);
+    const setRule = useCallback((code: string, severity: RuleSeverity | null) => {
+        setRulesConfig(prev => {
+            const next = { ...prev };
+            if (severity === null) delete next[code];
+            else next[code] = severity;
+            return next;
+        });
+    }, []);
+    const rulesPristine =
+        Object.keys(rulesConfig).length === Object.keys(DEFAULT_RULES).length &&
+        Object.entries(DEFAULT_RULES).every(([k, v]) => rulesConfig[k] === v);
     const rulesConfigRef = useRef<Record<string, RuleSeverity>>({});
     rulesConfigRef.current = rulesConfig;
     const [showRules, setShowRules] = useState(false);
@@ -629,30 +635,38 @@ export default function ImfPlayground() {
                                             <code className="block text-[11px] font-mono text-zinc-700 dark:text-zinc-300">{rule.code}</code>
                                             <span className="block text-[11px] text-zinc-400 dark:text-zinc-500 mt-0.5">{rule.hint}</span>
                                         </div>
-                                        <div className="flex gap-1 bg-zinc-100 dark:bg-zinc-800 rounded-lg p-1" role="radiogroup" aria-label={`Severity for ${rule.label}`}>
-                                            {SEVERITY_OPTIONS.map(opt => {
-                                                const active = current === opt.value;
-                                                return (
-                                                    <button
-                                                        key={opt.value}
-                                                        type="button"
-                                                        role="radio"
-                                                        aria-checked={active}
-                                                        onClick={() => setRulesConfig(prev => ({ ...prev, [rule.code]: opt.value }))}
-                                                        className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all cursor-pointer ${
-                                                            active
-                                                                ? `bg-white dark:bg-zinc-900 shadow-sm ${opt.activeClass}`
-                                                                : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'
-                                                        }`}
-                                                    >
-                                                        {opt.label}
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
+                                        <SeverityControl
+                                            label={`Severity for ${rule.label}`}
+                                            value={current}
+                                            onChange={v => setRule(rule.code, v)}
+                                        />
                                     </div>
                                 );
                             })}
+                            <div>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowAdvanced(s => !s)}
+                                    aria-expanded={showAdvanced}
+                                    className="w-full flex items-center gap-2 px-4 py-2.5 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400 hover:text-amber-600 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors cursor-pointer"
+                                >
+                                    <span className={`flex transition-transform duration-200 ${showAdvanced ? '' : '-rotate-90'} ${showAdvanced ? 'text-amber-600' : ''}`}>
+                                        <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>
+                                    </span>
+                                    Advanced
+                                    <span className="font-normal text-zinc-400 dark:text-zinc-500">every rule, per spec</span>
+                                </button>
+                                {showAdvanced && (
+                                    <div className="border-t border-zinc-100 dark:border-zinc-800">
+                                        <AdvancedRules
+                                            config={rulesConfig}
+                                            setRule={setRule}
+                                            resetAll={() => setRulesConfig(DEFAULT_RULES)}
+                                            isPristine={rulesPristine}
+                                        />
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     )}
                 </div>

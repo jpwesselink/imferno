@@ -1,6 +1,7 @@
 //! Typed validation-code catalogue for SMPTE ST 2067-201 (IAB Level 0 Plug-in).
 //!
-//! The same 24 reason codes apply to both the 2019 and 2021 editions; a
+//! The 2019 and 2021 editions share the same reason codes except
+//! ChannelCountNotZero, which only the 2019 edition defines; a
 //! `macro_rules!` generates `St2067_201_2019` and `St2067_201_2021` from a
 //! single source-of-truth variant list.  Each edition enum also exposes
 //! `for_code` so that shared helper functions can produce the right
@@ -39,8 +40,9 @@ pub enum IabCode {
     SoundCompressionMissing,
     /// IABEssenceDescriptor: SoundCompression is not the required IAB compression UL (§5.9).
     SoundCompressionInvalid,
-    /// IABEssenceDescriptor: ChannelCount shall be the distinguished value 0 (§5.9, 2019 only).
-    ChannelCountNotZero,
+    // ChannelCountNotZero is 2019-only (ST 2067-201:2021 §5.9: ChannelCount
+    // "shall be ignored") and is emitted directly as
+    // `St2067_201_2019::ChannelCountNotZero`, so it has no IabCode.
     /// IABEssenceDescriptor: exactly one IABSoundfieldLabelSubDescriptor shall be present (§5.10.2).
     SubDescriptorMissing,
     /// IABSoundfieldLabelSubDescriptor: MCATagSymbol shall be "IAB" — missing (§5.10.4 Table 4.8).
@@ -77,16 +79,17 @@ pub enum IabCode {
 // ─────────────────────────────────────────────────────────────────────────────
 
 macro_rules! define_iab_enum {
-    // No identical predecessor — trait default `None`.
-    ($name:ident, $prefix:literal) => {
-        define_iab_enum!(@inner $name, $prefix, None);
+    // No identical predecessor — trait default `None`. The optional
+    // `channel_count: Ident` adds the 2019-only ChannelCountNotZero code.
+    ($name:ident, $prefix:literal $(, channel_count: $cc:ident)?) => {
+        define_iab_enum!(@inner $name, $prefix, None $(, $cc)?);
     };
     // Identical-to-prior-edition annotation (verified via snapshot
     // diff).
-    ($name:ident, $prefix:literal, $previous:literal) => {
-        define_iab_enum!(@inner $name, $prefix, Some($previous));
+    ($name:ident, $prefix:literal, $previous:literal $(, channel_count: $cc:ident)?) => {
+        define_iab_enum!(@inner $name, $prefix, Some($previous) $(, $cc)?);
     };
-    (@inner $name:ident, $prefix:literal, $previous:expr) => {
+    (@inner $name:ident, $prefix:literal, $previous:expr $(, $cc:ident)?) => {
         /// IAB Level 0 Plug-in validation codes, edition
         #[doc = $prefix]
         #[derive(Debug, Clone, Copy, PartialEq, Eq, strum::EnumIter)]
@@ -111,8 +114,10 @@ macro_rules! define_iab_enum {
             SoundCompressionMissing,
             /// IABEssenceDescriptor: SoundCompression is not the required IAB compression UL (§5.9).
             SoundCompressionInvalid,
+            $(
             /// IABEssenceDescriptor: ChannelCount shall be the distinguished value 0 (§5.9, 2019 only).
-            ChannelCountNotZero,
+            $cc,
+            )?
             /// IABEssenceDescriptor: exactly one IABSoundfieldLabelSubDescriptor shall be present (§5.10.2).
             SubDescriptorMissing,
             /// IABSoundfieldLabelSubDescriptor: MCATagSymbol shall be "IAB" — missing (§5.10.4 Table 4.8).
@@ -157,7 +162,7 @@ macro_rules! define_iab_enum {
                     Self::AudioSamplingRateInvalid       => concat!($prefix, ":5.9/AudioSamplingRateInvalid"),
                     Self::SoundCompressionMissing        => concat!($prefix, ":5.9/SoundCompressionMissing"),
                     Self::SoundCompressionInvalid        => concat!($prefix, ":5.9/SoundCompressionInvalid"),
-                    Self::ChannelCountNotZero            => concat!($prefix, ":5.9/ChannelCountNotZero"),
+                    $(Self::$cc                          => concat!($prefix, ":5.9/ChannelCountNotZero"),)?
                     Self::SubDescriptorMissing           => concat!($prefix, ":5.10.2/SubDescriptorMissing"),
                     Self::MCATagSymbolMissing            => concat!($prefix, ":5.10.4/MCATagSymbolMissing"),
                     Self::MCATagSymbolInvalid            => concat!($prefix, ":5.10.4/MCATagSymbolInvalid"),
@@ -185,7 +190,7 @@ macro_rules! define_iab_enum {
                     Self::AudioSamplingRateInvalid       => "IABEssenceDescriptor: AudioSampleRate shall match the bitstream SampleRate — 48 kHz or 96 kHz per ST 2098-2.",
                     Self::SoundCompressionMissing        => "IABEssenceDescriptor: SoundCompression is missing.",
                     Self::SoundCompressionInvalid        => "IABEssenceDescriptor: SoundCompression is not the required IAB compression UL.",
-                    Self::ChannelCountNotZero            => "IABEssenceDescriptor: ChannelCount shall be the distinguished value 0 (2019 edition).",
+                    $(Self::$cc                          => "IABEssenceDescriptor: ChannelCount shall be the distinguished value 0 (2019 edition).",)?
                     Self::SubDescriptorMissing           => "IABEssenceDescriptor: IABSoundfieldLabelSubDescriptor shall be present.",
                     Self::MCATagSymbolMissing            => "IABSoundfieldLabelSubDescriptor: MCATagSymbol is missing; shall be \"IAB\".",
                     Self::MCATagSymbolInvalid            => "IABSoundfieldLabelSubDescriptor: MCATagSymbol shall be \"IAB\".",
@@ -239,8 +244,8 @@ macro_rules! define_iab_enum {
                         "IABEssenceDescriptor with no SoundCompression UL.",
                     Self::SoundCompressionInvalid =>
                         "IABEssenceDescriptor with SoundCompression = uncompressed PCM UL instead of the IAB compression UL.",
-                    Self::ChannelCountNotZero =>
-                        "IABEssenceDescriptor with ChannelCount = 2 — the 2019 edition mandates the distinguished value 0.",
+                    $(Self::$cc =>
+                        "IABEssenceDescriptor with ChannelCount = 2 — the 2019 edition mandates the distinguished value 0.",)?
                     Self::SubDescriptorMissing =>
                         "IABEssenceDescriptor with no IABSoundfieldLabelSubDescriptor in its SubDescriptors strong-ref list.",
                     Self::MCATagSymbolMissing =>
@@ -283,7 +288,7 @@ macro_rules! define_iab_enum {
                 Self::AudioSamplingRateInvalid,
                 Self::SoundCompressionMissing,
                 Self::SoundCompressionInvalid,
-                Self::ChannelCountNotZero,
+                $(Self::$cc,)?
                 Self::SubDescriptorMissing,
                 Self::MCATagSymbolMissing,
                 Self::MCATagSymbolInvalid,
@@ -313,7 +318,6 @@ macro_rules! define_iab_enum {
                     IabCode::AudioSamplingRateInvalid          => concat!($prefix, ":5.9/AudioSamplingRateInvalid"),
                     IabCode::SoundCompressionMissing           => concat!($prefix, ":5.9/SoundCompressionMissing"),
                     IabCode::SoundCompressionInvalid           => concat!($prefix, ":5.9/SoundCompressionInvalid"),
-                    IabCode::ChannelCountNotZero               => concat!($prefix, ":5.9/ChannelCountNotZero"),
                     IabCode::SubDescriptorMissing              => concat!($prefix, ":5.10.2/SubDescriptorMissing"),
                     IabCode::MCATagSymbolMissing               => concat!($prefix, ":5.10.4/MCATagSymbolMissing"),
                     IabCode::MCATagSymbolInvalid               => concat!($prefix, ":5.10.4/MCATagSymbolInvalid"),
@@ -339,9 +343,15 @@ macro_rules! define_iab_enum {
     };
 }
 
-define_iab_enum!(St2067_201_2019, "ST2067-201:2019");
-// 2021 catalogue is bit-for-bit identical to 2019 (audit, 2026-06-04).
-define_iab_enum!(St2067_201_2021, "ST2067-201:2021", "ST2067-201:2019");
+define_iab_enum!(
+    St2067_201_2019,
+    "ST2067-201:2019",
+    channel_count: ChannelCountNotZero
+);
+// 2021 catalogue equals 2019 minus ChannelCountNotZero: ST 2067-201:2021
+// §5.9 says ChannelCount "shall be ignored", so it is no longer
+// bit-identical to 2019 and carries no previous-edition annotation.
+define_iab_enum!(St2067_201_2021, "ST2067-201:2021");
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ST 2067-201:2026 delta-catalogue
@@ -403,5 +413,35 @@ impl From<St2067_201_2026Delta> for String {
     fn from(c: St2067_201_2026Delta) -> String {
         use crate::diagnostics::codes::ValidationCode;
         c.code().to_string()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use strum::IntoEnumIterator;
+
+    fn has_channel_count_not_zero(codes: impl Iterator<Item = &'static str>) -> bool {
+        codes
+            .into_iter()
+            .any(|c| c.ends_with("/ChannelCountNotZero"))
+    }
+
+    /// ST 2067-201:2019 §5.9 requires ChannelCount = 0; the 2021 edition
+    /// says the item shall be ignored, so the code belongs to 2019 only.
+    #[test]
+    fn channel_count_not_zero_is_2019_only() {
+        assert!(has_channel_count_not_zero(
+            St2067_201_2019::ALL.iter().map(|c| c.code())
+        ));
+        assert!(has_channel_count_not_zero(
+            St2067_201_2019::iter().map(|c| c.code())
+        ));
+        assert!(!has_channel_count_not_zero(
+            St2067_201_2021::ALL.iter().map(|c| c.code())
+        ));
+        assert!(!has_channel_count_not_zero(
+            St2067_201_2021::iter().map(|c| c.code())
+        ));
     }
 }

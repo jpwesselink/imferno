@@ -43,7 +43,6 @@ ST2067-201:2021:5.10.4/MCATagSymbolInvalid
 ST2067-201:2021:5.10.4/MCATagSymbolMissing
 ST2067-201:2021:5.9/AudioSamplingRateInvalid
 ST2067-201:2021:5.9/AudioSamplingRateMissing
-ST2067-201:2021:5.9/ChannelCountNotZero
 ST2067-201:2021:5.9/CodecForbidden
 ST2067-201:2021:5.9/ContainerFormatMissing
 ST2067-201:2021:5.9/ElectrospatialFormulationInvalid

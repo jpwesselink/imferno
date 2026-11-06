@@ -14,6 +14,7 @@ use crate::cpl::{CompositionPlaylist, McaTagSymbol};
 use crate::diagnostics::{Category, Location, Severity, ValidationIssue};
 use crate::validation::{App2E2021, ConstraintsValidator};
 
+use crate::diagnostics::codes::ValidationCode;
 use crate::validation::iab_codes::{self as iab_codes, IabCode};
 
 // ── Public API ───────────────────────────────────────────────────────────────
@@ -431,7 +432,9 @@ fn validate_iab_descriptors(
                         ValidationIssue::new(
                             Severity::Error,
                             Category::Audio,
-                            code(IabCode::ChannelCountNotZero),
+                            // 2019-only rule (check_channel_count), so the
+                            // 2019 code is used regardless of `code`.
+                            iab_codes::St2067_201_2019::ChannelCountNotZero.code(),
                             format!(
                                 "IABEssenceDescriptor {}: ChannelCount {cc} shall be the \
                                  distinguished value 0 (ST 2067-201 §5.9, ST 377-1 Annex F.5)",

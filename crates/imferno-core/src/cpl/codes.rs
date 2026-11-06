@@ -47,7 +47,7 @@ macro_rules! define_st2067_3_enum {
         define_st2067_3_enum!(@inner $name, $prefix, None);
     };
     // Edition whose code set matches a prior edition byte-for-byte
-    // (per the snapshot diff in docs/catalogue-todos.md Item 2).
+    // (verified via snapshot diff).
     ($name:ident, $prefix:literal, $previous:literal) => {
         define_st2067_3_enum!(@inner $name, $prefix, Some($previous));
     };

@@ -82,7 +82,7 @@ macro_rules! define_iab_enum {
         define_iab_enum!(@inner $name, $prefix, None);
     };
     // Identical-to-prior-edition annotation (verified via snapshot
-    // diff, docs/catalogue-todos.md Item 2).
+    // diff).
     ($name:ident, $prefix:literal, $previous:literal) => {
         define_iab_enum!(@inner $name, $prefix, Some($previous));
     };

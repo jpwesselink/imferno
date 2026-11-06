@@ -3352,6 +3352,53 @@ impl ConstraintsValidator for App2E2021 {
 /// The exact ApplicationIdentification URI per ST 2067-21:2020 Table 15.
 const APP2E_2020_APPLICATION_IDENTIFICATION: &str = "http://www.smpte-ra.org/ns/2067-21/2020";
 
+/// ST 2067-21:2020 §5.2 Table 3 (p6) lists COLOR.1 to COLOR.7 only; COLOR.8
+/// (BT.2020 / HLG) was added in the 2023 edition (Table 3, p7). Flag
+/// COLOR.8 descriptors under the 2020 validator.
+fn validate_no_color8_in_app2e_2020(cpl: &CompositionPlaylist, issues: &mut Vec<ValidationIssue>) {
+    let Some(edl) = &cpl.essence_descriptor_list else {
+        return;
+    };
+    for ed in &edl.essence_descriptors {
+        let color_sys = if let Some(ref rgba) = ed.rgba_descriptor {
+            match (&rgba.color_primaries, &rgba.transfer_characteristic) {
+                (Some(cp), Some(tc)) => ColorSystem::from_components(cp, tc, None),
+                _ => None,
+            }
+        } else if let Some(ref cdci) = ed.cdci_descriptor {
+            match (
+                &cdci.color_primaries,
+                &cdci.transfer_characteristic,
+                &cdci.coding_equations,
+            ) {
+                (Some(cp), Some(tc), Some(ce)) => ColorSystem::from_components(cp, tc, Some(ce)),
+                _ => None,
+            }
+        } else {
+            None
+        };
+        if color_sys == Some(ColorSystem::Color8) {
+            issues.push(
+                ValidationIssue::new(
+                    Severity::Error,
+                    Category::Video,
+                    St2067_21_2023::ColorSystem.code().to_string(),
+                    format!(
+                        "Descriptor {}: COLOR.8 (BT.2020 / HLG) is not a color system of \
+                         ST 2067-21:2020 (Table 3); it was added in the 2023 edition",
+                        ed.id
+                    ),
+                )
+                .with_location(
+                    Location::new()
+                        .with_cpl(cpl.id)
+                        .with_path(format!("EssenceDescriptor/{}", ed.id)),
+                ),
+            );
+        }
+    }
+}
+
 /// ST 2067-21:2020 Application Profile #2E Validator.
 ///
 /// Identical to App2E 2021 except HT-J2K (ISO 15444-15) is **not** permitted —
@@ -3394,6 +3441,7 @@ impl ConstraintsValidator for App2E2020 {
             false, /* HT-J2K not permitted in App2E 2020 */
             &mut issues,
         );
+        validate_no_color8_in_app2e_2020(cpl, &mut issues);
 
         issues
     }
@@ -5156,6 +5204,45 @@ mod tests {
             !issues.iter().any(|i| i.code.contains("8.3.3")),
             "HLG should not require MaxCLL/MaxFALL"
         );
+    }
+
+    /// COLOR.8 (BT.2020 / HLG) appears in the ST 2067-21:2023 Table 3
+    /// (p7) but nowhere in the 2020 edition (Table 3 p6 lists COLOR.1-7
+    /// only), so App2E 2020 rejects it and App2E 2023 accepts it.
+    #[test]
+    fn color8_is_app2e_2023_only() {
+        let code = St2067_21_2023::ColorSystem.code();
+        let cdci = cpl_with_cdci_descriptor(
+            ColorPrimaries::Bt2020,
+            TransferCharacteristic::Hlg,
+            CodingEquations::Bt2020Ncl,
+            10,
+        );
+        let rgba = cpl_with_rgba_descriptor(ColorPrimaries::Bt2020, TransferCharacteristic::Hlg);
+        for cpl in [&cdci, &rgba] {
+            let i2023 = App2E2021.validate_cpl(cpl);
+            assert!(
+                !i2023.iter().any(|i| i.code == code),
+                "COLOR.8 is permitted by App2E 2023: {i2023:#?}",
+            );
+            let i2020 = App2E2020.validate_cpl(cpl);
+            assert!(
+                i2020.iter().any(|i| i.code == code),
+                "COLOR.8 is not in App2E 2020: {i2020:#?}",
+            );
+        }
+
+        // COLOR.7 (PQ) is in both editions.
+        let color7 = cpl_with_cdci_descriptor(
+            ColorPrimaries::Bt2020,
+            TransferCharacteristic::PqSt2084,
+            CodingEquations::Bt2020Ncl,
+            10,
+        );
+        assert!(!App2E2020
+            .validate_cpl(&color7)
+            .iter()
+            .any(|i| i.code == code));
     }
 
     #[test]

@@ -42,7 +42,7 @@ Each spec edition has its own codes, even when a rule is unchanged between editi
 | `ST377-1:2011:11/NoEssenceContainers` | MXF file contains no essence containers. | WARNING | Encoding |
 | `ST377-1:2011:7/OP1a` | MXF operational pattern must be OP1a for IMF packages. | ERROR | Encoding |
 | `ST377-1:2011:6.4/NonHeaderFirstPartition` | The first partition in an MXF file must be the Header partition. | ERROR | Container |
-| `ST377-1:2011:8.3.3/HeaderPartitionOpen` | The header partition status should be ClosedComplete for finished deliveries. | WARNING | Container |
+| `ST377-1:2011:8.3.3/HeaderPartitionOpen` | The header partition is Open and no Closed footer partition carries header metadata, so the MXF file is Open. | WARNING | Container |
 | `ST377-1:2011:8.3.3/MissingHeaderMetadata` | The header partition must carry header metadata (HeaderByteCount > 0). | ERROR | Container |
 
 ## ST 377-4 — MCA Sub-Descriptor Linkage
@@ -61,7 +61,7 @@ Each spec edition has its own codes, even when a rule is unchanged between editi
 | `ST2067-2:2020:7/AssetMap` | AssetMap document is invalid or cannot be parsed. | CRITICAL | Structure |
 | `ST2067-2:2020:7/MalformedXml` | The ASSETMAP.xml document is not well-formed XML. | ERROR | Structure |
 | `ST2067-2:2020:9/MalformedXml` | A Packing List document is not well-formed XML. | ERROR | Structure |
-| `ST2067-2:2020:7/NoCpls` | No CPL assets found in the AssetMap. | CRITICAL | Structure |
+| `ST2067-2:2020:7/NoCpls` | No CPL assets found in the AssetMap. | INFO | Structure |
 | `ST2067-2:2020:8.3/SizeMismatch` | Declared file size does not match the on-disk size. | ERROR | Asset |
 | `ST2067-2:2020:8.3/FileNotFound` | A referenced asset file is not present at the declared path. | ERROR | Asset |
 | `ST2067-2:2020:8.3/ChecksumMismatch` | File hash does not match the declared SHA-1/SHA-256 checksum. | ERROR | Asset |
@@ -242,7 +242,7 @@ Each spec edition has its own codes, even when a rule is unchanged between editi
 | `ST2067-3:2013:6.11/ContentVersionLabelTextMissing` | ContentVersion/LabelText is absent. | WARNING | Metadata |
 | `ST2067-3:2013:6.12/LocaleLanguageTagInvalid` | Locale language tag does not conform to RFC 5646. | WARNING | Metadata |
 | `ST2067-3:2013:7.3/TrackIdNotUnique` | TrackId is not unique within a segment. | ERROR | Structure |
-| `ST2067-3:2013:7.4/MarkerOffsetOutOfRange` | Marker offset exceeds resource effective duration. | ERROR | Timing |
+| `ST2067-3:2013:7.4/MarkerOffsetOutOfRange` | Marker offset exceeds the resource IntrinsicDuration. | ERROR | Timing |
 | `ST2067-3:2013:7.4/MarkerLabelUnknown` | Marker label is not a recognized SMPTE standard value. | WARNING | Metadata |
 | `ST2067-3:2013:7.2.2/SegmentDuration` | All virtual tracks in a segment must span the same number of edit units. | ERROR | Timing |
 | `ST2067-3:2013:6.1.9/ContentVersionIdDuplicate` | No two ContentVersion elements shall have identical Id values. | ERROR | Structure |
@@ -261,7 +261,7 @@ Each spec edition has its own codes, even when a rule is unchanged between editi
 | `ST2067-3:2016:6.11/ContentVersionLabelTextMissing` | ContentVersion/LabelText is absent. | WARNING | Metadata |
 | `ST2067-3:2016:6.12/LocaleLanguageTagInvalid` | Locale language tag does not conform to RFC 5646. | WARNING | Metadata |
 | `ST2067-3:2016:7.3/TrackIdNotUnique` | TrackId is not unique within a segment. | ERROR | Structure |
-| `ST2067-3:2016:7.4/MarkerOffsetOutOfRange` | Marker offset exceeds resource effective duration. | ERROR | Timing |
+| `ST2067-3:2016:7.4/MarkerOffsetOutOfRange` | Marker offset exceeds the resource IntrinsicDuration. | ERROR | Timing |
 | `ST2067-3:2016:7.4/MarkerLabelUnknown` | Marker label is not a recognized SMPTE standard value. | WARNING | Metadata |
 | `ST2067-3:2016:7.2.2/SegmentDuration` | All virtual tracks in a segment must span the same number of edit units. | ERROR | Timing |
 | `ST2067-3:2016:6.1.9/ContentVersionIdDuplicate` | No two ContentVersion elements shall have identical Id values. | ERROR | Structure |
@@ -277,7 +277,7 @@ Each spec edition has its own codes, even when a rule is unchanged between editi
 | `ST2067-9:2018:7.2.4/SignerWithoutSignature` | Signer element is present but the required Signature element is absent (§7.2.4). | ERROR | Reference |
 | `ST2067-9:2018:7.2.5/SignatureWithoutSigner` | Signature element is present but the required Signer element is absent (§7.2.5). | ERROR | Reference |
 | `ST2067-9:2018:7.3.1/SidecarAssetNotFound` | SidecarAsset Id is not present in the package AssetMap (§7.3.1). | ERROR | Reference |
-| `ST2067-9:2018:7.3.1.1/CplNotFound` | CPLId in AssociatedCPLList does not reference a known CPL in this package (§7.3.1.1). | ERROR | Reference |
+| `ST2067-9:2018:7.3.1.1/CplNotFound` | CPLId in AssociatedCPLList does not reference a known CPL in this package (§7.3.1.1). | WARNING | Reference |
 | `ST2067-9:2018:7.3.1.1/DuplicateCplId` | Duplicate CPLId within a single AssociatedCPLList (§7.3.1.1). | ERROR | Reference |
 
 ## ST 2067-21 — Application #2E
@@ -286,7 +286,7 @@ Each spec edition has its own codes, even when a rule is unchanged between editi
 
 | Code | Description | Default Severity | Category |
 |------|-------------|-----------------|----------|
-| `ST2067-21:2020:7.1/AppIdMismatch` | Application identifier in CPL ExtensionProperties does not match the expected App2E URI. | WARNING | Metadata |
+| `ST2067-21:2020:7.1/AppIdMismatch` | ApplicationIdentification in CPL ExtensionProperties does not include the expected App2E URI. | WARNING | Metadata |
 
 ### 2023
 
@@ -345,8 +345,8 @@ Each spec edition has its own codes, even when a rule is unchanged between editi
 | `ST2067-21:2023:6.4.3/BlackRefLevel` | BlackRefLevel value is inconsistent with ComponentDepth. | ERROR | Video |
 | `ST2067-21:2023:6.4.3/ColorRange` | ColorRange value is not in the permitted set. | ERROR | Video |
 | `ST2067-21:2023:6.4.3/WhiteRefLevel` | WhiteRefLevel value is inconsistent with ComponentDepth. | ERROR | Video |
-| `ST2067-21:2023:6.5/AudioSampleRate` | Audio sample rate must be 48 000 Hz. | ERROR | Audio |
-| `ST2067-21:2023:6.5/QuantizationBits` | QuantizationBits must be 16 or 24. | ERROR | Audio |
+| `ST2067-21:2023:6.5/AudioSampleRate` | Audio sample rate must be 48 000 Hz or 96 000 Hz. | ERROR | Audio |
+| `ST2067-21:2023:6.5/QuantizationBits` | QuantizationBits must be 24. | ERROR | Audio |
 | `ST2067-21:2023:6.5.2/CodingStyle` | JPEG 2000 codestream coding style is not compliant. | ERROR | Encoding |
 | `ST2067-21:2023:6.5.2/J2CLayout` | JPEG 2000 codestream layout does not meet App2E requirements. | ERROR | Encoding |
 | `ST2067-21:2023:6.5.2/J2KExtendedCapabilities` | JPEG 2000 extended capabilities are declared but not permitted. | ERROR | Encoding |
@@ -359,7 +359,7 @@ Each spec edition has its own codes, even when a rule is unchanged between editi
 | `ST2067-21:2023:7.1/ContentMaturityRating-Agency` | ContentMaturityRating Agency is empty. | ERROR | Metadata |
 | `ST2067-21:2023:7.1/ContentMaturityRating-Agency-URI` | ContentMaturityRating Agency is not a valid xs:anyURI. | ERROR | Metadata |
 | `ST2067-21:2023:7.2/HomogeneousImageEssence` | All image essence in a composition shall use the same color system. | ERROR | Video |
-| `ST2067-21:2023:7.1/AppIdMismatch` | Application identifier in CPL ExtensionProperties does not match the expected App2E URI. | WARNING | Metadata |
+| `ST2067-21:2023:7.1/AppIdMismatch` | ApplicationIdentification in CPL ExtensionProperties does not include the expected App2E URI. | WARNING | Metadata |
 | `ST2067-21:2023:7.4/SegmentDurationMultiple` | Segment duration must be an integer multiple of 5 edit units. | ERROR | Timing |
 | `ST2067-21:2023:7.5/MaxCLLMaxFALL` | MaxCLL / MaxFALL HDR metadata is absent; recommended for HDR content. | INFO | Video |
 
@@ -415,7 +415,6 @@ Each spec edition has its own codes, even when a rule is unchanged between editi
 | `ST2067-201:2021:5.9/AudioSamplingRateInvalid` | IABEssenceDescriptor: AudioSampleRate shall match the bitstream SampleRate — 48 kHz or 96 kHz per ST 2098-2. | ERROR | Audio |
 | `ST2067-201:2021:5.9/SoundCompressionMissing` | IABEssenceDescriptor: SoundCompression is missing. | WARNING | Audio |
 | `ST2067-201:2021:5.9/SoundCompressionInvalid` | IABEssenceDescriptor: SoundCompression is not the required IAB compression UL. | ERROR | Audio |
-| `ST2067-201:2021:5.9/ChannelCountNotZero` | IABEssenceDescriptor: ChannelCount shall be the distinguished value 0 (2019 edition). | ERROR | Audio |
 | `ST2067-201:2021:5.10.2/SubDescriptorMissing` | IABEssenceDescriptor: IABSoundfieldLabelSubDescriptor shall be present. | ERROR | Audio |
 | `ST2067-201:2021:5.10.4/MCATagSymbolMissing` | IABSoundfieldLabelSubDescriptor: MCATagSymbol is missing; shall be "IAB". | ERROR | Audio |
 | `ST2067-201:2021:5.10.4/MCATagSymbolInvalid` | IABSoundfieldLabelSubDescriptor: MCATagSymbol shall be "IAB". | ERROR | Audio |

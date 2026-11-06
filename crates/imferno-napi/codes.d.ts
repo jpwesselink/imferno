@@ -307,7 +307,6 @@ export declare const codes: {
     readonly AudioSamplingRateInvalid: "ST2067-201:2021:5.9/AudioSamplingRateInvalid";
     readonly SoundCompressionMissing: "ST2067-201:2021:5.9/SoundCompressionMissing";
     readonly SoundCompressionInvalid: "ST2067-201:2021:5.9/SoundCompressionInvalid";
-    readonly ChannelCountNotZero: "ST2067-201:2021:5.9/ChannelCountNotZero";
     readonly SubDescriptorMissing: "ST2067-201:2021:5.10.2/SubDescriptorMissing";
     readonly MCATagSymbolMissing: "ST2067-201:2021:5.10.4/MCATagSymbolMissing";
     readonly MCATagSymbolInvalid: "ST2067-201:2021:5.10.4/MCATagSymbolInvalid";

@@ -307,7 +307,6 @@ const codes = {
     AudioSamplingRateInvalid: "ST2067-201:2021:5.9/AudioSamplingRateInvalid",
     SoundCompressionMissing: "ST2067-201:2021:5.9/SoundCompressionMissing",
     SoundCompressionInvalid: "ST2067-201:2021:5.9/SoundCompressionInvalid",
-    ChannelCountNotZero: "ST2067-201:2021:5.9/ChannelCountNotZero",
     SubDescriptorMissing: "ST2067-201:2021:5.10.2/SubDescriptorMissing",
     MCATagSymbolMissing: "ST2067-201:2021:5.10.4/MCATagSymbolMissing",
     MCATagSymbolInvalid: "ST2067-201:2021:5.10.4/MCATagSymbolInvalid",

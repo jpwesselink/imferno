@@ -69,7 +69,7 @@ jobs:
             npm_pkg: imferno-darwin-x64
             binary: imferno
           - target: aarch64-apple-darwin
-            runner: macos-14
+            runner: macos-15
             npm_pkg: imferno-darwin-arm64
             binary: imferno
           - target: x86_64-pc-windows-msvc

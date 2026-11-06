@@ -1219,7 +1219,8 @@ fn expected_channel_count(tag: &crate::cpl::McaTagSymbol) -> Option<u32> {
 /// Checks per ST 377-4 / ST 2067-2:
 /// - WAVEPCMDescriptor with ChannelCount > 0 should have MCA sub-descriptors
 /// - SoundfieldGroupLabelSubDescriptor should have MCATagSymbol
-/// - Soundfield channel count should be consistent with WAVEPCMDescriptor.ChannelCount
+/// - WAVEPCMDescriptor.ChannelCount should not exceed the soundfield group size
+///   (a subset is allowed, ST 2067-2 §5.3.6.6)
 /// - Audio sample rate should be present
 fn validate_audio_mca_labels(
     cpl: &CompositionPlaylist,
@@ -1346,9 +1347,11 @@ fn validate_audio_mca_labels(
             }
         };
 
-        // Channel count consistency with soundfield group
+        // Channel count vs soundfield group. ST 2067-2 §5.3.6.6: not all
+        // channels of the soundfield group need be present in the track
+        // file, so only a ChannelCount above the group size is flagged.
         if let Some(expected) = expected_channel_count(tag) {
-            if channel_count != expected {
+            if channel_count > expected {
                 issues.push(
                     ValidationIssue::new(
                         Severity::Error,
@@ -1356,7 +1359,7 @@ fn validate_audio_mca_labels(
                         code(CoreConstraintsCode::SoundfieldChannelCount),
                         format!(
                             "WAVEPCMDescriptor {} has ChannelCount {} but MCATagSymbol '{}' \
-                             expects {} channels",
+                             defines only {} channels",
                             ed.id, channel_count, tag, expected,
                         ),
                     )
@@ -7100,8 +7103,11 @@ mod tests {
         );
     }
 
+    /// ST 2067-2 §5.3.6.6 (2013, 2016, 2020): not all channels of a
+    /// soundfield group need be present in an Audio Track File, so fewer
+    /// channels than the soundfield implies is not an error.
     #[test]
-    fn audio_flags_channel_count_mismatch() {
+    fn audio_accepts_partial_soundfield_channel_count() {
         use crate::cpl::McaTagSymbol;
         use crate::cpl::{AudioSubDescriptors, SoundfieldGroupLabelSubDescriptor};
 
@@ -7109,7 +7115,7 @@ mod tests {
             instance_id: None,
             sample_rate: None,
             audio_sample_rate: Some(EditRate::new(48000, 1)),
-            channel_count: Some(2), // 2 channels but 5.1 soundfield!
+            channel_count: Some(2), // subset of a 5.1 soundfield
             quantization_bits: Some(24),
             linked_track_id: None,
             sub_descriptors: Some(AudioSubDescriptors {
@@ -7123,10 +7129,42 @@ mod tests {
         });
         let issues = CoreConstraints2020.validate_cpl(&cpl);
         assert!(
+            !issues
+                .iter()
+                .any(|i| i.code.contains("SoundfieldChannelCount")),
+            "Partial soundfield (fewer channels) should not be flagged: {:#?}",
+            issues,
+        );
+    }
+
+    /// More channels than the soundfield group defines is still flagged.
+    #[test]
+    fn audio_flags_channel_count_exceeding_soundfield() {
+        use crate::cpl::McaTagSymbol;
+        use crate::cpl::{AudioSubDescriptors, SoundfieldGroupLabelSubDescriptor};
+
+        let cpl = cpl_with_audio(WAVEPCMDescriptor {
+            instance_id: None,
+            sample_rate: None,
+            audio_sample_rate: Some(EditRate::new(48000, 1)),
+            channel_count: Some(8),
+            quantization_bits: Some(24),
+            linked_track_id: None,
+            sub_descriptors: Some(AudioSubDescriptors {
+                soundfield_group_label_sub_descriptor: Some(SoundfieldGroupLabelSubDescriptor {
+                    mca_tag_symbol: Some(McaTagSymbol::Sg51),
+                    mca_tag_name: Some("5.1".to_string()),
+                    mca_audio_content_kind: None,
+                    rfc5646_spoken_language: None,
+                }),
+            }),
+        });
+        let issues = CoreConstraints2020.validate_cpl(&cpl);
+        assert!(
             issues
                 .iter()
                 .any(|i| i.code.contains("SoundfieldChannelCount")),
-            "Channel count mismatch with soundfield should be flagged: {:#?}",
+            "8 channels under a 5.1 soundfield should be flagged: {:#?}",
             issues,
         );
     }

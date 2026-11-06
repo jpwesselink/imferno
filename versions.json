@@ -81,10 +81,6 @@
     {
       "label": "#77 feat/st2067-203-204-cpl-plugin-semantics",
       "path": "/pr-77/"
-    },
-    {
-      "label": "#92 chore/deps-update",
-      "path": "/pr-92/"
     }
   ],
   "latest": "/v3.0.1/"

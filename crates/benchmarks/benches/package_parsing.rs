@@ -1,8 +1,9 @@
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
+use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use imferno_core::assetmap as st2067_2;
 use imferno_core::cpl as st2067_3;
 use imferno_core::package::{read_dir, Imferno};
 use std::fs;
+use std::hint::black_box;
 use std::path::Path;
 
 const TEST_PACKAGE_DIRS: &[(&str, &str)] = &[

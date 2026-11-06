@@ -1,6 +1,7 @@
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
+use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use imferno_core::mxf as st377_1;
 use std::fs;
+use std::hint::black_box;
 use std::io::Cursor;
 
 const MXF_TEST_FILES: &[(&str, &str)] = &[

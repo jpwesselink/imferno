@@ -3283,7 +3283,7 @@ impl App2E2021 {
         self.validate_segment_duration(cpl, issues);
         // ST 2067-2 §5.3.2.3: Audio quantization bits (24)
         self.validate_audio_quantization(cpl, issues);
-        // Tables 4-6: Image resolution
+        // §5.2 Table 3: Image frame size
         self.validate_image_resolution(cpl, issues);
         // Tables 4-6: Image frame rate
         self.validate_image_frame_rate(cpl, issues);
@@ -3440,15 +3440,15 @@ impl App2E2021 {
     }
 }
 
-// ── ST 2067-21 Tables 4-6: Image system constraints ─────────────────────────
+// ── ST 2067-21 §5.2 Table 3: Image characteristics ──────────────────────────
 
-/// Allowed image system tiers per ST 2067-21 Tables 4-6.
-///
-/// Each tier defines valid (StoredWidth, StoredHeight) pairs and the set of
-/// allowed frame rates (as EditRate numerator/denominator pairs).
+/// Image frame size ranges per ST 2067-21 §5.2 Table 3 (2020 p6, 2023 p7;
+/// identical in both editions). "a..b" includes a and b, so each tier
+/// allows 1..=max_width × 1..=max_height.
 struct ImageSystemTier {
     name: &'static str,
-    dimensions: &'static [(u32, u32)],
+    max_width: u32,
+    max_height: u32,
 }
 
 /// ST 2067-21 Tables 4-6: Allowed frame rates for all image system tiers.
@@ -3467,19 +3467,24 @@ const ALLOWED_FRAME_RATES: &[(u32, u32)] = &[
     (60000, 1001), // 59.94 fps (HFR)
 ];
 
-/// All defined image system tiers.
+/// Image frame size columns of Table 3. Only the size is checked here;
+/// the other characteristics of each column are not cross-checked (the
+/// interlaced column is enforced by `validate_interlaced_combination`).
 const IMAGE_SYSTEM_TIERS: &[ImageSystemTier] = &[
     ImageSystemTier {
-        name: "2K (Table 4)",
-        dimensions: &[(1920, 1080), (2048, 1080)],
+        name: "1..1920 x 1..1080",
+        max_width: 1920,
+        max_height: 1080,
     },
     ImageSystemTier {
-        name: "4K (Table 5)",
-        dimensions: &[(3840, 2160), (4096, 2160)],
+        name: "1..3840 x 1..2160",
+        max_width: 3840,
+        max_height: 2160,
     },
     ImageSystemTier {
-        name: "8K (Table 6)",
-        dimensions: &[(7680, 4320)],
+        name: "1..4096 x 1..3112",
+        max_width: 4096,
+        max_height: 3112,
     },
 ];
 
@@ -3498,7 +3503,7 @@ impl App2E2021 {
     /// ST 2067-21 §5.2: Validate image resolution (image frame width × height,
     /// derived from StoredWidth / StoredHeight per Table 9).
     ///
-    /// The stored dimensions must match one of the allowed image system tiers.
+    /// The image frame size must fall within one of the Table 3 columns.
     fn validate_image_resolution(
         &self,
         cpl: &CompositionPlaylist,
@@ -3508,11 +3513,6 @@ impl App2E2021 {
             Some(edl) => edl,
             None => return,
         };
-
-        let all_allowed: Vec<(u32, u32)> = IMAGE_SYSTEM_TIERS
-            .iter()
-            .flat_map(|t| t.dimensions.iter().copied())
-            .collect();
 
         for ed in &edl.essence_descriptors {
             let (width, height, frame_layout, desc_type) =
@@ -3542,7 +3542,10 @@ impl App2E2021 {
             // progressive and frame height / 2 (one field) for interlaced.
             let h = image_frame_height(stored_h, frame_layout);
 
-            if !all_allowed.contains(&(w, h)) {
+            let in_some_tier = IMAGE_SYSTEM_TIERS
+                .iter()
+                .any(|t| (1..=t.max_width).contains(&w) && (1..=t.max_height).contains(&h));
+            if !in_some_tier {
                 let tier_names: Vec<&str> = IMAGE_SYSTEM_TIERS.iter().map(|t| t.name).collect();
                 issues.push(
                     ValidationIssue::new(
@@ -7544,7 +7547,7 @@ mod tests {
         );
     }
 
-    // ── Image resolution validation (Tables 4-6) ────────────────────────────
+    // ── Image resolution validation (Table 3) ───────────────────────────────
 
     /// HT-J2K (ISO/IEC 15444-15) is permitted by ST 2067-21:2023
     /// (§5.5.2 Table 6, Annex I) but not by the 2020 edition, whose §5.5.2
@@ -7783,37 +7786,61 @@ mod tests {
         );
     }
 
+    /// ST 2067-21 §5.2 Table 3 (2020 p6, 2023 p7): the largest image frame
+    /// is 4096x3112; 7680x4320 is outside every column.
     #[test]
-    fn app2e_accepts_7680x4320() {
+    fn app2e_rejects_7680x4320() {
         let cpl = cpl_with_image_resolution(7680, 4320, Some(EditRate::new(24, 1)));
         let issues = App2E2021.validate_cpl(&cpl);
         assert!(
-            !issues.iter().any(|i| i.code.contains("Resolution")),
-            "7680x4320 should be accepted: {:#?}",
+            issues.iter().any(|i| i.code.contains("Resolution")),
+            "7680x4320 should be rejected: {:#?}",
             issues,
         );
     }
 
+    /// Table 3 gives ranges ("a..b ... including a and b"), not exact sizes:
+    /// 1280x720 is within 1..1920 x 1..1080.
     #[test]
-    fn app2e_rejects_1280x720() {
+    fn app2e_accepts_1280x720() {
         let cpl = cpl_with_image_resolution(1280, 720, Some(EditRate::new(24, 1)));
         let issues = App2E2021.validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| i.code.contains("Resolution")),
-            "1280x720 should be rejected: {:#?}",
+            !issues.iter().any(|i| i.code.contains("Resolution")),
+            "1280x720 should be accepted: {:#?}",
             issues,
         );
     }
 
+    /// 1920x800 is within 1..1920 x 1..1080 (Table 3 ranges).
     #[test]
-    fn app2e_rejects_1920x800() {
+    fn app2e_accepts_1920x800() {
         let cpl = cpl_with_image_resolution(1920, 800, Some(EditRate::new(24, 1)));
         let issues = App2E2021.validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| i.code.contains("Resolution")),
-            "1920x800 should be rejected: {:#?}",
+            !issues.iter().any(|i| i.code.contains("Resolution")),
+            "1920x800 should be accepted: {:#?}",
             issues,
         );
+    }
+
+    /// Table 3 range edges: 4096x3112 is the largest frame; one more pixel
+    /// in either direction is outside every column. Same in 2020 and 2023.
+    #[test]
+    fn app2e_resolution_uses_table_3_range_edges() {
+        let resolution_flagged = |w, h| {
+            let cpl = cpl_with_image_resolution(w, h, Some(EditRate::new(24, 1)));
+            let code = St2067_21_2023::Resolution.code();
+            let a = App2E2021.validate_cpl(&cpl).iter().any(|i| i.code == code);
+            let b = App2E2020.validate_cpl(&cpl).iter().any(|i| i.code == code);
+            assert_eq!(a, b, "2020 and 2023 Table 3 are identical");
+            a
+        };
+        assert!(!resolution_flagged(4096, 3112));
+        assert!(!resolution_flagged(3996, 2160));
+        assert!(!resolution_flagged(1, 1));
+        assert!(resolution_flagged(4097, 2160));
+        assert!(resolution_flagged(4096, 3113));
     }
 
     // ── Image frame rate validation (Tables 4-6) ────────────────────────────

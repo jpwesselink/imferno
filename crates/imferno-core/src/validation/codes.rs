@@ -124,7 +124,7 @@ pub enum St2067_21_2023 {
     FieldDominance,
     /// `FrameLayout` value is not in the permitted set for App2E.
     FrameLayout,
-    /// `FrameLayout` declares interlaced content, which is not permitted in App2E.
+    /// Interlaced (SeparateFields) image outside the ST 2067-21 Table 3 interlaced column.
     FrameLayoutInterlaced,
     /// `ImageAlignmentOffset` value is not zero as required.
     ImageAlignmentOffset,
@@ -363,7 +363,7 @@ impl ValidationCode for St2067_21_2023 {
             Self::ColorPrimariesMissing => "ColorPrimaries field is absent from the picture descriptor (Table 8).",
             Self::FieldDominance => "FieldDominance value is not permitted for the declared FrameLayout.",
             Self::FrameLayout => "FrameLayout value is not in the permitted set for App2E.",
-            Self::FrameLayoutInterlaced => "FrameLayout declares interlaced content, which is not permitted in App2E.",
+            Self::FrameLayoutInterlaced => "Interlaced (SeparateFields) image characteristics are outside the Table 3 interlaced column (<=1920x1080, COLOR.1-3, 8/10 bit, 25/30/30000/1001 fps, 4:2:2 Y'C'BC'R).",
             Self::ImageAlignmentOffset => "ImageAlignmentOffset must be zero.",
             Self::ImageEndOffset => "ImageEndOffset must be zero.",
             Self::ImageStartOffset => "ImageStartOffset must be zero.",
@@ -509,7 +509,7 @@ impl ValidationCode for St2067_21_2023 {
             Self::FrameLayout =>
                 "<FrameLayout>MixedFields</FrameLayout>  <!-- not in {FullFrame,SeparateFields,SingleField} -->",
             Self::FrameLayoutInterlaced =>
-                "<FrameLayout>SeparateFields</FrameLayout>  <!-- App2E forbids interlaced -->",
+                "<FrameLayout>SeparateFields</FrameLayout> with <SampleRate>24/1</SampleRate>  <!-- interlaced only at 25, 30 or 30000/1001 -->",
             Self::ImageAlignmentOffset =>
                 "<ImageAlignmentOffset>16</ImageAlignmentOffset>  <!-- must be 0 -->",
             Self::ImageEndOffset =>

@@ -3293,7 +3293,9 @@ impl App2E2021 {
         self.validate_descriptor_completeness(cpl, issues);
         // §6.2.1.3 FrameLayout values (FullFrame / SeparateFields) are
         // checked per descriptor in validate_image_descriptors. Interlaced
-        // structure is permitted (§5.2.2, Table 3).
+        // structure is permitted (§5.2.2), but only within the Table 3
+        // interlaced column.
+        self.validate_interlaced_combination(cpl, issues);
         // §7.3: Audio channel layout homogeneity within a composition
         self.validate_audio_channel_homogeneity(cpl, issues);
         // §5.6: HearingImpaired/ForcedNarrative captions shall use timed text
@@ -3812,6 +3814,115 @@ impl App2E2021 {
                         "QuantizationBits",
                     );
                 }
+            }
+        }
+    }
+
+    /// ST 2067-21 §5.2 Table 3 (2020 p6, 2023 p7): the only interlaced
+    /// column permits image frames of 1..1920 × 1..1080, COLOR.1/2/3, 8 or
+    /// 10 bit, 25 / 30 / 30000/1001 fps, 4:2:2 Y'C'BC'R. Each characteristic
+    /// of a SeparateFields descriptor outside that column is reported under
+    /// FrameLayoutInterlaced. Stereoscopy and the quantization system (QE.1)
+    /// are not represented in the descriptor model and are not checked.
+    fn validate_interlaced_combination(
+        &self,
+        cpl: &CompositionPlaylist,
+        issues: &mut Vec<ValidationIssue>,
+    ) {
+        let edl = match &cpl.essence_descriptor_list {
+            Some(edl) => edl,
+            None => return,
+        };
+        const INTERLACED_RATES: &[(u32, u32)] = &[(25, 1), (30, 1), (30000, 1001)];
+
+        for ed in &edl.essence_descriptors {
+            let loc = Location::new()
+                .with_cpl(cpl.id)
+                .with_path(format!("EssenceDescriptor/{}", ed.id));
+            let mut violations: Vec<String> = Vec::new();
+
+            if let Some(ref rgba) = ed.rgba_descriptor {
+                if rgba.frame_layout.as_deref() != Some("SeparateFields") {
+                    continue;
+                }
+                violations.push(
+                    "R'G'B' (RGBA descriptor); interlaced requires 4:2:2 Y'C'BC'R".to_string(),
+                );
+            } else if let Some(ref cdci) = ed.cdci_descriptor {
+                if cdci.frame_layout.as_deref() != Some("SeparateFields") {
+                    continue;
+                }
+                if let Some(w) = cdci.stored_width {
+                    if w > 1920 {
+                        violations.push(format!("image frame width {w} exceeds 1920"));
+                    }
+                }
+                if let Some(h) = cdci.stored_height {
+                    let frame_h = image_frame_height(h, cdci.frame_layout.as_deref());
+                    if frame_h > 1080 {
+                        violations.push(format!(
+                            "image frame height {frame_h} (StoredHeight {h} per field) exceeds 1080"
+                        ));
+                    }
+                }
+                if let Some(ref r) = cdci.sample_rate {
+                    if !INTERLACED_RATES
+                        .iter()
+                        .any(|&(n, d)| r.numerator == n && r.denominator == d)
+                    {
+                        violations.push(format!(
+                            "frame rate {}/{} is not 25, 30 or 30000/1001",
+                            r.numerator, r.denominator
+                        ));
+                    }
+                }
+                if let Some(depth) = cdci.component_depth {
+                    if depth != 8 && depth != 10 {
+                        violations.push(format!("pixel bit depth {depth} is not 8 or 10"));
+                    }
+                }
+                let h_sub = cdci.horizontal_subsampling;
+                let v_sub = cdci.vertical_subsampling;
+                if h_sub.is_some_and(|h| h != 2) || v_sub.is_some_and(|v| v != 1) {
+                    violations.push(format!(
+                        "sampling (HorizontalSubsampling {:?}, VerticalSubsampling {:?}) is not 4:2:2",
+                        h_sub, v_sub
+                    ));
+                }
+                if let (Some(cp), Some(tc), Some(ce)) = (
+                    &cdci.color_primaries,
+                    &cdci.transfer_characteristic,
+                    &cdci.coding_equations,
+                ) {
+                    if let Some(cs) = ColorSystem::from_components(cp, tc, Some(ce)) {
+                        if !matches!(
+                            cs,
+                            ColorSystem::Color1 | ColorSystem::Color2 | ColorSystem::Color3
+                        ) {
+                            violations.push(format!(
+                                "colorimetry {cs} is not COLOR.1, COLOR.2 or COLOR.3"
+                            ));
+                        }
+                    }
+                }
+            } else {
+                continue;
+            }
+
+            for v in violations {
+                issues.push(
+                    ValidationIssue::new(
+                        Severity::Error,
+                        Category::Video,
+                        St2067_21_2023::FrameLayoutInterlaced.code().to_string(),
+                        format!(
+                            "Descriptor {}: interlaced (SeparateFields) image with {v}; \
+                             not a permitted combination in ST 2067-21 Table 3",
+                            ed.id
+                        ),
+                    )
+                    .with_location(loc.clone()),
+                );
             }
         }
     }
@@ -8325,78 +8436,28 @@ mod tests {
         );
     }
 
-    /// App2E: SeparateFields (interlaced) FrameLayout is permitted.
-    /// ST 2067-21:2023 §5.2.2 / Table 3 (interlaced column) and §6.2.1.3
-    /// (01h if the image structure is interlaced).
+    /// App2E: a conforming 1080i image is accepted. ST 2067-21 §5.2.2,
+    /// §5.2 Table 3 interlaced column (2020 p6, 2023 p7), §6.2.1 Table 9 and
+    /// the Frame Layout clause (01h if interlaced).
     #[test]
     fn app2e_accepts_interlaced_frame_layout() {
-        let ed_id = uuid(10);
-        let mut cpl = minimal_cpl();
-        cpl.edit_rate = Some(EditRate::new(24, 1));
-        cpl.extension_properties = Some(ExtensionProperties {
-            application_identification: Some(APP2E_APPLICATION_IDENTIFICATION.to_string()),
-            max_cll: None,
-            max_fall: None,
-        });
-        cpl.essence_descriptor_list = Some(EssenceDescriptorList {
-            essence_descriptors: vec![EssenceDescriptor {
-                id: ed_id,
-                rgba_descriptor: None,
-                cdci_descriptor: Some(CDCIDescriptor {
-                    instance_id: None,
-                    stored_width: Some(1920),
-                    stored_height: Some(1080),
-                    display_width: Some(1920),
-                    display_height: Some(1080),
-                    sample_rate: Some(EditRate::new(24, 1)),
-                    image_aspect_ratio: None,
-                    color_primaries: Some(ColorPrimaries::Bt709),
-                    transfer_characteristic: Some(TransferCharacteristic::Bt709),
-                    coding_equations: Some(CodingEquations::Bt709),
-                    picture_compression: Some(VideoCodec::Jpeg2000),
-                    component_depth: Some(10),
-                    frame_layout: Some("SeparateFields".to_string()),
-                    display_f2_offset: None,
-                    horizontal_subsampling: Some(2),
-                    vertical_subsampling: Some(1),
-                    color_siting: Some(0),
-                    black_ref_level: Some(64),
-                    white_ref_level: Some(940),
-                    color_range: Some(897),
-                    stored_f2_offset: None,
-                    sampled_width: None,
-                    sampled_height: None,
-                    sampled_x_offset: None,
-                    sampled_y_offset: None,
-                    alpha_transparency: None,
-                    image_alignment_offset: None,
-                    image_start_offset: None,
-                    image_end_offset: None,
-                    field_dominance: Some(1),
-                    reversed_byte_order: None,
-                    padding_bits: None,
-                    alpha_sample_depth: None,
-                    linked_track_id: None,
-                    active_width: None,
-                    active_height: None,
-                    sub_descriptors: None,
-                }),
-                wave_pcm_descriptor: None,
-                iab_essence_descriptor: None,
-                dc_timed_text_descriptor: None,
-                isxd_data_essence_descriptor: None,
-            }],
-        });
         let v = App2E2021;
-        let issues = v.validate_cpl(&cpl);
-        assert!(
-            !issues
+        for rate in [
+            EditRate::new(25, 1),
+            EditRate::new(30, 1),
+            EditRate::new(30000, 1001),
+        ] {
+            let issues = v.validate_cpl(&cpl_1080i(rate));
+            let errors: Vec<_> = issues
                 .iter()
-                .any(|i| i.code == St2067_21_2023::FrameLayoutInterlaced.code()
-                    || i.code == St2067_21_2023::FrameLayout.code()),
-            "SeparateFields FrameLayout should not be flagged for App2E: {:#?}",
-            issues,
-        );
+                .filter(|i| matches!(i.severity, Severity::Error | Severity::Critical))
+                .collect();
+            assert!(
+                errors.is_empty(),
+                "conforming 1080i at {rate:?} should have no errors: {errors:#?}",
+            );
+        }
+        let mut cpl = cpl_1080i(EditRate::new(25, 1));
 
         // A layout outside {FullFrame, SeparateFields} is still rejected by
         // the §6.2.1.3 FrameLayout rule.
@@ -8416,6 +8477,69 @@ mod tests {
             "MixedFields FrameLayout should be flagged for App2E: {:#?}",
             issues,
         );
+    }
+
+    /// ST 2067-21 §5.2 Table 3 (2020 p6, 2023 p7): the only interlaced
+    /// column is <=1920x1080, COLOR.1/2/3, 8 or 10 bit, 25 / 30 / 30000/1001,
+    /// 4:2:2 Y'C'BC'R. Interlaced content outside it is rejected.
+    #[test]
+    fn app2e_rejects_interlaced_outside_table_3_column() {
+        let code = St2067_21_2023::FrameLayoutInterlaced.code();
+        let flagged = |cpl: &CompositionPlaylist| {
+            App2E2021.validate_cpl(cpl).iter().any(|i| i.code == code)
+                && App2E2020.validate_cpl(cpl).iter().any(|i| i.code == code)
+        };
+        let base = || cpl_1080i(EditRate::new(25, 1));
+        assert!(!flagged(&base()), "conforming 1080i must not be flagged");
+
+        type Mutation = Box<dyn Fn(&mut CDCIDescriptor)>;
+        let cases: Vec<(&str, Mutation)> = vec![
+            (
+                "24 fps",
+                Box::new(|c| c.sample_rate = Some(EditRate::new(24, 1))),
+            ),
+            (
+                "50 fps",
+                Box::new(|c| c.sample_rate = Some(EditRate::new(50, 1))),
+            ),
+            (
+                "frame height 2160 (stored 1080 per field)",
+                Box::new(|c| c.stored_height = Some(1080)),
+            ),
+            ("width 3840", Box::new(|c| c.stored_width = Some(3840))),
+            ("12-bit", Box::new(|c| c.component_depth = Some(12))),
+            ("4:4:4", Box::new(|c| c.horizontal_subsampling = Some(1))),
+            (
+                "COLOR.5",
+                Box::new(|c| {
+                    c.color_primaries = Some(ColorPrimaries::Bt2020);
+                    c.transfer_characteristic = Some(TransferCharacteristic::Bt2020);
+                    c.coding_equations = Some(CodingEquations::Bt2020Ncl);
+                }),
+            ),
+        ];
+        for (name, mutate) in cases {
+            let mut cpl = base();
+            mutate(cdci_mut(&mut cpl));
+            assert!(flagged(&cpl), "interlaced {name} must be flagged");
+        }
+
+        // R'G'B' (RGBA descriptor) is never permitted with interlaced.
+        let mut cpl =
+            cpl_with_rgba_descriptor(ColorPrimaries::Bt709, TransferCharacteristic::Bt709);
+        let rgba = cpl
+            .essence_descriptor_list
+            .as_mut()
+            .unwrap()
+            .essence_descriptors[0]
+            .rgba_descriptor
+            .as_mut()
+            .unwrap();
+        rgba.frame_layout = Some("SeparateFields".to_string());
+        rgba.stored_height = Some(540);
+        rgba.sample_rate = Some(EditRate::new(25, 1));
+        rgba.field_dominance = Some(1);
+        assert!(flagged(&cpl), "RGBA + SeparateFields must be flagged");
     }
 
     // ── #56: CompositionTimecode rate cross-validation ───────────────────

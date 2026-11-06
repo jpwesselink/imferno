@@ -89,6 +89,10 @@
     {
       "label": "#96 feat/docs-sample-imp-browser",
       "path": "/pr-96/"
+    },
+    {
+      "label": "#97 fix/rule-logic-from-spec-audit",
+      "path": "/pr-97/"
     }
   ],
   "latest": "/v3.0.1/"

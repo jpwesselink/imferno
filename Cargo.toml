@@ -36,8 +36,11 @@ clap = { version = "4.0", features = ["derive"] }
 tokio = { version = "1.0", features = ["full"] }
 
 # AWS (optional)
-aws-sdk-s3 = "1.127"
-aws-config = "1.7"
+# default-features off to drop the legacy hyper 0.14 / rustls 0.21 client
+# (aws-sdk-s3's `rustls` feature), which pulls in h2 0.3 and old rustls with
+# open RUSTSEC advisories. `default-https-client` is the hyper 1.x client.
+aws-sdk-s3 = { version = "1.127", default-features = false, features = ["sigv4a", "http-1x", "default-https-client", "rt-tokio"] }
+aws-config = { version = "1.7", default-features = false, features = ["default-https-client", "rt-tokio", "credentials-process", "sso"] }
 
 # Testing and validation
 tempfile = "3.8"

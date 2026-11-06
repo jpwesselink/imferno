@@ -17,9 +17,10 @@ use std::path::Path;
 
 use smpte_klv::KlvStream;
 use smpte_mxf::{
-    seek_footer_partition, seek_header_partition, MxfError, PartitionKind, PartitionPack,
-    PartitionStatus,
+    is_partition_pack_key, seek_header_partition, MxfError, PartitionKind, PartitionPack,
+    PartitionStatus, RandomIndexPack,
 };
+use smpte_types::Ul;
 
 use crate::diagnostics::{Location, ValidationIssue};
 use crate::mxf::codes::{ImfernoMxf, St2067_2_2016, St377_1_2011};
@@ -53,23 +54,21 @@ pub fn validate_mxf_essence(path: &Path) -> Vec<ValidationIssue> {
     };
     let mut reader = std::io::BufReader::new(file);
     match parse_header_pack(&mut reader) {
-        Ok(pack) => {
+        Ok((header_offset, pack)) => {
             // ST 377-1 §6.2.4: an Open header partition is fine when a
-            // Closed footer partition carries header metadata. Only read
-            // the footer when the header is Open.
-            let closed_footer_with_metadata = is_open(pack.status)
-                && parse_footer_pack(&mut reader)
-                    .map(|footer| {
-                        matches!(footer.kind, PartitionKind::Footer)
-                            && !is_open(footer.status)
-                            && footer.header_byte_count > 0
-                    })
-                    .unwrap_or(false);
-            issues.extend(check_partition_pack(
-                path,
-                &pack,
-                closed_footer_with_metadata,
-            ));
+            // Closed footer partition carries header metadata. Only look
+            // for the footer when the header is Open. If the footer cannot
+            // be located reliably, the file's status is undetermined and
+            // the header is not flagged.
+            let file_is_open = is_open(pack.status)
+                && match locate_footer(&mut reader, header_offset, &pack) {
+                    FooterSearch::Found(footer) => {
+                        is_open(footer.status) || footer.header_byte_count == 0
+                    }
+                    FooterSearch::Absent => true,
+                    FooterSearch::Unknown => false,
+                };
+            issues.extend(check_partition_pack(path, &pack, file_is_open));
         }
         Err(e) => {
             issues.push(parse_failure_issue(path, &e));
@@ -78,19 +77,148 @@ pub fn validate_mxf_essence(path: &Path) -> Vec<ValidationIssue> {
     issues
 }
 
-fn parse_header_pack<R: Read + Seek>(reader: &mut R) -> Result<PartitionPack, MxfError> {
+/// Returns the absolute byte offset of the header partition (after any
+/// run-in) and its partition pack.
+fn parse_header_pack<R: Read + Seek>(reader: &mut R) -> Result<(u64, PartitionPack), MxfError> {
     let header_offset = seek_header_partition(reader)?;
-    reader.seek(std::io::SeekFrom::Start(header_offset))?;
+    let pack = read_partition_pack_at(reader, header_offset)?.ok_or(MxfError::Truncated(
+        "first triplet was not a partition pack",
+    ))?;
+    Ok((header_offset, pack))
+}
+
+fn read_partition_pack_at<R: Read + Seek>(
+    reader: &mut R,
+    offset: u64,
+) -> Result<Option<PartitionPack>, MxfError> {
+    reader.seek(std::io::SeekFrom::Start(offset))?;
     let mut stream = KlvStream::new(reader);
     let triplet = stream
         .read_triplet()
         .map_err(MxfError::from)?
-        .ok_or(MxfError::Truncated(
-            "expected partition pack triplet at header offset",
-        ))?;
-    PartitionPack::from_triplet(&triplet)?.ok_or(MxfError::Truncated(
-        "first triplet was not a partition pack",
-    ))
+        .ok_or(MxfError::Truncated("expected partition pack triplet"))?;
+    PartitionPack::from_triplet(&triplet)
+}
+
+/// Outcome of looking for the footer partition.
+enum FooterSearch {
+    Found(PartitionPack),
+    /// The whole file was walked and has no footer partition.
+    Absent,
+    /// The footer could not be located reliably (malformed KLV, I/O error).
+    Unknown,
+}
+
+/// Locate the footer partition pack. ST 377-1:2011 §7.1 and §12.2: the
+/// FooterPartition item and RIP offsets are relative to the start of the
+/// Header Partition. §7.2.2: an Open header may carry FooterPartition = 0
+/// even when a footer exists, and the RIP is optional (§12), so as a last
+/// resort the KLV items are walked from the header partition.
+fn locate_footer<R: Read + Seek>(
+    reader: &mut R,
+    header_offset: u64,
+    header: &PartitionPack,
+) -> FooterSearch {
+    let footer_at = |reader: &mut R, rel: u64| -> Option<PartitionPack> {
+        let abs = header_offset.checked_add(rel)?;
+        read_partition_pack_at(reader, abs)
+            .ok()
+            .flatten()
+            .filter(|p| matches!(p.kind, PartitionKind::Footer))
+    };
+
+    if header.footer_partition != 0 {
+        if let Some(footer) = footer_at(reader, header.footer_partition) {
+            return FooterSearch::Found(footer);
+        }
+    }
+    if let Some(rel) = rip_last_partition_offset(reader) {
+        if let Some(footer) = footer_at(reader, rel) {
+            return FooterSearch::Found(footer);
+        }
+    }
+    walk_to_footer(reader, header_offset)
+}
+
+/// Offset (relative to the header partition) of the last partition listed
+/// in a Random Index Pack at the end of the file, if there is one.
+fn rip_last_partition_offset<R: Read + Seek>(reader: &mut R) -> Option<u64> {
+    let file_len = reader.seek(std::io::SeekFrom::End(0)).ok()?;
+    if file_len < 4 {
+        return None;
+    }
+    reader.seek(std::io::SeekFrom::End(-4)).ok()?;
+    let mut len_bytes = [0u8; 4];
+    reader.read_exact(&mut len_bytes).ok()?;
+    let rip_len = u64::from(u32::from_be_bytes(len_bytes));
+    if rip_len == 0 || rip_len > file_len {
+        return None;
+    }
+    reader
+        .seek(std::io::SeekFrom::Start(file_len - rip_len))
+        .ok()?;
+    let mut stream = KlvStream::new(&mut *reader);
+    let triplet = stream.read_triplet().ok()??;
+    let rip = RandomIndexPack::from_triplet(&triplet).ok()??;
+    rip.entries.last().map(|e| e.byte_offset)
+}
+
+/// Walk KLV items from the header partition to find the footer partition
+/// pack, seeking over values without reading them.
+fn walk_to_footer<R: Read + Seek>(reader: &mut R, header_offset: u64) -> FooterSearch {
+    let Ok(file_len) = reader.seek(std::io::SeekFrom::End(0)) else {
+        return FooterSearch::Unknown;
+    };
+    let mut pos = header_offset;
+    while pos < file_len {
+        if reader.seek(std::io::SeekFrom::Start(pos)).is_err() {
+            return FooterSearch::Unknown;
+        }
+        let mut key = [0u8; 16];
+        if reader.read_exact(&mut key).is_err() {
+            return FooterSearch::Unknown;
+        }
+        let Some((len, len_size)) = read_ber_length(reader) else {
+            return FooterSearch::Unknown;
+        };
+        if is_partition_pack_key(&Ul::from_bytes(key)) {
+            match read_partition_pack_at(reader, pos) {
+                Ok(Some(pack)) if matches!(pack.kind, PartitionKind::Footer) => {
+                    return FooterSearch::Found(pack);
+                }
+                Ok(_) => {}
+                Err(_) => return FooterSearch::Unknown,
+            }
+        }
+        let Some(next) = pos
+            .checked_add(16 + len_size)
+            .and_then(|p| p.checked_add(len))
+        else {
+            return FooterSearch::Unknown;
+        };
+        pos = next;
+    }
+    if pos == file_len {
+        FooterSearch::Absent
+    } else {
+        FooterSearch::Unknown
+    }
+}
+
+/// Read a BER definite length (ST 336). Returns (length, bytes consumed).
+fn read_ber_length<R: Read>(reader: &mut R) -> Option<(u64, u64)> {
+    let mut first = [0u8; 1];
+    reader.read_exact(&mut first).ok()?;
+    if first[0] < 0x80 {
+        return Some((u64::from(first[0]), 1));
+    }
+    let n = usize::from(first[0] & 0x7f);
+    if n == 0 || n > 8 {
+        return None;
+    }
+    let mut buf = [0u8; 8];
+    reader.read_exact(&mut buf[8 - n..]).ok()?;
+    Some((u64::from_be_bytes(buf), 1 + n as u64))
 }
 
 fn is_open(status: PartitionStatus) -> bool {
@@ -100,27 +228,12 @@ fn is_open(status: PartitionStatus) -> bool {
     )
 }
 
-fn parse_footer_pack<R: Read + Seek>(reader: &mut R) -> Result<PartitionPack, MxfError> {
-    let footer_offset = seek_footer_partition(reader)?;
-    reader.seek(std::io::SeekFrom::Start(footer_offset))?;
-    let mut stream = KlvStream::new(reader);
-    let triplet = stream
-        .read_triplet()
-        .map_err(MxfError::from)?
-        .ok_or(MxfError::Truncated(
-            "expected partition pack triplet at footer offset",
-        ))?;
-    PartitionPack::from_triplet(&triplet)?.ok_or(MxfError::Truncated(
-        "footer triplet was not a partition pack",
-    ))
-}
-
-/// `closed_footer_with_metadata`: whether a Closed footer partition with
-/// header metadata was found (only looked up when the header is Open).
+/// `file_is_open`: the header is Open and no Closed footer partition with
+/// header metadata exists (ST 377-1 §6.2.4).
 fn check_partition_pack(
     path: &Path,
     pack: &PartitionPack,
-    closed_footer_with_metadata: bool,
+    file_is_open: bool,
 ) -> Vec<ValidationIssue> {
     let mut issues = Vec::new();
 
@@ -162,7 +275,7 @@ fn check_partition_pack(
     // Closed Footer Partition containing Header Metadata; delivered
     // files shall be Closed. Flag only an Open header with no such
     // footer, i.e. an Open MXF file.
-    if is_open(pack.status) && !closed_footer_with_metadata {
+    if file_is_open {
         issues.push(
             ValidationIssue::from_code(
                 St377_1_2011::HeaderPartitionOpen,
@@ -386,6 +499,18 @@ mod tests {
     /// Build a file with an Open header partition followed by a footer
     /// partition pack with the given status byte and HeaderByteCount.
     fn open_header_with_footer(footer_status: u8, footer_header_bytes: u64) -> Vec<u8> {
+        open_header_with_footer_opts(footer_status, footer_header_bytes, 0, true)
+    }
+
+    /// `run_in`: bytes of run-in before the header partition.
+    /// `header_points_to_footer`: whether the Open header's FooterPartition
+    /// is set (relative to the header partition) or left at 0.
+    fn open_header_with_footer_opts(
+        footer_status: u8,
+        footer_header_bytes: u64,
+        run_in: usize,
+        header_points_to_footer: bool,
+    ) -> Vec<u8> {
         // Header value length is fixed, so compute the header KLV size
         // first to know where the footer starts.
         let header_len = {
@@ -399,13 +524,18 @@ mod tests {
             );
             probe.len() as u64
         };
-        let mut buf = Vec::new();
+        let mut buf = vec![0xAAu8; run_in];
         let mut key = Vec::new();
         write_partition_key(&mut key, 0x02, 0x01); // header, open+incomplete
+        let header_footer_field = if header_points_to_footer {
+            header_len
+        } else {
+            0
+        };
         write_klv(
             &mut buf,
             &key,
-            &synthetic_partition(&OP1A_UL_BYTES, 1024, header_len),
+            &synthetic_partition(&OP1A_UL_BYTES, 1024, header_footer_field),
         );
         let mut key = Vec::new();
         write_partition_key(&mut key, 0x04, footer_status); // footer
@@ -455,6 +585,32 @@ mod tests {
         );
         let tmp = dump_to_temp(&buf);
         assert!(has_header_partition_open(&validate_mxf_essence(tmp.path())));
+    }
+
+    /// ST 377-1:2011 §7.2.2 (p45): an Open Header Partition Pack may carry
+    /// FooterPartition = 0 even when a footer exists, and §12 (p110) makes the
+    /// RIP optional. Such a file with a Closed footer carrying header
+    /// metadata is Closed (§6.2.4) and must not be flagged.
+    #[test]
+    fn open_header_with_zero_footer_offset_and_no_rip_is_not_flagged() {
+        let tmp = dump_to_temp(&open_header_with_footer_opts(0x04, 2048, 0, false));
+        let issues = validate_mxf_essence(tmp.path());
+        assert!(
+            !has_header_partition_open(&issues),
+            "footer found by walking partitions; file is Closed: {issues:#?}",
+        );
+    }
+
+    /// ST 377-1:2011 §7.1 (p43): FooterPartition is relative to the start of
+    /// the Header Partition, so a run-in shifts the absolute position.
+    #[test]
+    fn open_header_with_run_in_finds_footer_relative_to_header() {
+        let tmp = dump_to_temp(&open_header_with_footer_opts(0x04, 2048, 100, true));
+        let issues = validate_mxf_essence(tmp.path());
+        assert!(
+            !has_header_partition_open(&issues),
+            "footer offset is relative to the header partition: {issues:#?}",
+        );
     }
 
     #[test]

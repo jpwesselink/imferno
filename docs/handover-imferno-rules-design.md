@@ -142,4 +142,3 @@ This is future work, not part of the current design scope.
 ## Style notes
 
 - Never use em-dash characters. Use period + new sentence, colon, parentheses, or " - " instead.
-- Never add `Co-Authored-By: Claude` or any AI attribution to git commits.

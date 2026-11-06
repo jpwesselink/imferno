@@ -122,6 +122,19 @@ fn read_partition_pack_at<R: Read + Seek>(
     PartitionPack::from_triplet(&triplet)
 }
 
+/// Random Index Pack key, ST 377-1:2011 §12.1 Table 29 (pack kind 11h,
+/// version 01h). Compared with the same 0xFEFF mask smpte-mxf uses.
+const RIP_KEY: [u8; 16] = [
+    0x06, 0x0e, 0x2b, 0x34, 0x02, 0x05, 0x01, 0x01, 0x0d, 0x01, 0x02, 0x01, 0x11, 0x01, 0x00, 0x00,
+];
+
+/// Upper bound for a RIP value. ST 377-1 §12.2: 12 bytes per partition
+/// (4-byte BodySID + 8-byte offset) plus the 4-byte overall length. IMF
+/// track files have body partitions about every 60 s (ST 2067-2 §5.1.3),
+/// i.e. a few thousand partitions even for very long files; 16 MiB allows
+/// about 1.4 million entries.
+const MAX_RIP_VALUE_LEN: u64 = 16 * 1024 * 1024;
+
 /// Outcome of looking for the footer partition.
 enum FooterSearch {
     Found(PartitionPack),
@@ -173,12 +186,24 @@ fn rip_last_partition_offset<R: Read + Seek>(reader: &mut R) -> Option<u64> {
     let mut len_bytes = [0u8; 4];
     reader.read_exact(&mut len_bytes).ok()?;
     let rip_len = u64::from(u32::from_be_bytes(len_bytes));
-    if rip_len == 0 || rip_len > file_len {
+    // Overall length = key (16) + BER length (at most 9) + value.
+    if rip_len == 0 || rip_len > file_len || rip_len > 16 + 9 + MAX_RIP_VALUE_LEN {
         return None;
     }
-    reader
-        .seek(std::io::SeekFrom::Start(file_len - rip_len))
-        .ok()?;
+    let rip_start = file_len - rip_len;
+    // The trailing length may point at anything: check the RIP key and a
+    // bounded BER length before reading the value.
+    reader.seek(std::io::SeekFrom::Start(rip_start)).ok()?;
+    let mut key = [0u8; 16];
+    reader.read_exact(&mut key).ok()?;
+    if !Ul::from_bytes(key).equals_with_mask(&Ul::from_bytes(RIP_KEY), 0xFEFF) {
+        return None;
+    }
+    match read_ber_length(reader) {
+        Some((len, _)) if len <= MAX_RIP_VALUE_LEN => {}
+        _ => return None,
+    }
+    reader.seek(std::io::SeekFrom::Start(rip_start)).ok()?;
     let mut stream = KlvStream::new(&mut *reader);
     let triplet = stream.read_triplet().ok()??;
     let rip = RandomIndexPack::from_triplet(&triplet).ok()??;
@@ -699,6 +724,63 @@ mod tests {
             "footer lookup read {} bytes; the junk value must not be read",
             reader.bytes_read
         );
+    }
+
+    /// The trailing 4 bytes of a file give the RIP's overall length
+    /// (ST 377-1 §12.2) but may point at anything. A non-RIP KLV there with
+    /// a huge declared length must be rejected from its key, unread.
+    #[test]
+    fn rip_length_at_huge_non_rip_klv_is_not_read() {
+        let mut buf = Vec::new();
+        let mut key = Vec::new();
+        write_partition_key(&mut key, 0x02, 0x01);
+        write_klv(
+            &mut buf,
+            &key,
+            &synthetic_partition(&OP1A_UL_BYTES, 1024, 0),
+        );
+        let junk_start = buf.len();
+        buf.extend_from_slice(&[0x06, 0x0e, 0x2b, 0x34, 0x01, 0x02, 0x01, 0x01]);
+        buf.extend_from_slice(&[0x0d, 0x01, 0x03, 0x01, 0x15, 0x01, 0x05, 0x00]);
+        buf.push(0x84);
+        buf.extend_from_slice(&(32u32 << 20).to_be_bytes());
+        buf.extend(std::iter::repeat_n(0u8, 1 << 20));
+        let trailing = (buf.len() + 4 - junk_start) as u32;
+        buf.extend_from_slice(&trailing.to_be_bytes());
+
+        let mut reader = CountingReader {
+            inner: std::io::Cursor::new(buf),
+            bytes_read: 0,
+        };
+        assert_eq!(rip_last_partition_offset(&mut reader), None);
+        assert!(
+            reader.bytes_read < 64 * 1024,
+            "RIP lookup read {} bytes; the junk value must not be read",
+            reader.bytes_read
+        );
+    }
+
+    /// A genuine RIP (ST 377-1 §12) is still found after the key check.
+    #[test]
+    fn rip_last_partition_offset_reads_valid_rip() {
+        let mut buf = open_header_with_footer_opts(0x04, 2048, 0, false);
+        let rip_start = buf.len();
+        let mut value = Vec::new();
+        for (sid, off) in [(0u32, 0u64), (0, 12345)] {
+            value.extend_from_slice(&sid.to_be_bytes());
+            value.extend_from_slice(&off.to_be_bytes());
+        }
+        // Overall length: key 16 + BER 5 + entries + 4-byte length field.
+        let overall = (16 + 5 + value.len() + 4) as u32;
+        value.extend_from_slice(&overall.to_be_bytes());
+        let key = [
+            0x06, 0x0e, 0x2b, 0x34, 0x02, 0x05, 0x01, 0x01, 0x0d, 0x01, 0x02, 0x01, 0x11, 0x01,
+            0x00, 0x00,
+        ];
+        write_klv(&mut buf, &key, &value);
+        assert_eq!(buf.len() - rip_start, overall as usize);
+        let mut reader = std::io::Cursor::new(buf);
+        assert_eq!(rip_last_partition_offset(&mut reader), Some(12345));
     }
 
     /// The header partition pack is at a trusted position (the start of the

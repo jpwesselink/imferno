@@ -6,7 +6,7 @@ imferno is a Rust-based IMF (Interoperable Master Format) package parser and val
 
 ## Project structure
 
-Workspace root: `/Users/jpwesselink/projects/pathe-thuis/imf-rs`
+Workspace root: repository root
 
 Key crates:
 - `crates/imferno-core` - all parsing + validation logic

@@ -66,3 +66,6 @@ tmp
 !.cargo/config.toml
 !.cargo/audit.toml
 .claude/worktrees/
+
+# Local Claude Code settings
+.claude/

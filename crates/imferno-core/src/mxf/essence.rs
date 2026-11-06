@@ -18,7 +18,7 @@ use std::path::Path;
 use smpte_klv::KlvStream;
 use smpte_mxf::{
     is_partition_pack_key, seek_header_partition, MxfError, PartitionKind, PartitionPack,
-    PartitionStatus, RandomIndexPack,
+    PartitionStatus,
 };
 use smpte_types::Ul;
 
@@ -122,11 +122,23 @@ fn read_partition_pack_at<R: Read + Seek>(
     PartitionPack::from_triplet(&triplet)
 }
 
-/// Random Index Pack key, ST 377-1:2011 §12.1 Table 29 (pack kind 11h,
-/// version 01h). Compared with the same 0xFEFF mask smpte-mxf uses.
+/// Random Index Pack key, ST 377-1:2011 §12.1 Table 29 (p110): structure
+/// version 01h, structure kind 01h, pack kind 11h, version 01h, reserved
+/// 00h. Byte 8 (registry version) is not compared.
+///
+/// smpte-mxf 0.1.1's own RIP key drops the structure-kind byte, so its
+/// `RandomIndexPack::from_triplet` rejects real RIPs; the pack is parsed
+/// here instead.
 const RIP_KEY: [u8; 16] = [
-    0x06, 0x0e, 0x2b, 0x34, 0x02, 0x05, 0x01, 0x01, 0x0d, 0x01, 0x02, 0x01, 0x11, 0x01, 0x00, 0x00,
+    0x06, 0x0e, 0x2b, 0x34, 0x02, 0x05, 0x01, 0x01, 0x0d, 0x01, 0x02, 0x01, 0x01, 0x11, 0x01, 0x00,
 ];
+
+fn is_rip_key(key: &[u8; 16]) -> bool {
+    key.iter()
+        .zip(RIP_KEY.iter())
+        .enumerate()
+        .all(|(i, (a, b))| i == 7 || a == b)
+}
 
 /// Upper bound for a RIP value. ST 377-1 §12.2: 12 bytes per partition
 /// (4-byte BodySID + 8-byte offset) plus the 4-byte overall length. IMF
@@ -196,18 +208,21 @@ fn rip_last_partition_offset<R: Read + Seek>(reader: &mut R) -> Option<u64> {
     reader.seek(std::io::SeekFrom::Start(rip_start)).ok()?;
     let mut key = [0u8; 16];
     reader.read_exact(&mut key).ok()?;
-    if !Ul::from_bytes(key).equals_with_mask(&Ul::from_bytes(RIP_KEY), 0xFEFF) {
+    if !is_rip_key(&key) {
         return None;
     }
-    match read_ber_length(reader) {
-        Some((len, _)) if len <= MAX_RIP_VALUE_LEN => {}
+    let value_len = match read_ber_length(reader) {
+        Some((len, len_size)) if len <= MAX_RIP_VALUE_LEN && 16 + len_size + len == rip_len => len,
         _ => return None,
+    };
+    // §12.2: (BodySID u32, ByteOffset u64) pairs, then the u32 overall length.
+    if value_len < 4 + 12 || (value_len - 4) % 12 != 0 {
+        return None;
     }
-    reader.seek(std::io::SeekFrom::Start(rip_start)).ok()?;
-    let mut stream = KlvStream::new(&mut *reader);
-    let triplet = stream.read_triplet().ok()??;
-    let rip = RandomIndexPack::from_triplet(&triplet).ok()??;
-    rip.entries.last().map(|e| e.byte_offset)
+    let mut value = vec![0u8; usize::try_from(value_len).ok()?];
+    reader.read_exact(&mut value).ok()?;
+    let last_entry = &value[value.len() - 4 - 12..value.len() - 4];
+    Some(u64::from_be_bytes(last_entry[4..12].try_into().ok()?))
 }
 
 /// Walk KLV items from the header partition to find the footer partition
@@ -773,14 +788,56 @@ mod tests {
         // Overall length: key 16 + BER 5 + entries + 4-byte length field.
         let overall = (16 + 5 + value.len() + 4) as u32;
         value.extend_from_slice(&overall.to_be_bytes());
+        // ST 377-1:2011 §12.1 Table 29 (p110), bytes 1-16 as listed there.
         let key = [
-            0x06, 0x0e, 0x2b, 0x34, 0x02, 0x05, 0x01, 0x01, 0x0d, 0x01, 0x02, 0x01, 0x11, 0x01,
-            0x00, 0x00,
+            0x06, 0x0e, 0x2b, 0x34, 0x02, 0x05, 0x01, 0x01, 0x0d, 0x01, 0x02, 0x01, 0x01, 0x11,
+            0x01, 0x00,
         ];
         write_klv(&mut buf, &key, &value);
         assert_eq!(buf.len() - rip_start, overall as usize);
         let mut reader = std::io::Cursor::new(buf);
         assert_eq!(rip_last_partition_offset(&mut reader), Some(12345));
+    }
+
+    /// Real MXF files from the test fixtures end with a RIP; the RIP lookup
+    /// alone must find the footer partition.
+    #[test]
+    fn rip_lookup_finds_footer_in_real_mxf_fixtures() {
+        let fixtures: [(&str, &[u8]); 4] = [
+            (
+                "audio1",
+                include_bytes!("../../tests/fixtures/mxf/audio1.mxf"),
+            ),
+            (
+                "audio2",
+                include_bytes!("../../tests/fixtures/mxf/audio2.mxf"),
+            ),
+            (
+                "video1",
+                include_bytes!("../../tests/fixtures/mxf/video1.mxf"),
+            ),
+            (
+                "video2",
+                include_bytes!("../../tests/fixtures/mxf/video2.mxf"),
+            ),
+        ];
+        for (name, bytes) in fixtures {
+            let mut reader = std::io::Cursor::new(bytes.to_vec());
+            let header_offset = seek_header_partition(&mut reader).unwrap();
+            let rel = rip_last_partition_offset(&mut reader)
+                .unwrap_or_else(|| panic!("{name}: RIP not found"));
+            let footer = read_partition_pack_at(
+                &mut reader,
+                header_offset + rel,
+                Some(MAX_PARTITION_PACK_VALUE_LEN),
+            )
+            .unwrap()
+            .unwrap_or_else(|| panic!("{name}: no partition pack at RIP offset"));
+            assert!(
+                matches!(footer.kind, PartitionKind::Footer),
+                "{name}: RIP's last entry is not the footer"
+            );
+        }
     }
 
     /// The header partition pack is at a trusted position (the start of the

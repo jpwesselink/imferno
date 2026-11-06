@@ -3481,8 +3481,20 @@ const IMAGE_SYSTEM_TIERS: &[ImageSystemTier] = &[
     },
 ];
 
+/// ST 2067-21 §6.2.1 Table 9: image frame height from StoredHeight. For
+/// interlaced (SeparateFields) content StoredHeight is one field, i.e. half
+/// the frame height.
+fn image_frame_height(stored_height: u32, frame_layout: Option<&str>) -> u32 {
+    if frame_layout == Some("SeparateFields") {
+        stored_height.saturating_mul(2)
+    } else {
+        stored_height
+    }
+}
+
 impl App2E2021 {
-    /// ST 2067-21 §5.2: Validate image resolution (StoredWidth × StoredHeight).
+    /// ST 2067-21 §5.2: Validate image resolution (image frame width × height,
+    /// derived from StoredWidth / StoredHeight per Table 9).
     ///
     /// The stored dimensions must match one of the allowed image system tiers.
     fn validate_image_resolution(
@@ -3501,18 +3513,32 @@ impl App2E2021 {
             .collect();
 
         for ed in &edl.essence_descriptors {
-            let (width, height, desc_type) = if let Some(ref rgba) = ed.rgba_descriptor {
-                (rgba.stored_width, rgba.stored_height, "RGBA")
-            } else if let Some(ref cdci) = ed.cdci_descriptor {
-                (cdci.stored_width, cdci.stored_height, "CDCI")
-            } else {
-                continue;
-            };
+            let (width, height, frame_layout, desc_type) =
+                if let Some(ref rgba) = ed.rgba_descriptor {
+                    (
+                        rgba.stored_width,
+                        rgba.stored_height,
+                        rgba.frame_layout.as_deref(),
+                        "RGBA",
+                    )
+                } else if let Some(ref cdci) = ed.cdci_descriptor {
+                    (
+                        cdci.stored_width,
+                        cdci.stored_height,
+                        cdci.frame_layout.as_deref(),
+                        "CDCI",
+                    )
+                } else {
+                    continue;
+                };
 
-            let (w, h) = match (width, height) {
+            let (w, stored_h) = match (width, height) {
                 (Some(w), Some(h)) => (w, h),
                 _ => continue, // Completeness validation will catch missing fields
             };
+            // §6.2.1 Table 9: StoredHeight is the image frame height for
+            // progressive and frame height / 2 (one field) for interlaced.
+            let h = image_frame_height(stored_h, frame_layout);
 
             if !all_allowed.contains(&(w, h)) {
                 let tier_names: Vec<&str> = IMAGE_SYSTEM_TIERS.iter().map(|t| t.name).collect();
@@ -3522,7 +3548,7 @@ impl App2E2021 {
                         Category::Video,
                         St2067_21_2023::Resolution.code().to_string(),
                         format!(
-                            "{} descriptor {}: StoredWidth×StoredHeight {}×{} is not an allowed App2E image system dimension (allowed tiers: {})",
+                            "{} descriptor {}: image frame {}×{} is not an allowed App2E image system dimension (allowed tiers: {})",
                             desc_type, ed.id, w, h, tier_names.join(", ")
                         ),
                     )
@@ -7549,6 +7575,57 @@ mod tests {
         });
         cpl.segment_list.segments[0].sequence_list = sl;
         cpl
+    }
+
+    /// A conforming 1080i CDCI descriptor: ST 2067-21 Table 9 stores each
+    /// field, so StoredWidth×StoredHeight = 1920×540 for a 1920×1080 frame;
+    /// Table 3 interlaced column: 25 / 30 / 30000/1001, 4:2:2 Y'C'BC'R,
+    /// COLOR.1-3, 8 or 10 bit. FieldDominance and DisplayF2Offset are
+    /// present as Table 8 requires for interlaced.
+    fn cpl_1080i(rate: EditRate) -> CompositionPlaylist {
+        let mut cpl = cpl_with_image_resolution(1920, 540, Some(rate));
+        let cdci = cpl
+            .essence_descriptor_list
+            .as_mut()
+            .unwrap()
+            .essence_descriptors[0]
+            .cdci_descriptor
+            .as_mut()
+            .unwrap();
+        cdci.frame_layout = Some("SeparateFields".to_string());
+        cdci.field_dominance = Some(1);
+        cdci.display_f2_offset = Some(0);
+        cpl
+    }
+
+    fn cdci_mut(cpl: &mut CompositionPlaylist) -> &mut CDCIDescriptor {
+        cpl.essence_descriptor_list
+            .as_mut()
+            .unwrap()
+            .essence_descriptors[0]
+            .cdci_descriptor
+            .as_mut()
+            .unwrap()
+    }
+
+    /// ST 2067-21 §6.2.1 Table 9 (2020 p13, 2023 p15): for interlaced
+    /// content StoredHeight is the frame height / 2, so the image frame is
+    /// 1920×1080 and must pass the resolution rule.
+    #[test]
+    fn app2e_resolution_accepts_1080i_stored_per_field() {
+        for rate in [
+            EditRate::new(25, 1),
+            EditRate::new(30, 1),
+            EditRate::new(30000, 1001),
+        ] {
+            let issues = App2E2021.validate_cpl(&cpl_1080i(rate));
+            assert!(
+                !issues
+                    .iter()
+                    .any(|i| i.code == St2067_21_2023::Resolution.code()),
+                "1080i (stored 1920x540) should pass the resolution rule: {issues:#?}",
+            );
+        }
     }
 
     #[test]

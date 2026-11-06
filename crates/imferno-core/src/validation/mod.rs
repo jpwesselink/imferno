@@ -1807,6 +1807,13 @@ pub fn cdci_ref_values(color_sys: &ColorSystem, bit_depth: u32) -> Option<(u32, 
 /// The exact ApplicationIdentification URI per ST 2067-21:2023 Table 15.
 const APP2E_APPLICATION_IDENTIFICATION: &str = "http://www.smpte-ra.org/ns/2067-21/2021";
 
+/// ST 2067-2 §6.1 Table 10: ApplicationIdentification is an `xs:list` of
+/// URIs (whitespace-separated). ST 2067-21 §7.1 requires it to include the
+/// Table 15 value, so test membership rather than equality.
+fn application_identification_includes(app_id: &str, uri: &str) -> bool {
+    app_id.split_whitespace().any(|item| item == uri)
+}
+
 /// ST 2067-21:2023 Application Profile #2E Validator.
 ///
 /// Validates:
@@ -3306,17 +3313,17 @@ impl ConstraintsValidator for App2E2021 {
     fn validate_cpl(&self, cpl: &CompositionPlaylist) -> Vec<ValidationIssue> {
         let mut issues = Vec::new();
 
-        // §7.1 / Table 15: ApplicationIdentification shall be the exact URI
+        // §7.1 / Table 15: ApplicationIdentification shall include the URI
         if let Some(ref ext) = cpl.extension_properties {
             if let Some(ref app_id) = ext.application_identification {
-                if app_id != APP2E_APPLICATION_IDENTIFICATION {
+                if !application_identification_includes(app_id, APP2E_APPLICATION_IDENTIFICATION) {
                     issues.push(
                         ValidationIssue::new(
                             Severity::Warning,
                             Category::Metadata,
                             St2067_21_2023::AppIdMismatch.code().to_string(),
                             format!(
-                                "ApplicationIdentification '{}' does not match Table 15 value '{}'",
+                                "ApplicationIdentification '{}' does not include Table 15 value '{}'",
                                 app_id, APP2E_APPLICATION_IDENTIFICATION
                             ),
                         )
@@ -3357,17 +3364,20 @@ impl ConstraintsValidator for App2E2020 {
     fn validate_cpl(&self, cpl: &CompositionPlaylist) -> Vec<ValidationIssue> {
         let mut issues = Vec::new();
 
-        // §7.1 / Table 15: ApplicationIdentification shall be the exact URI
+        // §7.1 / Table 15: ApplicationIdentification shall include the URI
         if let Some(ref ext) = cpl.extension_properties {
             if let Some(ref app_id) = ext.application_identification {
-                if app_id != APP2E_2020_APPLICATION_IDENTIFICATION {
+                if !application_identification_includes(
+                    app_id,
+                    APP2E_2020_APPLICATION_IDENTIFICATION,
+                ) {
                     issues.push(
                         ValidationIssue::new(
                             Severity::Warning,
                             Category::Metadata,
                             St2067_21_2020::AppIdMismatch.code().to_string(),
                             format!(
-                                "ApplicationIdentification '{}' does not match Table 15 value '{}'",
+                                "ApplicationIdentification '{}' does not include Table 15 value '{}'",
                                 app_id, APP2E_2020_APPLICATION_IDENTIFICATION
                             ),
                         )
@@ -7427,6 +7437,50 @@ mod tests {
             issues_2020.iter().any(|i| i.code == ht),
             "HT-J2K must be rejected by App2E 2020: {issues_2020:#?}",
         );
+    }
+
+    /// ST 2067-2:2020 §6.1 Table 10: ApplicationIdentification is a list of
+    /// URIs; ST 2067-21 §7.1 (2020, 2023) only requires it to include the
+    /// Table 15 value. A list containing it must not raise AppIdMismatch.
+    #[test]
+    fn app_id_mismatch_accepts_list_including_table_15_value() {
+        let with_app_id = |app_id: &str| {
+            let mut cpl = minimal_cpl();
+            cpl.extension_properties = Some(ExtensionProperties {
+                application_identification: Some(app_id.to_string()),
+                max_cll: None,
+                max_fall: None,
+            });
+            cpl
+        };
+        let mismatch =
+            |issues: &[ValidationIssue], code: &str| issues.iter().any(|i| i.code == code);
+        let code_2023 = St2067_21_2023::AppIdMismatch.code();
+        let code_2020 = crate::validation::codes::St2067_21_2020::AppIdMismatch.code();
+
+        let both = "http://example.com/other-app \
+                    http://www.smpte-ra.org/ns/2067-21/2020\n\
+                    http://www.smpte-ra.org/ns/2067-21/2021";
+        assert!(!mismatch(
+            &App2E2021.validate_cpl(&with_app_id(both)),
+            code_2023
+        ));
+        assert!(!mismatch(
+            &App2E2020.validate_cpl(&with_app_id(both)),
+            code_2020
+        ));
+
+        // A list that does not include the Table 15 value is still flagged.
+        let other = "http://example.com/other-app http://www.smpte-ra.org/ns/2067-21/2020";
+        assert!(mismatch(
+            &App2E2021.validate_cpl(&with_app_id(other)),
+            code_2023
+        ));
+        let other = "http://example.com/other-app http://www.smpte-ra.org/ns/2067-21/2021";
+        assert!(mismatch(
+            &App2E2020.validate_cpl(&with_app_id(other)),
+            code_2020
+        ));
     }
 
     fn cpl_with_image_resolution(

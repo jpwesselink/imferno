@@ -20,7 +20,7 @@ macro_rules! impl_into_string {
 /// Validation codes defined by SMPTE ST 2067-21:2020 (Application Profile #2E).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, strum::EnumIter)]
 pub enum St2067_21_2020 {
-    /// Application identifier in CPL ExtensionProperties does not match the expected App2E URI.
+    /// ApplicationIdentification in CPL ExtensionProperties does not include the expected App2E URI.
     AppIdMismatch,
 }
 
@@ -33,7 +33,7 @@ impl ValidationCode for St2067_21_2020 {
     fn description(&self) -> &'static str {
         match self {
             Self::AppIdMismatch =>
-                "Application identifier in CPL ExtensionProperties does not match the expected App2E URI.",
+                "ApplicationIdentification in CPL ExtensionProperties does not include the expected App2E URI.",
         }
     }
     fn default_severity(&self) -> Severity {
@@ -409,7 +409,7 @@ impl ValidationCode for St2067_21_2023 {
             Self::ContentMaturityRatingAgency    => "ContentMaturityRating Agency is empty.",
             Self::ContentMaturityRatingAgencyUri => "ContentMaturityRating Agency is not a valid xs:anyURI.",
             Self::HomogeneousImageEssence        => "All image essence in a composition shall use the same color system.",
-            Self::AppIdMismatch => "Application identifier in CPL ExtensionProperties does not match the expected App2E URI.",
+            Self::AppIdMismatch => "ApplicationIdentification in CPL ExtensionProperties does not include the expected App2E URI.",
             Self::SegmentDurationMultiple => "Segment duration must be an integer multiple of 5 edit units.",
             Self::MaxCLLMaxFALL => "MaxCLL / MaxFALL HDR metadata is absent; recommended for HDR content.",
         }

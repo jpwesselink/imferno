@@ -3296,8 +3296,9 @@ impl App2E2021 {
         self.validate_audio_sample_rate(cpl, issues);
         // §6.2: Essence descriptor completeness
         self.validate_descriptor_completeness(cpl, issues);
-        // §6.2.1: FrameLayout shall be FullFrame (progressive)
-        self.validate_frame_layout_progressive(cpl, issues);
+        // §6.2.1.3 FrameLayout values (FullFrame / SeparateFields) are
+        // checked per descriptor in validate_image_descriptors. Interlaced
+        // structure is permitted (§5.2.2, Table 3).
         // §7.3: Audio channel layout homogeneity within a composition
         self.validate_audio_channel_homogeneity(cpl, issues);
         // §5.6: HearingImpaired/ForcedNarrative captions shall use timed text
@@ -3782,54 +3783,6 @@ impl App2E2021 {
                     push(
                         St2067_21_2023::RequiredQuantizationBits.code(),
                         "QuantizationBits",
-                    );
-                }
-            }
-        }
-    }
-
-    /// ST 2067-21 §6.2.1: FrameLayout shall be FullFrame (progressive) for App2E.
-    ///
-    /// All image systems defined in Tables 4-6 (2K, 4K, 8K) are progressive-scan only.
-    /// SeparateFields (interlaced) is not permitted for App2E content.
-    fn validate_frame_layout_progressive(
-        &self,
-        cpl: &CompositionPlaylist,
-        issues: &mut Vec<ValidationIssue>,
-    ) {
-        let edl = match &cpl.essence_descriptor_list {
-            Some(edl) => edl,
-            None => return,
-        };
-
-        for ed in &edl.essence_descriptors {
-            let (frame_layout, desc_type) = if let Some(ref rgba) = ed.rgba_descriptor {
-                (rgba.frame_layout.as_deref(), "RGBA")
-            } else if let Some(ref cdci) = ed.cdci_descriptor {
-                (cdci.frame_layout.as_deref(), "CDCI")
-            } else {
-                continue;
-            };
-
-            if let Some(fl) = frame_layout {
-                if fl != "FullFrame" {
-                    issues.push(
-                        ValidationIssue::new(
-                            Severity::Error,
-                            Category::Video,
-                            St2067_21_2023::FrameLayoutInterlaced.code().to_string(),
-                            format!(
-                                "{} descriptor {}: FrameLayout '{}' is not permitted for App2E; \
-                                 all image systems (Tables 4-6) shall be FullFrame (progressive)",
-                                desc_type, ed.id, fl,
-                            ),
-                        )
-                        .with_location(
-                            Location::new()
-                                .with_cpl(cpl.id)
-                                .with_path(format!("EssenceDescriptor/{}", ed.id)),
-                        )
-                        .with_suggestion("Set FrameLayout to FullFrame (00h)"),
                     );
                 }
             }
@@ -8102,9 +8055,11 @@ mod tests {
         );
     }
 
-    /// App2E: SeparateFields (interlaced) FrameLayout should be flagged.
+    /// App2E: SeparateFields (interlaced) FrameLayout is permitted.
+    /// ST 2067-21:2023 §5.2.2 / Table 3 (interlaced column) and §6.2.1.3
+    /// (01h if the image structure is interlaced).
     #[test]
-    fn app2e_flags_interlaced_frame_layout() {
+    fn app2e_accepts_interlaced_frame_layout() {
         let ed_id = uuid(10);
         let mut cpl = minimal_cpl();
         cpl.edit_rate = Some(EditRate::new(24, 1));
@@ -8165,10 +8120,31 @@ mod tests {
         let v = App2E2021;
         let issues = v.validate_cpl(&cpl);
         assert!(
+            !issues
+                .iter()
+                .any(|i| i.code == St2067_21_2023::FrameLayoutInterlaced.code()
+                    || i.code == St2067_21_2023::FrameLayout.code()),
+            "SeparateFields FrameLayout should not be flagged for App2E: {:#?}",
+            issues,
+        );
+
+        // A layout outside {FullFrame, SeparateFields} is still rejected by
+        // the §6.2.1.3 FrameLayout rule.
+        let mut cpl = cpl;
+        cpl.essence_descriptor_list
+            .as_mut()
+            .unwrap()
+            .essence_descriptors[0]
+            .cdci_descriptor
+            .as_mut()
+            .unwrap()
+            .frame_layout = Some("MixedFields".to_string());
+        let issues = v.validate_cpl(&cpl);
+        assert!(
             issues
                 .iter()
-                .any(|i| i.code == St2067_21_2023::FrameLayoutInterlaced.code()),
-            "SeparateFields FrameLayout should be flagged for App2E: {:#?}",
+                .any(|i| i.code == St2067_21_2023::FrameLayout.code()),
+            "MixedFields FrameLayout should be flagged for App2E: {:#?}",
             issues,
         );
     }

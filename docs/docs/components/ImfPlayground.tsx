@@ -24,12 +24,13 @@ import { base } from './base';
 
 // ─── sample packages (docs/public/samples/<id>/) ─────────────────────────────
 
-const SAMPLES: Array<{ id: string; label: string }> = [
-    { id: 'sol-levante', label: 'Sol Levante' },
-    { id: 'meridian', label: 'Meridian' },
+const SAMPLES: Array<{ id: string; label: string; year: string; tags: string[] }> = [
+    { id: 'sol-levante', label: 'Sol Levante', year: '2020', tags: ['UHD', '24 fps', 'Dolby Vision', '2× JA audio'] },
+    { id: 'meridian', label: 'Meridian', year: '2016', tags: ['UHD', '59.94 fps', '5.1 audio', 'Timed text'] },
 ];
 
 interface SampleIndex {
+    id: string;
     title: string;
     description: string;
     attribution: string;
@@ -539,25 +540,53 @@ export default function ImfPlayground() {
             </div>
 
             {/* Sample packages */}
-            <div className="pg-sample">
-                <span className="pg-sample-note">No IMF package at hand? Try a public one:</span>
-                {SAMPLES.map(({ id, label }) => (
-                    <button
-                        key={id}
-                        type="button"
-                        className="pg-sample-btn"
-                        disabled={!wasmReady || loadingSample !== null}
-                        onClick={() => loadSample(id)}
-                    >
-                        {loadingSample === id ? 'Loading…' : `Try ${label}`}
-                    </button>
-                ))}
-                {sample && (
-                    <span className="pg-sample-note">
-                        {sample.description} {sample.attribution}{' '}
-                        <a href={sample.attributionUrl} target="_blank" rel="noreferrer">Netflix Open Content</a>
-                    </span>
-                )}
+            <div className="mb-4">
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-2">
+                    Or try a public package
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {SAMPLES.map(({ id, label, year, tags }) => {
+                        const isLoading = loadingSample === id;
+                        const isLoaded = sample?.id === id && !isLoading;
+                        return (
+                            <button
+                                key={id}
+                                type="button"
+                                disabled={!wasmReady || loadingSample !== null}
+                                onClick={() => loadSample(id)}
+                                className={`group flex items-center gap-3 px-4 py-3 text-left rounded-xl border bg-white dark:bg-zinc-900 transition-all cursor-pointer disabled:cursor-default ${
+                                    isLoaded
+                                        ? 'border-amber-600/60 ring-1 ring-amber-600/20'
+                                        : 'border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600'
+                                }`}
+                            >
+                                <span className="w-8 h-8 flex-shrink-0 rounded-lg bg-amber-600/10 text-amber-600 flex items-center justify-center">
+                                    <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                                        <rect width="18" height="18" x="3" y="3" rx="2" /><path d="M7 3v18" /><path d="M3 7.5h4" /><path d="M3 12h18" /><path d="M3 16.5h4" /><path d="M17 3v18" /><path d="M17 7.5h4" /><path d="M17 16.5h4" />
+                                    </svg>
+                                </span>
+                                <span className="flex-1 min-w-0">
+                                    <span className="flex items-baseline gap-1.5">
+                                        <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{label}</span>
+                                        <span className="text-[11px] text-zinc-400 dark:text-zinc-500">Netflix · {year}</span>
+                                    </span>
+                                    <span className="mt-1 flex flex-wrap gap-1">
+                                        {tags.map(t => (
+                                            <span key={t} className="inline-flex items-center px-1.5 rounded-md text-[10px] font-medium leading-[18px] bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400">{t}</span>
+                                        ))}
+                                    </span>
+                                </span>
+                                <span className={`flex-shrink-0 text-[11px] font-medium transition-colors ${isLoaded ? 'text-amber-600' : 'text-zinc-400 dark:text-zinc-500 group-hover:text-amber-600'}`}>
+                                    {isLoading ? 'Loading…' : isLoaded ? 'Loaded' : 'Load →'}
+                                </span>
+                            </button>
+                        );
+                    })}
+                </div>
+                <p className="mt-2 mb-0 text-[11px] text-zinc-400 dark:text-zinc-500">
+                    XML manifests only (no MXF essence). © Netflix, CC BY 4.0, via{' '}
+                    <a href="https://opencontent.netflix.com/" target="_blank" rel="noreferrer" className="underline decoration-zinc-300 dark:decoration-zinc-600 hover:text-amber-600">Netflix Open Content</a>.
+                </p>
             </div>
 
             {/* Rules config panel */}

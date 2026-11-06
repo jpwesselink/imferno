@@ -241,33 +241,6 @@ html:not(.rp-dark) .homepage .badge.none { background: #f3f4f6; color: #9ca3af; 
 .homepage .sponsor-text { font-size: 14px; color: var(--hp-text-muted); }
 .homepage .sponsor-link { color: var(--hp-accent); text-decoration: underline; }
 
-/* ── Playground: sample button ── */
-.homepage .pg-sample {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-  margin-bottom: 16px;
-}
-.homepage .pg-sample-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  border-radius: 8px;
-  border: 1px solid var(--hp-accent);
-  background: var(--hp-accent);
-  color: #fff;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: opacity 0.15s;
-}
-.homepage .pg-sample-btn:hover:not(:disabled) { opacity: 0.9; }
-.homepage .pg-sample-btn:disabled { opacity: 0.5; cursor: default; }
-.homepage .pg-sample-note { font-size: 12px; color: var(--hp-text-muted); }
-.homepage .pg-sample-note a { color: inherit; text-decoration: underline; }
-
 /* Package file browser: Shiki output (dual themes, defaultColor: false) */
 .homepage .pfb pre.shiki {
   margin: 0;

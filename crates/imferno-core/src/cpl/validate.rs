@@ -62,25 +62,80 @@ pub fn validate_cpl(cpl: &CompositionPlaylist) -> Vec<ValidationIssue> {
 
 // ─── §5.5.1.2 ContentKind vocabulary ────────────────────────────────────────
 
-/// ST 2067-3 §5.5.1.2: Under the SMPTE scope, ContentKind shall use a valid vocabulary value.
+/// ST 2067-3:2013 / 2016 §6.1.8 Table 3: ContentKind values under the
+/// default scope (identical in both editions).
+const CONTENT_KINDS_TABLE_3: &[&str] = &[
+    "advertisement",
+    "feature",
+    "psa",
+    "rating",
+    "short",
+    "teaser",
+    "test",
+    "trailer",
+    "transitional",
+    "episode",
+    "highlights",
+    "event",
+];
+
+/// ST 2067-3:2016 §6.1.8 Table 4: ContentKind values under the
+/// `2016#content-kind` scope. This scope does not exist in the 2013 edition.
+const CONTENT_KINDS_TABLE_4_2016: &[&str] = &["supplemental", "documentary"];
+
+const CONTENT_KIND_SCOPE_2016: &str = "http://www.smpte-ra.org/schemas/2067-3/2016#content-kind";
+
+/// ST 2067-3 §6.1.8: under the default scope ContentKind shall match a value
+/// of Table 3; under the 2016 scope (2016 edition only) a value of Table 4.
+/// Any other scope is outside the specification.
 fn validate_content_kind_vocabulary(
     cpl: &CompositionPlaylist,
     code: fn(St2067_3Code) -> &'static str,
     issues: &mut Vec<ValidationIssue>,
 ) {
-    if cpl.content_kind.effective_scope() != CONTENT_KIND_DEFAULT_SCOPE {
+    let scope = cpl.content_kind.effective_scope();
+    let is_2013_edition = matches!(
+        cpl.namespace,
+        CplNamespace::Dci429_7 | CplNamespace::Smpte2067_3_2013
+    );
+    let (allowed, table) = if scope == CONTENT_KIND_DEFAULT_SCOPE {
+        (CONTENT_KINDS_TABLE_3, "Table 3")
+    } else if scope == CONTENT_KIND_SCOPE_2016 && !is_2013_edition {
+        (CONTENT_KINDS_TABLE_4_2016, "Table 4")
+    } else {
         return;
-    }
-    if let ContentKind::Other(ref s) = cpl.content_kind.kind {
+    };
+
+    // `ContentKind::parse` folds a few spellings into named variants; map
+    // them back to the spec token. Variants with no Table 3 entry (promo,
+    // rating-bump, commercial) are deliberately left unmapped.
+    let value = match &cpl.content_kind.kind {
+        ContentKind::Feature => "feature".to_string(),
+        ContentKind::Trailer => "trailer".to_string(),
+        ContentKind::Test => "test".to_string(),
+        ContentKind::Teaser => "teaser".to_string(),
+        ContentKind::Advertisement => "advertisement".to_string(),
+        ContentKind::Episode => "episode".to_string(),
+        ContentKind::Short => "short".to_string(),
+        ContentKind::PublicServiceAnnouncement => "psa".to_string(),
+        ContentKind::Promo => "promo".to_string(),
+        ContentKind::RatingBump => "rating-bump".to_string(),
+        ContentKind::Commercial => "commercial".to_string(),
+        // Case-insensitive, matching the leniency of `ContentKind::parse`.
+        ContentKind::Other(s) => s.to_ascii_lowercase(),
+    };
+
+    if !allowed.contains(&value.as_str()) {
         issues.push(
             ValidationIssue::new(
                 Severity::Warning,
                 Category::Metadata,
                 code(St2067_3Code::ContentKindUnknown),
                 format!(
-                    "ContentKind '{s}' is not a recognized value under the SMPTE scope \
-                     (expected: feature, trailer, test, promo, teaser, rating-bump, \
-                     advertisement, episode, short, commercial, psa)",
+                    "ContentKind '{}' is not a recognized value under scope {scope} \
+                     (expected one of {table}: {})",
+                    cpl.content_kind.kind,
+                    allowed.join(", "),
                 ),
             )
             .with_location(Location::new().with_cpl(cpl.id)),
@@ -902,5 +957,99 @@ mod tests {
     fn marker_labels_2016_scope_not_checked_on_2013_cpl() {
         let cpl = cpl_with_marker(NS_2013, Some(SCOPE_2016), "UNKNOWN_LABEL");
         assert!(!has_marker_label_unknown(&cpl));
+    }
+
+    // ── ContentKindUnknown vocabulary (ST 2067-3 §6.1.8 Tables 3 and 4) ─────
+
+    fn cpl_with_content_kind(
+        ns: CplNamespace,
+        scope: Option<&str>,
+        value: &str,
+    ) -> CompositionPlaylist {
+        let mut cpl = minimal_cpl();
+        cpl.namespace = ns;
+        cpl.content_kind = ContentKindElement {
+            kind: ContentKind::parse(value),
+            scope: scope.map(str::to_string),
+        };
+        cpl
+    }
+
+    fn has_content_kind_unknown(cpl: &CompositionPlaylist) -> bool {
+        validate_cpl(cpl)
+            .iter()
+            .any(|i| i.code.contains("ContentKindUnknown"))
+    }
+
+    const CK_SCOPE_2016: &str = "http://www.smpte-ra.org/schemas/2067-3/2016#content-kind";
+
+    #[test]
+    fn content_kind_table_3_values_are_accepted() {
+        for ns in [
+            CplNamespace::Smpte2067_3_2013,
+            CplNamespace::Smpte2067_3_2016,
+        ] {
+            for value in [
+                "advertisement",
+                "feature",
+                "psa",
+                "rating",
+                "short",
+                "teaser",
+                "test",
+                "trailer",
+                "transitional",
+                "episode",
+                "highlights",
+                "event",
+            ] {
+                let cpl = cpl_with_content_kind(ns.clone(), None, value);
+                assert!(
+                    !has_content_kind_unknown(&cpl),
+                    "'{value}' ({ns:?}) is in Table 3 and must not be flagged",
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn content_kind_values_not_in_table_3_are_flagged() {
+        for ns in [
+            CplNamespace::Smpte2067_3_2013,
+            CplNamespace::Smpte2067_3_2016,
+        ] {
+            for value in ["promo", "rating-bump", "commercial", "supplemental"] {
+                let cpl = cpl_with_content_kind(ns.clone(), None, value);
+                assert!(
+                    has_content_kind_unknown(&cpl),
+                    "'{value}' ({ns:?}) is not in Table 3 and must be flagged",
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn content_kind_2016_scope_uses_table_4() {
+        for value in ["supplemental", "documentary"] {
+            let cpl =
+                cpl_with_content_kind(CplNamespace::Smpte2067_3_2016, Some(CK_SCOPE_2016), value);
+            assert!(!has_content_kind_unknown(&cpl), "'{value}' is in Table 4");
+        }
+        let cpl = cpl_with_content_kind(
+            CplNamespace::Smpte2067_3_2016,
+            Some(CK_SCOPE_2016),
+            "feature",
+        );
+        assert!(
+            has_content_kind_unknown(&cpl),
+            "'feature' is not in Table 4 (2016 scope)",
+        );
+        // The 2016 scope does not exist in the 2013 edition: out of scope.
+        let cpl = cpl_with_content_kind(
+            CplNamespace::Smpte2067_3_2013,
+            Some(CK_SCOPE_2016),
+            "anything",
+        );
+        assert!(!has_content_kind_unknown(&cpl));
     }
 }

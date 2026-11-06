@@ -214,8 +214,7 @@ impl<'de> Deserialize<'de> for ImfUuid {
         // would break the JSON API contract.
         //
         // The runtime XSD validator (`crate::xsd`) is the right layer
-        // for XSD-strict UUID checking. See the documented uppsala
-        // v0.4.0 limitation for the current gap.
+        // for XSD-strict UUID checking (dcml:UUIDType's URN pattern).
         ImfUuid::parse(&s).map_err(serde::de::Error::custom)
     }
 }

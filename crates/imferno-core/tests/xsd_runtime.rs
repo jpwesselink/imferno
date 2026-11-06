@@ -51,9 +51,8 @@ fn list_fixtures(dir: &Path, prefix: &str) -> Vec<PathBuf> {
 /// All 20 real fixtures should report XSD-valid (any failures here
 /// signal a regression in the runtime-XSD pipeline against real CPLs).
 ///
-/// The fixtures all use CPL-typed elements whose types come from the
-/// unresolved `dcml` import — uppsala lax-validates these, which is
-/// the documented limitation (see `specs/comparisons/imf-cpl.md`).
+/// The fixtures use dcml-typed elements; those are validated against the
+/// inlined dcml types (see `xsd::inline_dcml_types`).
 #[test]
 fn real_fixtures_validate_as_xsd_clean() {
     let schema_xml = read_xsd("imf-cpl.xsd");
@@ -190,23 +189,8 @@ fn composite_schema_still_catches_builtin_type_violations() {
     );
 }
 
-/// **Known uppsala v0.4.0 limitation**: pattern/restriction facets on
-/// types imported from another namespace are NOT applied during instance
-/// validation, even when the import is resolved via the composite path.
-///
-/// Concretely: `<Id>not-a-uuid</Id>` against a schema typed
-/// `dcml:UUIDType` (which restricts xs:anyURI with a UUID-URN pattern)
-/// is silently accepted. The same value violating a built-in type
-/// (e.g. xs:dateTime) IS caught.
-///
-/// This test is marked `#[ignore]` and pinned to the behavior as
-/// observed. When uppsala lands imported-type-facet enforcement, this
-/// test should be un-ignored and the assertion swapped to expect the
-/// violation to fire.
-/// Closed by uppsala fork patch 2 (xmlns-aware QName prefix resolution).
-/// `dcml:UUIDType`'s URN pattern now fires for imported-namespace types
-/// just like built-in types do — confirming SMPTE-spec-compliant
-/// validation reaches every constraint expressible in the XSD layer.
+/// `dcml:UUIDType`'s URN pattern fires under the composite path just like
+/// built-in types do.
 #[test]
 fn composite_schema_catches_dcml_typed_violations() {
     let primary = specs_dir().join("imf-cpl.xsd");
@@ -222,6 +206,30 @@ fn composite_schema_catches_dcml_typed_violations() {
         </Segment></SegmentList>
     </CompositionPlaylist>"#;
     let issues = validate_against_composite_schema(bad_uuid, &primary, &specs, None);
+    assert!(
+        issues.iter().any(|i| {
+            i.code.starts_with("XSD/PatternInvalid") || i.code.starts_with("XSD/TypeInvalid")
+        }),
+        "bad UUIDType must classify as Pattern/TypeInvalid: {issues:#?}"
+    );
+}
+
+/// The in-memory path (used by `validate_parsed_cpl` on native and wasm)
+/// enforces dcml facets too, without touching the filesystem.
+#[test]
+fn in_memory_schema_catches_dcml_typed_violations() {
+    let schema_xml = read_xsd("imf-cpl.xsd");
+    let bad_uuid = r#"<CompositionPlaylist xmlns="http://www.smpte-ra.org/schemas/2067-3/2013">
+        <Id>not-a-uuid</Id>
+        <IssueDate>2025-01-01T00:00:00Z</IssueDate>
+        <ContentTitle>X</ContentTitle>
+        <EditRate>24 1</EditRate>
+        <SegmentList><Segment>
+            <Id>urn:uuid:00000000-0000-0000-0000-000000000002</Id>
+            <SequenceList/>
+        </Segment></SegmentList>
+    </CompositionPlaylist>"#;
+    let issues = validate_against_schema(bad_uuid, &schema_xml, None);
     assert!(
         issues.iter().any(|i| {
             i.code.starts_with("XSD/PatternInvalid") || i.code.starts_with("XSD/TypeInvalid")

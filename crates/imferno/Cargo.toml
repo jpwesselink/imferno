@@ -20,7 +20,7 @@ aws-s3 = ["imferno-core/aws-s3", "dep:aws-config", "dep:aws-sdk-s3"]
 # `uppsala-patched` is intentionally NOT enabled here even though it provides
 # richer per-element XSD codes locally. Reason: `cargo publish --verify` for
 # this crate resolves `imferno-core` from crates.io (NOT the workspace path),
-# and the published `imferno-core` depends on vanilla uppsala 0.4 — turning
+# and the published `imferno-core` depends on vanilla uppsala — turning
 # on `uppsala-patched` against that combination fails to compile because the
 # patch's `element_path` field doesn't exist. Workspace test runs still get
 # the patched-uppsala behaviour because imferno-napi / imferno-wasm /

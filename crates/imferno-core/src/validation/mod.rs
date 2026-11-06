@@ -7298,6 +7298,36 @@ mod tests {
 
     // ── Image resolution validation (Tables 4-6) ────────────────────────────
 
+    /// HT-J2K (ISO/IEC 15444-15) is permitted by ST 2067-21:2023
+    /// (§5.5.2 Table 6, Annex I) but not by the 2020 edition, whose §5.5.2
+    /// lists only ISO/IEC 15444-1 profiles. J2K-HT-Not-Allowed must only
+    /// fire under the 2020 validator.
+    #[test]
+    fn j2k_ht_not_allowed_only_fires_for_app2e_2020() {
+        let mut cpl = cpl_with_image_resolution(1920, 1080, Some(EditRate::new(24, 1)));
+        cpl.essence_descriptor_list
+            .as_mut()
+            .unwrap()
+            .essence_descriptors[0]
+            .cdci_descriptor
+            .as_mut()
+            .unwrap()
+            .picture_compression = Some(VideoCodec::Jpeg2000Ht);
+        let ht = St2067_21_2023::J2KHtNotAllowed.code();
+
+        let issues_2023 = App2E2021.validate_cpl(&cpl);
+        assert!(
+            !issues_2023.iter().any(|i| i.code == ht),
+            "HT-J2K must be accepted by App2E 2023: {issues_2023:#?}",
+        );
+
+        let issues_2020 = App2E2020.validate_cpl(&cpl);
+        assert!(
+            issues_2020.iter().any(|i| i.code == ht),
+            "HT-J2K must be rejected by App2E 2020: {issues_2020:#?}",
+        );
+    }
+
     fn cpl_with_image_resolution(
         width: u32,
         height: u32,

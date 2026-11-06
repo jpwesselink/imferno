@@ -3286,7 +3286,7 @@ impl App2E2021 {
         self.validate_homogeneous_image_essence(cpl, issues);
         // §7.4: Segment duration alignment for non-integer audio sample counts
         self.validate_segment_duration(cpl, issues);
-        // §6.5: Audio quantization bits
+        // ST 2067-2 §5.3.2.3: Audio quantization bits (24)
         self.validate_audio_quantization(cpl, issues);
         // Tables 4-6: Image resolution
         self.validate_image_resolution(cpl, issues);
@@ -3400,7 +3400,8 @@ impl ConstraintsValidator for App2E2020 {
 }
 
 impl App2E2021 {
-    /// ST 2067-21 §6.5: QuantizationBits shall be 16 or 24.
+    /// QuantizationBits shall be 24 (ST 2067-2:2020 §5.3.2.3, applied by
+    /// ST 2067-21 §4; lower bit depths are padded to 24 bits).
     fn validate_audio_quantization(
         &self,
         cpl: &CompositionPlaylist,
@@ -3414,7 +3415,7 @@ impl App2E2021 {
         for ed in &edl.essence_descriptors {
             if let Some(ref wave) = ed.wave_pcm_descriptor {
                 if let Some(qb) = wave.quantization_bits {
-                    if qb != 16 && qb != 24 {
+                    if qb != 24 {
                         issues.push(
                             ValidationIssue::new(
                                 Severity::Error,
@@ -3422,7 +3423,7 @@ impl App2E2021 {
                                 St2067_21_2023::QuantizationBits.code().to_string(),
                                 format!(
                                     "WAVEPCMDescriptor {} has QuantizationBits {} \
-                                     but ST 2067-21 §6.5 requires 16 or 24",
+                                     but ST 2067-2 §5.3.2.3 requires 24",
                                     ed.id, qb,
                                 ),
                             )
@@ -7234,8 +7235,10 @@ mod tests {
         );
     }
 
+    /// ST 2067-2:2020 §5.3.2.3: samples are 24-bit; lower bit depths are
+    /// padded to 24, so a QuantizationBits of 16 is not conformant.
     #[test]
-    fn app2e_accepts_16bit_audio() {
+    fn app2e_rejects_16bit_audio() {
         let cpl = cpl_with_audio(WAVEPCMDescriptor {
             instance_id: None,
             sample_rate: None,
@@ -7247,8 +7250,10 @@ mod tests {
         });
         let issues = App2E2021.validate_cpl(&cpl);
         assert!(
-            !issues.iter().any(|i| i.code.contains("QuantizationBits")),
-            "16-bit audio should be accepted: {:#?}",
+            issues
+                .iter()
+                .any(|i| i.code == St2067_21_2023::QuantizationBits.code()),
+            "16-bit audio should be rejected: {:#?}",
             issues,
         );
     }
@@ -7260,7 +7265,7 @@ mod tests {
             sample_rate: None,
             audio_sample_rate: Some(EditRate::new(48000, 1)),
             channel_count: Some(2),
-            quantization_bits: Some(8), // Not allowed by ST 2067-21
+            quantization_bits: Some(8), // Not allowed by ST 2067-2 §5.3.2.3
             linked_track_id: None,
             sub_descriptors: None,
         });
@@ -7279,7 +7284,7 @@ mod tests {
             sample_rate: None,
             audio_sample_rate: Some(EditRate::new(48000, 1)),
             channel_count: Some(2),
-            quantization_bits: Some(32), // Not allowed by ST 2067-21
+            quantization_bits: Some(32), // Not allowed by ST 2067-2 §5.3.2.3
             linked_track_id: None,
             sub_descriptors: None,
         });

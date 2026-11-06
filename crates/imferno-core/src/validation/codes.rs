@@ -208,7 +208,7 @@ pub enum St2067_21_2023 {
     // ── §6.5 Audio ───────────────────────────────────────────────────────────
     /// Audio sample rate is not 48 kHz or 96 kHz (ST 2067-2 §5.3.2.2).
     AudioSampleRate,
-    /// `QuantizationBits` value is not in the permitted set (16/24).
+    /// `QuantizationBits` is not 24 (ST 2067-2 §5.3.2.3).
     QuantizationBits,
 
     // ── §6.5.2 JPEG 2000 sub-descriptor ─────────────────────────────────────
@@ -396,7 +396,7 @@ impl ValidationCode for St2067_21_2023 {
             Self::ColorRange => "ColorRange value is not in the permitted set.",
             Self::WhiteRefLevel => "WhiteRefLevel value is inconsistent with ComponentDepth.",
             Self::AudioSampleRate => "Audio sample rate must be 48 000 Hz or 96 000 Hz.",
-            Self::QuantizationBits => "QuantizationBits must be 16 or 24.",
+            Self::QuantizationBits => "QuantizationBits must be 24.",
             Self::CodingStyle => "JPEG 2000 codestream coding style is not compliant.",
             Self::J2CLayout => "JPEG 2000 codestream layout does not meet App2E requirements.",
             Self::J2KExtendedCapabilities => "JPEG 2000 extended capabilities are declared but not permitted.",
@@ -575,7 +575,7 @@ impl ValidationCode for St2067_21_2023 {
             Self::AudioSampleRate =>
                 "<AudioSampleRate>44100/1</AudioSampleRate>  <!-- must be 48000/1 or 96000/1 -->",
             Self::QuantizationBits =>
-                "<QuantizationBits>32</QuantizationBits>  <!-- not in {16,24} -->",
+                "<QuantizationBits>16</QuantizationBits>  <!-- must be 24 -->",
             Self::CodingStyle =>
                 "JPEG2000SubDescriptor CodingStyleDefault Scod byte declares non-compliant entropy coding",
             Self::J2CLayout =>

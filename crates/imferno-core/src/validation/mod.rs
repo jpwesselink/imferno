@@ -3285,7 +3285,7 @@ impl App2E2021 {
         self.validate_audio_quantization(cpl, issues);
         // §5.2 Table 3: Image frame size
         self.validate_image_resolution(cpl, issues);
-        // Tables 4-6: Image frame rate
+        // §5.2 Table 3: Image frame rate
         self.validate_image_frame_rate(cpl, issues);
         // ST 2067-2 §5.3.2.2: Audio sample rate (48000 or 96000 Hz)
         self.validate_audio_sample_rate(cpl, issues);
@@ -3451,21 +3451,23 @@ struct ImageSystemTier {
     max_height: u32,
 }
 
-/// ST 2067-21 Tables 4-6: Allowed frame rates for all image system tiers.
-///
-/// These are common across 2K, 4K, and 8K tiers.
+/// ST 2067-21 §5.2 Table 3 (2020 p6, 2023 p7): union of the frame rates of
+/// all columns. 120 fps appears only in the R'G'B' 1..4096 x 1..3112
+/// column (see `RGB_ONLY_FRAME_RATES`).
 const ALLOWED_FRAME_RATES: &[(u32, u32)] = &[
     (24, 1),       // 24 fps
     (24000, 1001), // 23.976 fps
     (25, 1),       // 25 fps
     (30, 1),       // 30 fps
     (30000, 1001), // 29.97 fps
-    (48, 1),       // 48 fps (HFR)
-    (48000, 1001), // 47.952 fps (HFR)
-    (50, 1),       // 50 fps (HFR)
-    (60, 1),       // 60 fps (HFR)
-    (60000, 1001), // 59.94 fps (HFR)
+    (50, 1),       // 50 fps
+    (60, 1),       // 60 fps
+    (60000, 1001), // 59.94 fps
+    (120, 1),      // 120 fps (R'G'B' only)
 ];
+
+/// Frame rates Table 3 lists only for R'G'B' (RGBA descriptor) content.
+const RGB_ONLY_FRAME_RATES: &[(u32, u32)] = &[(120, 1)];
 
 /// Image frame size columns of Table 3. Only the size is checked here;
 /// the other characteristics of each column are not cross-checked (the
@@ -3594,9 +3596,9 @@ impl App2E2021 {
                 None => continue, // Completeness validation will catch missing SampleRate
             };
 
-            let is_allowed = ALLOWED_FRAME_RATES
-                .iter()
-                .any(|&(n, d)| rate.numerator == n && rate.denominator == d);
+            let matches = |&(n, d): &(u32, u32)| rate.numerator == n && rate.denominator == d;
+            let is_allowed = ALLOWED_FRAME_RATES.iter().any(matches)
+                && (desc_type == "RGBA" || !RGB_ONLY_FRAME_RATES.iter().any(matches));
 
             if !is_allowed {
                 let allowed_str: Vec<String> = ALLOWED_FRAME_RATES
@@ -7843,7 +7845,7 @@ mod tests {
         assert!(resolution_flagged(4096, 3113));
     }
 
-    // ── Image frame rate validation (Tables 4-6) ────────────────────────────
+    // ── Image frame rate validation (Table 3) ───────────────────────────────
 
     #[test]
     fn app2e_accepts_24fps() {
@@ -7900,6 +7902,8 @@ mod tests {
         );
     }
 
+    /// Table 3: 120 fps is only in the R'G'B' column, so a Y'C'BC'R (CDCI)
+    /// descriptor at 120 fps is rejected.
     #[test]
     fn app2e_rejects_120fps() {
         let cpl = cpl_with_image_resolution(1920, 1080, Some(EditRate::new(120, 1)));
@@ -7909,6 +7913,47 @@ mod tests {
             "120 fps should be rejected: {:#?}",
             issues,
         );
+    }
+
+    /// ST 2067-21 §5.2 Table 3 (2020 p6, 2023 p7): no column lists 48 or
+    /// 48000/1001.
+    #[test]
+    fn app2e_rejects_48fps() {
+        for rate in [EditRate::new(48, 1), EditRate::new(48000, 1001)] {
+            let cpl = cpl_with_image_resolution(1920, 1080, Some(rate));
+            for issues in [App2E2021.validate_cpl(&cpl), App2E2020.validate_cpl(&cpl)] {
+                assert!(
+                    issues
+                        .iter()
+                        .any(|i| i.code == St2067_21_2023::FrameRate.code()),
+                    "{rate:?} should be rejected: {issues:#?}",
+                );
+            }
+        }
+    }
+
+    /// Table 3: 120 fps is listed only in the 1..4096 x 1..3112 R'G'B'
+    /// 4:4:4 column, so it is accepted on an RGBA descriptor.
+    #[test]
+    fn app2e_accepts_120fps_rgb() {
+        let mut cpl =
+            cpl_with_rgba_descriptor(ColorPrimaries::Bt709, TransferCharacteristic::Bt709);
+        cpl.essence_descriptor_list
+            .as_mut()
+            .unwrap()
+            .essence_descriptors[0]
+            .rgba_descriptor
+            .as_mut()
+            .unwrap()
+            .sample_rate = Some(EditRate::new(120, 1));
+        for issues in [App2E2021.validate_cpl(&cpl), App2E2020.validate_cpl(&cpl)] {
+            assert!(
+                !issues
+                    .iter()
+                    .any(|i| i.code == St2067_21_2023::FrameRate.code()),
+                "120 fps R'G'B' should be accepted: {issues:#?}",
+            );
+        }
     }
 
     #[test]

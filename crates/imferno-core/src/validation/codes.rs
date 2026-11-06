@@ -467,9 +467,9 @@ impl ValidationCode for St2067_21_2023 {
     fn example(&self) -> Option<&'static str> {
         Some(match self {
             Self::FrameRate =>
-                "<EditRate>30 1</EditRate>  <!-- not in {24,25,30,50,60,120}/{1,1001} -->",
+                "<SampleRate>48/1</SampleRate>  <!-- 48 fps is not in Table 3 -->",
             Self::Resolution =>
-                "<StoredWidth>1280</StoredWidth><StoredHeight>720</StoredHeight>  <!-- not 1920×1080 / 3840×2160 / 4096×2160 -->",
+                "<StoredWidth>7680</StoredWidth><StoredHeight>4320</StoredHeight>  <!-- exceeds 1..4096 × 1..3112 (Table 3) -->",
             Self::EmptyLanguageTag =>
                 "<Locale><LanguageList><Language></Language></LanguageList></Locale>",
             Self::MalformedLanguageTag =>

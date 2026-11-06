@@ -41,7 +41,11 @@ Drop any IMF XML file — the parser runs entirely in WebAssembly. Nothing leave
 
 Loading WebAssembly module…
 
-No IMF package at hand? Try a public one:Try Sol LevanteTry Meridian
+Or try a public package
+
+Sol LevanteNetflix · 2020UHD24 fpsDolby Vision2× JA audioLoad →MeridianNetflix · 2016UHD59.94 fps5.1 audioTimed textLoad →
+
+XML manifests only (no MXF essence). © Netflix, CC BY 4.0, via [Netflix Open Content](https://opencontent.netflix.com/).
 
 ## Standards coverage
 

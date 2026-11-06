@@ -85,6 +85,51 @@ const CONTENT_KINDS_TABLE_4_2016: &[&str] = &["supplemental", "documentary"];
 
 const CONTENT_KIND_SCOPE_2016: &str = "http://www.smpte-ra.org/schemas/2067-3/2016#content-kind";
 
+/// Raw text of the CompositionPlaylist's top-level `ContentKind` element
+/// (trimmed), or `None` if it cannot be found.
+fn raw_content_kind_text(xml: &str) -> Option<String> {
+    use quick_xml::events::Event;
+    let mut reader = quick_xml::Reader::from_str(xml);
+    let mut depth = 0usize;
+    let mut in_content_kind = false;
+    let mut text = String::new();
+    loop {
+        match reader.read_event().ok()? {
+            Event::Start(e) => {
+                depth += 1;
+                if depth == 2 && e.local_name().as_ref() == "ContentKind" {
+                    in_content_kind = true;
+                }
+            }
+            Event::End(_) => {
+                if in_content_kind && depth == 2 {
+                    return Some(text.trim().to_string());
+                }
+                depth = depth.saturating_sub(1);
+            }
+            Event::Empty(e) => {
+                if depth == 1 && e.local_name().as_ref() == "ContentKind" {
+                    return Some(String::new());
+                }
+            }
+            Event::Text(t) if in_content_kind => {
+                text.push_str(&quick_xml::escape::unescape(&t).ok()?);
+            }
+            Event::GeneralRef(r) if in_content_kind => {
+                // Predefined and character references; anything else
+                // makes the raw value unrecoverable here.
+                let entity = format!("&{};", r.into_inner());
+                text.push_str(&quick_xml::escape::unescape(&entity).ok()?);
+            }
+            Event::CData(c) if in_content_kind => {
+                text.push_str(&c);
+            }
+            Event::Eof => return None,
+            _ => {}
+        }
+    }
+}
+
 /// ST 2067-3 §6.1.8: under the default scope ContentKind shall match a value
 /// of Table 3; under the 2016 scope (2016 edition only) a value of Table 4.
 /// Any other scope is outside the specification.
@@ -106,23 +151,29 @@ fn validate_content_kind_vocabulary(
         return;
     };
 
-    // `ContentKind::parse` folds a few spellings into named variants; map
-    // them back to the spec token. Variants with no Table 3 entry (promo,
-    // rating-bump, commercial) are deliberately left unmapped.
-    let value = match &cpl.content_kind.kind {
-        ContentKind::Feature => "feature".to_string(),
-        ContentKind::Trailer => "trailer".to_string(),
-        ContentKind::Test => "test".to_string(),
-        ContentKind::Teaser => "teaser".to_string(),
-        ContentKind::Advertisement => "advertisement".to_string(),
-        ContentKind::Episode => "episode".to_string(),
-        ContentKind::Short => "short".to_string(),
-        ContentKind::PublicServiceAnnouncement => "psa".to_string(),
-        ContentKind::Promo => "promo".to_string(),
-        ContentKind::RatingBump => "rating-bump".to_string(),
-        ContentKind::Commercial => "commercial".to_string(),
-        // Case-insensitive, matching the leniency of `ContentKind::parse`.
-        ContentKind::Other(s) => s.to_ascii_lowercase(),
+    // "shall match" is an exact, case-sensitive comparison. `ContentKind::parse`
+    // folds case variants and synonyms ("Feature", "PSA", ...) into named
+    // variants, so compare the raw element text from the source XML when
+    // it is available. Leading/trailing whitespace is ignored.
+    let value = match cpl.source_xml.as_deref().and_then(raw_content_kind_text) {
+        Some(raw) => raw,
+        // No source XML (e.g. a CPL built in memory or deserialised from
+        // JSON): best effort from the parsed variant. Folded spellings
+        // cannot be recovered here.
+        None => match &cpl.content_kind.kind {
+            ContentKind::Feature => "feature".to_string(),
+            ContentKind::Trailer => "trailer".to_string(),
+            ContentKind::Test => "test".to_string(),
+            ContentKind::Teaser => "teaser".to_string(),
+            ContentKind::Advertisement => "advertisement".to_string(),
+            ContentKind::Episode => "episode".to_string(),
+            ContentKind::Short => "short".to_string(),
+            ContentKind::PublicServiceAnnouncement => "psa".to_string(),
+            ContentKind::Promo => "promo".to_string(),
+            ContentKind::RatingBump => "rating-bump".to_string(),
+            ContentKind::Commercial => "commercial".to_string(),
+            ContentKind::Other(s) => s.clone(),
+        },
     };
 
     if !allowed.contains(&value.as_str()) {
@@ -962,17 +1013,39 @@ mod tests {
 
     // ── ContentKindUnknown vocabulary (ST 2067-3 §6.1.8 Tables 3 and 4) ─────
 
+    /// Parse a CPL from XML so the raw ContentKind text is available, as in
+    /// real packages.
     fn cpl_with_content_kind(
         ns: CplNamespace,
         scope: Option<&str>,
         value: &str,
     ) -> CompositionPlaylist {
-        let mut cpl = minimal_cpl();
-        cpl.namespace = ns;
-        cpl.content_kind = ContentKindElement {
-            kind: ContentKind::parse(value),
-            scope: scope.map(str::to_string),
+        let ns_uri = match ns {
+            CplNamespace::Smpte2067_3_2013 => "http://www.smpte-ra.org/schemas/2067-3/2013",
+            CplNamespace::Smpte2067_3_2016 => "http://www.smpte-ra.org/schemas/2067-3/2016",
+            other => panic!("unsupported namespace in test helper: {other:?}"),
         };
+        let scope_attr = scope
+            .map(|s| format!(r#" scope="{s}""#))
+            .unwrap_or_default();
+        let xml = format!(
+            r#"<?xml version="1.0" encoding="UTF-8"?>
+<CompositionPlaylist xmlns="{ns_uri}">
+  <Id>urn:uuid:00000000-0000-0000-0000-000000000001</Id>
+  <IssueDate>2024-01-01T00:00:00Z</IssueDate>
+  <ContentTitle>Test</ContentTitle>
+  <ContentKind{scope_attr}>{value}</ContentKind>
+  <EditRate>24 1</EditRate>
+  <SegmentList>
+    <Segment>
+      <Id>urn:uuid:00000000-0000-0000-0000-000000000002</Id>
+      <SequenceList/>
+    </Segment>
+  </SegmentList>
+</CompositionPlaylist>"#
+        );
+        let cpl = crate::cpl::parse_cpl(&xml).expect("parse failed");
+        assert_eq!(cpl.namespace, ns);
         cpl
     }
 
@@ -1027,6 +1100,42 @@ mod tests {
                 );
             }
         }
+    }
+
+    /// ST 2067-3 §6.1.8: the value "shall match" a Table 3 value (2013 p11,
+    /// 2016 p10). Matching is exact, so case variants and synonyms that the
+    /// parser used to fold are not Table 3 values.
+    #[test]
+    fn content_kind_requires_exact_table_3_token() {
+        for ns in [
+            CplNamespace::Smpte2067_3_2013,
+            CplNamespace::Smpte2067_3_2016,
+        ] {
+            for value in [
+                "Feature",
+                "RATING",
+                "Episode",
+                "PSA",
+                "public-service-announcement",
+                "PublicServiceAnnouncement",
+                "RatingBump",
+            ] {
+                let cpl = cpl_with_content_kind(ns.clone(), None, value);
+                assert!(
+                    has_content_kind_unknown(&cpl),
+                    "'{value}' ({ns:?}) is not an exact Table 3 value and must be flagged",
+                );
+            }
+        }
+        let cpl = cpl_with_content_kind(
+            CplNamespace::Smpte2067_3_2016,
+            Some(CK_SCOPE_2016),
+            "Documentary",
+        );
+        assert!(
+            has_content_kind_unknown(&cpl),
+            "'Documentary' is not a Table 4 value"
+        );
     }
 
     #[test]

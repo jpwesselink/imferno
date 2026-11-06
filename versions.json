@@ -85,6 +85,10 @@
     {
       "label": "#93 chore/minor-dep-bumps",
       "path": "/pr-93/"
+    },
+    {
+      "label": "#94 chore/uppsala-0.12",
+      "path": "/pr-94/"
     }
   ],
   "latest": "/v3.0.1/"

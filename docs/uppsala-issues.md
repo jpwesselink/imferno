@@ -1,5 +1,30 @@
 # Issues with uppsala for the imferno runtime-XSD use case
 
+## Status (November 2026)
+
+imferno builds against **uppsala 0.12.0** plus one patch, pinned by
+commit on the `imferno-patches-0.12` branch of
+<https://github.com/jpwesselink/uppsala> (see `[patch.crates-io]` in the
+workspace `Cargo.toml`).
+
+| Issue | Status |
+|---|---|
+| 1. `ValidationError` has no element-path field | **Open upstream.** Carried as the single fork patch (`element_path`, populated at every emission site; for missing-element errors it is the missing element's name). |
+| 2. Facets on imported-namespace types not applied | **Fixed upstream** in 0.12 (QName prefixes resolve against in-scope `xmlns` declarations). The fork patch for it was dropped; its regression tests are kept on the fork branch. |
+
+Related change in 0.12: a type reference into a namespace whose
+`xs:import` could not be loaded is now a hard "Type not found" error
+instead of lax validation. imferno therefore inlines the three ST 433
+dcml types into each primary schema before building the validator
+(`inline_dcml_types` in `crates/imferno-core/src/xsd/mod.rs`), which
+also means dcml-typed values are now checked on the in-memory (wasm)
+path.
+
+The rest of this document is the original write-up against 0.4.0 and
+is kept as the reference for filing Issue 1 upstream.
+
+## Original write-up (uppsala 0.4.0)
+
 This document captures the two uppsala v0.4.0 limitations imferno's
 runtime-XSD architecture hit during the
 `spike/xsd-runtime` work. They are empirical findings from
@@ -8,12 +33,6 @@ broken CPLs — not bugs uppsala has reported elsewhere (verified by
 reading <https://github.com/kushaldas/uppsala/issues> at time of
 writing; nothing about either of these in the 12 existing issues).
 
-Both limitations are real but bounded: uppsala remains the best
-pure-Rust XSD validator we evaluated. These notes exist so we (or
-upstream) can address them with the empirical context already worked
-out.
-
-Crate version pinned: **uppsala 0.4.0** (Apr 2026 release).
 Reproducer code: `crates/imferno-core/examples/xsd_validate_spike_uppsala.rs`
 and `crates/imferno-core/tests/xsd_runtime.rs`.
 

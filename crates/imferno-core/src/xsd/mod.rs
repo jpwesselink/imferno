@@ -31,15 +31,14 @@
 //! marks documents whose namespace has no vendored schema — the
 //! pre-pass was skipped, not passed.
 //!
-//! ## Schema composition limitation
+//! ## dcml types
 //!
 //! SMPTE XSDs use `<xs:import namespace="..."/>` with no
-//! `schemaLocation` attribute. uppsala (like every other XSD validator)
-//! skips namespace-only imports — lax-validating anything typed
-//! against the unresolved namespace. For full SMPTE coverage, callers
-//! need to either compose schemas inline (see
-//! `validate_against_composite_schema`) or accept the lax-validation
-//! gap for elements whose types come from the unresolved import.
+//! `schemaLocation` attribute for the ST 433 dcml types. uppsala cannot
+//! resolve that import from memory, so every entry point inlines the
+//! three dcml types into the primary schema before building the
+//! validator (see `inline_dcml_types`). dcml-typed values are checked
+//! against their facets on native and wasm alike.
 
 use std::path::Path;
 
@@ -72,22 +71,9 @@ const DCI_PKL_2007_XSD: &str = include_str!("../../specs/SMPTE-429-8-PKL-2007.xs
 const IMF_PKL_2016_XSD: &str = include_str!("../../specs/st2067-2b-2016.xsd");
 // The dcml stub is no longer baked into the binary — `dcml_specs_dir()`
 // was the only consumer and it's been removed in v3.0.0 in favour of
-// uppsala's in-memory schema path. The stub XSD remains in `specs/` for
-// reference and for the future patch where uppsala grows an in-memory
-// schema resolver.
-//
-// const DCML_TYPES_STUB_XSD: &str =
-//     include_str!("../../specs/dcml-types-stub.xsd");
-
-// `dcml_specs_dir()` was removed in v3.0.0 — the helper wrote the dcml
-// stub to `std::env::temp_dir()` so uppsala could read it back via
-// `from_schema_with_base_path`. That round-trip panicked on wasm32
-// and defeated the entire reason uppsala was selected (pure-Rust,
-// browser-runnable). The current code uses uppsala's in-memory
-// `from_schema` path; the dcml `<xs:import>` directive is left
-// unresolved and uppsala lax-validates anything in the dcml namespace.
-// The dcml types are independently enforced at the parser layer
-// (`ImfUuid::parse_urn` etc.), so no structural correctness is lost.
+// The dcml types are inlined into each primary schema at validation time
+// (`inline_dcml_types`) rather than loaded from `specs/dcml-types-stub.xsd`,
+// so the in-memory path needs no filesystem and works on wasm32.
 
 /// Run the runtime-XSD validator against a parsed `CompositionPlaylist`.
 ///
@@ -100,15 +86,8 @@ const IMF_PKL_2016_XSD: &str = include_str!("../../specs/st2067-2b-2016.xsd");
 /// did via the raw-XML path.
 ///
 /// **Works identically on native and wasm.** Uses uppsala's pure-in-memory
-/// `from_schema` path (no filesystem, no `std::env::temp_dir()`). The
-/// `<xs:import namespace=".../dcmlTypes/">` directives in the vendored
-/// XSDs are left unresolved — uppsala lax-validates anything in the dcml
-/// namespace. We accept that tradeoff because: (a) the dcml types
-/// (`UUIDType`, `UserTextType`, `RationalType`) are also enforced at the
-/// parser layer (`ImfUuid::parse_urn` etc.), so structural-correctness
-/// signal is preserved; (b) the alternative was a temp-dir round-trip
-/// that panicked on wasm — which defeated the entire reason we picked
-/// uppsala in the first place.
+/// `from_schema` path (no filesystem, no `std::env::temp_dir()`), with the
+/// dcml types inlined into the primary schema (see `inline_dcml_types`).
 pub fn validate_parsed_cpl(cpl: &crate::cpl::CompositionPlaylist) -> Vec<ValidationIssue> {
     let Some(source_xml) = &cpl.source_xml else {
         return Vec::new();
@@ -195,18 +174,17 @@ pub fn validate_against_composite_schema_str(
     specs_dir: &Path,
     cpl_id: Option<crate::assetmap::ImfUuid>,
 ) -> Vec<ValidationIssue> {
-    let injected = inject_dcml_schema_location(primary_xsd);
+    let injected = inject_dcml_schema_location(&inline_dcml_types(primary_xsd));
     let schema_doc = match uppsala::parse(&injected) {
         Ok(d) => d,
         Err(e) => return vec![parse_failure_issue("xsd-schema", e, cpl_id)],
     };
     // uppsala's `from_schema_with_base_path` interprets `base_path` as a
     // *file* path and takes its parent to resolve `schemaLocation` URIs.
-    // Synthesise a virtual file inside `specs_dir` so that `parent()`
-    // returns `specs_dir` itself — otherwise relative imports resolve
-    // one directory too high and uppsala silently `continue`s past the
-    // missing file (dropping the import without an error).
-    let virtual_base = specs_dir.join("__primary.xsd");
+    // Since uppsala 0.12 that file must exist (it is canonicalised), so
+    // point at the dcml stub, which lives in `specs_dir` and is the
+    // import we resolve anyway.
+    let virtual_base = specs_dir.join(DCML_STUB_FILE);
     let validator =
         match uppsala::XsdValidator::from_schema_with_base_path(&schema_doc, Some(&virtual_base)) {
             Ok(v) => v,
@@ -242,7 +220,8 @@ pub fn validate_against_schema(
     schema_xml: &str,
     cpl_id: Option<crate::assetmap::ImfUuid>,
 ) -> Vec<ValidationIssue> {
-    let schema_doc = match uppsala::parse(schema_xml) {
+    let schema_xml = inline_dcml_types(schema_xml);
+    let schema_doc = match uppsala::parse(&schema_xml) {
         Ok(d) => d,
         Err(e) => {
             return vec![parse_failure_issue("xsd-schema", e, cpl_id)];
@@ -287,14 +266,8 @@ pub fn validate_against_schema(
 /// `primary_xsd_path` is read from disk to set the schema's base for
 /// import resolution.
 ///
-/// **Known uppsala v0.4.0 limitation**: pattern/restriction facets on
-/// types imported from another namespace are loaded but not applied
-/// during instance validation. So a `dcml:UUIDType`-typed element will
-/// accept any string under the composite path, even though the stub
-/// defines a UUID-URN regex. Built-in types (xs:dateTime, xs:integer
-/// etc.) are unaffected and validate normally. See the integration
-/// tests under `tests/xsd_runtime.rs` for the failing-as-of-v0.4.0
-/// case (marked `#[ignore]`).
+/// The dcml types themselves are inlined (see `inline_dcml_types`), so
+/// this path and `validate_against_schema` check them identically.
 pub fn validate_against_composite_schema(
     instance_xml: &str,
     primary_xsd_path: &Path,
@@ -307,16 +280,14 @@ pub fn validate_against_composite_schema(
             return vec![parse_failure_issue("primary-xsd", e, cpl_id)];
         }
     };
-    let injected = inject_dcml_schema_location(&primary_xsd);
+    let injected = inject_dcml_schema_location(&inline_dcml_types(&primary_xsd));
     let schema_doc = match uppsala::parse(&injected) {
         Ok(d) => d,
         Err(e) => return vec![parse_failure_issue("xsd-schema", e, cpl_id)],
     };
-    // See `validate_against_composite_schema_str` for why we synthesise
-    // a virtual file path inside `specs_dir` rather than passing the
-    // directory directly: uppsala treats the arg as a file and takes
-    // `.parent()` on it.
-    let virtual_base = specs_dir.join("__primary.xsd");
+    // See `validate_against_composite_schema_str` for why the base path
+    // is a file inside `specs_dir` rather than the directory itself.
+    let virtual_base = specs_dir.join(DCML_STUB_FILE);
     let validator =
         match uppsala::XsdValidator::from_schema_with_base_path(&schema_doc, Some(&virtual_base)) {
             Ok(v) => v,
@@ -372,12 +343,103 @@ pub fn validate_cpl_xml(
     issues
 }
 
+/// File name of the vendored ST 433 dcml stub in `specs/`.
+const DCML_STUB_FILE: &str = "dcml-types-stub.xsd";
+
+/// Inline the ST 433 dcml types into a primary schema so it validates
+/// without loading the dcml import from disk.
+///
+/// SMPTE XSDs `<xs:import>` the dcml namespace with no `schemaLocation`
+/// and reference `dcml:UUIDType`, `dcml:UserTextType` and
+/// `dcml:RationalType`. uppsala cannot resolve an import from memory, and
+/// since 0.12 an unresolved type reference is a hard "Type not found"
+/// error rather than lax validation. Reading the stub from disk is not an
+/// option on wasm32.
+///
+/// This rewrites the schema text: the three types are appended as
+/// top-level definitions in the schema's own target namespace (bound to a
+/// private `imfdcml` prefix) and every `"dcml:<Type>"` reference is
+/// pointed at them. The definitions mirror `specs/dcml-types-stub.xsd`,
+/// so dcml-typed values are now checked against their facets (e.g. the
+/// `urn:uuid:` pattern) instead of skipped. Schemas without dcml
+/// references are returned unchanged.
+fn inline_dcml_types(xsd_src: &str) -> std::borrow::Cow<'_, str> {
+    use std::borrow::Cow;
+
+    const TYPES: [&str; 3] = ["UUIDType", "UserTextType", "RationalType"];
+    const DEFINITIONS: &str = r#"
+  <xs:simpleType name="ImfernoDcmlUUIDType">
+    <xs:restriction base="xs:anyURI">
+      <xs:pattern value="urn:uuid:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:complexType name="ImfernoDcmlUserTextType">
+    <xs:simpleContent>
+      <xs:extension base="xs:string">
+        <xs:attribute name="language" type="xs:language" use="optional" default="en"/>
+      </xs:extension>
+    </xs:simpleContent>
+  </xs:complexType>
+  <xs:simpleType name="ImfernoDcmlRationalType">
+    <xs:restriction>
+      <xs:simpleType>
+        <xs:list itemType="xs:integer"/>
+      </xs:simpleType>
+      <xs:length value="2"/>
+    </xs:restriction>
+  </xs:simpleType>
+"#;
+
+    if !TYPES
+        .iter()
+        .any(|t| xsd_src.contains(&format!("\"dcml:{t}\"")))
+    {
+        return Cow::Borrowed(xsd_src);
+    }
+
+    // Locate the root <xs:schema ...> start tag and its targetNamespace.
+    let Some(root_start) = xsd_src.find("<xs:schema") else {
+        return Cow::Borrowed(xsd_src);
+    };
+    let Some(root_end_rel) = xsd_src[root_start..].find('>') else {
+        return Cow::Borrowed(xsd_src);
+    };
+    let root_end = root_start + root_end_rel;
+    let root_tag = &xsd_src[root_start..root_end];
+    let Some(tns) = root_tag
+        .split_once("targetNamespace=\"")
+        .and_then(|(_, rest)| rest.split_once('"'))
+        .map(|(ns, _)| ns)
+    else {
+        return Cow::Borrowed(xsd_src);
+    };
+    let Some(close) = xsd_src.rfind("</xs:schema>") else {
+        return Cow::Borrowed(xsd_src);
+    };
+
+    // Root tag gets the private prefix; definitions go last because
+    // xs:import must precede all other top-level declarations.
+    let mut out = String::with_capacity(xsd_src.len() + DEFINITIONS.len() + 64);
+    out.push_str(&xsd_src[..root_end]);
+    out.push_str(&format!(" xmlns:imfdcml=\"{tns}\""));
+    out.push_str(&xsd_src[root_end..close]);
+    out.push_str(DEFINITIONS);
+    out.push_str(&xsd_src[close..]);
+
+    for t in TYPES {
+        out = out.replace(
+            &format!("\"dcml:{t}\""),
+            &format!("\"imfdcml:ImfernoDcml{t}\""),
+        );
+    }
+    Cow::Owned(out)
+}
+
 /// Inject `schemaLocation="dcml-types-stub.xsd"` into the `<xs:import>`
 /// for the ST 433 dcml namespace. Idempotent (no-op if a schemaLocation
 /// is already present).
 fn inject_dcml_schema_location(xsd_src: &str) -> String {
     const DCML_NS: &str = "http://www.smpte-ra.org/schemas/433/2008/dcmlTypes/";
-    const STUB_PATH: &str = "dcml-types-stub.xsd";
 
     // Find the <xs:import …> element targeting the dcml namespace and
     // append a schemaLocation attribute if one isn't already there.
@@ -404,7 +466,9 @@ fn inject_dcml_schema_location(xsd_src: &str) -> String {
     };
     let before_tag_end = &xsd_src[..start + needle.len()];
     let after_tag = &tail[end_rel + 1..];
-    format!(r#"{before_tag_end}{attr_body} schemaLocation="{STUB_PATH}"{terminator}{after_tag}"#)
+    format!(
+        r#"{before_tag_end}{attr_body} schemaLocation="{DCML_STUB_FILE}"{terminator}{after_tag}"#
+    )
 }
 
 /// Map a single uppsala diagnostic to a catalogue `ValidationIssue`.
@@ -425,7 +489,7 @@ pub fn translate(
     // Per-element code discrimination (e.g. `XSD/ElementMissing/EditRate`
     // vs the generic `XSD/ElementMissing`) reads `err.element_path`, which
     // only exists on the patched uppsala fork at jpwesselink/uppsala —
-    // upstream uppsala 0.4 on crates.io lacks the field. We feature-gate
+    // upstream uppsala on crates.io lacks the field. We feature-gate
     // the access so the lib compiles against vanilla uppsala for crates.io
     // publishing while the workspace (which patches in the fork) gets the
     // richer codes. See the `uppsala-patched` feature in Cargo.toml; once
@@ -523,6 +587,28 @@ mod tests {
         </xs:complexType>
       </xs:element>
     </xs:schema>"#;
+
+    #[test]
+    fn inline_dcml_types_leaves_schemas_without_dcml_untouched() {
+        assert!(matches!(
+            inline_dcml_types(MINI_XSD),
+            std::borrow::Cow::Borrowed(_)
+        ));
+    }
+
+    #[test]
+    fn inline_dcml_types_rewrites_every_dcml_reference() {
+        let out = inline_dcml_types(IMF_CPL_2013_XSD);
+        assert!(!out.contains("\"dcml:"), "dcml reference left behind");
+        assert!(out.contains("xmlns:imfdcml="));
+        assert!(out.contains("name=\"ImfernoDcmlUUIDType\""));
+        // Definitions must come after xs:import (XSD ordering rule).
+        let import = out.find("<xs:import").expect("import kept");
+        let def = out
+            .find("ImfernoDcmlUUIDType\">")
+            .expect("definition added");
+        assert!(import < def);
+    }
 
     #[test]
     fn valid_doc_yields_no_issues() {

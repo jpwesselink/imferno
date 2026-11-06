@@ -85,6 +85,10 @@
     {
       "label": "#93 chore/minor-dep-bumps",
       "path": "/pr-93/"
+    },
+    {
+      "label": "#96 feat/docs-sample-imp-browser",
+      "path": "/pr-96/"
     }
   ],
   "latest": "/v3.0.1/"

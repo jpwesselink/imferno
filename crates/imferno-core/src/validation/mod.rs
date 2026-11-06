@@ -3449,6 +3449,9 @@ struct ImageSystemTier {
     name: &'static str,
     max_width: u32,
     max_height: u32,
+    /// Whether the column permits Y'C'BC'R (CDCI) components. The
+    /// 1..4096 x 1..3112 column is R'G'B' only.
+    allows_ycbcr: bool,
 }
 
 /// ST 2067-21 §5.2 Table 3 (2020 p6, 2023 p7): union of the frame rates of
@@ -3477,16 +3480,19 @@ const IMAGE_SYSTEM_TIERS: &[ImageSystemTier] = &[
         name: "1..1920 x 1..1080",
         max_width: 1920,
         max_height: 1080,
+        allows_ycbcr: true,
     },
     ImageSystemTier {
         name: "1..3840 x 1..2160",
         max_width: 3840,
         max_height: 2160,
+        allows_ycbcr: true,
     },
     ImageSystemTier {
-        name: "1..4096 x 1..3112",
+        name: "1..4096 x 1..3112 (R'G'B' only)",
         max_width: 4096,
         max_height: 3112,
+        allows_ycbcr: false,
     },
 ];
 
@@ -3544,11 +3550,18 @@ impl App2E2021 {
             // progressive and frame height / 2 (one field) for interlaced.
             let h = image_frame_height(stored_h, frame_layout);
 
-            let in_some_tier = IMAGE_SYSTEM_TIERS
-                .iter()
-                .any(|t| (1..=t.max_width).contains(&w) && (1..=t.max_height).contains(&h));
+            // Table 3: Y'C'BC'R (CDCI) is never larger than 3840x2160; only
+            // the R'G'B' column goes to 4096x3112.
+            let is_cdci = desc_type == "CDCI";
+            let tiers = || {
+                IMAGE_SYSTEM_TIERS
+                    .iter()
+                    .filter(move |t| !is_cdci || t.allows_ycbcr)
+            };
+            let in_some_tier =
+                tiers().any(|t| (1..=t.max_width).contains(&w) && (1..=t.max_height).contains(&h));
             if !in_some_tier {
-                let tier_names: Vec<&str> = IMAGE_SYSTEM_TIERS.iter().map(|t| t.name).collect();
+                let tier_names: Vec<&str> = tiers().map(|t| t.name).collect();
                 issues.push(
                     ValidationIssue::new(
                         Severity::Error,
@@ -7792,11 +7805,12 @@ mod tests {
 
     #[test]
     fn app2e_accepts_4096x2160() {
-        let cpl = cpl_with_image_resolution(4096, 2160, Some(EditRate::new(24000, 1001)));
+        // Table 3: sizes above 3840x2160 exist only in the R'G'B' column.
+        let cpl = cpl_with_rgba_size(4096, 2160);
         let issues = App2E2021.validate_cpl(&cpl);
         assert!(
             !issues.iter().any(|i| i.code.contains("Resolution")),
-            "4096x2160 should be accepted: {:#?}",
+            "4096x2160 R'G'B' should be accepted: {:#?}",
             issues,
         );
     }
@@ -7843,19 +7857,48 @@ mod tests {
     /// in either direction is outside every column. Same in 2020 and 2023.
     #[test]
     fn app2e_resolution_uses_table_3_range_edges() {
-        let resolution_flagged = |w, h| {
-            let cpl = cpl_with_image_resolution(w, h, Some(EditRate::new(24, 1)));
+        let flagged = |cpl: CompositionPlaylist| {
             let code = St2067_21_2023::Resolution.code();
             let a = App2E2021.validate_cpl(&cpl).iter().any(|i| i.code == code);
             let b = App2E2020.validate_cpl(&cpl).iter().any(|i| i.code == code);
             assert_eq!(a, b, "2020 and 2023 Table 3 are identical");
             a
         };
-        assert!(!resolution_flagged(4096, 3112));
-        assert!(!resolution_flagged(3996, 2160));
-        assert!(!resolution_flagged(1, 1));
-        assert!(resolution_flagged(4097, 2160));
-        assert!(resolution_flagged(4096, 3113));
+        let cdci = |w, h| cpl_with_image_resolution(w, h, Some(EditRate::new(24, 1)));
+
+        // R'G'B' (RGBA): up to 1..4096 x 1..3112 (Table 3 R'G'B' column).
+        assert!(!flagged(cpl_with_rgba_size(4096, 3112)));
+        assert!(!flagged(cpl_with_rgba_size(3996, 2160)));
+        assert!(flagged(cpl_with_rgba_size(4097, 2160)));
+        assert!(flagged(cpl_with_rgba_size(4096, 3113)));
+
+        // Y'C'BC'R (CDCI): every column allowing it stops at 3840x2160.
+        assert!(!flagged(cdci(1, 1)));
+        assert!(!flagged(cdci(3840, 2160)));
+        assert!(flagged(cdci(3841, 2160)));
+        assert!(flagged(cdci(3840, 2161)));
+        assert!(flagged(cdci(3996, 2160)));
+        assert!(flagged(cdci(4096, 2160)));
+        assert!(flagged(cdci(4096, 3112)));
+    }
+
+    /// RGBA (R'G'B') COLOR.3 descriptor with the given stored size.
+    fn cpl_with_rgba_size(width: u32, height: u32) -> CompositionPlaylist {
+        let mut cpl =
+            cpl_with_rgba_descriptor(ColorPrimaries::Bt709, TransferCharacteristic::Bt709);
+        let rgba = cpl
+            .essence_descriptor_list
+            .as_mut()
+            .unwrap()
+            .essence_descriptors[0]
+            .rgba_descriptor
+            .as_mut()
+            .unwrap();
+        rgba.stored_width = Some(width);
+        rgba.stored_height = Some(height);
+        rgba.display_width = Some(width);
+        rgba.display_height = Some(height);
+        cpl
     }
 
     // ── Image frame rate validation (Table 3) ───────────────────────────────

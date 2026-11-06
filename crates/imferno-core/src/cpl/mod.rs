@@ -3257,17 +3257,13 @@ fn collect_unknown_xml_tokens(xml: &str) -> Result<BTreeSet<String>, String> {
     loop {
         match reader.read_event() {
             Ok(Event::Start(e)) | Ok(Event::Empty(e)) => {
-                let name = std::str::from_utf8(e.name().as_ref())
-                    .map_err(|e| e.to_string())?
-                    .to_string();
+                let name = e.name().as_ref().to_string();
                 if !allowed_elements.contains(name.as_str()) {
                     unknown.insert(format!("element:{}", name));
                 }
                 for attr in e.attributes() {
                     let attr = attr.map_err(|e| e.to_string())?;
-                    let key = std::str::from_utf8(attr.key.as_ref())
-                        .map_err(|e| e.to_string())?
-                        .to_string();
+                    let key = attr.key.as_ref().to_string();
                     if !(allowed_attributes.contains(key.as_str()) || key.starts_with("xmlns:")) {
                         unknown.insert(format!("attribute:{}@{}", key, name));
                     }

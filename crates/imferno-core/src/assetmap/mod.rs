@@ -1173,7 +1173,7 @@ fn parse_opl_macros(xml_content: &str) -> Result<Vec<OplMacro>, quick_xml::Error
                         .filter_map(|a| a.ok())
                         .find_map(|a| {
                             if local_name(a.key.as_ref()) == "type" {
-                                std::str::from_utf8(&a.value).ok().map(str::to_string)
+                                Some(a.value.to_string())
                             } else {
                                 None
                             }
@@ -1229,10 +1229,8 @@ fn parse_opl_macros(xml_content: &str) -> Result<Vec<OplMacro>, quick_xml::Error
             }
             Ok(Event::Text(t)) => {
                 if let (Some(builder), Some(target)) = (current.as_mut(), text_target.as_ref()) {
-                    let text = t
-                        .decode()
-                        .ok()
-                        .and_then(|s| quick_xml::escape::unescape(&s).ok().map(|u| u.into_owned()))
+                    let text = quick_xml::escape::unescape(&t)
+                        .map(|u| u.into_owned())
                         .unwrap_or_default();
                     match target.as_str() {
                         "Name" => builder.name.push_str(&text),
@@ -1265,8 +1263,7 @@ fn parse_opl_macros(xml_content: &str) -> Result<Vec<OplMacro>, quick_xml::Error
 }
 
 /// Strip an XML-namespaced tag down to its local-name component.
-fn local_name(tag: &[u8]) -> String {
-    let s = std::str::from_utf8(tag).unwrap_or("");
+fn local_name(s: &str) -> String {
     match s.rsplit_once(':') {
         Some((_, local)) => local.to_string(),
         None => s.to_string(),

@@ -1,6 +1,7 @@
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
+use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use imferno_core::assetmap as st2067_2;
 use std::fs;
+use std::hint::black_box;
 
 const TEST_FILES: &[(&str, &str)] = &[
     (

@@ -3222,6 +3222,16 @@ mod tests {
         assert!(package.analyze_tracks().is_empty());
     }
 
+    /// ST 2067-2:2020 §7.1 (and 2016 §7.1): an IMP need not contain complete
+    /// compositions, so an IMP without a CPL is legitimate. NoCpls is
+    /// informational, never critical.
+    #[test]
+    fn no_cpls_is_info_not_critical() {
+        use crate::assetmap::codes::St2067_2_2020;
+        use crate::diagnostics::codes::ValidationCode;
+        assert_eq!(St2067_2_2020::NoCpls.default_severity(), Severity::Info);
+    }
+
     #[test]
     fn test_asset_path_resolution() {
         let test_path = test_data("MERIDIAN_Netflix_Photon_161006");

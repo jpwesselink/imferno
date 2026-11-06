@@ -233,8 +233,7 @@ macro_rules! define_core_constraints_enum {
     ($name:ident, $prefix:literal) => {
         define_core_constraints_enum!(@inner $name, $prefix, None);
     };
-    // Identical to a prior edition (verified via snapshot diff,
-    // docs/catalogue-todos.md Item 2).
+    // Identical to a prior edition (verified via snapshot diff).
     ($name:ident, $prefix:literal, $previous:literal) => {
         define_core_constraints_enum!(@inner $name, $prefix, Some($previous));
     };

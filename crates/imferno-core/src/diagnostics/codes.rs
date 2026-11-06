@@ -49,8 +49,7 @@ pub trait ValidationCode {
     ///
     /// Defaults to `None`; per-enum implementations override when the
     /// edition is confirmed identical to its predecessor (verified by
-    /// the snapshot diff documented in `docs/catalogue-todos.md`
-    /// Item 2).
+    /// snapshot diff).
     fn previous_identical_edition(&self) -> Option<&'static str> {
         None
     }

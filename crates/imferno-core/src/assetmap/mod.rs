@@ -1090,8 +1090,7 @@ impl PklAsset {
 /// on the returned `AssetMap.namespace` field.
 pub fn parse_assetmap(xml_content: &str) -> Result<AssetMap, AssetMapParseError> {
     // Missing root xmlns lands in Unknown rather than silently defaulting to
-    // DCI 429-9 (the first enum variant) — see FIX-3 in
-    // docs/parser-audit-2026-06.md.
+    // DCI 429-9 (the first enum variant).
     let namespace = detect_root_namespace(xml_content)
         .map(|uri| AssetMapNamespace::from_uri(&uri))
         .unwrap_or_else(|| AssetMapNamespace::Unknown(String::new()));
@@ -1105,8 +1104,7 @@ pub fn parse_assetmap(xml_content: &str) -> Result<AssetMap, AssetMapParseError>
 /// on the returned `PackingList.namespace` field.
 pub fn parse_pkl(xml_content: &str) -> Result<PackingList, AssetMapParseError> {
     // Missing root xmlns lands in Unknown rather than silently defaulting to
-    // DCI 429-8 (the first enum variant) — see FIX-3 in
-    // docs/parser-audit-2026-06.md.
+    // DCI 429-8 (the first enum variant).
     let namespace = detect_root_namespace(xml_content)
         .map(|uri| PklNamespace::from_uri(&uri))
         .unwrap_or_else(|| PklNamespace::Unknown(String::new()));

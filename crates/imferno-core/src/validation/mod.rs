@@ -8323,7 +8323,6 @@ mod tests {
 
         // A layout outside {FullFrame, SeparateFields} is still rejected by
         // the §6.2.1.3 FrameLayout rule.
-        let mut cpl = cpl;
         cpl.essence_descriptor_list
             .as_mut()
             .unwrap()

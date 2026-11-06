@@ -81,7 +81,7 @@ pub fn validate_mxf_essence(path: &Path) -> Vec<ValidationIssue> {
 /// run-in) and its partition pack.
 fn parse_header_pack<R: Read + Seek>(reader: &mut R) -> Result<(u64, PartitionPack), MxfError> {
     let header_offset = seek_header_partition(reader)?;
-    let pack = read_partition_pack_at(reader, header_offset)?.ok_or(MxfError::Truncated(
+    let pack = read_partition_pack_at(reader, header_offset, None)?.ok_or(MxfError::Truncated(
         "first triplet was not a partition pack",
     ))?;
     Ok((header_offset, pack))
@@ -91,12 +91,15 @@ fn parse_header_pack<R: Read + Seek>(reader: &mut R) -> Result<(u64, PartitionPa
 /// of 16-byte essence container ULs (ST 377-1 §7.1). Generous on purpose.
 const MAX_PARTITION_PACK_VALUE_LEN: u64 = 64 * 1024;
 
-/// Read the partition pack at `offset`, which may point at arbitrary bytes.
-/// The 16-byte key and BER length are checked first, so a non-partition
-/// KLV (or an implausibly long one) is rejected without reading its value.
+/// Read the partition pack at `offset`. The 16-byte key is checked first,
+/// so a non-partition KLV is rejected without reading its value.
+/// `max_value_len` bounds the value for offsets taken from untrusted data
+/// (FooterPartition, RIP entries); `None` for positions found by parsing
+/// the file itself (the header partition, the KLV walk).
 fn read_partition_pack_at<R: Read + Seek>(
     reader: &mut R,
     offset: u64,
+    max_value_len: Option<u64>,
 ) -> Result<Option<PartitionPack>, MxfError> {
     reader.seek(std::io::SeekFrom::Start(offset))?;
     let mut key = [0u8; 16];
@@ -104,9 +107,11 @@ fn read_partition_pack_at<R: Read + Seek>(
     if !is_partition_pack_key(&Ul::from_bytes(key)) {
         return Ok(None);
     }
-    match read_ber_length(reader) {
-        Some((len, _)) if len <= MAX_PARTITION_PACK_VALUE_LEN => {}
-        _ => return Ok(None),
+    if let Some(max) = max_value_len {
+        match read_ber_length(reader) {
+            Some((len, _)) if len <= max => {}
+            _ => return Ok(None),
+        }
     }
     reader.seek(std::io::SeekFrom::Start(offset))?;
     let mut stream = KlvStream::new(reader);
@@ -138,7 +143,7 @@ fn locate_footer<R: Read + Seek>(
 ) -> FooterSearch {
     let footer_at = |reader: &mut R, rel: u64| -> Option<PartitionPack> {
         let abs = header_offset.checked_add(rel)?;
-        read_partition_pack_at(reader, abs)
+        read_partition_pack_at(reader, abs, Some(MAX_PARTITION_PACK_VALUE_LEN))
             .ok()
             .flatten()
             .filter(|p| matches!(p.kind, PartitionKind::Footer))
@@ -199,7 +204,7 @@ fn walk_to_footer<R: Read + Seek>(reader: &mut R, header_offset: u64) -> FooterS
             return FooterSearch::Unknown;
         };
         if is_partition_pack_key(&Ul::from_bytes(key)) {
-            match read_partition_pack_at(reader, pos) {
+            match read_partition_pack_at(reader, pos, None) {
                 Ok(Some(pack)) if matches!(pack.kind, PartitionKind::Footer) => {
                     return FooterSearch::Found(pack);
                 }
@@ -683,7 +688,9 @@ mod tests {
             inner: std::io::Cursor::new(buf),
             bytes_read: 0,
         };
-        let header_pack = read_partition_pack_at(&mut reader, 0).unwrap().unwrap();
+        let header_pack = read_partition_pack_at(&mut reader, 0, None)
+            .unwrap()
+            .unwrap();
         reader.bytes_read = 0;
         let result = locate_footer(&mut reader, 0, &header_pack);
         assert!(matches!(result, FooterSearch::Unknown));
@@ -692,6 +699,39 @@ mod tests {
             "footer lookup read {} bytes; the junk value must not be read",
             reader.bytes_read
         );
+    }
+
+    /// The header partition pack is at a trusted position (the start of the
+    /// file), so a valid pack with a large essence-container batch (over
+    /// the 64 KiB cap used for untrusted footer offsets) must still parse.
+    #[test]
+    fn oversized_valid_header_partition_pack_still_parses() {
+        let mut value = synthetic_header_partition(&OP1A_UL_BYTES, 1024);
+        // Replace the one-entry essence container batch with 5000 entries.
+        let batch_at = value.len() - 24;
+        value.truncate(batch_at);
+        let count: u32 = 5000;
+        value.extend_from_slice(&count.to_be_bytes());
+        value.extend_from_slice(&16u32.to_be_bytes());
+        for _ in 0..count {
+            value.extend_from_slice(&OP1A_UL_BYTES);
+        }
+        assert!(value.len() as u64 > 64 * 1024);
+        let mut buf = Vec::new();
+        let mut key = Vec::new();
+        write_partition_key(&mut key, 0x02, 0x04); // header, closed+complete
+        write_klv(&mut buf, &key, &value);
+        let tmp = dump_to_temp(&buf);
+        let issues = validate_mxf_essence(tmp.path());
+        assert!(
+            !issues
+                .iter()
+                .any(|i| i.code.contains("PartitionPackParseFailed")),
+            "valid oversized header pack must parse: {issues:#?}",
+        );
+        assert!(issues
+            .iter()
+            .any(|i| i.code.contains("EssenceContainersDetected")));
     }
 
     #[test]

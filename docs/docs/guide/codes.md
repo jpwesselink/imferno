@@ -313,7 +313,7 @@ Each spec edition has its own codes, even when a rule is unchanged between editi
 | `ST2067-21:2023:6.2.1/ColorPrimariesMissing` | ColorPrimaries field is absent from the picture descriptor (Table 8). | ERROR | Video |
 | `ST2067-21:2023:6.2.1/FieldDominance` | FieldDominance value is not permitted for the declared FrameLayout. | ERROR | Video |
 | `ST2067-21:2023:6.2.1/FrameLayout` | FrameLayout value is not in the permitted set for App2E. | ERROR | Video |
-| `ST2067-21:2023:6.2.1/FrameLayoutInterlaced` | FrameLayout declares interlaced content, which is not permitted in App2E. | ERROR | Video |
+| `ST2067-21:2023:6.2.1/FrameLayoutInterlaced` | Interlaced (SeparateFields) image characteristics are outside the Table 3 interlaced column (<=1920x1080, COLOR.1-3, 8/10 bit, 25/30/30000/1001 fps, 4:2:2 Y'C'BC'R). | ERROR | Video |
 | `ST2067-21:2023:6.2.1/ImageAlignmentOffset` | ImageAlignmentOffset must be zero. | ERROR | Video |
 | `ST2067-21:2023:6.2.1/ImageEndOffset` | ImageEndOffset must be zero. | ERROR | Video |
 | `ST2067-21:2023:6.2.1/ImageStartOffset` | ImageStartOffset must be zero. | ERROR | Video |

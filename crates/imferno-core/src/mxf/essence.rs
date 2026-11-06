@@ -95,7 +95,8 @@ const MAX_PARTITION_PACK_VALUE_LEN: u64 = 64 * 1024;
 /// so a non-partition KLV is rejected without reading its value.
 /// `max_value_len` bounds the value for offsets taken from untrusted data
 /// (FooterPartition, RIP entries); `None` for positions found by parsing
-/// the file itself (the header partition, the KLV walk).
+/// the file itself (the header partition, the KLV walk). In every case a
+/// value that would run past the end of the file is rejected unread.
 fn read_partition_pack_at<R: Read + Seek>(
     reader: &mut R,
     offset: u64,
@@ -107,11 +108,24 @@ fn read_partition_pack_at<R: Read + Seek>(
     if !is_partition_pack_key(&Ul::from_bytes(key)) {
         return Ok(None);
     }
-    if let Some(max) = max_value_len {
-        match read_ber_length(reader) {
-            Some((len, _)) if len <= max => {}
-            _ => return Ok(None),
-        }
+    let Some((len, len_size)) = read_ber_length(reader) else {
+        return Err(MxfError::Truncated(
+            "partition pack has an invalid BER length",
+        ));
+    };
+    if max_value_len.is_some_and(|max| len > max) {
+        return Ok(None);
+    }
+    // The declared length comes from the file: reject a value that runs past
+    // the end of the file before reading (and allocating) it.
+    let file_len = reader.seek(std::io::SeekFrom::End(0))?;
+    let value_end = offset
+        .checked_add(16 + len_size)
+        .and_then(|v| v.checked_add(len));
+    if value_end.is_none_or(|end| end > file_len) {
+        return Err(MxfError::Truncated(
+            "partition pack value runs past the end of the file",
+        ));
     }
     reader.seek(std::io::SeekFrom::Start(offset))?;
     let mut stream = KlvStream::new(reader);
@@ -838,6 +852,36 @@ mod tests {
                 "{name}: RIP's last entry is not the footer"
             );
         }
+    }
+
+    /// A partition pack whose declared length runs past the end of the file
+    /// (here ~256 MiB in a ~1 KiB file) is rejected from the key and length
+    /// alone: the value is never read, so nothing is allocated for it.
+    #[test]
+    fn partition_pack_length_past_eof_is_rejected_unread() {
+        let mut buf = Vec::new();
+        write_partition_key(&mut buf, 0x02, 0x04); // header, closed+complete
+        buf.push(0x84);
+        buf.extend_from_slice(&(256u32 << 20).to_be_bytes());
+        buf.extend(std::iter::repeat_n(0u8, 1000));
+
+        let mut reader = CountingReader {
+            inner: std::io::Cursor::new(buf.clone()),
+            bytes_read: 0,
+        };
+        assert!(read_partition_pack_at(&mut reader, 0, None).is_err());
+        assert!(
+            reader.bytes_read <= 16 + 9,
+            "read {} bytes; only the key and length may be read",
+            reader.bytes_read
+        );
+
+        // End to end: reported as a parse failure, no panic.
+        let tmp = dump_to_temp(&buf);
+        let issues = validate_mxf_essence(tmp.path());
+        assert!(issues
+            .iter()
+            .any(|i| i.code.contains("PartitionPackParseFailed")));
     }
 
     /// The header partition pack is at a trusted position (the start of the

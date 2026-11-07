@@ -96,7 +96,7 @@ Unmarked rows are carried over from earlier catalogues and not yet checked.
 | `ST2067-2/MCATagSymbol` | SoundfieldGroupLabelSubDescriptor is missing MCATagSymbol. | Audio | 5.3.6.1✓ error | 5.3.6.1✓ error | 5.3.6.1✓ error |
 | `ST2067-2/SoundfieldChannelCount` | WAVEPCMDescriptor.ChannelCount exceeds the number of channels of its soundfield group (a subset is allowed). | Audio | 5.3.6.6✓ error | 5.3.6.6✓ error | 5.3.6.6✓ error |
 | `ST2067-2/DigitalSignature` | The CPL carries a Signature (ST 2067-2 §6.9); signature verification is not performed. | Security | 6.9✓ info | 6.9✓ info | 6.9✓ info |
-| `ST2067-2/EssenceDescriptorList` | EssenceDescriptorList is required per ST 2067-2 §6.4.2. | Structure | 6.8✓ error | 6.8✓ error | 6.8✓ error |
+| `ST2067-2/EssenceDescriptorList` | EssenceDescriptorList is absent: the File Descriptor of every Track File the CPL references shall be mapped to an EssenceDescriptor (§6.8). | Structure | 6.8✓ error | 6.8✓ error | 6.8✓ error |
 | `ST2067-2/CplIdAssetMapMismatch` | An AssetMap asset points at a CPL file whose Id differs from the asset Id. | Reference | 7.2✓ error | 7.3.1✓ error | 7.3.1✓ error |
 | `ST2067-2/OperationalPatternNotOP1A` | MXF essence Operational Pattern UL is not OP1a (ST 378:2004). | Container | 5.1.1✓ error | 5.1.1✓ error | 5.1.1✓ error |
 | `ST2067-2/SoundDescriptorNotWAVEPCM` | Audio essence descriptor must be WAVEPCMDescriptor. | Audio | 5.3.4.1✓ error | 5.3.4.1✓ error | 5.3.4.1✓ error |

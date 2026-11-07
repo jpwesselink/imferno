@@ -77,6 +77,7 @@ pub fn find(id: &str) -> Option<&'static dyn AnyRule> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::diagnostics::IssueSource;
     use std::collections::HashSet;
 
     #[test]
@@ -161,6 +162,38 @@ mod tests {
             .entry(St2067_2Edition::V2020)
             .unwrap();
         assert!(row.interpretation.unwrap().text.contains("Note 6"));
+    }
+
+    /// A clause a description cites (`§6.8`) is a clause of one of the
+    /// rule's own edition rows, unless the citation names another document
+    /// (`ST 382 §10`).
+    #[test]
+    fn description_clauses_are_clauses_of_the_rule() {
+        for r in all().filter(|r| r.spec().source() == IssueSource::ProseRule) {
+            let desc = r.description();
+            let own = r.spec().id().replace("ST", "ST ");
+            for (i, _) in desc.match_indices('§') {
+                let before = desc[..i].trim_end();
+                if before.ends_with(char::is_numeric) && !before.ends_with(&own) {
+                    continue; // cites another document
+                }
+                let clause: String = desc[i + '§'.len_utf8()..]
+                    .chars()
+                    .take_while(|c| c.is_ascii_alphanumeric() || *c == '.')
+                    .collect();
+                let clause = clause.trim_end_matches('.');
+                assert!(
+                    r.edition_rows()
+                        .iter()
+                        .filter_map(|e| e.clause.as_deref())
+                        .any(|c| c == clause
+                            || c.starts_with(&format!("{clause}."))
+                            || clause.starts_with(&format!("{c}."))),
+                    "{}: description cites §{clause}, which no edition row has",
+                    r.id()
+                );
+            }
+        }
     }
 
     #[test]

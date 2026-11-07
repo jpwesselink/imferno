@@ -304,11 +304,11 @@ pub static DigitalSignature: Rule<E> = Rule {
     ],
 };
 
-/// EssenceDescriptorList is required per ST 2067-2 §6.4.2.
+/// EssenceDescriptorList absent although the CPL references Track Files.
 pub static EssenceDescriptorList: Rule<E> = Rule {
     name: "EssenceDescriptorList",
     category: Category::Structure,
-    description: "EssenceDescriptorList is required per ST 2067-2 §6.4.2.",
+    description: "EssenceDescriptorList is absent: the File Descriptor of every Track File the CPL references shall be mapped to an EssenceDescriptor (§6.8).",
     example: Some(
         "CPL with `<SourceEncoding>` references but no top-level `<EssenceDescriptorList>` element",
     ),

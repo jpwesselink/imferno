@@ -303,6 +303,18 @@ pub fn mxf_editions(
     cores.dedup();
     let mut e1 = Vec::new();
     let mut e4 = Vec::new();
+    if cores.is_empty() {
+        // No determined ST 2067-2 edition is known, but the file is in an
+        // IMP and every ST 2067-2 edition cites the same editions.
+        e1.push(Evidence::one(
+            St377_1Edition::V2011,
+            "every ST 2067-2 edition references ST 377-1:2011",
+        ));
+        e4.push(Evidence::one(
+            St377_4Edition::V2012,
+            "every ST 2067-2 edition references ST 377-4:2012 (2013 and 2016 as \"2011\")",
+        ));
+    }
     // ST 2067-2:2020 cites ST 377-4:2012. ST 2067-2:2013 and :2016 cite
     // "ST 377-4:2011", which never existed: ST 377-4 was approved on
     // 14 March 2012 and :2012 is its first edition, so the citation is read
@@ -897,6 +909,14 @@ mod tests {
         let (one, four) = mxf_editions("f", &[St2067_2Edition::V2020], Some(Iab::V2019));
         assert_eq!((one.edition, one.assumed), (St377_1Edition::V2011, None));
         assert_eq!((four.edition, four.assumed), (St377_4Edition::V2012, None));
+        // No determined ST 2067-2 edition: every edition cites ST 377-1:2011
+        // and (read as) ST 377-4:2012, so the file's editions are still known.
+        let (one, four) = mxf_editions("f", &[], None);
+        assert_eq!((one.edition, one.determined), (St377_1Edition::V2011, true));
+        assert_eq!(
+            (four.edition, four.determined),
+            (St377_4Edition::V2012, true)
+        );
         // Referenced by CPLs of several ST 2067-2 editions: they all cite
         // ST 377-1:2011 and (read as) ST 377-4:2012.
         let all = [

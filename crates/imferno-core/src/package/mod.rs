@@ -2028,7 +2028,7 @@ impl Imferno {
         // and when skip_disk_checks is true
         #[cfg(not(target_arch = "wasm32"))]
         if !skip_disk_checks && !self.root_path.as_os_str().is_empty() {
-            self.validate_mxf_headers(&mut report, spec_ed, selection);
+            self.validate_mxf_headers(&mut report, spec_ed, edition.determined, selection);
         }
 
         // Files the AssetMap does not list. A directory listing reads no
@@ -2127,7 +2127,7 @@ impl Imferno {
         self.validate_multi_pkl_consistency(&mut report, spec_ed);
 
         // MXF header cross-validation (ST 377-1)
-        self.validate_mxf_headers(&mut report, spec_ed, selection);
+        self.validate_mxf_headers(&mut report, spec_ed, edition.determined, selection);
 
         Self::st429_9_edition_notice(&mut report);
         report
@@ -2362,6 +2362,7 @@ impl Imferno {
         &self,
         report: &mut ValidationReport,
         spec_ed: St2067_2Edition,
+        package_determined: bool,
         selection: &crate::validation::ValidatorSelection,
     ) {
         // Collect MXF asset UUIDs from PKLs
@@ -2400,18 +2401,22 @@ impl Imferno {
                     .as_ref()
                     .filter(|c| c.determined)
                     .map(|c| c.edition);
-                // The ST 2067-2 editions of the CPLs that reference the file (the
-                // package's when none does).
-                let mut cores: Vec<St2067_2Edition> =
-                    self.referencing_cpls(&asset.id)
-                        .into_iter()
-                        .filter_map(|cpl| {
-                            selection.core_spec.map(|t| t.edition()).or_else(|| {
-                                crate::validation::cpl_core_edition(cpl).map(|c| c.edition)
-                            })
+                // The pinned or determined ST 2067-2 editions of the CPLs that
+                // reference the file, else the package's when determined. An
+                // assumed edition is not evidence (mxf_editions then uses what
+                // every ST 2067-2 edition cites).
+                let mut cores: Vec<St2067_2Edition> = self
+                    .referencing_cpls(&asset.id)
+                    .into_iter()
+                    .filter_map(|cpl| {
+                        selection.core_spec.map(|t| t.edition()).or_else(|| {
+                            crate::validation::cpl_core_edition(cpl)
+                                .filter(|c| c.determined)
+                                .map(|c| c.edition)
                         })
-                        .collect();
-                if cores.is_empty() {
+                    })
+                    .collect();
+                if cores.is_empty() && package_determined {
                     cores.push(spec_ed);
                 }
                 let (c1, c4) = crate::validation::mxf_editions(

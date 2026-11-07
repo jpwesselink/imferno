@@ -147,6 +147,22 @@ mod tests {
         }
     }
 
+    /// ST 2067-2:2016 §8.3 has Notes 1-5; Note 6 (an asset in the Packing
+    /// List but not the Asset Map is not ingested) exists only in 2020.
+    #[test]
+    fn unresolved_uuid_2016_cites_only_2016_text() {
+        use st2067_2::St2067_2Edition;
+        let row = st2067_2::UnresolvedUuid
+            .entry(St2067_2Edition::V2016)
+            .unwrap();
+        let text = row.interpretation.unwrap().text;
+        assert!(!text.contains("Note 6"), "{text}");
+        let row = st2067_2::UnresolvedUuid
+            .entry(St2067_2Edition::V2020)
+            .unwrap();
+        assert!(row.interpretation.unwrap().text.contains("Note 6"));
+    }
+
     #[test]
     fn display_codes_carry_their_own_edition() {
         for r in all() {

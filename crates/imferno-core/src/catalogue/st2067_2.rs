@@ -96,7 +96,7 @@ pub static UnresolvedUuid: Rule<E> = Rule {
     example: Some("PKL `<Asset><Id>urn:uuid:aaa…</Id>` with no AssetMap asset of that Id"),
     editions: &[
         absent(E::V2013).verified(),
-        checked(E::V2016, "8.3", Should).interpret("8.3: assets intended to be ingested should be referenced by both the Packing List and the Asset Map (Note 6: otherwise not ingested).", None),
+        checked(E::V2016, "8.3", Should).interpret("8.3: assets intended to be ingested should be referenced by both the Packing List and the Asset Map.", None),
         checked(E::V2020, "8.3", Should).interpret("8.3: assets intended to be ingested should be referenced by both the Packing List and the Asset Map (Note 6: otherwise not ingested).", None),
     ],
 };

@@ -1,68 +1,61 @@
 /**
- * Auto-initializing IMF Parser TypeScript Definitions
+ * Auto-initializing imferno WASM bindings.
  *
- * All functions automatically handle WASM initialization.
+ * Every function initialises the WASM module on first use, so all of them
+ * return Promises. Value types (`ValidationResult`, `Imferno`, `ImfReport`,
+ * `ValidateOptions`, ...) live in ./types.d.ts, generated from the Rust types
+ * by `cargo xtask generate-types-ts` and shared verbatim with @imferno/node.
  */
 
-/** Parse ASSETMAP.xml content */
-export function parseAssetmapTyped(xmlContent: string): Promise<any>;
+import type { ImfReport, Imferno, ValidateOptions, ValidationResult } from './types.js';
 
-/** Parse CPL XML content */
-export function parseCplTyped(xmlContent: string): Promise<any>;
-
-/** Parse PKL XML content */
-export function parsePklTyped(xmlContent: string): Promise<any>;
-
-/** Parse VOLINDEX.xml content */
-export function parseVolindexTyped(xmlContent: string): Promise<any>;
-
-/** Options for the validate function */
-export interface ValidateOptions {
-    /** Core constraints spec version: "auto" | "v2013" | "v2016" | "v2020" */
-    coreSpec?: "auto" | "v2013" | "v2016" | "v2020";
-    /** Application profile version: "auto" | "none" | "v2014" | "v2016" | "v2020" | "v2023" | "v2026" */
-    app2eSpec?: "auto" | "none" | "v2014" | "v2016" | "v2020" | "v2023" | "v2026";
-    /** ESLint-style rules configuration */
-    rules?: Record<string, string>;
-}
-
-/** Result returned by the validate function */
-export interface ValidateResult {
-    /** Validation report with issues, compliance status, and profile */
-    report: any;
-    /** Parsed Composition Playlists */
-    cpls: any[];
-    /** Parsed AssetMap (null if parsing failed) */
-    assetMap: any | null;
-    /** Parsed Packing Lists */
-    packingLists: any[];
-    /** Parsed Volume Index (null if parsing failed) */
-    volumeIndex: any | null;
-    /** Assets in the AssetMap with no CPL or SCM reference */
-    unreferencedAssets: { id: string; path: string }[];
-    /** Sidecar assets declared in SCMs */
-    declaredSidecars: { id: string; cplIds: string[] }[];
-}
+export * from './types.js';
 
 /**
- * Validate a full IMF package and return both validation report and parsed data.
+ * Parse and validate an IMF package. This is the recommended entry point.
+ *
+ * Parse failures are reported as findings in `validation`, not thrown.
  * @param files Object mapping filenames to XML string content
  * @param options Optional validation options (spec selection, rules)
- * @returns Validation report + parsed package data
+ * @returns `{ package, validation }` — the full parsed package and all findings.
  */
 export function validate(
     files: Record<string, string>,
-    options?: ValidateOptions,
-): Promise<ValidateResult>;
+    options?: ValidateOptions | null,
+): Promise<ValidationResult>;
+
+/**
+ * Parse an IMF package without validating it.
+ * @param files Object mapping filenames to XML string content
+ * @returns The full parsed package. Rejects if the package cannot be parsed.
+ */
+export function parsePackage(files: Record<string, string>): Promise<Imferno>;
+
+/**
+ * Legacy: validate and return the lossy `ImfReport` summary. Prefer `validate`.
+ * @param files Object mapping filenames to XML string content
+ * @param options Optional validation options (spec selection, rules)
+ * @returns Rejects if the package cannot be parsed.
+ */
+export function buildReport(
+    files: Record<string, string>,
+    options?: ValidateOptions | null,
+): Promise<ImfReport>;
+
+/**
+ * Pretty-print a validation result as a human-readable string.
+ * @param report The object `validate()` returned, or (legacy) `buildReport()`'s.
+ */
+export function formatReport(report: ValidationResult | ImfReport): Promise<string>;
 
 /** Get the library version */
 export function getVersion(): Promise<string>;
 
-/** Manual WASM initialization (for advanced use) */
-export function init(wasmBuffer?: ArrayBuffer): Promise<void>;
+/**
+ * Initialise the WASM module explicitly. Optional: every function initialises
+ * on first use. Pass the `.wasm` bytes to avoid fetching them.
+ */
+export function init(wasmBytes?: ArrayBuffer | ArrayBufferView): Promise<void>;
 
 /** Typed validation code constants for use in rules config */
 export { codes } from './codes.js';
-
-/** Raw WASM bindings (for advanced use) */
-export declare const wasm: typeof import('./imferno_wasm.js');

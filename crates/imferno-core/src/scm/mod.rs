@@ -91,7 +91,8 @@ mod raw {
 /// top-level struct; on the wire the document still carries
 /// `<Properties>{Annotation,IssueDate,Issuer}</Properties>` per
 /// ST 2067-9:2018 §7.2 Table 2.
-#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SidecarCompositionMap {
     /// UUID of this SCM document.
@@ -108,7 +109,8 @@ pub struct SidecarCompositionMap {
 }
 
 /// A single sidecar asset association within an SCM document.
-#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SidecarAsset {
     /// UUID of the sidecar asset (must be present in the package AssetMap).

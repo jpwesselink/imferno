@@ -6,9 +6,6 @@ use serde::{Deserialize, Serialize};
 #[cfg(feature = "typescript")]
 use ts_rs::TS;
 
-#[cfg(feature = "wasm")]
-use tsify::Tsify;
-
 /// Helper: parse a UL string and return normalized bytes (byte 8 zeroed).
 /// Used by `from_ul()` methods on enum types to implement version-agnostic matching.
 fn parse_and_normalize_ul(ul: &str) -> Option<[u8; 16]> {
@@ -25,7 +22,6 @@ fn parse_and_normalize_ul(ul: &str) -> Option<[u8; 16]> {
 #[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "typescript", derive(TS))]
-#[cfg_attr(feature = "wasm", derive(Tsify), tsify(into_wasm_abi, from_wasm_abi))]
 pub struct EditRate {
     pub numerator: u32,
     pub denominator: u32,
@@ -92,7 +88,6 @@ impl std::fmt::Display for EditRate {
 #[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[cfg_attr(feature = "typescript", derive(TS))]
-#[cfg_attr(feature = "wasm", derive(Tsify), tsify(into_wasm_abi, from_wasm_abi))]
 pub struct LanguageTag(String);
 
 impl LanguageTag {
@@ -130,7 +125,6 @@ impl std::fmt::Display for LanguageTag {
 #[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "typescript", derive(TS))]
-#[cfg_attr(feature = "wasm", derive(Tsify), tsify(into_wasm_abi, from_wasm_abi))]
 pub struct Resolution {
     pub width: u32,
     pub height: u32,
@@ -157,7 +151,6 @@ impl std::fmt::Display for Resolution {
 #[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "typescript", derive(TS))]
-#[cfg_attr(feature = "wasm", derive(Tsify), tsify(into_wasm_abi, from_wasm_abi))]
 pub enum ContentKind {
     Feature,
     Trailer,
@@ -251,7 +244,6 @@ const fn ul_bytes(
 #[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "typescript", derive(TS))]
-#[cfg_attr(feature = "wasm", derive(Tsify), tsify(into_wasm_abi, from_wasm_abi))]
 pub enum ColorPrimaries {
     /// ITU-R BT.601-7 625-line system — COLOR.1 per ST 2067-21:2023 Table 3
     /// Canonical UL: `060e2b34.04010100.04010101.03020000` (byte 8 masked)
@@ -344,7 +336,6 @@ impl std::fmt::Display for ColorPrimaries {
 #[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "typescript", derive(TS))]
-#[cfg_attr(feature = "wasm", derive(Tsify), tsify(into_wasm_abi, from_wasm_abi))]
 pub enum TransferCharacteristic {
     /// Linear (scene-referred, e.g. ACES)
     /// Canonical UL: `060e2b34.04010100.04010101.01010000`
@@ -447,7 +438,6 @@ impl std::fmt::Display for TransferCharacteristic {
 #[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[cfg_attr(feature = "typescript", derive(TS))]
-#[cfg_attr(feature = "wasm", derive(Tsify), tsify(into_wasm_abi, from_wasm_abi))]
 pub enum VideoCodec {
     /// JPEG 2000 — generic/unspecified profile (ST 422 §A, byte [14]=0x01 without
     /// a recognized broadcast sub-level, or other unspecified node UL).
@@ -725,7 +715,6 @@ impl std::fmt::Display for VideoCodec {
 #[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "typescript", derive(TS))]
-#[cfg_attr(feature = "wasm", derive(Tsify), tsify(into_wasm_abi, from_wasm_abi))]
 pub enum CodingEquations {
     /// ITU-R BT.601 — COLOR.1/COLOR.2 per ST 2067-21:2023 Table 3
     /// Canonical UL: `060e2b34.04010100.04010101.02010000`
@@ -788,7 +777,6 @@ impl std::fmt::Display for CodingEquations {
 #[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "typescript", derive(TS))]
-#[cfg_attr(feature = "wasm", derive(Tsify), tsify(into_wasm_abi, from_wasm_abi))]
 pub enum McaTagSymbol {
     // ── Soundfield group labels ──────────────────────────────────────────────
     /// 5.1 Surround
@@ -872,7 +860,6 @@ impl std::fmt::Display for McaTagSymbol {
 #[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "typescript", derive(TS))]
-#[cfg_attr(feature = "wasm", derive(Tsify), tsify(into_wasm_abi, from_wasm_abi))]
 pub enum MarkerLabel {
     /// First Frame Of Content
     Ffoc,
@@ -935,7 +922,6 @@ impl std::fmt::Display for MarkerLabel {
 #[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[cfg_attr(feature = "typescript", derive(TS))]
-#[cfg_attr(feature = "wasm", derive(Tsify), tsify(into_wasm_abi, from_wasm_abi))]
 pub enum CplNamespace {
     /// SMPTE ST 2067-3:2013 — `http://www.smpte-ra.org/schemas/2067-3/2013`
     #[default]

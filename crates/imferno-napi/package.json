@@ -26,18 +26,24 @@
       "aarch64-unknown-linux-gnu",
       "x86_64-pc-windows-msvc",
       "aarch64-pc-windows-msvc"
-    ]
+    ],
+    "dtsHeaderFile": "dts-header.d.ts"
   },
   "files": [
     "index.js",
     "index.mjs",
     "index.d.ts",
+    "types.d.ts",
     "codes.js",
     "codes.mjs",
     "codes.d.ts",
     "README.md",
     "LICENSE"
   ],
+  "scripts": {
+    "build": "napi build --release",
+    "test": "vitest run"
+  },
   "optionalDependencies": {
     "@imferno/node-darwin-arm64": "0.1.0",
     "@imferno/node-darwin-x64": "0.1.0",
@@ -60,5 +66,18 @@
   },
   "engines": {
     "node": ">=16.0.0"
+  },
+  "devDependencies": {
+    "@napi-rs/cli": "3.10.12",
+    "ajv": "^8.20.0",
+    "json-schema-to-typescript": "16.0.0",
+    "prettier": "3.9.10",
+    "ts-json-schema-generator": "2.9.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
+  },
+  "overrides": {
+    "prettier": "3.9.10",
+    "@apidevtools/json-schema-ref-parser": "11.9.3"
   }
 }

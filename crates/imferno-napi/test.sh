@@ -1,51 +1,27 @@
 #!/usr/bin/env bash
+# Build @imferno/node and run its tests (incl. the type contract test).
 set -euo pipefail
 
 cd "$(dirname "$0")"
 
+[ -d node_modules ] || npm install
+
 echo "Building @imferno/node..."
-napi build --release
+npx napi build --release
+
+echo ""
+echo "Smoke test..."
+node -e "
+const m = require('.');
+const result = m.validatePath('../../test-data/MERIDIAN_Netflix_Photon_161006');
+console.log('imferno-node v' + m.getVersion());
+console.log('Compliant:', result.validation.is_compliant);
+console.log('Errors:', result.validation.errors.length);
+console.log('Warnings:', result.validation.warnings.length);
+console.log('CPLs:', Object.keys(result.package.compositionPlaylists).length);
+console.log('PKLs:', Object.keys(result.package.packingLists).length);
+"
 
 echo ""
 echo "Testing @imferno/node..."
-node -e "
-const m = require('./imferno-node.node');
-
-console.log('imferno-node v' + m.getVersion());
-console.log('Exports:', Object.keys(m).join(', '));
-console.log('');
-
-// validatePath
-const result = m.validatePath('../../test-data/MERIDIAN_Netflix_Photon_161006');
-console.log('=== validatePath ===');
-console.log('Compliant:', result.report.is_compliant);
-console.log('Errors:', result.report.errors.length);
-console.log('Warnings:', result.report.warnings.length);
-console.log('CPLs:', result.cpls.length);
-console.log('PKLs:', result.packingLists.length);
-console.log('VolumeIndex:', !!result.volumeIndex);
-
-// validate (string-based)
-const fs = require('fs');
-const path = require('path');
-const dir = '../../test-data/MERIDIAN_Netflix_Photon_161006';
-const files = {};
-for (const f of fs.readdirSync(dir)) {
-  if (f.endsWith('.xml')) files[f] = fs.readFileSync(path.join(dir, f), 'utf-8');
-}
-const r2 = m.validate(files);
-console.log('');
-console.log('=== validate (string-based) ===');
-console.log('Compliant:', r2.report.is_compliant);
-console.log('Errors:', r2.report.errors.length);
-
-// rules override
-const r3 = m.validate(files, { rules: { 'ST2067-21:2023:7.1/AppIdMismatch': 'error' } });
-console.log('');
-console.log('=== validate with rules override ===');
-console.log('Compliant:', r3.report.is_compliant);
-console.log('Errors:', r3.report.errors.length);
-
-console.log('');
-console.log('All tests passed.');
-"
+npx vitest run

@@ -711,6 +711,46 @@ impl Default for FormatOptions {
     }
 }
 
+/// Format the JSON form of either a [`ValidationResult`] (what `validate()`
+/// returns in the JS bindings) or a legacy [`ImfReport`] (what
+/// `buildReport()` returns) as plain text. The two are told apart by the
+/// `cpls` field, which only `ImfReport` has.
+///
+/// Used by the bindings' `formatReport`.
+pub fn format_json_report(mut value: serde_json::Value) -> Result<String, String> {
+    integralize_numbers(&mut value);
+    if value.get("cpls").is_some() {
+        let report: ImfReport =
+            serde_json::from_value(value).map_err(|e| format!("Invalid ImfReport: {e}"))?;
+        Ok(format_report(&report, false))
+    } else {
+        let result = ValidationResult::from_json(value)
+            .map_err(|e| format!("Invalid ValidationResult: {e}"))?;
+        Ok(format_validation_result(&result, &FormatOptions::default()))
+    }
+}
+
+/// JS has only doubles: a value that left Rust as a `u64` (e.g. an asset
+/// size) can come back from a JS binding as `10517511198.0`, which serde
+/// refuses for integer fields. Turn integral floats back into integers.
+fn integralize_numbers(value: &mut serde_json::Value) {
+    use serde_json::Value;
+    match value {
+        Value::Number(n) if !n.is_i64() && !n.is_u64() => {
+            if let Some(f) = n.as_f64() {
+                if f.fract() == 0.0 && f >= 0.0 && f <= u64::MAX as f64 {
+                    *value = Value::from(f as u64);
+                } else if f.fract() == 0.0 && f < 0.0 && f >= i64::MIN as f64 {
+                    *value = Value::from(f as i64);
+                }
+            }
+        }
+        Value::Array(items) => items.iter_mut().for_each(integralize_numbers),
+        Value::Object(map) => map.values_mut().for_each(integralize_numbers),
+        _ => {}
+    }
+}
+
 /// Format a `ValidationResult` (full package + validation) as text, markdown, or CSV.
 ///
 /// This is the recommended formatting function — it reads directly from the

@@ -2253,7 +2253,9 @@ impl App2E {
             None => return,
         };
 
-        let mut non_integer_audio = false;
+        // (audio sample rate numerator, denominator) of the first audio
+        // essence whose samples per Composition Edit Unit is not an integer.
+        let mut non_integer_audio: Option<(u64, u64)> = None;
         for ed in &edl.essence_descriptors {
             if let Some(ref wave) = ed.wave_pcm_descriptor {
                 if let Some(ref asr) = wave.audio_sample_rate {
@@ -2263,16 +2265,18 @@ impl App2E {
                     let numerator = asr.numerator as u64 * edit_rate.denominator as u64;
                     let denominator = asr.denominator as u64 * edit_rate.numerator as u64;
                     if denominator > 0 && !numerator.is_multiple_of(denominator) {
-                        non_integer_audio = true;
+                        non_integer_audio = Some((asr.numerator as u64, asr.denominator as u64));
                         break;
                     }
                 }
             }
         }
 
-        if !non_integer_audio {
+        let Some((asr_num, asr_den)) = non_integer_audio else {
             return;
-        }
+        };
+        let samples_per_edit_unit = (asr_num as f64 * edit_rate.denominator as f64)
+            / (asr_den as f64 * edit_rate.numerator as f64);
 
         // Constraint applies: each segment's duration (in edit units) must be divisible by 5.
         // The rule is about the Segment, not individual resources
@@ -2310,17 +2314,19 @@ impl App2E {
                         self.code(App2ERule::SegmentDurationMultiple).to_string(),
                         format!(
                             "Segment {} duration ({} edit units) is not a multiple of 5; \
-                             segment duration is required to be an integer multiple of \
-                             5/Composition Edit Rate when audio samples per edit unit is non-integer",
+                             audio at {}/{} Hz and Composition Edit Rate {}/{} give {:.3} \
+                             samples per edit unit (not an integer), so each Segment shall \
+                             last an integer multiple of 5/Composition Edit Rate",
                             seg_idx + 1,
                             segment_duration,
+                            asr_num,
+                            asr_den,
+                            edit_rate.numerator,
+                            edit_rate.denominator,
+                            samples_per_edit_unit,
                         ),
                     )
-                    .with_location(
-                        Location::new()
-                            .with_cpl(cpl.id)
-                            .with_segment(seg_idx),
-                    ),
+                    .with_location(Location::new().with_cpl(cpl.id).with_segment(seg_idx)),
                 );
             }
         }

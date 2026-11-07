@@ -3807,6 +3807,39 @@ mod tests {
             .count()
     }
 
+    /// Hand check for imferno issue 88: 48 kHz at 24000/1001 is 2002
+    /// samples per edit unit (an integer), so §7.4 does not apply and 3761
+    /// or 2433 edit units are fine. At 30000/1001 (1601.6 samples per edit
+    /// unit, 5 x 1601.6 = 8008) neither is a multiple of 5.
+    #[test]
+    fn app2e_segment_duration_hand_checks() {
+        for (rate, durations, expected) in [
+            (EditRate::new(24000, 1001), [3761, 2433], 0),
+            (EditRate::new(30000, 1001), [3761, 2433], 2),
+            (EditRate::new(30000, 1001), [3760, 2435], 0),
+        ] {
+            let cpl =
+                cpl_with_audio_and_segment_duration(EditRate::new(48000, 1), rate, &durations);
+            let issues: Vec<_> = App2E2023
+                .validate_cpl(&cpl)
+                .into_iter()
+                .filter(|i| i.code.contains("SegmentDurationMultiple"))
+                .collect();
+            assert_eq!(
+                issues.len(),
+                expected,
+                "{rate:?} {durations:?}: {issues:#?}"
+            );
+            if let Some(i) = issues.first() {
+                assert!(
+                    i.message.contains("1601.600 samples per edit unit"),
+                    "{}",
+                    i.message
+                );
+            }
+        }
+    }
+
     #[test]
     fn app2e_segment_duration_subtracts_entry_point() {
         // Intrinsic 12, EntryPoint 2, no SourceDuration: 10 edit units.

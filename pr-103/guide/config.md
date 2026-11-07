@@ -199,4 +199,8 @@ Core Constraints namespace the CPLs declare. When that is not conclusive the
 newest edition is used and an `IMFERNO:Package/EditionAssumed` notice says so.
 ST 2067-2:2013 defines no delivery requirements, so for a 2013 package the
 delivery rules of later editions are not checked and
-`IMFERNO:Package/DeliveryNotChecked` is reported instead.
+`IMFERNO:Package/DeliveryNotChecked` is reported instead. Packing List Size
+and Hash mismatches of a 2013 package are reported under ST 429-8:2007 (its
+Packing List spec). ST 429-9:2007 and :2014 share the Asset Map namespace;
+ST 429-9 rules are checked against 2014, and an `EditionAssumed` notice says
+so when the report has ST 429-9 findings.

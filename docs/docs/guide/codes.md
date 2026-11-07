@@ -500,7 +500,7 @@ Each spec edition has its own codes, even when a rule is unchanged between editi
 | `ST2067-21:2026:7.5.2/J2CLayout` | JPEG 2000 codestream layout does not meet App2E requirements. | ERROR | Encoding |
 | `ST2067-21:2026:7.5.1/J2KExtendedCapabilities` | J2KExtendedCapabilities shall be present when ISO/IEC 15444-15 (HTJ2K) coding is used, but it is missing. | ERROR | Encoding |
 | `ST2067-21:2026:7.5.1/JPEG2000SubDescriptor` | JPEG2000SubDescriptor is absent or incomplete. | WARNING | Encoding |
-| `ST2067-21:2026:H/HT-IRV-ParameterB-Max` | HTJ2K irreversible (APP2.HT.IRV) codestream: the MAGB_P set signalled in Ccap15 allows parameter B above 31. | ERROR | Encoding |
+| `ST2067-21:2026:H/HT-IRV-ParameterB-Max` | HTJ2K irreversible (APP2.HT.IRV) codestream: the MAGB_P set signalled in Ccap15 allows parameter B above 31. APP2.HT.REV is not checked: Table H.1 gives its B as a value calculated per Table H.2, not a limit (SMPTE st2067-21 issue 7, open for REV). | ERROR | Encoding |
 | `ST2067-21:2026:H/HT-IRV-ParameterB-Recommended` | HTJ2K irreversible (APP2.HT.IRV) codestream: the MAGB_P set signalled in Ccap15 allows parameter B above the recommended value for its bit depth and multiple component transform. | WARNING | Encoding |
 | `ST2067-21:2026:7.2.5/J2K-4K-Resolution` | JPEG 2000 IMF 4K Profile: stored resolution is outside the permitted range. | ERROR | Encoding |
 | `ST2067-21:2026:7.2.5/J2K-2K-Resolution` | JPEG 2000 IMF 2K Profile: stored resolution is outside the permitted range. | ERROR | Encoding |

@@ -2087,8 +2087,11 @@ impl App2E {
     /// maxima, not exact values). Only the 2026 edition has codes for these
     /// rules; the 2023 Annex I gives B as a calculated value instead.
     ///
-    /// The APP2.HT.REV row still reads "calculated according to Table H.2",
-    /// which is not a limit, so no REV check is made.
+    /// Interpretation: the APP2.HT.REV row still reads "calculated
+    /// according to Table H.2", which gives a calculated value, not a
+    /// limit, so no REV check is made. Issue 7 asked for maxima in both
+    /// tables; for REV that is open
+    /// (https://github.com/SMPTE/st2067-21/issues/7).
     ///
     /// MAGB_P is read from bits 0-4 of Ccap15 in the CPL descriptor's
     /// J2KExtendedCapabilities; bit 5 = 1 signals HTIRV (ISO/IEC

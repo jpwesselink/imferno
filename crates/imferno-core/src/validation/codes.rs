@@ -165,6 +165,12 @@ pub enum App2ERule {
     Jpeg2000SubDescriptor,
     /// APP2.HT.IRV: the MAGB_P signalled in Ccap15 allows a parameter B
     /// above 31.
+    ///
+    /// Interpretation: APP2.HT.REV is not checked. The 2026 Table H.1 REV
+    /// row gives MAGB_P "per parameter B calculated according to Table
+    /// H.2": a calculated value, not a limit. Whether it should become a
+    /// maximum, as asked for both tables in
+    /// https://github.com/SMPTE/st2067-21/issues/7, is open for REV.
     HtIrvParameterBMax,
     /// APP2.HT.IRV: the MAGB_P signalled in Ccap15 allows a parameter B
     /// above the recommended value of the edition's table.
@@ -262,8 +268,10 @@ impl App2ERule {
             // https://github.com/SMPTE/st2067-21/issues/2
             Self::J2KExtendedCapabilities => "J2KExtendedCapabilities shall be present when ISO/IEC 15444-15 (HTJ2K) coding is used, but it is missing.",
             Self::Jpeg2000SubDescriptor => "JPEG2000SubDescriptor is absent or incomplete.",
-            // https://github.com/SMPTE/st2067-21/issues/7 (resolved in the 2026 edition)
-            Self::HtIrvParameterBMax => "HTJ2K irreversible (APP2.HT.IRV) codestream: the MAGB_P set signalled in Ccap15 allows parameter B above 31.",
+            // https://github.com/SMPTE/st2067-21/issues/7: resolved in the
+            // 2026 edition for HTIRV; open for HTREV, whose Table H.1 row
+            // gives a calculated value, not a limit, so it is not checked.
+            Self::HtIrvParameterBMax => "HTJ2K irreversible (APP2.HT.IRV) codestream: the MAGB_P set signalled in Ccap15 allows parameter B above 31. APP2.HT.REV is not checked: Table H.1 gives its B as a value calculated per Table H.2, not a limit (SMPTE st2067-21 issue 7, open for REV).",
             Self::HtIrvParameterBRecommended => "HTJ2K irreversible (APP2.HT.IRV) codestream: the MAGB_P set signalled in Ccap15 allows parameter B above the recommended value for its bit depth and multiple component transform.",
             Self::J2KHtNotAllowed                => "JPEG 2000 HT (ISO 15444-15) is not permitted by App2E 2020.",
             Self::J2K4KResolution                => "JPEG 2000 IMF 4K Profile: stored resolution is outside the permitted range.",

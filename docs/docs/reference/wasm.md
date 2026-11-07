@@ -59,7 +59,7 @@ const result = await validate(files, {
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `coreSpec` | `"auto" \| "v2013" \| "v2016" \| "v2020"` | `"auto"` | Core constraints spec version |
-| `app2eSpec` | `"auto" \| "none" \| "v2020" \| "v2021" \| "v2023"` | `"auto"` | Application profile version |
+| `app2eSpec` | `"auto" \| "none" \| "v2014" \| "v2016" \| "v2020" \| "v2023" \| "v2026"` | `"auto"` | Application profile version |
 | `rules` | `Record<string, string>` | `{}` | ESLint-style severity overrides |
 
 ---

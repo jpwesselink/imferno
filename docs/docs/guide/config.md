@@ -117,7 +117,7 @@ let options = ValidationOptions {
 
 **`CoreSpecTarget`**: `St2067_2_2013`, `St2067_2_2016`, `St2067_2_2020`
 
-**`AppSpecTarget`**: `St2067_21_2020`, `St2067_21_2021`, `St2067_21_2023`
+**`AppSpecTarget`**: `St2067_21_2014`, `St2067_21_2016`, `St2067_21_2020`, `St2067_21_2023`, `St2067_21_2026`
 
 ### WASM
 
@@ -129,7 +129,7 @@ const result = await validate(files, {
 ```
 
 - `coreSpec`: `"auto"` | `"v2013"` | `"v2016"` | `"v2020"`
-- `app2eSpec`: `"auto"` | `"none"` | `"v2020"` | `"v2021"` | `"v2023"`
+- `app2eSpec`: `"auto"` | `"none"` | `"v2014"` | `"v2016"` | `"v2020"` | `"v2023"` | `"v2026"`
 
 ### Node.js
 
@@ -143,6 +143,6 @@ const result = validatePath('./my-imp', {
 ```
 
 - `coreSpec`: `"auto"` | `"v2013"` | `"v2016"` | `"v2020"`
-- `app2eSpec`: `"auto"` | `"none"` | `"v2020"` | `"v2021"` | `"v2023"`
+- `app2eSpec`: `"auto"` | `"none"` | `"v2014"` | `"v2016"` | `"v2020"` | `"v2023"` | `"v2026"`
 
 See the [Validation Codes](/guide/codes/) reference for the full catalogue of rule codes.

@@ -36,7 +36,7 @@ export function compareDelivery(sourceAssetJson: any, deliverySpecJson: any): an
  * Validate a CPL with configurable built-in spec selection (ST 2067-2/App2E).
  *
  * `coreSpec`: "auto" | "v2013" | "v2016" | "v2020"
- * `app2eSpec`: "auto" | "none" | "v2020" | "v2021" | "v2023"
+ * `app2eSpec`: "auto" | "none" | "v2014" | "v2016" | "v2020" | "v2023" | "v2026"
  */
 export function validateCplWithSpecSelection(cplXml: string, coreSpec?: string | null, app2eSpec?: string | null): any;
 /**

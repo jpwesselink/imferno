@@ -118,7 +118,7 @@ console.log(getVersion()); // e.g. "2.0.0"
 | Option | Type | Description |
 |--------|------|-------------|
 | `coreSpec` | `"auto" \| "v2013" \| "v2016" \| "v2020"` | Core constraints spec version |
-| `app2eSpec` | `"auto" \| "none" \| "v2020" \| "v2021" \| "v2023"` | Application spec version |
+| `app2eSpec` | `"auto" \| "none" \| "v2014" \| "v2016" \| "v2020" \| "v2023" \| "v2026"` | Application spec version |
 | `skipDiskChecks` | `boolean` | Skip file manifest and MXF checks (`buildReportFromPath` only) |
 | `rules` | `Record<string, "error" \| "warn" \| "info" \| "off">` | ESLint-style per-rule severity overrides |
 

@@ -75,10 +75,12 @@ pub fn list_rules_js() -> serde_json::Value {
     collect::<imferno_core::cpl::codes::St2067_3_2013>("cpl", &mut out);
     collect::<imferno_core::cpl::codes::St2067_3_2016>("cpl", &mut out);
 
-    // App 2E — all three editions
+    // App 2E — one catalogue per ST 2067-21 edition
+    collect::<imferno_core::validation::codes::St2067_21_2014>("app2e", &mut out);
+    collect::<imferno_core::validation::codes::St2067_21_2016>("app2e", &mut out);
     collect::<imferno_core::validation::codes::St2067_21_2020>("app2e", &mut out);
     collect::<imferno_core::validation::codes::St2067_21_2023>("app2e", &mut out);
-    collect::<imferno_core::validation::codes::St2067_21_2025>("app2e", &mut out);
+    collect::<imferno_core::validation::codes::St2067_21_2026>("app2e", &mut out);
 
     // Volume Index, MXF, Sidecar Composition Map, ISXD, IAB
     collect::<imferno_core::assetmap::volindex_codes::St429_9_2014>("volindex", &mut out);

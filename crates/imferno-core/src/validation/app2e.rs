@@ -1963,7 +1963,10 @@ impl App2E {
     /// MaxCLL and MaxFALL for PQ (ST 2084) content: 2016 §7.2, 2020/2023
     /// §7.5, 2026 §8.3.3 give them 0..1 cardinality for COLOR.6/COLOR.7
     /// (the PQ-based systems). They are OPTIONAL, not required.
-    /// We emit an informational note when they are absent.
+    /// We emit an informational note when they are absent. Whether they
+    /// are prohibited for other colour systems is not decided, so their
+    /// presence there is not reported. Open SMPTE issue:
+    /// https://github.com/SMPTE/st2067-21/issues/4
     fn check_hdr_metadata(
         &self,
         tc: Option<&TransferCharacteristic>,

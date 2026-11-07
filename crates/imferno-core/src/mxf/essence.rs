@@ -54,15 +54,9 @@ const OP_QUALIFIER_IMF: u8 = 0x01;
 /// `ValidationIssue`s; the caller folds them into the usual
 /// `ValidationReport`.
 ///
-/// `spec_ed` is the ST 2067-2 edition applied to the track file.
-pub fn validate_mxf_essence(path: &Path, spec_ed: St2067_2Edition) -> Vec<ValidationIssue> {
-    validate_mxf_essence_for(path, spec_ed, St377_1Edition::V2011)
-}
-
-/// [`validate_mxf_essence`] with the ST 377-1 edition `st377_1` (see
-/// [`crate::validation::mxf_editions`]); the wrapper applies ST 377-1:2011,
-/// the edition every ST 2067-2 edition references.
-pub fn validate_mxf_essence_for(
+/// `spec_ed` is the ST 2067-2 edition applied to the track file and `st377_1`
+/// its ST 377-1 edition (see [`crate::validation::mxf_editions`]).
+pub fn validate_mxf_essence(
     path: &Path,
     spec_ed: St2067_2Edition,
     st377_1: St377_1Edition,
@@ -484,6 +478,11 @@ fn format_ul(bytes: &[u8; 16]) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The checks under ST 377-1:2011, the edition every ST 2067-2 cites.
+    fn validate_mxf_essence(path: &Path, spec_ed: St2067_2Edition) -> Vec<ValidationIssue> {
+        super::validate_mxf_essence(path, spec_ed, St377_1Edition::V2011)
+    }
     use crate::diagnostics::Severity;
 
     fn write_partition_key(buf: &mut Vec<u8>, kind_byte: u8, status_byte: u8) {

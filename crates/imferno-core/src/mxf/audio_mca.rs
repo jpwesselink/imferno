@@ -36,17 +36,9 @@ use crate::diagnostics::{Location, ValidationIssue};
 /// in the RegXML (the file is video or timed-text), this returns an
 /// empty Vec — these checks only fire on sound essence.
 /// `spec_ed` is the ST 2067-2 edition applied to the track file.
-pub fn check_audio_mca(
-    regxml: &str,
-    path: &Path,
-    spec_ed: St2067_2Edition,
-) -> Vec<ValidationIssue> {
-    check_audio_mca_for(regxml, path, spec_ed, St377_4Edition::V2012)
-}
-
-/// [`check_audio_mca`] with the ST 377-4 edition `st377_4` (see
+/// `st377_4` is the ST 377-4 edition of the track file (see
 /// [`crate::validation::mxf_editions`]).
-pub fn check_audio_mca_for(
+pub fn check_audio_mca(
     regxml: &str,
     path: &Path,
     spec_ed: St2067_2Edition,
@@ -659,6 +651,15 @@ fn is_acceptable_audio_rate(rate_text: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The checks under ST 377-4:2012.
+    fn check_audio_mca(
+        regxml: &str,
+        path: &Path,
+        spec_ed: St2067_2Edition,
+    ) -> Vec<ValidationIssue> {
+        super::check_audio_mca(regxml, path, spec_ed, St377_4Edition::V2012)
+    }
     use crate::diagnostics::Severity;
     use crate::mxf::metadata::parse_mxf_to_regxml;
     use std::path::PathBuf;

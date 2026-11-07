@@ -43,6 +43,8 @@ fn main() {
                     &xml,
                     path,
                     imferno_core::catalogue::st2067_2::St2067_2Edition::V2020,
+                    // ST 2067-2:2020 cites ST 377-4:2012.
+                    imferno_core::catalogue::st377_4::St377_4Edition::V2012,
                 );
                 println!(
                     "{:<60} {:>10}  {:<40}  {:>6}",

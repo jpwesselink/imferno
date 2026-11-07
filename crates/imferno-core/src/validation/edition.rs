@@ -297,28 +297,35 @@ fn st2067_3_of_iab(iab: St2067_201Edition) -> St2067_3Edition {
 /// 377-4:2021). See [`resolve`].
 pub fn mxf_editions(
     subject: &str,
-    core: St2067_2Edition,
+    cores: &[St2067_2Edition],
     iab: Option<St2067_201Edition>,
 ) -> (EditionChoice<St377_1Edition>, EditionChoice<St377_4Edition>) {
     use St2067_201Edition as Iab;
-    let core_label = core.label();
-    let mut e1 = vec![Evidence::one(
-        St377_1Edition::V2011,
-        format!("ST 2067-2:{core_label} references ST 377-1:2011"),
-    )];
+    let mut cores = cores.to_vec();
+    cores.sort();
+    cores.dedup();
+    let mut e1 = Vec::new();
+    let mut e4 = Vec::new();
     // ST 2067-2:2020 cites ST 377-4:2012. ST 2067-2:2013 and :2016 cite
     // "ST 377-4:2011", which never existed: ST 377-4 was approved on
     // 14 March 2012 and :2012 is its first edition, so the citation is read
     // as ST 377-4:2012 (JP, C17). It determines the edition; no notice.
-    let e4_what = if core == St2067_2Edition::V2020 {
-        "ST 2067-2:2020 references ST 377-4:2012".to_string()
-    } else {
-        format!(
-            "ST 2067-2:{core_label} references \"ST 377-4:2011\", read as ST 377-4:2012 \
-             (the only edition that existed)"
-        )
-    };
-    let mut e4 = vec![Evidence::one(St377_4Edition::V2012, e4_what)];
+    for core in cores {
+        let core_label = core.label();
+        e1.push(Evidence::one(
+            St377_1Edition::V2011,
+            format!("ST 2067-2:{core_label} references ST 377-1:2011"),
+        ));
+        let e4_what = if core == St2067_2Edition::V2020 {
+            "ST 2067-2:2020 references ST 377-4:2012".to_string()
+        } else {
+            format!(
+                "ST 2067-2:{core_label} references \"ST 377-4:2011\", read as ST 377-4:2012 \
+                 (the only edition that existed)"
+            )
+        };
+        e4.push(Evidence::one(St377_4Edition::V2012, e4_what));
+    }
     if let Some(iab) = iab {
         let (one, four) = match iab {
             Iab::V2019 => (St377_1Edition::V2011, St377_4Edition::V2012),
@@ -793,24 +800,34 @@ mod tests {
         use St2067_201Edition as Iab;
         // Every ST 2067-2 edition references ST 377-1:2011; 2020 references
         // ST 377-4:2012.
-        let (one, four) = mxf_editions("f", St2067_2Edition::V2020, None);
+        let (one, four) = mxf_editions("f", &[St2067_2Edition::V2020], None);
         assert_eq!((one.edition, one.assumed), (St377_1Edition::V2011, None));
         assert_eq!((four.edition, four.assumed), (St377_4Edition::V2012, None));
         // 2013 and 2016 cite "ST 377-4:2011", read as ST 377-4:2012 (JP):
         // determined, no notice.
         for core in [St2067_2Edition::V2013, St2067_2Edition::V2016] {
-            let (_, four) = mxf_editions("f", core, None);
+            let (_, four) = mxf_editions("f", &[core], None);
             assert_eq!((four.edition, four.assumed), (St377_4Edition::V2012, None));
         }
         // IAB 2026 references ST 377-1:2019 / 377-4:2021; with ST 2067-2's
         // 377-1:2011 that conflicts: newest, announced.
-        let (one, four) = mxf_editions("f", St2067_2Edition::V2020, Some(Iab::V2026));
+        let (one, four) = mxf_editions("f", &[St2067_2Edition::V2020], Some(Iab::V2026));
         assert_eq!(one.edition, St377_1Edition::V2019);
         assert!(one.assumed.unwrap().contains("the evidence does not agree"));
         assert_eq!(four.edition, St377_4Edition::V2021);
         assert!(four.assumed.is_some());
         // IAB 2019 agrees with ST 2067-2:2020.
-        let (one, four) = mxf_editions("f", St2067_2Edition::V2020, Some(Iab::V2019));
+        let (one, four) = mxf_editions("f", &[St2067_2Edition::V2020], Some(Iab::V2019));
+        assert_eq!((one.edition, one.assumed), (St377_1Edition::V2011, None));
+        assert_eq!((four.edition, four.assumed), (St377_4Edition::V2012, None));
+        // Referenced by CPLs of several ST 2067-2 editions: they all cite
+        // ST 377-1:2011 and (read as) ST 377-4:2012.
+        let all = [
+            St2067_2Edition::V2013,
+            St2067_2Edition::V2016,
+            St2067_2Edition::V2020,
+        ];
+        let (one, four) = mxf_editions("f", &all, None);
         assert_eq!((one.edition, one.assumed), (St377_1Edition::V2011, None));
         assert_eq!((four.edition, four.assumed), (St377_4Edition::V2012, None));
     }

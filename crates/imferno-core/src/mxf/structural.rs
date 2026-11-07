@@ -31,12 +31,8 @@ struct Open {
 
 /// Report Structural Components on Timeline Tracks that have no
 /// Duration (ST 377-1:2011 Annex B.8).
-pub fn check_structural_components(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
-    check_structural_components_for(regxml, path, St377_1Edition::V2011)
-}
-
-/// [`check_structural_components`] with the ST 377-1 edition `st377_1`.
-pub fn check_structural_components_for(
+/// `st377_1` is the ST 377-1 edition of the track file.
+pub fn check_structural_components(
     regxml: &str,
     path: &Path,
     st377_1: St377_1Edition,
@@ -112,6 +108,11 @@ pub fn check_structural_components_for(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The check under ST 377-1:2011.
+    fn check_structural_components(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
+        super::check_structural_components(regxml, path, St377_1Edition::V2011)
+    }
 
     fn track(kind: &str, clip: &str) -> String {
         format!(

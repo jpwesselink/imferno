@@ -71,8 +71,13 @@
     "@napi-rs/cli": "3.10.12",
     "ajv": "^8.20.0",
     "json-schema-to-typescript": "16.0.0",
+    "prettier": "3.9.10",
     "ts-json-schema-generator": "2.9.0",
     "typescript": "^5.9.3",
     "vitest": "^4.0.18"
+  },
+  "overrides": {
+    "prettier": "3.9.10",
+    "@apidevtools/json-schema-ref-parser": "11.9.3"
   }
 }

@@ -309,15 +309,15 @@ Each spec edition has its own codes, even when a rule is unchanged between editi
 
 ## ST 377-1 — MXF File Format
 
-| Code                                       | Description                                                                   | Default Severity | Category  |
-| ------------------------------------------ | ----------------------------------------------------------------------------- | ---------------- | --------- |
-| `ST377-1:2011:5/NotMxf`                    | File is not a valid MXF container.                                            | WARNING          | Asset     |
-| `ST377-1:2011:5/ParseError`                | MXF file could not be parsed; it may be truncated or corrupt.                 | WARNING          | Asset     |
-| `ST377-1:2011:11/NoEssenceContainers`      | MXF file contains no essence containers.                                      | WARNING          | Encoding  |
-| `ST377-1:2011:7/OP1a`                      | MXF operational pattern must be OP1a for IMF packages.                        | ERROR            | Encoding  |
-| `ST377-1:2011:6.4/NonHeaderFirstPartition` | The first partition in an MXF file must be the Header partition.              | ERROR            | Container |
-| `ST377-1:2011:8.3.3/HeaderPartitionOpen`   | The header partition status should be ClosedComplete for finished deliveries. | WARNING          | Container |
-| `ST377-1:2011:8.3.3/MissingHeaderMetadata` | The header partition must carry header metadata (HeaderByteCount > 0).        | ERROR            | Container |
+| Code                                       | Description                                                                                                   | Default Severity | Category  |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------- | ---------------- | --------- |
+| `ST377-1:2011:5/NotMxf`                    | File is not a valid MXF container.                                                                            | WARNING          | Asset     |
+| `ST377-1:2011:5/ParseError`                | MXF file could not be parsed; it may be truncated or corrupt.                                                 | WARNING          | Asset     |
+| `ST377-1:2011:11/NoEssenceContainers`      | MXF file contains no essence containers.                                                                      | WARNING          | Encoding  |
+| `ST377-1:2011:7/OP1a`                      | MXF operational pattern must be OP1a for IMF packages.                                                        | ERROR            | Encoding  |
+| `ST377-1:2011:6.4/NonHeaderFirstPartition` | The first partition in an MXF file must be the Header partition.                                              | ERROR            | Container |
+| `ST377-1:2011:8.3.3/HeaderPartitionOpen`   | The header partition is Open and no Closed footer partition carries header metadata, so the MXF file is Open. | WARNING          | Container |
+| `ST377-1:2011:8.3.3/MissingHeaderMetadata` | The header partition must carry header metadata (HeaderByteCount > 0).                                        | ERROR            | Container |
 
 ## ST 377-4 — MCA Sub-Descriptor Linkage
 
@@ -335,7 +335,7 @@ Each spec edition has its own codes, even when a rule is unchanged between editi
 | `ST2067-2:2020:7/AssetMap`                  | AssetMap document is invalid or cannot be parsed.                        | CRITICAL         | Structure |
 | `ST2067-2:2020:7/MalformedXml`              | The ASSETMAP.xml document is not well-formed XML.                        | ERROR            | Structure |
 | `ST2067-2:2020:9/MalformedXml`              | A Packing List document is not well-formed XML.                          | ERROR            | Structure |
-| `ST2067-2:2020:7/NoCpls`                    | No CPL assets found in the AssetMap.                                     | CRITICAL         | Structure |
+| `ST2067-2:2020:7/NoCpls`                    | No CPL assets found in the AssetMap.                                     | INFO             | Structure |
 | `ST2067-2:2020:8.3/SizeMismatch`            | Declared file size does not match the on-disk size.                      | ERROR            | Asset     |
 | `ST2067-2:2020:8.3/FileNotFound`            | A referenced asset file is not present at the declared path.             | ERROR            | Asset     |
 | `ST2067-2:2020:8.3/ChecksumMismatch`        | File hash does not match the declared SHA-1/SHA-256 checksum.            | ERROR            | Asset     |
@@ -516,7 +516,7 @@ Each spec edition has its own codes, even when a rule is unchanged between editi
 | `ST2067-3:2013:6.11/ContentVersionLabelTextMissing`         | ContentVersion/LabelText is absent.                                      | WARNING          | Metadata  |
 | `ST2067-3:2013:6.12/LocaleLanguageTagInvalid`               | Locale language tag does not conform to RFC 5646.                        | WARNING          | Metadata  |
 | `ST2067-3:2013:7.3/TrackIdNotUnique`                        | TrackId is not unique within a segment.                                  | ERROR            | Structure |
-| `ST2067-3:2013:7.4/MarkerOffsetOutOfRange`                  | Marker offset exceeds resource effective duration.                       | ERROR            | Timing    |
+| `ST2067-3:2013:7.4/MarkerOffsetOutOfRange`                  | Marker offset exceeds the resource IntrinsicDuration.                    | ERROR            | Timing    |
 | `ST2067-3:2013:7.4/MarkerLabelUnknown`                      | Marker label is not a recognized SMPTE standard value.                   | WARNING          | Metadata  |
 | `ST2067-3:2013:7.2.2/SegmentDuration`                       | All virtual tracks in a segment must span the same number of edit units. | ERROR            | Timing    |
 | `ST2067-3:2013:6.1.9/ContentVersionIdDuplicate`             | No two ContentVersion elements shall have identical Id values.           | ERROR            | Structure |
@@ -535,7 +535,7 @@ Each spec edition has its own codes, even when a rule is unchanged between editi
 | `ST2067-3:2016:6.11/ContentVersionLabelTextMissing`         | ContentVersion/LabelText is absent.                                      | WARNING          | Metadata  |
 | `ST2067-3:2016:6.12/LocaleLanguageTagInvalid`               | Locale language tag does not conform to RFC 5646.                        | WARNING          | Metadata  |
 | `ST2067-3:2016:7.3/TrackIdNotUnique`                        | TrackId is not unique within a segment.                                  | ERROR            | Structure |
-| `ST2067-3:2016:7.4/MarkerOffsetOutOfRange`                  | Marker offset exceeds resource effective duration.                       | ERROR            | Timing    |
+| `ST2067-3:2016:7.4/MarkerOffsetOutOfRange`                  | Marker offset exceeds the resource IntrinsicDuration.                    | ERROR            | Timing    |
 | `ST2067-3:2016:7.4/MarkerLabelUnknown`                      | Marker label is not a recognized SMPTE standard value.                   | WARNING          | Metadata  |
 | `ST2067-3:2016:7.2.2/SegmentDuration`                       | All virtual tracks in a segment must span the same number of edit units. | ERROR            | Timing    |
 | `ST2067-3:2016:6.1.9/ContentVersionIdDuplicate`             | No two ContentVersion elements shall have identical Id values.           | ERROR            | Structure |
@@ -551,98 +551,231 @@ Each spec edition has its own codes, even when a rule is unchanged between editi
 | `ST2067-9:2018:7.2.4/SignerWithoutSignature`           | Signer element is present but the required Signature element is absent (§7.2.4).      | ERROR            | Reference |
 | `ST2067-9:2018:7.2.5/SignatureWithoutSigner`           | Signature element is present but the required Signer element is absent (§7.2.5).      | ERROR            | Reference |
 | `ST2067-9:2018:7.3.1/SidecarAssetNotFound`             | SidecarAsset Id is not present in the package AssetMap (§7.3.1).                      | ERROR            | Reference |
-| `ST2067-9:2018:7.3.1.1/CplNotFound`                    | CPLId in AssociatedCPLList does not reference a known CPL in this package (§7.3.1.1). | ERROR            | Reference |
+| `ST2067-9:2018:7.3.1.1/CplNotFound`                    | CPLId in AssociatedCPLList does not reference a known CPL in this package (§7.3.1.1). | WARNING          | Reference |
 | `ST2067-9:2018:7.3.1.1/DuplicateCplId`                 | Duplicate CPLId within a single AssociatedCPLList (§7.3.1.1).                         | ERROR            | Reference |
 
 ## ST 2067-21 — Application #2E
 
-### 2020
+### 2014
 
-| Code                               | Description                                                                              | Default Severity | Category |
-| ---------------------------------- | ---------------------------------------------------------------------------------------- | ---------------- | -------- |
-| `ST2067-21:2020:7.1/AppIdMismatch` | Application identifier in CPL ExtensionProperties does not match the expected App2E URI. | WARNING          | Metadata |
+| Code                                         | Description                                                                                   | Default Severity | Category |
+| -------------------------------------------- | --------------------------------------------------------------------------------------------- | ---------------- | -------- |
+| `ST2067-21:2014:6.1/ColorSystem`             | Color system designator is not in the permitted set.                                          | ERROR            | Video    |
+| `ST2067-21:2014:6.1.4/BlackRefLevel`         | BlackRefLevel value is inconsistent with ComponentDepth.                                      | ERROR            | Video    |
+| `ST2067-21:2014:6.1.4/WhiteRefLevel`         | WhiteRefLevel value is inconsistent with ComponentDepth.                                      | ERROR            | Video    |
+| `ST2067-21:2014:6.1.4/ColorRange`            | ColorRange value is not in the permitted set.                                                 | ERROR            | Video    |
+| `ST2067-21:2014:7/ApplicationIdentification` | ApplicationIdentification is required for App2E compositions.                                 | ERROR            | Metadata |
+| `ST2067-21:2014:7/AppIdMismatch`             | ApplicationIdentification in CPL ExtensionProperties does not include the expected App2E URI. | WARNING          | Metadata |
+
+### 2016
+
+| Code                                           | Description                                                                                   | Default Severity | Category |
+| ---------------------------------------------- | --------------------------------------------------------------------------------------------- | ---------------- | -------- |
+| `ST2067-21:2016:6.1/ColorSystem`               | Color system designator is not in the permitted set.                                          | ERROR            | Video    |
+| `ST2067-21:2016:6.2/ComponentRefValues`        | Component max/min reference values are inconsistent with bit depth.                           | ERROR            | Video    |
+| `ST2067-21:2016:6.3/BlackRefLevel`             | BlackRefLevel value is inconsistent with ComponentDepth.                                      | ERROR            | Video    |
+| `ST2067-21:2016:6.3/WhiteRefLevel`             | WhiteRefLevel value is inconsistent with ComponentDepth.                                      | ERROR            | Video    |
+| `ST2067-21:2016:6.3/ColorRange`                | ColorRange value is not in the permitted set.                                                 | ERROR            | Video    |
+| `ST2067-21:2016:7.1/ApplicationIdentification` | ApplicationIdentification is required for App2E compositions.                                 | ERROR            | Metadata |
+| `ST2067-21:2016:7.1/AppIdMismatch`             | ApplicationIdentification in CPL ExtensionProperties does not include the expected App2E URI. | WARNING          | Metadata |
+| `ST2067-21:2016:7.2/MaxCLLMaxFALL`             | MaxCLL / MaxFALL HDR metadata is absent; recommended for HDR content.                         | INFO             | Video    |
+
+### 2020 (incl. Amendment 1:2020)
+
+| Code                                                 | Description                                                                                                                               | Default Severity | Category |
+| ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ---------------- | -------- |
+| `ST2067-21:2020:5.2/FrameRate`                       | Frame rate is not in the permitted set for App2E.                                                                                         | ERROR            | Video    |
+| `ST2067-21:2020:5.2/Resolution`                      | Image resolution is not in the permitted set for App2E.                                                                                   | ERROR            | Video    |
+| `ST2067-21:2020:6.2/ColorSystem`                     | Color system designator is not in the permitted set.                                                                                      | ERROR            | Video    |
+| `ST2067-21:2020:6.2/Required-StoredWidth`            | RGBA/CDCI descriptor is missing the required StoredWidth field.                                                                           | ERROR            | Encoding |
+| `ST2067-21:2020:6.2/Required-StoredHeight`           | RGBA/CDCI descriptor is missing the required StoredHeight field.                                                                          | ERROR            | Encoding |
+| `ST2067-21:2020:6.2/Required-SampleRate`             | RGBA/CDCI descriptor is missing the required SampleRate field.                                                                            | ERROR            | Encoding |
+| `ST2067-21:2020:6.2/Required-FrameLayout`            | RGBA/CDCI descriptor is missing the required FrameLayout field.                                                                           | ERROR            | Encoding |
+| `ST2067-21:2020:6.2/Required-ColorPrimaries`         | RGBA/CDCI descriptor is missing the required ColorPrimaries field.                                                                        | ERROR            | Encoding |
+| `ST2067-21:2020:6.2/Required-TransferCharacteristic` | RGBA/CDCI descriptor is missing the required TransferCharacteristic field.                                                                | ERROR            | Encoding |
+| `ST2067-21:2020:6.2/Required-PictureCompression`     | RGBA/CDCI descriptor is missing the required PictureCompression field.                                                                    | ERROR            | Encoding |
+| `ST2067-21:2020:6.2/Required-ComponentDepth`         | CDCI descriptor is missing the required ComponentDepth field.                                                                             | ERROR            | Encoding |
+| `ST2067-21:2020:6.2.1/AlphaTransparency`             | Alpha transparency mode is not permitted in App2E.                                                                                        | ERROR            | Video    |
+| `ST2067-21:2020:6.2.1/CodingEquationsMissing`        | CodingEquations field is absent from the picture descriptor.                                                                              | ERROR            | Video    |
+| `ST2067-21:2020:6.2.1/ColorPrimariesMissing`         | ColorPrimaries field is absent from the picture descriptor.                                                                               | ERROR            | Video    |
+| `ST2067-21:2020:6.2.1/FieldDominance`                | FieldDominance value is not permitted for the declared FrameLayout.                                                                       | ERROR            | Video    |
+| `ST2067-21:2020:6.2.1/FrameLayout`                   | FrameLayout value is not in the permitted set for App2E.                                                                                  | ERROR            | Video    |
+| `ST2067-21:2020:6.2.1/FrameLayoutInterlaced`         | Image frame structure (progressive or interlaced) does not fit the closest permitted column of the edition's image-characteristics table. | ERROR            | Video    |
+| `ST2067-21:2020:6.2.1/ImageAlignmentOffset`          | ImageAlignmentOffset must be zero.                                                                                                        | ERROR            | Video    |
+| `ST2067-21:2020:6.2.1/ImageEndOffset`                | ImageEndOffset must be zero.                                                                                                              | ERROR            | Video    |
+| `ST2067-21:2020:6.2.1/ImageStartOffset`              | ImageStartOffset must be zero.                                                                                                            | ERROR            | Video    |
+| `ST2067-21:2020:6.2.1/SampledHeight`                 | SampledHeight must equal StoredHeight.                                                                                                    | ERROR            | Video    |
+| `ST2067-21:2020:6.2.1/SampledWidth`                  | SampledWidth must equal StoredWidth.                                                                                                      | ERROR            | Video    |
+| `ST2067-21:2020:6.2.1/SampledXOffset`                | SampledXOffset must be zero.                                                                                                              | ERROR            | Video    |
+| `ST2067-21:2020:6.2.1/SampledYOffset`                | SampledYOffset must be zero.                                                                                                              | ERROR            | Video    |
+| `ST2067-21:2020:6.2.1/StoredF2Offset`                | StoredF2Offset must be zero.                                                                                                              | ERROR            | Video    |
+| `ST2067-21:2020:6.2.1/TransferCharacteristicMissing` | TransferCharacteristic field is absent from the picture descriptor.                                                                       | ERROR            | Video    |
+| `ST2067-21:2020:6.2.2/TransferCharacteristicUnknown` | TransferCharacteristic UL is present but not a recognized value.                                                                          | ERROR            | Video    |
+| `ST2067-21:2020:6.2.3/CodingEquationsUnknown`        | CodingEquations UL is present but not a recognized value.                                                                                 | ERROR            | Video    |
+| `ST2067-21:2020:6.2.4/ColorPrimariesUnknown`         | ColorPrimaries UL is present but not a recognized value.                                                                                  | ERROR            | Video    |
+| `ST2067-21:2020:6.2.5/J2KRequired`                   | Video essence is not JPEG 2000 encoded as required by App2E.                                                                              | ERROR            | Encoding |
+| `ST2067-21:2020:6.3/AlphaMaxRef`                     | AlphaMaxRef value is not permitted.                                                                                                       | ERROR            | Video    |
+| `ST2067-21:2020:6.3/AlphaMinRef`                     | AlphaMinRef value is not permitted.                                                                                                       | ERROR            | Video    |
+| `ST2067-21:2020:6.3/ComponentMaxRef`                 | ComponentMaxRef value is not in the permitted range.                                                                                      | ERROR            | Video    |
+| `ST2067-21:2020:6.3/ComponentMinRef`                 | ComponentMinRef value is not in the permitted range.                                                                                      | ERROR            | Video    |
+| `ST2067-21:2020:6.3/Palette`                         | Palette is present; palette images are not permitted in App2E.                                                                            | ERROR            | Video    |
+| `ST2067-21:2020:6.3/PaletteLayout`                   | PaletteLayout is present; palette layout is not permitted in App2E.                                                                       | ERROR            | Video    |
+| `ST2067-21:2020:6.3/ScanningDirection`               | ScanningDirection value is not in the permitted set.                                                                                      | ERROR            | Video    |
+| `ST2067-21:2020:6.3.2/ComponentRefValues`            | Component max/min reference values are inconsistent with bit depth.                                                                       | ERROR            | Video    |
+| `ST2067-21:2020:6.4/AlphaSampleDepth`                | AlphaSampleDepth value is not permitted.                                                                                                  | ERROR            | Video    |
+| `ST2067-21:2020:6.4/ColorSiting`                     | ColorSiting value is not in the permitted set.                                                                                            | ERROR            | Video    |
+| `ST2067-21:2020:6.4/ComponentDepth`                  | ComponentDepth is missing, or the pixel bit depth is not permitted for the image characteristics.                                         | ERROR            | Video    |
+| `ST2067-21:2020:6.4/HorizontalSubsampling`           | HorizontalSubsampling value is not in the permitted set.                                                                                  | ERROR            | Video    |
+| `ST2067-21:2020:6.4/PaddingBits`                     | PaddingBits must be zero.                                                                                                                 | ERROR            | Video    |
+| `ST2067-21:2020:6.4/ReversedByteOrder`               | ReversedByteOrder flag is set; byte reversal is not permitted.                                                                            | ERROR            | Video    |
+| `ST2067-21:2020:6.4/VerticalSubsampling`             | VerticalSubsampling value is not in the permitted set.                                                                                    | ERROR            | Video    |
+| `ST2067-21:2020:6.4.3/BlackRefLevel`                 | BlackRefLevel value is inconsistent with ComponentDepth.                                                                                  | ERROR            | Video    |
+| `ST2067-21:2020:6.4.3/ColorRange`                    | ColorRange value is not in the permitted set.                                                                                             | ERROR            | Video    |
+| `ST2067-21:2020:6.4.3/WhiteRefLevel`                 | WhiteRefLevel value is inconsistent with ComponentDepth.                                                                                  | ERROR            | Video    |
+| `ST2067-21:2020:6.5.2/CodingStyle`                   | JPEG 2000 codestream coding style is not compliant.                                                                                       | ERROR            | Encoding |
+| `ST2067-21:2020:6.5.2/J2CLayout`                     | JPEG 2000 codestream layout does not meet App2E requirements.                                                                             | ERROR            | Encoding |
+| `ST2067-21:2020:6.5.2/JPEG2000SubDescriptor`         | JPEG2000SubDescriptor is absent or incomplete.                                                                                            | WARNING          | Encoding |
+| `ST2067-21:2020:6.2.5/J2K-HT-Not-Allowed`            | JPEG 2000 HT (ISO 15444-15) is not permitted by App2E 2020.                                                                               | ERROR            | Encoding |
+| `ST2067-21:2020:6.2.5/J2K-4K-Resolution`             | JPEG 2000 IMF 4K Profile: stored resolution is outside the permitted range.                                                               | ERROR            | Encoding |
+| `ST2067-21:2020:6.2.5/J2K-2K-Resolution`             | JPEG 2000 IMF 2K Profile: stored resolution is outside the permitted range.                                                               | ERROR            | Encoding |
+| `ST2067-21:2020:6.2.5/J2K-BCP-Resolution`            | JPEG 2000 Broadcast Contribution Profile: stored resolution is outside the permitted range.                                               | ERROR            | Encoding |
+| `ST2067-21:2020:6.2.5/J2K-Profile-Not-Allowed`       | The JPEG 2000 profile is not listed in the edition's JPEG 2000 profile table.                                                             | ERROR            | Encoding |
+| `ST2067-21:2020:7.1/ApplicationIdentification`       | ApplicationIdentification is required for App2E compositions.                                                                             | ERROR            | Metadata |
+| `ST2067-21:2020:7.2/HomogeneousImageEssence`         | All image essence in a composition shall use the same color system.                                                                       | ERROR            | Video    |
+| `ST2067-21:2020:7.1/AppIdMismatch`                   | ApplicationIdentification in CPL ExtensionProperties does not include the expected App2E URI.                                             | WARNING          | Metadata |
+| `ST2067-21:2020:7.4/SegmentDurationMultiple`         | Segment duration must be an integer multiple of 5 edit units.                                                                             | ERROR            | Timing   |
+| `ST2067-21:2020:7.5/MaxCLLMaxFALL`                   | MaxCLL / MaxFALL HDR metadata is absent; recommended for HDR content.                                                                     | INFO             | Video    |
 
 ### 2023
 
-| Code                                                  | Description                                                                                 | Default Severity | Category |
-| ----------------------------------------------------- | ------------------------------------------------------------------------------------------- | ---------------- | -------- |
-| `ST2067-21:2023:5.2/FrameRate`                        | Frame rate is not in the permitted set for App2E.                                           | ERROR            | Video    |
-| `ST2067-21:2023:5.2/Resolution`                       | Image resolution is not in the permitted set for App2E.                                     | ERROR            | Video    |
-| `ST2067-21:2023:5.3/EmptyLanguageTag`                 | Locale language tag is empty.                                                               | ERROR            | Metadata |
-| `ST2067-21:2023:5.3/MalformedLanguageTag`             | Locale language tag is not a valid BCP-47 subtag.                                           | ERROR            | Metadata |
-| `ST2067-21:2023:5.3/RegionCode`                       | Region subtag in a language tag is not valid.                                               | ERROR            | Metadata |
-| `ST2067-21:2023:6.2/ColorSystem`                      | Color system designator is not in the permitted set.                                        | ERROR            | Video    |
-| `ST2067-21:2023:6.2/Required-StoredWidth`             | RGBA/CDCI descriptor is missing the required StoredWidth field.                             | ERROR            | Encoding |
-| `ST2067-21:2023:6.2/Required-StoredHeight`            | RGBA/CDCI descriptor is missing the required StoredHeight field.                            | ERROR            | Encoding |
-| `ST2067-21:2023:6.2/Required-SampleRate`              | RGBA/CDCI descriptor is missing the required SampleRate field.                              | ERROR            | Encoding |
-| `ST2067-21:2023:6.2/Required-FrameLayout`             | RGBA/CDCI descriptor is missing the required FrameLayout field.                             | ERROR            | Encoding |
-| `ST2067-21:2023:6.2/Required-ColorPrimaries`          | RGBA/CDCI descriptor is missing the required ColorPrimaries field.                          | ERROR            | Encoding |
-| `ST2067-21:2023:6.2/Required-TransferCharacteristic`  | RGBA/CDCI descriptor is missing the required TransferCharacteristic field.                  | ERROR            | Encoding |
-| `ST2067-21:2023:6.2/Required-PictureCompression`      | RGBA/CDCI descriptor is missing the required PictureCompression field.                      | ERROR            | Encoding |
-| `ST2067-21:2023:6.2/Required-ComponentDepth`          | CDCI descriptor is missing the required ComponentDepth field.                               | ERROR            | Encoding |
-| `ST2067-21:2023:6.5/Required-ChannelCount`            | WavePCM descriptor is missing the required ChannelCount field.                              | ERROR            | Audio    |
-| `ST2067-21:2023:6.5/Required-QuantizationBits`        | WavePCM descriptor is missing the required QuantizationBits field.                          | ERROR            | Audio    |
-| `ST2067-21:2023:6.2.1/AlphaTransparency`              | Alpha transparency mode is not permitted in App2E.                                          | ERROR            | Video    |
-| `ST2067-21:2023:6.2.1/CodingEquationsMissing`         | CodingEquations field is absent from the picture descriptor (Table 8).                      | ERROR            | Video    |
-| `ST2067-21:2023:6.2.1/ColorPrimariesMissing`          | ColorPrimaries field is absent from the picture descriptor (Table 8).                       | ERROR            | Video    |
-| `ST2067-21:2023:6.2.1/FieldDominance`                 | FieldDominance value is not permitted for the declared FrameLayout.                         | ERROR            | Video    |
-| `ST2067-21:2023:6.2.1/FrameLayout`                    | FrameLayout value is not in the permitted set for App2E.                                    | ERROR            | Video    |
-| `ST2067-21:2023:6.2.1/FrameLayoutInterlaced`          | FrameLayout declares interlaced content, which is not permitted in App2E.                   | ERROR            | Video    |
-| `ST2067-21:2023:6.2.1/ImageAlignmentOffset`           | ImageAlignmentOffset must be zero.                                                          | ERROR            | Video    |
-| `ST2067-21:2023:6.2.1/ImageEndOffset`                 | ImageEndOffset must be zero.                                                                | ERROR            | Video    |
-| `ST2067-21:2023:6.2.1/ImageStartOffset`               | ImageStartOffset must be zero.                                                              | ERROR            | Video    |
-| `ST2067-21:2023:6.2.1/SampledHeight`                  | SampledHeight must equal StoredHeight.                                                      | ERROR            | Video    |
-| `ST2067-21:2023:6.2.1/SampledWidth`                   | SampledWidth must equal StoredWidth.                                                        | ERROR            | Video    |
-| `ST2067-21:2023:6.2.1/SampledXOffset`                 | SampledXOffset must be zero.                                                                | ERROR            | Video    |
-| `ST2067-21:2023:6.2.1/SampledYOffset`                 | SampledYOffset must be zero.                                                                | ERROR            | Video    |
-| `ST2067-21:2023:6.2.1/StoredF2Offset`                 | StoredF2Offset must be zero.                                                                | ERROR            | Video    |
-| `ST2067-21:2023:6.2.1/TransferCharacteristicMissing`  | TransferCharacteristic field is absent from the picture descriptor (Table 8).               | ERROR            | Video    |
-| `ST2067-21:2023:6.2.2/TransferCharacteristicUnknown`  | TransferCharacteristic UL is present but not a recognized value.                            | ERROR            | Video    |
-| `ST2067-21:2023:6.2.3/CodingEquationsUnknown`         | CodingEquations UL is present but not a recognized value.                                   | ERROR            | Video    |
-| `ST2067-21:2023:6.2.4/ColorPrimariesUnknown`          | ColorPrimaries UL is present but not a recognized value.                                    | ERROR            | Video    |
-| `ST2067-21:2023:6.2.5/J2KRequired`                    | Video essence is not JPEG 2000 encoded as required by App2E.                                | ERROR            | Encoding |
-| `ST2067-21:2023:6.3/AlphaMaxRef`                      | AlphaMaxRef value is not permitted.                                                         | ERROR            | Video    |
-| `ST2067-21:2023:6.3/AlphaMinRef`                      | AlphaMinRef value is not permitted.                                                         | ERROR            | Video    |
-| `ST2067-21:2023:6.3/ComponentMaxRef`                  | ComponentMaxRef value is not in the permitted range.                                        | ERROR            | Video    |
-| `ST2067-21:2023:6.3/ComponentMinRef`                  | ComponentMinRef value is not in the permitted range.                                        | ERROR            | Video    |
-| `ST2067-21:2023:6.3/Palette`                          | Palette is present; palette images are not permitted in App2E.                              | ERROR            | Video    |
-| `ST2067-21:2023:6.3/PaletteLayout`                    | PaletteLayout is present; palette layout is not permitted in App2E.                         | ERROR            | Video    |
-| `ST2067-21:2023:6.3/ScanningDirection`                | ScanningDirection value is not in the permitted set.                                        | ERROR            | Video    |
-| `ST2067-21:2023:6.3.2/ComponentRefValues`             | Component max/min reference values are inconsistent with bit depth.                         | ERROR            | Video    |
-| `ST2067-21:2023:6.4/AlphaSampleDepth`                 | AlphaSampleDepth value is not permitted.                                                    | ERROR            | Video    |
-| `ST2067-21:2023:6.4/ColorSiting`                      | ColorSiting value is not in the permitted set.                                              | ERROR            | Video    |
-| `ST2067-21:2023:6.4/ComponentDepth`                   | ComponentDepth value is not in the permitted set (8 / 10 / 12 / 16).                        | ERROR            | Video    |
-| `ST2067-21:2023:6.4/HorizontalSubsampling`            | HorizontalSubsampling value is not in the permitted set.                                    | ERROR            | Video    |
-| `ST2067-21:2023:6.4/PaddingBits`                      | PaddingBits must be zero.                                                                   | ERROR            | Video    |
-| `ST2067-21:2023:6.4/ReversedByteOrder`                | ReversedByteOrder flag is set; byte reversal is not permitted.                              | ERROR            | Video    |
-| `ST2067-21:2023:6.4/VerticalSubsampling`              | VerticalSubsampling value is not in the permitted set.                                      | ERROR            | Video    |
-| `ST2067-21:2023:6.4.3/BlackRefLevel`                  | BlackRefLevel value is inconsistent with ComponentDepth.                                    | ERROR            | Video    |
-| `ST2067-21:2023:6.4.3/ColorRange`                     | ColorRange value is not in the permitted set.                                               | ERROR            | Video    |
-| `ST2067-21:2023:6.4.3/WhiteRefLevel`                  | WhiteRefLevel value is inconsistent with ComponentDepth.                                    | ERROR            | Video    |
-| `ST2067-21:2023:6.5/AudioSampleRate`                  | Audio sample rate must be 48 000 Hz.                                                        | ERROR            | Audio    |
-| `ST2067-21:2023:6.5/QuantizationBits`                 | QuantizationBits must be 16 or 24.                                                          | ERROR            | Audio    |
-| `ST2067-21:2023:6.5.2/CodingStyle`                    | JPEG 2000 codestream coding style is not compliant.                                         | ERROR            | Encoding |
-| `ST2067-21:2023:6.5.2/J2CLayout`                      | JPEG 2000 codestream layout does not meet App2E requirements.                               | ERROR            | Encoding |
-| `ST2067-21:2023:6.5.2/J2KExtendedCapabilities`        | JPEG 2000 extended capabilities are declared but not permitted.                             | ERROR            | Encoding |
-| `ST2067-21:2023:6.5.2/JPEG2000SubDescriptor`          | JPEG2000SubDescriptor is absent or incomplete.                                              | WARNING          | Encoding |
-| `ST2067-21:2023:6.2.5/J2K-HT-Not-Allowed`             | JPEG 2000 HT (ISO 15444-15) is not permitted by App2E 2020.                                 | ERROR            | Encoding |
-| `ST2067-21:2023:6.2.5/J2K-4K-Resolution`              | JPEG 2000 IMF 4K Profile: stored resolution is outside the permitted range.                 | ERROR            | Encoding |
-| `ST2067-21:2023:6.2.5/J2K-2K-Resolution`              | JPEG 2000 IMF 2K Profile: stored resolution is outside the permitted range.                 | ERROR            | Encoding |
-| `ST2067-21:2023:6.2.5/J2K-BCP-Resolution`             | JPEG 2000 Broadcast Contribution Profile: stored resolution is outside the permitted range. | ERROR            | Encoding |
-| `ST2067-21:2023:7.1/ApplicationIdentification`        | ApplicationIdentification is required for App2E compositions.                               | ERROR            | Metadata |
-| `ST2067-21:2023:7.1/ContentMaturityRating-Agency`     | ContentMaturityRating Agency is empty.                                                      | ERROR            | Metadata |
-| `ST2067-21:2023:7.1/ContentMaturityRating-Agency-URI` | ContentMaturityRating Agency is not a valid xs:anyURI.                                      | ERROR            | Metadata |
-| `ST2067-21:2023:7.2/HomogeneousImageEssence`          | All image essence in a composition shall use the same color system.                         | ERROR            | Video    |
-| `ST2067-21:2023:7.1/AppIdMismatch`                    | Application identifier in CPL ExtensionProperties does not match the expected App2E URI.    | WARNING          | Metadata |
-| `ST2067-21:2023:7.4/SegmentDurationMultiple`          | Segment duration must be an integer multiple of 5 edit units.                               | ERROR            | Timing   |
-| `ST2067-21:2023:7.5/MaxCLLMaxFALL`                    | MaxCLL / MaxFALL HDR metadata is absent; recommended for HDR content.                       | INFO             | Video    |
+| Code                                                 | Description                                                                                                                               | Default Severity | Category |
+| ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ---------------- | -------- |
+| `ST2067-21:2023:5.2/FrameRate`                       | Frame rate is not in the permitted set for App2E.                                                                                         | ERROR            | Video    |
+| `ST2067-21:2023:5.2/Resolution`                      | Image resolution is not in the permitted set for App2E.                                                                                   | ERROR            | Video    |
+| `ST2067-21:2023:6.2/ColorSystem`                     | Color system designator is not in the permitted set.                                                                                      | ERROR            | Video    |
+| `ST2067-21:2023:6.2/Required-StoredWidth`            | RGBA/CDCI descriptor is missing the required StoredWidth field.                                                                           | ERROR            | Encoding |
+| `ST2067-21:2023:6.2/Required-StoredHeight`           | RGBA/CDCI descriptor is missing the required StoredHeight field.                                                                          | ERROR            | Encoding |
+| `ST2067-21:2023:6.2/Required-SampleRate`             | RGBA/CDCI descriptor is missing the required SampleRate field.                                                                            | ERROR            | Encoding |
+| `ST2067-21:2023:6.2/Required-FrameLayout`            | RGBA/CDCI descriptor is missing the required FrameLayout field.                                                                           | ERROR            | Encoding |
+| `ST2067-21:2023:6.2/Required-ColorPrimaries`         | RGBA/CDCI descriptor is missing the required ColorPrimaries field.                                                                        | ERROR            | Encoding |
+| `ST2067-21:2023:6.2/Required-TransferCharacteristic` | RGBA/CDCI descriptor is missing the required TransferCharacteristic field.                                                                | ERROR            | Encoding |
+| `ST2067-21:2023:6.2/Required-PictureCompression`     | RGBA/CDCI descriptor is missing the required PictureCompression field.                                                                    | ERROR            | Encoding |
+| `ST2067-21:2023:6.2/Required-ComponentDepth`         | CDCI descriptor is missing the required ComponentDepth field.                                                                             | ERROR            | Encoding |
+| `ST2067-21:2023:6.2.1/AlphaTransparency`             | Alpha transparency mode is not permitted in App2E.                                                                                        | ERROR            | Video    |
+| `ST2067-21:2023:6.2.1/CodingEquationsMissing`        | CodingEquations field is absent from the picture descriptor.                                                                              | ERROR            | Video    |
+| `ST2067-21:2023:6.2.1/ColorPrimariesMissing`         | ColorPrimaries field is absent from the picture descriptor.                                                                               | ERROR            | Video    |
+| `ST2067-21:2023:6.2.1/FieldDominance`                | FieldDominance value is not permitted for the declared FrameLayout.                                                                       | ERROR            | Video    |
+| `ST2067-21:2023:6.2.1/FrameLayout`                   | FrameLayout value is not in the permitted set for App2E.                                                                                  | ERROR            | Video    |
+| `ST2067-21:2023:6.2.1/FrameLayoutInterlaced`         | Image frame structure (progressive or interlaced) does not fit the closest permitted column of the edition's image-characteristics table. | ERROR            | Video    |
+| `ST2067-21:2023:6.2.1/ImageAlignmentOffset`          | ImageAlignmentOffset must be zero.                                                                                                        | ERROR            | Video    |
+| `ST2067-21:2023:6.2.1/ImageEndOffset`                | ImageEndOffset must be zero.                                                                                                              | ERROR            | Video    |
+| `ST2067-21:2023:6.2.1/ImageStartOffset`              | ImageStartOffset must be zero.                                                                                                            | ERROR            | Video    |
+| `ST2067-21:2023:6.2.1/SampledHeight`                 | SampledHeight must equal StoredHeight.                                                                                                    | ERROR            | Video    |
+| `ST2067-21:2023:6.2.1/SampledWidth`                  | SampledWidth must equal StoredWidth.                                                                                                      | ERROR            | Video    |
+| `ST2067-21:2023:6.2.1/SampledXOffset`                | SampledXOffset must be zero.                                                                                                              | ERROR            | Video    |
+| `ST2067-21:2023:6.2.1/SampledYOffset`                | SampledYOffset must be zero.                                                                                                              | ERROR            | Video    |
+| `ST2067-21:2023:6.2.1/StoredF2Offset`                | StoredF2Offset must be zero.                                                                                                              | ERROR            | Video    |
+| `ST2067-21:2023:6.2.1/TransferCharacteristicMissing` | TransferCharacteristic field is absent from the picture descriptor.                                                                       | ERROR            | Video    |
+| `ST2067-21:2023:6.2.2/TransferCharacteristicUnknown` | TransferCharacteristic UL is present but not a recognized value.                                                                          | ERROR            | Video    |
+| `ST2067-21:2023:6.2.3/CodingEquationsUnknown`        | CodingEquations UL is present but not a recognized value.                                                                                 | ERROR            | Video    |
+| `ST2067-21:2023:6.2.4/ColorPrimariesUnknown`         | ColorPrimaries UL is present but not a recognized value.                                                                                  | ERROR            | Video    |
+| `ST2067-21:2023:6.2.5/J2KRequired`                   | Video essence is not JPEG 2000 encoded as required by App2E.                                                                              | ERROR            | Encoding |
+| `ST2067-21:2023:6.3/AlphaMaxRef`                     | AlphaMaxRef value is not permitted.                                                                                                       | ERROR            | Video    |
+| `ST2067-21:2023:6.3/AlphaMinRef`                     | AlphaMinRef value is not permitted.                                                                                                       | ERROR            | Video    |
+| `ST2067-21:2023:6.3/ComponentMaxRef`                 | ComponentMaxRef value is not in the permitted range.                                                                                      | ERROR            | Video    |
+| `ST2067-21:2023:6.3/ComponentMinRef`                 | ComponentMinRef value is not in the permitted range.                                                                                      | ERROR            | Video    |
+| `ST2067-21:2023:6.3/Palette`                         | Palette is present; palette images are not permitted in App2E.                                                                            | ERROR            | Video    |
+| `ST2067-21:2023:6.3/PaletteLayout`                   | PaletteLayout is present; palette layout is not permitted in App2E.                                                                       | ERROR            | Video    |
+| `ST2067-21:2023:6.3/ScanningDirection`               | ScanningDirection value is not in the permitted set.                                                                                      | ERROR            | Video    |
+| `ST2067-21:2023:6.3.2/ComponentRefValues`            | Component max/min reference values are inconsistent with bit depth.                                                                       | ERROR            | Video    |
+| `ST2067-21:2023:6.4/AlphaSampleDepth`                | AlphaSampleDepth value is not permitted.                                                                                                  | ERROR            | Video    |
+| `ST2067-21:2023:6.4/ColorSiting`                     | ColorSiting value is not in the permitted set.                                                                                            | ERROR            | Video    |
+| `ST2067-21:2023:6.4/ComponentDepth`                  | ComponentDepth is missing, or the pixel bit depth is not permitted for the image characteristics.                                         | ERROR            | Video    |
+| `ST2067-21:2023:6.4/HorizontalSubsampling`           | HorizontalSubsampling value is not in the permitted set.                                                                                  | ERROR            | Video    |
+| `ST2067-21:2023:6.4/PaddingBits`                     | PaddingBits must be zero.                                                                                                                 | ERROR            | Video    |
+| `ST2067-21:2023:6.4/ReversedByteOrder`               | ReversedByteOrder flag is set; byte reversal is not permitted.                                                                            | ERROR            | Video    |
+| `ST2067-21:2023:6.4/VerticalSubsampling`             | VerticalSubsampling value is not in the permitted set.                                                                                    | ERROR            | Video    |
+| `ST2067-21:2023:6.4.3/BlackRefLevel`                 | BlackRefLevel value is inconsistent with ComponentDepth.                                                                                  | ERROR            | Video    |
+| `ST2067-21:2023:6.4.3/ColorRange`                    | ColorRange value is not in the permitted set.                                                                                             | ERROR            | Video    |
+| `ST2067-21:2023:6.4.3/WhiteRefLevel`                 | WhiteRefLevel value is inconsistent with ComponentDepth.                                                                                  | ERROR            | Video    |
+| `ST2067-21:2023:6.5.2/CodingStyle`                   | JPEG 2000 codestream coding style is not compliant.                                                                                       | ERROR            | Encoding |
+| `ST2067-21:2023:6.5.2/J2CLayout`                     | JPEG 2000 codestream layout does not meet App2E requirements.                                                                             | ERROR            | Encoding |
+| `ST2067-21:2023:6.5.2/J2KExtendedCapabilities`       | JPEG 2000 extended capabilities are declared but not permitted.                                                                           | ERROR            | Encoding |
+| `ST2067-21:2023:6.5.2/JPEG2000SubDescriptor`         | JPEG2000SubDescriptor is absent or incomplete.                                                                                            | WARNING          | Encoding |
+| `ST2067-21:2023:6.2.5/J2K-4K-Resolution`             | JPEG 2000 IMF 4K Profile: stored resolution is outside the permitted range.                                                               | ERROR            | Encoding |
+| `ST2067-21:2023:6.2.5/J2K-2K-Resolution`             | JPEG 2000 IMF 2K Profile: stored resolution is outside the permitted range.                                                               | ERROR            | Encoding |
+| `ST2067-21:2023:6.2.5/J2K-BCP-Resolution`            | JPEG 2000 Broadcast Contribution Profile: stored resolution is outside the permitted range.                                               | ERROR            | Encoding |
+| `ST2067-21:2023:6.2.5/J2K-Profile-Not-Allowed`       | The JPEG 2000 profile is not listed in the edition's JPEG 2000 profile table.                                                             | ERROR            | Encoding |
+| `ST2067-21:2023:7.1/ApplicationIdentification`       | ApplicationIdentification is required for App2E compositions.                                                                             | ERROR            | Metadata |
+| `ST2067-21:2023:7.2/HomogeneousImageEssence`         | All image essence in a composition shall use the same color system.                                                                       | ERROR            | Video    |
+| `ST2067-21:2023:7.1/AppIdMismatch`                   | ApplicationIdentification in CPL ExtensionProperties does not include the expected App2E URI.                                             | WARNING          | Metadata |
+| `ST2067-21:2023:7.4/SegmentDurationMultiple`         | Segment duration must be an integer multiple of 5 edit units.                                                                             | ERROR            | Timing   |
+| `ST2067-21:2023:7.5/MaxCLLMaxFALL`                   | MaxCLL / MaxFALL HDR metadata is absent; recommended for HDR content.                                                                     | INFO             | Video    |
 
-### 2025
+### 2026
 
-| Code                              | Description                                                                     | Default Severity | Category |
-| --------------------------------- | ------------------------------------------------------------------------------- | ---------------- | -------- |
-| `ST2067-21:2025:5.6/FNTimedText`  | Timed text track designated as Forced Narrative (FN) does not comply with §5.6. | ERROR            | Subtitle |
-| `ST2067-21:2025:5.6/HICTimedText` | Timed text track designated as HI-Caption (HIC) does not comply with §5.6.      | ERROR            | Subtitle |
+| Code                                                     | Description                                                                                                                               | Default Severity | Category |
+| -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ---------------- | -------- |
+| `ST2067-21:2026:6.2.1/FrameRate`                         | Frame rate is not in the permitted set for App2E.                                                                                         | ERROR            | Video    |
+| `ST2067-21:2026:6.2.1/Resolution`                        | Image resolution is not in the permitted set for App2E.                                                                                   | ERROR            | Video    |
+| `ST2067-21:2026:7.2/ColorSystem`                         | Color system designator is not in the permitted set.                                                                                      | ERROR            | Video    |
+| `ST2067-21:2026:7.2.1.1/Required-StoredWidth`            | RGBA/CDCI descriptor is missing the required StoredWidth field.                                                                           | ERROR            | Encoding |
+| `ST2067-21:2026:7.2.1.1/Required-StoredHeight`           | RGBA/CDCI descriptor is missing the required StoredHeight field.                                                                          | ERROR            | Encoding |
+| `ST2067-21:2026:7.2.1.1/Required-SampleRate`             | RGBA/CDCI descriptor is missing the required SampleRate field.                                                                            | ERROR            | Encoding |
+| `ST2067-21:2026:7.2.1.1/Required-FrameLayout`            | RGBA/CDCI descriptor is missing the required FrameLayout field.                                                                           | ERROR            | Encoding |
+| `ST2067-21:2026:7.2.1.1/Required-ColorPrimaries`         | RGBA/CDCI descriptor is missing the required ColorPrimaries field.                                                                        | ERROR            | Encoding |
+| `ST2067-21:2026:7.2.1.1/Required-TransferCharacteristic` | RGBA/CDCI descriptor is missing the required TransferCharacteristic field.                                                                | ERROR            | Encoding |
+| `ST2067-21:2026:7.2.1.1/Required-PictureCompression`     | RGBA/CDCI descriptor is missing the required PictureCompression field.                                                                    | ERROR            | Encoding |
+| `ST2067-21:2026:7.4.1/Required-ComponentDepth`           | CDCI descriptor is missing the required ComponentDepth field.                                                                             | ERROR            | Encoding |
+| `ST2067-21:2026:7.2.1.1/CodingEquationsMissing`          | CodingEquations field is absent from the picture descriptor.                                                                              | ERROR            | Video    |
+| `ST2067-21:2026:7.2.1.1/ColorPrimariesMissing`           | ColorPrimaries field is absent from the picture descriptor.                                                                               | ERROR            | Video    |
+| `ST2067-21:2026:7.2.1.1/FieldDominance`                  | FieldDominance value is not permitted for the declared FrameLayout.                                                                       | ERROR            | Video    |
+| `ST2067-21:2026:7.2.1.4/FrameLayout`                     | FrameLayout value is not in the permitted set for App2E.                                                                                  | ERROR            | Video    |
+| `ST2067-21:2026:6.2.1/FrameLayoutInterlaced`             | Image frame structure (progressive or interlaced) does not fit the closest permitted column of the edition's image-characteristics table. | ERROR            | Video    |
+| `ST2067-21:2026:7.2.1.1/ImageAlignmentOffset`            | ImageAlignmentOffset must be zero.                                                                                                        | ERROR            | Video    |
+| `ST2067-21:2026:7.2.1.1/ImageEndOffset`                  | ImageEndOffset must be zero.                                                                                                              | ERROR            | Video    |
+| `ST2067-21:2026:7.2.1.1/ImageStartOffset`                | ImageStartOffset must be zero.                                                                                                            | ERROR            | Video    |
+| `ST2067-21:2026:7.2.1.1/SampledHeight`                   | SampledHeight must equal StoredHeight.                                                                                                    | ERROR            | Video    |
+| `ST2067-21:2026:7.2.1.1/SampledWidth`                    | SampledWidth must equal StoredWidth.                                                                                                      | ERROR            | Video    |
+| `ST2067-21:2026:7.2.1.1/SampledXOffset`                  | SampledXOffset must be zero.                                                                                                              | ERROR            | Video    |
+| `ST2067-21:2026:7.2.1.1/SampledYOffset`                  | SampledYOffset must be zero.                                                                                                              | ERROR            | Video    |
+| `ST2067-21:2026:7.2.1.1/StoredF2Offset`                  | StoredF2Offset must be zero.                                                                                                              | ERROR            | Video    |
+| `ST2067-21:2026:7.2.1.1/TransferCharacteristicMissing`   | TransferCharacteristic field is absent from the picture descriptor.                                                                       | ERROR            | Video    |
+| `ST2067-21:2026:7.2.2/TransferCharacteristicUnknown`     | TransferCharacteristic UL is present but not a recognized value.                                                                          | ERROR            | Video    |
+| `ST2067-21:2026:7.2.3/CodingEquationsUnknown`            | CodingEquations UL is present but not a recognized value.                                                                                 | ERROR            | Video    |
+| `ST2067-21:2026:7.2.4/ColorPrimariesUnknown`             | ColorPrimaries UL is present but not a recognized value.                                                                                  | ERROR            | Video    |
+| `ST2067-21:2026:7.2.5/J2KRequired`                       | Video essence is not JPEG 2000 encoded as required by App2E.                                                                              | ERROR            | Encoding |
+| `ST2067-21:2026:7.3.1/AlphaMaxRef`                       | AlphaMaxRef value is not permitted.                                                                                                       | ERROR            | Video    |
+| `ST2067-21:2026:7.3.1/AlphaMinRef`                       | AlphaMinRef value is not permitted.                                                                                                       | ERROR            | Video    |
+| `ST2067-21:2026:7.3.1/ComponentMaxRef`                   | ComponentMaxRef value is not in the permitted range.                                                                                      | ERROR            | Video    |
+| `ST2067-21:2026:7.3.1/ComponentMinRef`                   | ComponentMinRef value is not in the permitted range.                                                                                      | ERROR            | Video    |
+| `ST2067-21:2026:7.3.1/Palette`                           | Palette is present; palette images are not permitted in App2E.                                                                            | ERROR            | Video    |
+| `ST2067-21:2026:7.3.1/PaletteLayout`                     | PaletteLayout is present; palette layout is not permitted in App2E.                                                                       | ERROR            | Video    |
+| `ST2067-21:2026:7.3.1/ScanningDirection`                 | ScanningDirection value is not in the permitted set.                                                                                      | ERROR            | Video    |
+| `ST2067-21:2026:7.3.2/ComponentRefValues`                | Component max/min reference values are inconsistent with bit depth.                                                                       | ERROR            | Video    |
+| `ST2067-21:2026:7.4.1/AlphaSampleDepth`                  | AlphaSampleDepth value is not permitted.                                                                                                  | ERROR            | Video    |
+| `ST2067-21:2026:7.4.1/ColorSiting`                       | ColorSiting value is not in the permitted set.                                                                                            | ERROR            | Video    |
+| `ST2067-21:2026:7.4.1/ComponentDepth`                    | ComponentDepth is missing, or the pixel bit depth is not permitted for the image characteristics.                                         | ERROR            | Video    |
+| `ST2067-21:2026:7.4.2/HorizontalSubsampling`             | HorizontalSubsampling value is not in the permitted set.                                                                                  | ERROR            | Video    |
+| `ST2067-21:2026:7.4.1/PaddingBits`                       | PaddingBits must be zero.                                                                                                                 | ERROR            | Video    |
+| `ST2067-21:2026:7.4.1/ReversedByteOrder`                 | ReversedByteOrder flag is set; byte reversal is not permitted.                                                                            | ERROR            | Video    |
+| `ST2067-21:2026:7.4.1/VerticalSubsampling`               | VerticalSubsampling value is not in the permitted set.                                                                                    | ERROR            | Video    |
+| `ST2067-21:2026:7.4.3/BlackRefLevel`                     | BlackRefLevel value is inconsistent with ComponentDepth.                                                                                  | ERROR            | Video    |
+| `ST2067-21:2026:7.4.3/ColorRange`                        | ColorRange value is not in the permitted set.                                                                                             | ERROR            | Video    |
+| `ST2067-21:2026:7.4.3/WhiteRefLevel`                     | WhiteRefLevel value is inconsistent with ComponentDepth.                                                                                  | ERROR            | Video    |
+| `ST2067-21:2026:7.5.1/CodingStyle`                       | JPEG 2000 codestream coding style is not compliant.                                                                                       | ERROR            | Encoding |
+| `ST2067-21:2026:7.5.2/J2CLayout`                         | JPEG 2000 codestream layout does not meet App2E requirements.                                                                             | ERROR            | Encoding |
+| `ST2067-21:2026:7.5.1/J2KExtendedCapabilities`           | JPEG 2000 extended capabilities are declared but not permitted.                                                                           | ERROR            | Encoding |
+| `ST2067-21:2026:7.5.1/JPEG2000SubDescriptor`             | JPEG2000SubDescriptor is absent or incomplete.                                                                                            | WARNING          | Encoding |
+| `ST2067-21:2026:7.2.5/J2K-4K-Resolution`                 | JPEG 2000 IMF 4K Profile: stored resolution is outside the permitted range.                                                               | ERROR            | Encoding |
+| `ST2067-21:2026:7.2.5/J2K-2K-Resolution`                 | JPEG 2000 IMF 2K Profile: stored resolution is outside the permitted range.                                                               | ERROR            | Encoding |
+| `ST2067-21:2026:7.2.5/J2K-BCP-Resolution`                | JPEG 2000 Broadcast Contribution Profile: stored resolution is outside the permitted range.                                               | ERROR            | Encoding |
+| `ST2067-21:2026:7.2.5/J2K-8K-Resolution`                 | JPEG 2000 IMF 8K Profile: stored resolution is outside the permitted range.                                                               | ERROR            | Encoding |
+| `ST2067-21:2026:8.1/ApplicationIdentification`           | ApplicationIdentification is required for App2E compositions.                                                                             | ERROR            | Metadata |
+| `ST2067-21:2026:8.1/AppIdMismatch`                       | ApplicationIdentification in CPL ExtensionProperties does not include the expected App2E URI.                                             | WARNING          | Metadata |
+| `ST2067-21:2026:8.2/HomogeneousImageEssence`             | All image essence in a composition shall use the same color system.                                                                       | ERROR            | Video    |
+| `ST2067-21:2026:8.3.2/SegmentDurationMultiple`           | Segment duration must be an integer multiple of 5 edit units.                                                                             | ERROR            | Timing   |
+| `ST2067-21:2026:8.3.3/MaxCLLMaxFALL`                     | MaxCLL / MaxFALL HDR metadata is absent; recommended for HDR content.                                                                     | INFO             | Video    |
 
 ## ST 2067-201 — IAB Plug-in
 
@@ -689,7 +822,6 @@ Each spec edition has its own codes, even when a rule is unchanged between editi
 | `ST2067-201:2021:5.9/AudioSamplingRateInvalid`         | IABEssenceDescriptor: AudioSampleRate shall match the bitstream SampleRate — 48 kHz or 96 kHz per ST 2098-2.                       | ERROR            | Audio    |
 | `ST2067-201:2021:5.9/SoundCompressionMissing`          | IABEssenceDescriptor: SoundCompression is missing.                                                                                 | WARNING          | Audio    |
 | `ST2067-201:2021:5.9/SoundCompressionInvalid`          | IABEssenceDescriptor: SoundCompression is not the required IAB compression UL.                                                     | ERROR            | Audio    |
-| `ST2067-201:2021:5.9/ChannelCountNotZero`              | IABEssenceDescriptor: ChannelCount shall be the distinguished value 0 (2019 edition).                                              | ERROR            | Audio    |
 | `ST2067-201:2021:5.10.2/SubDescriptorMissing`          | IABEssenceDescriptor: IABSoundfieldLabelSubDescriptor shall be present.                                                            | ERROR            | Audio    |
 | `ST2067-201:2021:5.10.4/MCATagSymbolMissing`           | IABSoundfieldLabelSubDescriptor: MCATagSymbol is missing; shall be "IAB".                                                          | ERROR            | Audio    |
 | `ST2067-201:2021:5.10.4/MCATagSymbolInvalid`           | IABSoundfieldLabelSubDescriptor: MCATagSymbol shall be "IAB".                                                                      | ERROR            | Audio    |
@@ -885,7 +1017,7 @@ let options = ValidationOptions {
 
 **`CoreSpecTarget`**: `St2067_2_2013`, `St2067_2_2016`, `St2067_2_2020`
 
-**`AppSpecTarget`**: `St2067_21_2020`, `St2067_21_2021`, `St2067_21_2023`
+**`AppSpecTarget`**: `St2067_21_2014`, `St2067_21_2016`, `St2067_21_2020`, `St2067_21_2023`, `St2067_21_2026`
 
 ### WASM
 
@@ -897,7 +1029,7 @@ const result = await validate(files, {
 ```
 
 - `coreSpec`: `"auto"` | `"v2013"` | `"v2016"` | `"v2020"`
-- `app2eSpec`: `"auto"` | `"none"` | `"v2020"` | `"v2021"` | `"v2023"`
+- `app2eSpec`: `"auto"` | `"none"` | `"v2014"` | `"v2016"` | `"v2020"` | `"v2023"` | `"v2026"`
 
 ### Node.js
 
@@ -911,7 +1043,7 @@ const result = validatePath('./my-imp', {
 ```
 
 - `coreSpec`: `"auto"` | `"v2013"` | `"v2016"` | `"v2020"`
-- `app2eSpec`: `"auto"` | `"none"` | `"v2020"` | `"v2021"` | `"v2023"`
+- `app2eSpec`: `"auto"` | `"none"` | `"v2014"` | `"v2016"` | `"v2020"` | `"v2023"` | `"v2026"`
 
 See the [Validation Codes](/imferno/beta/guide/codes/index.md) reference for the full catalogue of rule codes.
 
@@ -1656,7 +1788,7 @@ imferno validate s3://my-bucket/path/to/imp/
 | `--rule <RULE=SEVERITY>` | Inline rule severity override (repeatable). Severity: `off`, `info`, `warn`, `error`, `critical` |
 | `--format <FORMAT>`      | Output format: `summary` (default), `markdown`, `csv`, `json`                                    |
 | `--core-spec <SPEC>`     | Core spec version: `auto` (default), `v2013`, `v2016`, `v2020`                                   |
-| `--app2e-spec <SPEC>`    | App profile: `auto` (default), `none`, `v2020`, `v2021`, `v2023`                                 |
+| `--app2e-spec <SPEC>`    | App profile: `auto` (default), `none`, `v2014`, `v2016`, `v2020`, `v2023`, `v2026`               |
 | `--skip-disk-checks`     | Skip file manifest and MXF header checks (validates XML structure only)                          |
 | `--exit-zero`            | Always exit 0, even on validation errors (useful for CI)                                         |
 | `--rules-config <PATH>`  | Path to a JSON rules config file                                                                 |
@@ -1875,12 +2007,12 @@ const result = validatePath('./my-imp', {
 });
 ```
 
-| Option           | Type                                                | Default  | Description                                    |
-| ---------------- | --------------------------------------------------- | -------- | ---------------------------------------------- |
-| `coreSpec`       | `"auto" \| "v2013" \| "v2016" \| "v2020"`           | `"auto"` | Core constraints spec version                  |
-| `app2eSpec`      | `"auto" \| "none" \| "v2020" \| "v2021" \| "v2023"` | `"auto"` | Application profile version                    |
-| `skipDiskChecks` | `boolean`                                           | `false`  | Skip file existence/size and MXF header checks |
-| `rules`          | `Record<string, string>`                            | `{}`     | ESLint-style severity overrides                |
+| Option           | Type                                                                      | Default  | Description                                    |
+| ---------------- | ------------------------------------------------------------------------- | -------- | ---------------------------------------------- |
+| `coreSpec`       | `"auto" \| "v2013" \| "v2016" \| "v2020"`                                 | `"auto"` | Core constraints spec version                  |
+| `app2eSpec`      | `"auto" \| "none" \| "v2014" \| "v2016" \| "v2020" \| "v2023" \| "v2026"` | `"auto"` | Application profile version                    |
+| `skipDiskChecks` | `boolean`                                                                 | `false`  | Skip file existence/size and MXF header checks |
+| `rules`          | `Record<string, string>`                                                  | `{}`     | ESLint-style severity overrides                |
 
 ***
 
@@ -2157,11 +2289,11 @@ const result = await validate(files, {
 });
 ```
 
-| Option      | Type                                                | Default  | Description                     |
-| ----------- | --------------------------------------------------- | -------- | ------------------------------- |
-| `coreSpec`  | `"auto" \| "v2013" \| "v2016" \| "v2020"`           | `"auto"` | Core constraints spec version   |
-| `app2eSpec` | `"auto" \| "none" \| "v2020" \| "v2021" \| "v2023"` | `"auto"` | Application profile version     |
-| `rules`     | `Record<string, string>`                            | `{}`     | ESLint-style severity overrides |
+| Option      | Type                                                                      | Default  | Description                     |
+| ----------- | ------------------------------------------------------------------------- | -------- | ------------------------------- |
+| `coreSpec`  | `"auto" \| "v2013" \| "v2016" \| "v2020"`                                 | `"auto"` | Core constraints spec version   |
+| `app2eSpec` | `"auto" \| "none" \| "v2014" \| "v2016" \| "v2020" \| "v2023" \| "v2026"` | `"auto"` | Application profile version     |
+| `rules`     | `Record<string, string>`                                                  | `{}`     | ESLint-style severity overrides |
 
 ***
 

@@ -474,7 +474,7 @@ export type McaTagSymbol = "Sg51" | "Sg71" | "Sg71Ds" | "SgSt" | "SgMono" | "Iab
 
 export type TransferCharacteristic = "Linear" | "Bt709" | "Smpte240M" | "XvYcc709" | "Bt2020" | "PqSt2084" | "Hlg" | { Unknown: string };
 
-export type VideoCodec = "Jpeg2000" | "Jpeg2000Imf2k" | "Jpeg2000Imf4k" | "Jpeg2000Broadcast" | "Jpeg2000Ht" | "Vc5" | "Mpeg2" | "H264" | "H265" | "ProRes" | "Av1" | { Unknown: string };
+export type VideoCodec = "Jpeg2000" | "Jpeg2000Imf2k" | "Jpeg2000Imf4k" | "Jpeg2000Imf8k" | "Jpeg2000Broadcast" | "Jpeg2000Ht" | "Vc5" | "Mpeg2" | "H264" | "H265" | "ProRes" | "Av1" | { Unknown: string };
 
 
 /**
@@ -488,7 +488,7 @@ export type VideoCodec = "Jpeg2000" | "Jpeg2000Imf2k" | "Jpeg2000Imf4k" | "Jpeg2
  *
  * Options (all optional):
  * - `coreSpec`: `"auto"` | `"v2013"` | `"v2016"` | `"v2020"`
- * - `app2eSpec`: `"auto"` | `"none"` | `"v2020"` | `"v2021"` | `"v2023"`
+ * - `app2eSpec`: `"auto"` | `"none"` | `"v2014"` | `"v2016"` | `"v2020"` | `"v2023"` | `"v2026"`
  * - `rules`: ESLint-style rules configuration object
  */
 export function buildReport(files: any, options: any): any;

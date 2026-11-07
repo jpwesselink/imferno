@@ -34,7 +34,7 @@ use crate::cpl::{CompositionPlaylist, ContentKind, CONTENT_KIND_DEFAULT_SCOPE};
 /// Runs the normative rules listed in the module documentation, against
 /// the edition [`crate::validation::cpl_edition`] resolves for the CPL.
 pub fn validate_cpl(cpl: &CompositionPlaylist) -> Vec<ValidationIssue> {
-    validate_cpl_for(cpl, crate::validation::cpl_edition(cpl).edition)
+    validate_cpl_for(cpl, crate::validation::cpl_edition(cpl, None, None).edition)
 }
 
 /// [`validate_cpl`] against ST 2067-3 edition `spec_ed`.

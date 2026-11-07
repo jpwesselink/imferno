@@ -2640,7 +2640,7 @@ impl Imferno {
                         report.add(
                             ValidationIssue::from_rule(
                                 &st2067_3::SegmentDuration,
-                                crate::validation::cpl_edition(cpl).edition,
+                                crate::validation::cpl_edition(cpl, None, None).edition,
                                 format!(
                                     "Segment {} has mismatched virtual track durations: \
                                      track {} = {:.6}s but track {} = {:.6}s",

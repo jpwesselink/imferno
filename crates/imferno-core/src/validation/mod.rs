@@ -85,17 +85,14 @@ pub trait ValidatorRegistry {
         let mut validators: Vec<Box<dyn ConstraintsValidator>> = Vec::new();
 
         if let Some(core) = cpl_core_edition(cpl) {
-            if let Some(v) =
-                self.resolve_namespace(CoreSpecTarget::of(core.edition).namespace_uri())
-            {
-                // The ST 2067-3 rules run inside the Core Constraints validator.
-                let notices: Vec<String> = core
-                    .assumed
-                    .into_iter()
-                    .chain(cpl_edition(cpl).assumed)
-                    .collect();
-                validators.push(EditionNotices::wrap(v, notices));
-            }
+            // The ST 2067-3 rules run inside the Core Constraints validator.
+            let cpl_choice = cpl_edition(cpl, None, None);
+            let v: Box<dyn ConstraintsValidator> = Box::new(CoreConstraints {
+                edition: core.edition,
+                cpl: Some(cpl_choice.edition),
+            });
+            let notices: Vec<String> = core.assumed.into_iter().chain(cpl_choice.assumed).collect();
+            validators.push(EditionNotices::wrap(v, notices));
         }
 
         let iab_pin = None;
@@ -660,32 +657,45 @@ impl ValidatorRegistry for ConfigurableValidatorRegistry {
 
         let pinned_cpl = self.selection.cpl_spec.map(|t| t.edition());
         let iab_pin = self.selection.iab_spec.map(|t| t.edition());
+        // A core edition pinned by the caller is evidence for the ST 2067-3
+        // edition (its dated reference); a resolved one counts only when
+        // determined (cpl_evidence).
+        let core_pin = self.selection.core_spec.map(|t| t.edition()).or_else(|| {
+            self.selection
+                .core_namespace_uri
+                .as_deref()
+                .and_then(CoreSpecTarget::from_namespace_uri)
+                .map(|t| t.edition())
+        });
+        let mut notices = Vec::new();
+        let cpl_ed = match pinned_cpl {
+            Some(e) => e,
+            None => {
+                let choice = cpl_edition(cpl, core_pin, iab_pin);
+                notices.extend(choice.assumed);
+                choice.edition
+            }
+        };
         let core_of = |edition| -> Box<dyn ConstraintsValidator> {
             Box::new(CoreConstraints {
                 edition,
-                cpl: pinned_cpl,
+                cpl: Some(cpl_ed),
             })
         };
-        let mut notices = Vec::new();
-        let core = if let Some(core_spec) = self.selection.core_spec {
-            Some(core_of(core_spec.edition()))
+        let core = if let Some(edition) = core_pin {
+            Some(core_of(edition))
         } else if let Some(uri) = self.selection.core_namespace_uri.as_deref() {
-            match CoreSpecTarget::from_namespace_uri(uri) {
-                Some(t) => Some(core_of(t.edition())),
-                None => self.resolve_namespace(uri),
-            }
+            self.resolve_namespace(uri)
         } else {
             cpl_core_edition(cpl).map(|core| {
-                notices.extend(core.assumed);
+                notices.insert(0, core.assumed.unwrap_or_default());
                 core_of(core.edition)
             })
         };
+        notices.retain(|n| !n.is_empty());
 
         if let Some(v) = core {
             // The ST 2067-3 rules run inside the Core Constraints validator.
-            if pinned_cpl.is_none() {
-                notices.extend(cpl_edition(cpl).assumed);
-            }
             validators.push(EditionNotices::wrap(v, notices));
         }
 
@@ -2077,7 +2087,10 @@ impl ConstraintsValidator for CoreConstraints {
     fn validate_cpl(&self, cpl: &CompositionPlaylist) -> Vec<ValidationIssue> {
         use crate::diagnostics::Edition;
         let mut issues = Vec::new();
-        let cpl_ed = self.cpl.unwrap_or_else(|| cpl_edition(cpl).edition);
+        // Used directly, the validator's own edition is the caller's choice.
+        let cpl_ed = self
+            .cpl
+            .unwrap_or_else(|| cpl_edition(cpl, Some(self.edition), None).edition);
 
         validate_core_structure(cpl, self.edition, cpl_ed, &mut issues);
 
@@ -2954,10 +2967,9 @@ mod tests {
         });
         let validators = get_validators_for_cpl(&cpl);
         assert_eq!(validators[0].spec_id(), "ST 2067-2:2016");
-        // Only the ST 2067-3 edition is assumed.
+        // ST 2067-2:2016 cites ST 2067-3:2016: nothing is assumed.
         let notices = edition_notices(&validators[0].validate_cpl(&cpl));
-        assert_eq!(notices.len(), 1, "{notices:?}");
-        assert!(notices[0].starts_with("ST 2067-3 edition of CPL"));
+        assert!(notices.is_empty(), "{notices:?}");
     }
 
     /// A pinned ST 2067-3 edition applies to the CPL rules, without a notice.
@@ -4214,7 +4226,7 @@ mod tests {
 
     fn segment_duration_issues(cpl: &CompositionPlaylist) -> Vec<ValidationIssue> {
         let mut issues = Vec::new();
-        validate_segment_track_durations(cpl, cpl_edition(cpl).edition, &mut issues);
+        validate_segment_track_durations(cpl, cpl_edition(cpl, None, None).edition, &mut issues);
         issues
             .into_iter()
             .filter(|i| i.code.ends_with("/SegmentDuration"))

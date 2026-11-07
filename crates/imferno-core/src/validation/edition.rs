@@ -171,10 +171,56 @@ pub fn resolve<E: Edition + Ord>(
 pub(crate) const MARKER_SCOPE_2020: &str =
     "http://www.smpte-ra.org/schemas/2067-3/2020#standard-markers";
 
-/// What in a CPL names an ST 2067-3 edition: a Marker Label in the
-/// `2020#standard-markers` scope, which only ST 2067-3:2020 defines. The
-/// 2016 and 2020 texts otherwise define the same schema and namespace.
-pub fn cpl_evidence(cpl: &CompositionPlaylist) -> Vec<Evidence<St2067_3Edition>> {
+/// What names an ST 2067-3 edition for a CPL:
+/// - the ST 2067-3 edition its ST 2067-2 edition cites: `core_pin`, else the
+///   CPL's Core Constraints edition when determined ([`cpl_core_edition`]);
+/// - for a CPL with IAB Virtual Tracks, the ST 2067-3 edition its
+///   ST 2067-201 edition cites, when that edition is pinned or determined;
+/// - a Marker Label in the `2020#standard-markers` scope, which only
+///   ST 2067-3:2020 defines.
+///
+/// An assumed edition is not evidence.
+pub fn cpl_evidence(
+    cpl: &CompositionPlaylist,
+    core_pin: Option<St2067_2Edition>,
+    iab_pin: Option<St2067_201Edition>,
+) -> Vec<Evidence<St2067_3Edition>> {
+    let mut out = Vec::new();
+    let core = core_pin.map(|e| (e, "the pinned")).or_else(|| {
+        cpl_core_edition(cpl)
+            .filter(|c| c.assumed.is_none())
+            .map(|c| (c.edition, "its"))
+    });
+    if let Some((core, whose)) = core {
+        let e = st2067_3_of_core(core);
+        out.push(Evidence::one(
+            e,
+            format!(
+                "{whose} ST 2067-2 edition, ST 2067-2:{}, cites ST 2067-3:{}",
+                core.label(),
+                e.label()
+            ),
+        ));
+    }
+    let has_iab = cpl
+        .segment_list
+        .segments
+        .iter()
+        .any(|s| !s.sequence_list.iab_sequences.is_empty());
+    if has_iab {
+        let iab = cpl_iab_edition(cpl, iab_pin);
+        if iab.assumed.is_none() {
+            let e = st2067_3_of_iab(iab.edition);
+            out.push(Evidence::one(
+                e,
+                format!(
+                    "its ST 2067-201 edition, ST 2067-201:{}, cites ST 2067-3:{}",
+                    iab.edition.label(),
+                    e.label()
+                ),
+            ));
+        }
+    }
     let uses_2020_scope = cpl.segment_list.segments.iter().any(|s| {
         s.sequence_list.marker_sequences.iter().any(|seq| {
             seq.resource_list
@@ -185,13 +231,12 @@ pub fn cpl_evidence(cpl: &CompositionPlaylist) -> Vec<Evidence<St2067_3Edition>>
         })
     });
     if uses_2020_scope {
-        vec![Evidence::one(
+        out.push(Evidence::one(
             St2067_3Edition::V2020,
             format!("it uses the Marker Label scope {MARKER_SCOPE_2020}, which only ST 2067-3:2020 defines"),
-        )]
-    } else {
-        Vec::new()
+        ));
     }
+    out
 }
 
 /// The ST 2067-3 edition whose rules are applied to a CPL when the caller
@@ -199,7 +244,11 @@ pub fn cpl_evidence(cpl: &CompositionPlaylist) -> Vec<Evidence<St2067_3Edition>>
 /// and 2020 share the 2016 namespace; an ST 429-7 (DCI) or unknown
 /// namespace is not an ST 2067-3 namespace, so every edition is a
 /// candidate and the newest is applied, announced.
-pub fn cpl_edition(cpl: &CompositionPlaylist) -> EditionChoice<St2067_3Edition> {
+pub fn cpl_edition(
+    cpl: &CompositionPlaylist,
+    core_pin: Option<St2067_2Edition>,
+    iab_pin: Option<St2067_201Edition>,
+) -> EditionChoice<St2067_3Edition> {
     use St2067_3Edition::{V2013, V2016, V2020};
     let candidates: &[St2067_3Edition] = match &cpl.namespace {
         CplNamespace::Smpte2067_3_2013 => &[V2013],
@@ -215,8 +264,27 @@ pub fn cpl_edition(cpl: &CompositionPlaylist) -> EditionChoice<St2067_3Edition> 
         &format!("CPL {}", cpl.id),
         &namespace,
         candidates,
-        &cpl_evidence(cpl),
+        &cpl_evidence(cpl, core_pin, iab_pin),
     )
+}
+
+/// The ST 2067-3 edition an ST 2067-2 edition cites (2013 §6.1 uses the
+/// 2067-3:2013 namespace; 2016 and 2020 §3 cite ST 2067-3:2016 / :2020).
+fn st2067_3_of_core(core: St2067_2Edition) -> St2067_3Edition {
+    match core {
+        St2067_2Edition::V2013 => St2067_3Edition::V2013,
+        St2067_2Edition::V2016 => St2067_3Edition::V2016,
+        St2067_2Edition::V2020 => St2067_3Edition::V2020,
+    }
+}
+
+/// The ST 2067-3 edition an ST 2067-201 edition cites (2019 §3:
+/// ST 2067-3:2016; 2021 and 2026: ST 2067-3:2020).
+fn st2067_3_of_iab(iab: St2067_201Edition) -> St2067_3Edition {
+    match iab {
+        St2067_201Edition::V2019 => St2067_3Edition::V2016,
+        St2067_201Edition::V2021 | St2067_201Edition::V2026 => St2067_3Edition::V2020,
+    }
 }
 
 /// The ST 377-1 and ST 377-4 editions applied to an MXF track file.
@@ -605,9 +673,52 @@ mod tests {
         c
     }
 
+    /// ST 2067-2:2016 cites ST 2067-3:2016 and :2020 cites :2020: a CPL whose
+    /// Core Constraints edition is determined (or pinned) determines its
+    /// ST 2067-3 edition.
+    #[test]
+    fn st2067_3_follows_the_dated_core_reference() {
+        let path = concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../test-data/IAB/CompleteIMP/CPL_e0265fda-cb35-4e35-a4e4-4f44d82d2a52.xml"
+        );
+        let iab = crate::cpl::parse_cpl(&std::fs::read_to_string(path).unwrap()).unwrap();
+        let c = cpl_edition(&iab, None, None);
+        assert_eq!((c.edition, c.assumed), (St2067_3Edition::V2016, None));
+        // ST 2067-201:2019 cites ST 2067-3:2016; :2021 cites :2020, against
+        // the 2016 core: announced.
+        let c = cpl_edition(&iab, None, Some(St2067_201Edition::V2019));
+        assert_eq!((c.edition, c.assumed), (St2067_3Edition::V2016, None));
+        let c = cpl_edition(&iab, None, Some(St2067_201Edition::V2021));
+        assert_eq!(c.edition, St2067_3Edition::V2020);
+        assert!(c.assumed.unwrap().contains("ST 2067-201:2021, cites ST 2067-3:2020"));
+
+        let bare = with_namespace(CplNamespace::Smpte2067_3_2016);
+        let c = cpl_edition(&bare, Some(St2067_2Edition::V2016), None);
+        assert_eq!((c.edition, c.assumed), (St2067_3Edition::V2016, None));
+    }
+
+    /// The 2020 marker scope against a 2016 core: the conflict is announced.
+    #[test]
+    fn st2067_3_2020_marker_scope_against_a_2016_core_is_announced() {
+        let mut bare = with_namespace(CplNamespace::Smpte2067_3_2016);
+        bare.source_xml = None;
+        let xml = BASE.replace(
+            "<SequenceList/>",
+            r#"<SequenceList><MarkerSequence><Id>urn:uuid:00000000-0000-0000-0000-000000000003</Id><TrackId>urn:uuid:00000000-0000-0000-0000-000000000004</TrackId><ResourceList><Resource><Id>urn:uuid:00000000-0000-0000-0000-000000000005</Id><IntrinsicDuration>10</IntrinsicDuration><Marker><Label scope="http://www.smpte-ra.org/schemas/2067-3/2020#standard-markers">FFEI</Label><Offset>0</Offset></Marker></Resource></ResourceList></MarkerSequence></SequenceList>"#,
+        );
+        let cpl = crate::cpl::parse_cpl(&xml).unwrap();
+        let c = cpl_edition(&cpl, None, None);
+        assert_eq!((c.edition, c.assumed), (St2067_3Edition::V2020, None));
+        let c = cpl_edition(&cpl, Some(St2067_2Edition::V2016), None);
+        assert_eq!(c.edition, St2067_3Edition::V2020);
+        let why = c.assumed.expect("conflict announced");
+        assert!(why.contains("the evidence does not agree"), "{why}");
+    }
+
     #[test]
     fn st2067_3_2013_namespace_is_determined() {
-        let c = cpl_edition(&with_namespace(CplNamespace::Smpte2067_3_2013));
+        let c = cpl_edition(&with_namespace(CplNamespace::Smpte2067_3_2013), None, None);
         assert_eq!(c.edition, St2067_3Edition::V2013);
         assert_eq!(c.assumed, None);
     }
@@ -615,7 +726,7 @@ mod tests {
     /// 2016 and 2020 share the namespace; nothing tells them apart.
     #[test]
     fn st2067_3_2016_namespace_assumes_2020_and_says_so() {
-        let c = cpl_edition(&with_namespace(CplNamespace::Smpte2067_3_2016));
+        let c = cpl_edition(&with_namespace(CplNamespace::Smpte2067_3_2016), None, None);
         assert_eq!(c.edition, St2067_3Edition::V2020);
         let why = c.assumed.expect("announced");
         assert!(
@@ -637,7 +748,7 @@ mod tests {
             CplNamespace::Unknown("urn:example".into()),
             CplNamespace::Unknown(String::new()),
         ] {
-            let c = cpl_edition(&with_namespace(ns.clone()));
+            let c = cpl_edition(&with_namespace(ns.clone()), None, None);
             assert_eq!(c.edition, St2067_3Edition::V2020, "{ns:?}");
             let why = c.assumed.expect("announced");
             assert!(

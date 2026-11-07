@@ -73,7 +73,7 @@ export default function Homepage() {
         <div className="card-grid four">
           <a className="feat-card" href={`${base}reference/wasm`}>
             <h3>Validates locally</h3>
-            <p>The WebAssembly build validates entirely in the browser. Nothing is uploaded, there is no server and no log of anyone's titles — honouring confidentiality agreements.</p>
+            <p>The WebAssembly build validates entirely in the browser. Nothing is uploaded, there is no server and no log of anyone's titles — honoring confidentiality.</p>
           </a>
           <a className="feat-card" href={`${base}guide/config`}>
             <h3>Strict, and yours to tune</h3>

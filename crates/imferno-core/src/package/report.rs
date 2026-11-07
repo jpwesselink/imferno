@@ -1116,6 +1116,7 @@ fn video_info_from_descriptor(ed: &EssenceDescriptor) -> Option<VideoInfo> {
         Some(VideoCodec::Jpeg2000) => "JPEG 2000".into(),
         Some(VideoCodec::Jpeg2000Imf2k) => "JPEG 2000 (2K)".into(),
         Some(VideoCodec::Jpeg2000Imf4k) => "JPEG 2000 (4K)".into(),
+        Some(VideoCodec::Jpeg2000Imf8k) => "JPEG 2000 (8K)".into(),
         Some(VideoCodec::Jpeg2000Broadcast) => "JPEG 2000 (BCP)".into(),
         Some(VideoCodec::Jpeg2000Ht) => "JPEG 2000 HT".into(),
         Some(VideoCodec::Vc5) => "VC-5".into(),

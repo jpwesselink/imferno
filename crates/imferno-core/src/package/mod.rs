@@ -1896,10 +1896,12 @@ impl Imferno {
                          .with_context("cpl_id", cpl_id.to_string()));
                     }
 
-                    // Each CPLId must reference a known CPL in the package.
+                    // Flag a CPLId that is not in this package. ST 2067-9
+                    // §8 (Note): the referenced composition need not be in
+                    // the same IMP, so this is a warning.
                     if !self.composition_playlists.contains_key(cpl_id) {
                         report.add(ValidationIssue::new(
-                            Severity::Error,
+                            Severity::Warning,
                             Category::Reference,
                             codes::St2067_9_2018::CplNotFound,
                             format!(
@@ -3220,6 +3222,16 @@ mod tests {
         assert!(package.composition_playlists.is_empty());
         assert!(package.get_main_cpl().is_none());
         assert!(package.analyze_tracks().is_empty());
+    }
+
+    /// ST 2067-2:2020 §7.1 (and 2016 §7.1): an IMP need not contain complete
+    /// compositions, so an IMP without a CPL is legitimate. NoCpls is
+    /// informational, never critical.
+    #[test]
+    fn no_cpls_is_info_not_critical() {
+        use crate::assetmap::codes::St2067_2_2020;
+        use crate::diagnostics::codes::ValidationCode;
+        assert_eq!(St2067_2_2020::NoCpls.default_severity(), Severity::Info);
     }
 
     #[test]

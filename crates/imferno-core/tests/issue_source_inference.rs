@@ -22,7 +22,9 @@ use imferno_core::mxf::codes::{
 };
 use imferno_core::package::codes::ImfernoCode;
 use imferno_core::scm::codes::St2067_9_2018;
-use imferno_core::validation::codes::{St2067_21_2020, St2067_21_2023, St2067_21_2025};
+use imferno_core::validation::codes::{
+    St2067_21_2014, St2067_21_2016, St2067_21_2020, St2067_21_2023, St2067_21_2026,
+};
 use imferno_core::validation::iab_codes::{St2067_201_2019, St2067_201_2021, St2067_201_2026Delta};
 use imferno_core::validation::isxd_codes::St2067_202_2023;
 use imferno_core::xsd::codes::XsdConstraintCode;
@@ -66,8 +68,9 @@ fn imferno_internal_codes_infer_as_engine_internal() {
 /// Cross-edition annotation: when an enum's code set is bit-for-bit
 /// identical to its predecessor (verified by snapshot diff), it
 /// returns the predecessor's prefix from `previous_identical_edition`.
-/// Currently three pairs: ST 2067-2:2013↔2016, ST 2067-3:2013↔2016,
-/// ST 2067-201:2019↔2021. All other enums default to `None`.
+/// Currently two pairs: ST 2067-2:2013↔2016, ST 2067-3:2013↔2016.
+/// ST 2067-201:2021 drops the 2019-only ChannelCountNotZero code, so it is
+/// no longer identical to 2019. All other enums default to `None`.
 #[test]
 fn previous_identical_edition_is_set_for_known_identical_pairs() {
     let c1 = St2067_2_2016_Core::ALL[0];
@@ -77,7 +80,7 @@ fn previous_identical_edition_is_set_for_known_identical_pairs() {
     assert_eq!(c2.previous_identical_edition(), Some("ST2067-3:2013"));
 
     let c3 = St2067_201_2021::ALL[0];
-    assert_eq!(c3.previous_identical_edition(), Some("ST2067-201:2019"));
+    assert_eq!(c3.previous_identical_edition(), None);
 
     // Sanity: the older editions don't claim a predecessor.
     let c4 = St2067_2_2013_Core::ALL[0];
@@ -110,7 +113,9 @@ fn every_code_has_a_populated_example() {
     check_all_have_examples(St2067_9_2018::ALL);
     check_all_have_examples(St2067_21_2020::ALL);
     check_all_have_examples(St2067_21_2023::ALL);
-    check_all_have_examples(St2067_21_2025::ALL);
+    check_all_have_examples(St2067_21_2014::ALL);
+    check_all_have_examples(St2067_21_2016::ALL);
+    check_all_have_examples(St2067_21_2026::ALL);
     check_all_have_examples(St2067_201_2019::ALL);
     check_all_have_examples(St2067_201_2021::ALL);
     check_all_have_examples(St2067_201_2026Delta::ALL);
@@ -132,7 +137,9 @@ fn spec_codes_infer_as_prose_rule() {
     check_all(St2067_9_2018::ALL, IssueSource::ProseRule);
     check_all(St2067_21_2020::ALL, IssueSource::ProseRule);
     check_all(St2067_21_2023::ALL, IssueSource::ProseRule);
-    check_all(St2067_21_2025::ALL, IssueSource::ProseRule);
+    check_all(St2067_21_2014::ALL, IssueSource::ProseRule);
+    check_all(St2067_21_2016::ALL, IssueSource::ProseRule);
+    check_all(St2067_21_2026::ALL, IssueSource::ProseRule);
     check_all(St2067_201_2019::ALL, IssueSource::ProseRule);
     check_all(St2067_201_2021::ALL, IssueSource::ProseRule);
     check_all(St2067_201_2026Delta::ALL, IssueSource::ProseRule);

@@ -7,8 +7,9 @@
 //! namespace year is frozen at `/2022/` (§6 Table 1), so [`URI_2022`] is
 //! correct and unchanged.
 //!
-//! The plug-in validator runs App2E base validation (ST 2067-21) internally,
-//! then applies ISXD-specific descriptor and sequence constraints.
+//! The plug-in validator applies only ISXD constraints. ST 2067-202 does not
+//! reference ST 2067-21; App #2E rules come from the App #2E validator the
+//! CPL's ApplicationIdentification selects, in that edition.
 
 // codes live in isxd_codes.rs (declared from validation/mod.rs)
 
@@ -16,7 +17,7 @@ use std::collections::{HashMap, HashSet};
 
 use crate::cpl::CompositionPlaylist;
 use crate::diagnostics::{Category, Severity, ValidationIssue};
-use crate::validation::{App2E2021, ConstraintsValidator};
+use crate::validation::ConstraintsValidator;
 
 use crate::validation::isxd_codes::{self as isxd_codes, IsxdCode};
 
@@ -24,7 +25,7 @@ use crate::validation::isxd_codes::{self as isxd_codes, IsxdCode};
 
 /// ST 2067-202:2023 ISXD Plug-in validator.
 ///
-/// Runs App2E base validation plus ST 2067-202:2023-specific ISXD constraints.
+/// Applies the ST 2067-202:2023 ISXD constraints.
 pub struct AppIsxdPlugin2023;
 
 impl ConstraintsValidator for AppIsxdPlugin2023 {
@@ -34,7 +35,6 @@ impl ConstraintsValidator for AppIsxdPlugin2023 {
 
     fn validate_cpl(&self, cpl: &CompositionPlaylist) -> Vec<ValidationIssue> {
         let mut issues = Vec::new();
-        App2E2021.validate_all(cpl, true, &mut issues);
         validate_isxd_descriptors(cpl, isxd_codes::St2067_202_2023::for_code, &mut issues);
         validate_isxd_sequences(cpl, isxd_codes::St2067_202_2023::for_code, &mut issues);
         issues

@@ -26,7 +26,7 @@ pub enum St2067_3Code {
     LocaleLanguageTagInvalid,
     /// ST 2067-3 §7.3: TrackId is not unique within a segment.
     TrackIdNotUnique,
-    /// ST 2067-3 §7.4: Marker offset exceeds resource effective duration.
+    /// ST 2067-3 §6.13: Marker offset exceeds the resource IntrinsicDuration.
     MarkerOffsetOutOfRange,
     /// ST 2067-3 §7.4: Marker label is not a recognized SMPTE standard value.
     MarkerLabelUnknown,
@@ -190,7 +190,7 @@ macro_rules! define_st2067_3_enum {
                     }
                     Self::TrackIdNotUnique => "TrackId is not unique within a segment.",
                     Self::MarkerOffsetOutOfRange => {
-                        "Marker offset exceeds resource effective duration."
+                        "Marker offset exceeds the resource IntrinsicDuration."
                     }
                     Self::MarkerLabelUnknown => {
                         "Marker label is not a recognized SMPTE standard value."

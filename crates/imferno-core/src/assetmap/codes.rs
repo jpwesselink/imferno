@@ -112,7 +112,10 @@ impl ValidationCode for St2067_2_2020 {
     }
     fn default_severity(&self) -> Severity {
         match self {
-            Self::AssetMap | Self::NoCpls | Self::AssetMapHasNoPackingList => Severity::Critical,
+            Self::AssetMap | Self::AssetMapHasNoPackingList => Severity::Critical,
+            // ST 2067-2:2020 §7.1: an IMP need not contain complete
+            // compositions, so a package without a CPL is legitimate.
+            Self::NoCpls => Severity::Info,
             _ => Severity::Error,
         }
     }

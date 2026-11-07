@@ -159,9 +159,11 @@ enum CoreSpecVersion {
 enum App2eSpecVersion {
     Auto,
     None,
+    V2014,
+    V2016,
     V2020,
-    V2021,
     V2023,
+    V2026,
 }
 
 #[tokio::main]
@@ -254,9 +256,11 @@ fn make_options(
     let app_spec_targets = match app2e_spec {
         App2eSpecVersion::Auto => None,
         App2eSpecVersion::None => Some(vec![]),
+        App2eSpecVersion::V2014 => Some(vec![AppSpecTarget::St2067_21_2014]),
+        App2eSpecVersion::V2016 => Some(vec![AppSpecTarget::St2067_21_2016]),
         App2eSpecVersion::V2020 => Some(vec![AppSpecTarget::St2067_21_2020]),
-        App2eSpecVersion::V2021 => Some(vec![AppSpecTarget::St2067_21_2021]),
         App2eSpecVersion::V2023 => Some(vec![AppSpecTarget::St2067_21_2023]),
+        App2eSpecVersion::V2026 => Some(vec![AppSpecTarget::St2067_21_2026]),
     };
 
     ValidationOptions {

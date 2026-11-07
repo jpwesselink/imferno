@@ -14,82 +14,36 @@ macro_rules! impl_into_string {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ST 2067-21:2020
+// Edition-agnostic App #2E rules
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Validation codes defined by SMPTE ST 2067-21:2020 (Application Profile #2E).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, strum::EnumIter)]
-pub enum St2067_21_2020 {
-    /// Application identifier in CPL ExtensionProperties does not match the expected App2E URI.
-    AppIdMismatch,
-}
-
-impl ValidationCode for St2067_21_2020 {
-    fn code(&self) -> &'static str {
-        match self {
-            Self::AppIdMismatch => "ST2067-21:2020:7.1/AppIdMismatch",
-        }
-    }
-    fn description(&self) -> &'static str {
-        match self {
-            Self::AppIdMismatch =>
-                "Application identifier in CPL ExtensionProperties does not match the expected App2E URI.",
-        }
-    }
-    fn default_severity(&self) -> Severity {
-        Severity::Warning
-    }
-    fn category(&self) -> Category {
-        Category::Metadata
-    }
-    fn example(&self) -> Option<&'static str> {
-        Some(match self {
-            Self::AppIdMismatch =>
-                "CPL ExtensionProperties contains `<ApplicationIdentification>http://www.smpte-ra.org/schemas/2067-20/2013</ApplicationIdentification>` (App #2) instead of the App #2E URI.",
-        })
-    }
-}
-
-impl St2067_21_2020 {
-    pub const ALL: &'static [Self] = &[Self::AppIdMismatch];
-}
-
-impl_into_string!(St2067_21_2020);
-
-// ─────────────────────────────────────────────────────────────────────────────
-// ST 2067-21:2023
-// ─────────────────────────────────────────────────────────────────────────────
-
-/// Validation codes defined by SMPTE ST 2067-21:2023 (Application Profile #2E, UHD/HDR).
+/// An App #2E check, independent of the ST 2067-21 edition.
+///
+/// The validator reports findings by rule; each edition's code enum
+/// ([`St2067_21_2014`], [`St2067_21_2016`], [`St2067_21_2020`],
+/// [`St2067_21_2023`], [`St2067_21_2026`]) maps the rules that edition's
+/// text actually contains to a code carrying that edition's label and
+/// clause. A rule with no code in an edition is not part of that edition
+/// and is never reported under it.
 ///
 /// Variant naming notes:
 /// - Variants ending in `Unknown` check for unrecognized UL values (wrong value).
 /// - Variants starting with `Required` check for missing mandatory fields.
-/// - `*Missing` variants (e.g. `ColorPrimariesMissing`) check field presence at §6.2.1.
-/// - `*Unknown` variants (e.g. `ColorPrimariesUnknown`) check value validity at §6.2.2/3/4.
-/// - Plain variants in §6.2.1 check value-validity for fields whose presence
-///   is enforced elsewhere (e.g. `FieldDominance`, `FrameLayout`).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, strum::EnumIter)]
-pub enum St2067_21_2023 {
-    // ── §5.2 Frame rates and resolutions ─────────────────────────────────────
+/// - `*Missing` variants (e.g. `ColorPrimariesMissing`) check field presence.
+/// - `*Unknown` variants (e.g. `ColorPrimariesUnknown`) check value validity.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum App2ERule {
+    // ── Frame rates and resolutions ─────────────────────────────────────
     /// Frame rate is not in the permitted set for App2E.
     FrameRate,
     /// Image resolution is not in the permitted set for App2E.
     Resolution,
 
-    // ── §5.3 Language tags ────────────────────────────────────────────────────
-    /// Locale language tag is empty.
-    EmptyLanguageTag,
-    /// Locale language tag is not a valid BCP-47 subtag.
-    MalformedLanguageTag,
-    /// Region subtag in a language tag is not valid.
-    RegionCode,
-
-    // ── §6.2 Color system ────────────────────────────────────────────────────
+    // ── Color system ────────────────────────────────────────────────────
     /// Color system designator is not in the permitted set.
     ColorSystem,
 
-    // ── §6.2 Required picture-descriptor fields ───────────────────────────────
+    // ── Required picture-descriptor fields ───────────────────────────────
     /// RGBA/CDCI descriptor is missing the required `StoredWidth` field.
     RequiredStoredWidth,
     /// RGBA/CDCI descriptor is missing the required `StoredHeight` field.
@@ -107,24 +61,18 @@ pub enum St2067_21_2023 {
     /// CDCI descriptor is missing the required `ComponentDepth` field.
     RequiredComponentDepth,
 
-    // ── §6.5 Required audio-descriptor fields ─────────────────────────────────
-    /// WavePCM descriptor is missing the required `ChannelCount` field.
-    RequiredChannelCount,
-    /// WavePCM descriptor is missing the required `QuantizationBits` field.
-    RequiredQuantizationBits,
-
-    // ── §6.2.1 Picture descriptor constraints ────────────────────────────────
+    // ── Picture descriptor constraints ────────────────────────────────
     /// Alpha transparency mode is not permitted in App2E.
     AlphaTransparency,
-    /// `CodingEquations` field is absent from the picture descriptor (§6.2.1 Table 8).
+    /// `CodingEquations` field is absent from the picture descriptor.
     CodingEquationsMissing,
-    /// `ColorPrimaries` field is absent from the picture descriptor (§6.2.1 Table 8).
+    /// `ColorPrimaries` field is absent from the picture descriptor.
     ColorPrimariesMissing,
     /// `FieldDominance` value is not permitted for the declared `FrameLayout`.
     FieldDominance,
     /// `FrameLayout` value is not in the permitted set for App2E.
     FrameLayout,
-    /// `FrameLayout` declares interlaced content, which is not permitted in App2E.
+    /// Frame structure (progressive/interlaced) outside the closest image-characteristics column.
     FrameLayoutInterlaced,
     /// `ImageAlignmentOffset` value is not zero as required.
     ImageAlignmentOffset,
@@ -142,26 +90,26 @@ pub enum St2067_21_2023 {
     SampledYOffset,
     /// `StoredF2Offset` is not zero as required for interlaced content.
     StoredF2Offset,
-    /// `TransferCharacteristic` field is absent from the picture descriptor (§6.2.1 Table 8).
+    /// `TransferCharacteristic` field is absent from the picture descriptor.
     TransferCharacteristicMissing,
 
-    // ── §6.2.2 Transfer characteristic value ────────────────────────────────
-    /// `TransferCharacteristic` UL is present but not a recognized value (§6.2.2).
+    // ── Transfer characteristic value ────────────────────────────────
+    /// `TransferCharacteristic` UL is present but not a recognized value.
     TransferCharacteristicUnknown,
 
-    // ── §6.2.3 Coding equations value ────────────────────────────────────────
-    /// `CodingEquations` UL is present but not a recognized value (§6.2.3).
+    // ── Coding equations value ────────────────────────────────────────
+    /// `CodingEquations` UL is present but not a recognized value.
     CodingEquationsUnknown,
 
-    // ── §6.2.4 Color primaries value ─────────────────────────────────────────
-    /// `ColorPrimaries` UL is present but not a recognized value (§6.2.4).
+    // ── Color primaries value ─────────────────────────────────────────
+    /// `ColorPrimaries` UL is present but not a recognized value.
     ColorPrimariesUnknown,
 
-    // ── §6.2.5 JPEG 2000 requirement ─────────────────────────────────────────
+    // ── JPEG 2000 requirement ─────────────────────────────────────────
     /// Video essence is not JPEG 2000 encoded as required by App2E.
     J2KRequired,
 
-    // ── §6.3 RGBA descriptor ─────────────────────────────────────────────────
+    // ── RGBA descriptor ─────────────────────────────────────────────────
     /// `AlphaMaxRef` value is not permitted.
     AlphaMaxRef,
     /// `AlphaMinRef` value is not permitted.
@@ -177,11 +125,11 @@ pub enum St2067_21_2023 {
     /// `ScanningDirection` value is not in the permitted set.
     ScanningDirection,
 
-    // ── §6.3.2 Component reference values ────────────────────────────────────
+    // ── Component reference values ────────────────────────────────────
     /// Component max/min reference values are inconsistent with bit depth.
     ComponentRefValues,
 
-    // ── §6.4 Bit depth and chroma ────────────────────────────────────────────
+    // ── Bit depth and chroma ────────────────────────────────────────────
     /// `AlphaSampleDepth` value is not permitted.
     AlphaSampleDepth,
     /// `ColorSiting` value is not in the permitted set.
@@ -197,7 +145,7 @@ pub enum St2067_21_2023 {
     /// `VerticalSubsampling` value is not in the permitted set.
     VerticalSubsampling,
 
-    // ── §6.4.3 Luma range ────────────────────────────────────────────────────
+    // ── Luma range ────────────────────────────────────────────────────
     /// `BlackRefLevel` value is inconsistent with bit depth.
     BlackRefLevel,
     /// `ColorRange` value is not in the permitted set.
@@ -205,13 +153,7 @@ pub enum St2067_21_2023 {
     /// `WhiteRefLevel` value is inconsistent with bit depth.
     WhiteRefLevel,
 
-    // ── §6.5 Audio ───────────────────────────────────────────────────────────
-    /// Audio sample rate is not 48 kHz as required.
-    AudioSampleRate,
-    /// `QuantizationBits` value is not in the permitted set (16/24).
-    QuantizationBits,
-
-    // ── §6.5.2 JPEG 2000 sub-descriptor ─────────────────────────────────────
+    // ── JPEG 2000 sub-descriptor ─────────────────────────────────────
     /// J2K codestream coding style is not compliant.
     CodingStyle,
     /// JPEG 2000 codestream layout (J2C) does not meet App2E requirements.
@@ -221,7 +163,7 @@ pub enum St2067_21_2023 {
     /// JPEG2000SubDescriptor is absent or incomplete.
     Jpeg2000SubDescriptor,
 
-    // ── §6.2.5 JPEG 2000 resolution profiles ────────────────────────────────
+    // ── JPEG 2000 resolution profiles ────────────────────────────────
     /// JPEG 2000 HT (ISO 15444-15) is not permitted by the App2E 2020 edition.
     J2KHtNotAllowed,
     /// JPEG 2000 IMF 4K Profile: stored resolution is outside the permitted range.
@@ -230,123 +172,37 @@ pub enum St2067_21_2023 {
     J2K2KResolution,
     /// JPEG 2000 Broadcast Contribution Profile: stored resolution is outside the permitted range.
     J2KBcpResolution,
+    /// JPEG 2000 IMF 8K Profile: stored resolution is outside the permitted range.
+    J2K8KResolution,
+    /// The JPEG 2000 profile is not one the edition's JPEG 2000 table lists.
+    J2KProfileNotAllowed,
 
-    // ── §7.1 Application identification ──────────────────────────────────────
+    // ── Application identification ──────────────────────────────────────
     /// ApplicationIdentification is required for App2E compositions.
     ApplicationIdentification,
-    /// ContentMaturityRating agency is empty.
-    ContentMaturityRatingAgency,
-    /// ContentMaturityRating agency is not a valid xs:anyURI.
-    ContentMaturityRatingAgencyUri,
 
-    // ── §7.2 Homogeneous image essence ───────────────────────────────────────
+    // ── Homogeneous image essence ───────────────────────────────────────
     /// All image essence in a composition shall use the same color system.
     HomogeneousImageEssence,
 
-    // ── §7.1 Application identification ──────────────────────────────────────
+    // ── Application identification ──────────────────────────────────────
     /// Application identifier in CPL ExtensionProperties does not match the App2E URI.
     AppIdMismatch,
 
-    // ── §7.4 Segment duration ─────────────────────────────────────────────────
+    // ── Segment duration ─────────────────────────────────────────────────
     /// Segment duration is not an integer multiple of 5 edit units as required by App2E.
     SegmentDurationMultiple,
 
-    // ── §7.5 HDR metadata ────────────────────────────────────────────────────
+    // ── HDR metadata ────────────────────────────────────────────────────
     /// `MaxCLL` / `MaxFALL` HDR metadata is absent; recommended for HDR content.
     MaxCLLMaxFALL,
 }
 
-impl ValidationCode for St2067_21_2023 {
-    fn code(&self) -> &'static str {
-        match self {
-            Self::FrameRate => "ST2067-21:2023:5.2/FrameRate",
-            Self::Resolution => "ST2067-21:2023:5.2/Resolution",
-            Self::EmptyLanguageTag => "ST2067-21:2023:5.3/EmptyLanguageTag",
-            Self::MalformedLanguageTag => "ST2067-21:2023:5.3/MalformedLanguageTag",
-            Self::RegionCode => "ST2067-21:2023:5.3/RegionCode",
-            Self::ColorSystem => "ST2067-21:2023:6.2/ColorSystem",
-            Self::RequiredStoredWidth => "ST2067-21:2023:6.2/Required-StoredWidth",
-            Self::RequiredStoredHeight => "ST2067-21:2023:6.2/Required-StoredHeight",
-            Self::RequiredSampleRate => "ST2067-21:2023:6.2/Required-SampleRate",
-            Self::RequiredFrameLayout => "ST2067-21:2023:6.2/Required-FrameLayout",
-            Self::RequiredColorPrimaries => "ST2067-21:2023:6.2/Required-ColorPrimaries",
-            Self::RequiredTransferCharacteristic => {
-                "ST2067-21:2023:6.2/Required-TransferCharacteristic"
-            }
-            Self::RequiredPictureCompression => "ST2067-21:2023:6.2/Required-PictureCompression",
-            Self::RequiredComponentDepth => "ST2067-21:2023:6.2/Required-ComponentDepth",
-            Self::RequiredChannelCount => "ST2067-21:2023:6.5/Required-ChannelCount",
-            Self::RequiredQuantizationBits => "ST2067-21:2023:6.5/Required-QuantizationBits",
-            Self::AlphaTransparency => "ST2067-21:2023:6.2.1/AlphaTransparency",
-            Self::CodingEquationsMissing => "ST2067-21:2023:6.2.1/CodingEquationsMissing",
-            Self::ColorPrimariesMissing => "ST2067-21:2023:6.2.1/ColorPrimariesMissing",
-            Self::FieldDominance => "ST2067-21:2023:6.2.1/FieldDominance",
-            Self::FrameLayout => "ST2067-21:2023:6.2.1/FrameLayout",
-            Self::FrameLayoutInterlaced => "ST2067-21:2023:6.2.1/FrameLayoutInterlaced",
-            Self::ImageAlignmentOffset => "ST2067-21:2023:6.2.1/ImageAlignmentOffset",
-            Self::ImageEndOffset => "ST2067-21:2023:6.2.1/ImageEndOffset",
-            Self::ImageStartOffset => "ST2067-21:2023:6.2.1/ImageStartOffset",
-            Self::SampledHeight => "ST2067-21:2023:6.2.1/SampledHeight",
-            Self::SampledWidth => "ST2067-21:2023:6.2.1/SampledWidth",
-            Self::SampledXOffset => "ST2067-21:2023:6.2.1/SampledXOffset",
-            Self::SampledYOffset => "ST2067-21:2023:6.2.1/SampledYOffset",
-            Self::StoredF2Offset => "ST2067-21:2023:6.2.1/StoredF2Offset",
-            Self::TransferCharacteristicMissing => {
-                "ST2067-21:2023:6.2.1/TransferCharacteristicMissing"
-            }
-            Self::TransferCharacteristicUnknown => {
-                "ST2067-21:2023:6.2.2/TransferCharacteristicUnknown"
-            }
-            Self::CodingEquationsUnknown => "ST2067-21:2023:6.2.3/CodingEquationsUnknown",
-            Self::ColorPrimariesUnknown => "ST2067-21:2023:6.2.4/ColorPrimariesUnknown",
-            Self::J2KRequired => "ST2067-21:2023:6.2.5/J2KRequired",
-            Self::AlphaMaxRef => "ST2067-21:2023:6.3/AlphaMaxRef",
-            Self::AlphaMinRef => "ST2067-21:2023:6.3/AlphaMinRef",
-            Self::ComponentMaxRef => "ST2067-21:2023:6.3/ComponentMaxRef",
-            Self::ComponentMinRef => "ST2067-21:2023:6.3/ComponentMinRef",
-            Self::Palette => "ST2067-21:2023:6.3/Palette",
-            Self::PaletteLayout => "ST2067-21:2023:6.3/PaletteLayout",
-            Self::ScanningDirection => "ST2067-21:2023:6.3/ScanningDirection",
-            Self::ComponentRefValues => "ST2067-21:2023:6.3.2/ComponentRefValues",
-            Self::AlphaSampleDepth => "ST2067-21:2023:6.4/AlphaSampleDepth",
-            Self::ColorSiting => "ST2067-21:2023:6.4/ColorSiting",
-            Self::ComponentDepth => "ST2067-21:2023:6.4/ComponentDepth",
-            Self::HorizontalSubsampling => "ST2067-21:2023:6.4/HorizontalSubsampling",
-            Self::PaddingBits => "ST2067-21:2023:6.4/PaddingBits",
-            Self::ReversedByteOrder => "ST2067-21:2023:6.4/ReversedByteOrder",
-            Self::VerticalSubsampling => "ST2067-21:2023:6.4/VerticalSubsampling",
-            Self::BlackRefLevel => "ST2067-21:2023:6.4.3/BlackRefLevel",
-            Self::ColorRange => "ST2067-21:2023:6.4.3/ColorRange",
-            Self::WhiteRefLevel => "ST2067-21:2023:6.4.3/WhiteRefLevel",
-            Self::AudioSampleRate => "ST2067-21:2023:6.5/AudioSampleRate",
-            Self::QuantizationBits => "ST2067-21:2023:6.5/QuantizationBits",
-            Self::CodingStyle => "ST2067-21:2023:6.5.2/CodingStyle",
-            Self::J2CLayout => "ST2067-21:2023:6.5.2/J2CLayout",
-            Self::J2KExtendedCapabilities => "ST2067-21:2023:6.5.2/J2KExtendedCapabilities",
-            Self::Jpeg2000SubDescriptor => "ST2067-21:2023:6.5.2/JPEG2000SubDescriptor",
-            Self::J2KHtNotAllowed => "ST2067-21:2023:6.2.5/J2K-HT-Not-Allowed",
-            Self::J2K4KResolution => "ST2067-21:2023:6.2.5/J2K-4K-Resolution",
-            Self::J2K2KResolution => "ST2067-21:2023:6.2.5/J2K-2K-Resolution",
-            Self::J2KBcpResolution => "ST2067-21:2023:6.2.5/J2K-BCP-Resolution",
-            Self::ApplicationIdentification => "ST2067-21:2023:7.1/ApplicationIdentification",
-            Self::ContentMaturityRatingAgency => "ST2067-21:2023:7.1/ContentMaturityRating-Agency",
-            Self::ContentMaturityRatingAgencyUri => {
-                "ST2067-21:2023:7.1/ContentMaturityRating-Agency-URI"
-            }
-            Self::HomogeneousImageEssence => "ST2067-21:2023:7.2/HomogeneousImageEssence",
-            Self::AppIdMismatch => "ST2067-21:2023:7.1/AppIdMismatch",
-            Self::SegmentDurationMultiple => "ST2067-21:2023:7.4/SegmentDurationMultiple",
-            Self::MaxCLLMaxFALL => "ST2067-21:2023:7.5/MaxCLLMaxFALL",
-        }
-    }
-
-    fn description(&self) -> &'static str {
+impl App2ERule {
+    pub fn description(&self) -> &'static str {
         match self {
             Self::FrameRate => "Frame rate is not in the permitted set for App2E.",
             Self::Resolution => "Image resolution is not in the permitted set for App2E.",
-            Self::EmptyLanguageTag => "Locale language tag is empty.",
-            Self::MalformedLanguageTag => "Locale language tag is not a valid BCP-47 subtag.",
-            Self::RegionCode => "Region subtag in a language tag is not valid.",
             Self::ColorSystem => "Color system designator is not in the permitted set.",
             Self::RequiredStoredWidth => "RGBA/CDCI descriptor is missing the required StoredWidth field.",
             Self::RequiredStoredHeight => "RGBA/CDCI descriptor is missing the required StoredHeight field.",
@@ -356,14 +212,12 @@ impl ValidationCode for St2067_21_2023 {
             Self::RequiredTransferCharacteristic => "RGBA/CDCI descriptor is missing the required TransferCharacteristic field.",
             Self::RequiredPictureCompression => "RGBA/CDCI descriptor is missing the required PictureCompression field.",
             Self::RequiredComponentDepth => "CDCI descriptor is missing the required ComponentDepth field.",
-            Self::RequiredChannelCount => "WavePCM descriptor is missing the required ChannelCount field.",
-            Self::RequiredQuantizationBits => "WavePCM descriptor is missing the required QuantizationBits field.",
             Self::AlphaTransparency => "Alpha transparency mode is not permitted in App2E.",
-            Self::CodingEquationsMissing => "CodingEquations field is absent from the picture descriptor (Table 8).",
-            Self::ColorPrimariesMissing => "ColorPrimaries field is absent from the picture descriptor (Table 8).",
+            Self::CodingEquationsMissing => "CodingEquations field is absent from the picture descriptor.",
+            Self::ColorPrimariesMissing => "ColorPrimaries field is absent from the picture descriptor.",
             Self::FieldDominance => "FieldDominance value is not permitted for the declared FrameLayout.",
             Self::FrameLayout => "FrameLayout value is not in the permitted set for App2E.",
-            Self::FrameLayoutInterlaced => "FrameLayout declares interlaced content, which is not permitted in App2E.",
+            Self::FrameLayoutInterlaced => "Image frame structure (progressive or interlaced) does not fit the closest permitted column of the edition's image-characteristics table.",
             Self::ImageAlignmentOffset => "ImageAlignmentOffset must be zero.",
             Self::ImageEndOffset => "ImageEndOffset must be zero.",
             Self::ImageStartOffset => "ImageStartOffset must be zero.",
@@ -372,7 +226,7 @@ impl ValidationCode for St2067_21_2023 {
             Self::SampledXOffset => "SampledXOffset must be zero.",
             Self::SampledYOffset => "SampledYOffset must be zero.",
             Self::StoredF2Offset => "StoredF2Offset must be zero.",
-            Self::TransferCharacteristicMissing => "TransferCharacteristic field is absent from the picture descriptor (Table 8).",
+            Self::TransferCharacteristicMissing => "TransferCharacteristic field is absent from the picture descriptor.",
             Self::TransferCharacteristicUnknown => "TransferCharacteristic UL is present but not a recognized value.",
             Self::CodingEquationsUnknown => "CodingEquations UL is present but not a recognized value.",
             Self::ColorPrimariesUnknown => "ColorPrimaries UL is present but not a recognized value.",
@@ -387,7 +241,7 @@ impl ValidationCode for St2067_21_2023 {
             Self::ComponentRefValues => "Component max/min reference values are inconsistent with bit depth.",
             Self::AlphaSampleDepth => "AlphaSampleDepth value is not permitted.",
             Self::ColorSiting => "ColorSiting value is not in the permitted set.",
-            Self::ComponentDepth => "ComponentDepth value is not in the permitted set (8 / 10 / 12 / 16).",
+            Self::ComponentDepth => "ComponentDepth is missing, or the pixel bit depth is not permitted for the image characteristics.",
             Self::HorizontalSubsampling => "HorizontalSubsampling value is not in the permitted set.",
             Self::PaddingBits => "PaddingBits must be zero.",
             Self::ReversedByteOrder => "ReversedByteOrder flag is set; byte reversal is not permitted.",
@@ -395,8 +249,6 @@ impl ValidationCode for St2067_21_2023 {
             Self::BlackRefLevel => "BlackRefLevel value is inconsistent with ComponentDepth.",
             Self::ColorRange => "ColorRange value is not in the permitted set.",
             Self::WhiteRefLevel => "WhiteRefLevel value is inconsistent with ComponentDepth.",
-            Self::AudioSampleRate => "Audio sample rate must be 48 000 Hz.",
-            Self::QuantizationBits => "QuantizationBits must be 16 or 24.",
             Self::CodingStyle => "JPEG 2000 codestream coding style is not compliant.",
             Self::J2CLayout => "JPEG 2000 codestream layout does not meet App2E requirements.",
             Self::J2KExtendedCapabilities => "JPEG 2000 extended capabilities are declared but not permitted.",
@@ -405,41 +257,27 @@ impl ValidationCode for St2067_21_2023 {
             Self::J2K4KResolution                => "JPEG 2000 IMF 4K Profile: stored resolution is outside the permitted range.",
             Self::J2K2KResolution                => "JPEG 2000 IMF 2K Profile: stored resolution is outside the permitted range.",
             Self::J2KBcpResolution               => "JPEG 2000 Broadcast Contribution Profile: stored resolution is outside the permitted range.",
+            Self::J2K8KResolution                => "JPEG 2000 IMF 8K Profile: stored resolution is outside the permitted range.",
+            Self::J2KProfileNotAllowed           => "The JPEG 2000 profile is not listed in the edition's JPEG 2000 profile table.",
             Self::ApplicationIdentification      => "ApplicationIdentification is required for App2E compositions.",
-            Self::ContentMaturityRatingAgency    => "ContentMaturityRating Agency is empty.",
-            Self::ContentMaturityRatingAgencyUri => "ContentMaturityRating Agency is not a valid xs:anyURI.",
             Self::HomogeneousImageEssence        => "All image essence in a composition shall use the same color system.",
-            Self::AppIdMismatch => "Application identifier in CPL ExtensionProperties does not match the expected App2E URI.",
+            Self::AppIdMismatch => "ApplicationIdentification in CPL ExtensionProperties does not include the expected App2E URI.",
             Self::SegmentDurationMultiple => "Segment duration must be an integer multiple of 5 edit units.",
             Self::MaxCLLMaxFALL => "MaxCLL / MaxFALL HDR metadata is absent; recommended for HDR content.",
         }
     }
 
-    fn default_severity(&self) -> Severity {
+    pub fn default_severity(&self) -> Severity {
         match self {
             Self::MaxCLLMaxFALL => Severity::Info,
             Self::AppIdMismatch | Self::Jpeg2000SubDescriptor => Severity::Warning,
-            Self::ContentMaturityRatingAgency | Self::ContentMaturityRatingAgencyUri => {
-                Severity::Error
-            }
             _ => Severity::Error,
         }
     }
 
-    fn category(&self) -> Category {
+    pub fn category(&self) -> Category {
         match self {
-            Self::EmptyLanguageTag
-            | Self::MalformedLanguageTag
-            | Self::RegionCode
-            | Self::AppIdMismatch
-            | Self::ApplicationIdentification
-            | Self::ContentMaturityRatingAgency
-            | Self::ContentMaturityRatingAgencyUri => Category::Metadata,
-
-            Self::RequiredChannelCount
-            | Self::RequiredQuantizationBits
-            | Self::AudioSampleRate
-            | Self::QuantizationBits => Category::Audio,
+            Self::AppIdMismatch | Self::ApplicationIdentification => Category::Metadata,
 
             Self::J2KRequired
             | Self::CodingStyle
@@ -450,6 +288,8 @@ impl ValidationCode for St2067_21_2023 {
             | Self::J2K4KResolution
             | Self::J2K2KResolution
             | Self::J2KBcpResolution
+            | Self::J2K8KResolution
+            | Self::J2KProfileNotAllowed
             | Self::RequiredStoredWidth
             | Self::RequiredStoredHeight
             | Self::RequiredSampleRate
@@ -464,18 +304,12 @@ impl ValidationCode for St2067_21_2023 {
             _ => Category::Video,
         }
     }
-    fn example(&self) -> Option<&'static str> {
+    pub fn example(&self) -> Option<&'static str> {
         Some(match self {
             Self::FrameRate =>
-                "<EditRate>30 1</EditRate>  <!-- not in {24,25,30,50,60,120}/{1,1001} -->",
+                "<SampleRate>48/1</SampleRate>  <!-- 48 fps is not in Table 3 -->",
             Self::Resolution =>
-                "<StoredWidth>1280</StoredWidth><StoredHeight>720</StoredHeight>  <!-- not 1920×1080 / 3840×2160 / 4096×2160 -->",
-            Self::EmptyLanguageTag =>
-                "<Locale><LanguageList><Language></Language></LanguageList></Locale>",
-            Self::MalformedLanguageTag =>
-                "<Language>123-en</Language>  <!-- BCP-47 primary subtag must start with a letter -->",
-            Self::RegionCode =>
-                "<Language>en-XYZ</Language>  <!-- region subtag XYZ not in ISO 3166-1 -->",
+                "<StoredWidth>9000</StoredWidth><StoredHeight>7000</StoredHeight>  <!-- larger than every image-characteristics column -->",
             Self::ColorSystem =>
                 "ColorPrimaries + TransferCharacteristic + CodingEquations triple doesn't map to a permitted App2E ColorN system",
             Self::RequiredStoredWidth =>
@@ -494,10 +328,6 @@ impl ValidationCode for St2067_21_2023 {
                 "<RGBADescriptor>…</RGBADescriptor>  <!-- no <PictureCompression> UL child -->",
             Self::RequiredComponentDepth =>
                 "<CDCIDescriptor>…</CDCIDescriptor>  <!-- no <ComponentDepth> child -->",
-            Self::RequiredChannelCount =>
-                "<WAVEPCMDescriptor>…</WAVEPCMDescriptor>  <!-- no <ChannelCount> child -->",
-            Self::RequiredQuantizationBits =>
-                "<WAVEPCMDescriptor>…</WAVEPCMDescriptor>  <!-- no <QuantizationBits> child -->",
             Self::AlphaTransparency =>
                 "<AlphaTransparency>true</AlphaTransparency>  <!-- App2E disallows alpha -->",
             Self::CodingEquationsMissing =>
@@ -509,7 +339,7 @@ impl ValidationCode for St2067_21_2023 {
             Self::FrameLayout =>
                 "<FrameLayout>MixedFields</FrameLayout>  <!-- not in {FullFrame,SeparateFields,SingleField} -->",
             Self::FrameLayoutInterlaced =>
-                "<FrameLayout>SeparateFields</FrameLayout>  <!-- App2E forbids interlaced -->",
+                "<FrameLayout>SeparateFields</FrameLayout> with <SampleRate>24/1</SampleRate>  <!-- interlaced only at 25, 30 or 30000/1001 -->",
             Self::ImageAlignmentOffset =>
                 "<ImageAlignmentOffset>16</ImageAlignmentOffset>  <!-- must be 0 -->",
             Self::ImageEndOffset =>
@@ -572,10 +402,6 @@ impl ValidationCode for St2067_21_2023 {
                 "<ComponentDepth>10</ComponentDepth><ColorRange>1019</ColorRange>  <!-- not in permitted set -->",
             Self::WhiteRefLevel =>
                 "<ComponentDepth>10</ComponentDepth><WhiteRefLevel>235</WhiteRefLevel>  <!-- expected 940 for 10-bit -->",
-            Self::AudioSampleRate =>
-                "<AudioSampleRate>44100/1</AudioSampleRate>  <!-- must be 48000/1 -->",
-            Self::QuantizationBits =>
-                "<QuantizationBits>32</QuantizationBits>  <!-- not in {16,24} -->",
             Self::CodingStyle =>
                 "JPEG2000SubDescriptor CodingStyleDefault Scod byte declares non-compliant entropy coding",
             Self::J2CLayout =>
@@ -591,13 +417,13 @@ impl ValidationCode for St2067_21_2023 {
             Self::J2K2KResolution =>
                 "<StoredWidth>2400</StoredWidth>  <!-- IMF 2K profile caps width at 2048 -->",
             Self::J2KBcpResolution =>
-                "<StoredWidth>3840</StoredWidth>  <!-- Broadcast Contribution Profile caps width at 1920 -->",
+                "<StoredWidth>4096</StoredWidth> with a Broadcast Contribution profile  <!-- profile column is 1..3840 x 1..2160 -->",
+            Self::J2K8KResolution =>
+                "<StoredWidth>3840</StoredWidth> with an 8K IMF profile  <!-- profile column is 4097..8192 x 1..6224 -->",
+            Self::J2KProfileNotAllowed =>
+                "<PictureCompression>urn:smpte:ul:060e2b34.0401010d.04010202.03010403</PictureCompression>  <!-- 8K IMF profile, not in the 2023 table -->",
             Self::ApplicationIdentification =>
                 "<CompositionPlaylist>…</CompositionPlaylist>  <!-- ExtensionProperties has no <ApplicationIdentification> -->",
-            Self::ContentMaturityRatingAgency =>
-                "<ContentMaturityRating><Agency></Agency>…</ContentMaturityRating>",
-            Self::ContentMaturityRatingAgencyUri =>
-                "<ContentMaturityRating><Agency>imdb</Agency>…</ContentMaturityRating>  <!-- not a URI -->",
             Self::HomogeneousImageEssence =>
                 "Composition mixes Color1 (BT.709) and Color3 (BT.2020) resources across segments",
             Self::AppIdMismatch =>
@@ -610,131 +436,317 @@ impl ValidationCode for St2067_21_2023 {
     }
 }
 
-impl St2067_21_2023 {
-    pub const ALL: &'static [Self] = &[
-        Self::FrameRate,
-        Self::Resolution,
-        Self::EmptyLanguageTag,
-        Self::MalformedLanguageTag,
-        Self::RegionCode,
-        Self::ColorSystem,
-        Self::RequiredStoredWidth,
-        Self::RequiredStoredHeight,
-        Self::RequiredSampleRate,
-        Self::RequiredFrameLayout,
-        Self::RequiredColorPrimaries,
-        Self::RequiredTransferCharacteristic,
-        Self::RequiredPictureCompression,
-        Self::RequiredComponentDepth,
-        Self::RequiredChannelCount,
-        Self::RequiredQuantizationBits,
-        Self::AlphaTransparency,
-        Self::CodingEquationsMissing,
-        Self::ColorPrimariesMissing,
-        Self::FieldDominance,
-        Self::FrameLayout,
-        Self::FrameLayoutInterlaced,
-        Self::ImageAlignmentOffset,
-        Self::ImageEndOffset,
-        Self::ImageStartOffset,
-        Self::SampledHeight,
-        Self::SampledWidth,
-        Self::SampledXOffset,
-        Self::SampledYOffset,
-        Self::StoredF2Offset,
-        Self::TransferCharacteristicMissing,
-        Self::TransferCharacteristicUnknown,
-        Self::CodingEquationsUnknown,
-        Self::ColorPrimariesUnknown,
-        Self::J2KRequired,
-        Self::AlphaMaxRef,
-        Self::AlphaMinRef,
-        Self::ComponentMaxRef,
-        Self::ComponentMinRef,
-        Self::Palette,
-        Self::PaletteLayout,
-        Self::ScanningDirection,
-        Self::ComponentRefValues,
-        Self::AlphaSampleDepth,
-        Self::ColorSiting,
-        Self::ComponentDepth,
-        Self::HorizontalSubsampling,
-        Self::PaddingBits,
-        Self::ReversedByteOrder,
-        Self::VerticalSubsampling,
-        Self::BlackRefLevel,
-        Self::ColorRange,
-        Self::WhiteRefLevel,
-        Self::AudioSampleRate,
-        Self::QuantizationBits,
-        Self::CodingStyle,
-        Self::J2CLayout,
-        Self::J2KExtendedCapabilities,
-        Self::Jpeg2000SubDescriptor,
-        Self::J2KHtNotAllowed,
-        Self::J2K4KResolution,
-        Self::J2K2KResolution,
-        Self::J2KBcpResolution,
-        Self::ApplicationIdentification,
-        Self::ContentMaturityRatingAgency,
-        Self::ContentMaturityRatingAgencyUri,
-        Self::HomogeneousImageEssence,
-        Self::AppIdMismatch,
-        Self::SegmentDurationMultiple,
-        Self::MaxCLLMaxFALL,
-    ];
-}
-
-impl_into_string!(St2067_21_2023);
-
 // ─────────────────────────────────────────────────────────────────────────────
-// ST 2067-21:2025
+// Per-edition code catalogues
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Validation codes defined by SMPTE ST 2067-21:2025 (App2E, timed-text additions).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, strum::EnumIter)]
-pub enum St2067_21_2025 {
-    /// Timed text track designated as Forced Narrative (FN) does not comply with §5.6.
-    FNTimedText,
-    /// Timed text track designated as HI-Caption (HIC) does not comply with §5.6.
-    HICTimedText,
-}
-
-impl ValidationCode for St2067_21_2025 {
-    fn code(&self) -> &'static str {
-        match self {
-            Self::FNTimedText => "ST2067-21:2025:5.6/FNTimedText",
-            Self::HICTimedText => "ST2067-21:2025:5.6/HICTimedText",
+/// Defines one edition's code enum: the rules that exist in that edition's
+/// text, each with that edition's label and clause.
+macro_rules! define_app2e_edition {
+    (
+        $(#[$meta:meta])*
+        $name:ident { $($variant:ident => $code:literal,)* }
+    ) => {
+        $(#[$meta])*
+        #[allow(non_camel_case_types)]
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, strum::EnumIter)]
+        pub enum $name {
+            $(
+                #[doc = $code]
+                $variant,
+            )*
         }
-    }
-    fn description(&self) -> &'static str {
-        match self {
-            Self::FNTimedText => {
-                "Timed text track designated as Forced Narrative (FN) does not comply with §5.6."
+
+        impl $name {
+            /// Every code of this edition.
+            pub const ALL: &'static [Self] = &[$(Self::$variant,)*];
+
+            /// The edition-agnostic rule this code reports.
+            pub fn rule(&self) -> App2ERule {
+                match self {
+                    $(Self::$variant => App2ERule::$variant,)*
+                }
             }
-            Self::HICTimedText => {
-                "Timed text track designated as HI-Caption (HIC) does not comply with §5.6."
+
+            /// The code for `rule` in this edition, or `None` when the
+            /// edition's text does not contain the rule.
+            #[allow(unreachable_patterns)]
+            pub fn for_rule(rule: App2ERule) -> Option<Self> {
+                match rule {
+                    $(App2ERule::$variant => Some(Self::$variant),)*
+                    _ => None,
+                }
             }
         }
-    }
-    fn default_severity(&self) -> Severity {
-        Severity::Error
-    }
-    fn category(&self) -> Category {
-        Category::Subtitle
-    }
-    fn example(&self) -> Option<&'static str> {
-        Some(match self {
-            Self::FNTimedText =>
-                "<ForcedNarrativeSequence>…</ForcedNarrativeSequence>  <!-- but the referenced essence is not a TimedText track -->",
-            Self::HICTimedText =>
-                "<HearingImpairedCaptionsSequence>…</HearingImpairedCaptionsSequence>  <!-- but the referenced essence is not a TimedText track -->",
-        })
+
+        impl ValidationCode for $name {
+            fn code(&self) -> &'static str {
+                match self {
+                    $(Self::$variant => $code,)*
+                }
+            }
+            fn description(&self) -> &'static str {
+                self.rule().description()
+            }
+            fn default_severity(&self) -> Severity {
+                self.rule().default_severity()
+            }
+            fn category(&self) -> Category {
+                self.rule().category()
+            }
+            fn example(&self) -> Option<&'static str> {
+                self.rule().example()
+            }
+        }
+
+        impl_into_string!($name);
+    };
+}
+
+define_app2e_edition! {
+    /// Validation codes for SMPTE ST 2067-21:2014 (App #2E, first edition).
+    ///
+    /// The 2014 edition extends ST 2067-20 (App #2) and only adds
+    /// constraints for COLOR.4/COLOR.5: the UL values of §6.1.1–6.1.3, the
+    /// Black/White Ref Level and Color Range values of §6.1.4 Table 4, and
+    /// the ApplicationIdentification value of §7 Table 5.
+    St2067_21_2014 {
+        ColorSystem => "ST2067-21:2014:6.1/ColorSystem",
+        BlackRefLevel => "ST2067-21:2014:6.1.4/BlackRefLevel",
+        WhiteRefLevel => "ST2067-21:2014:6.1.4/WhiteRefLevel",
+        ColorRange => "ST2067-21:2014:6.1.4/ColorRange",
+        ApplicationIdentification => "ST2067-21:2014:7/ApplicationIdentification",
+        AppIdMismatch => "ST2067-21:2014:7/AppIdMismatch",
     }
 }
 
-impl St2067_21_2025 {
-    pub const ALL: &'static [Self] = &[Self::FNTimedText, Self::HICTimedText];
+define_app2e_edition! {
+    /// Validation codes for SMPTE ST 2067-21:2016 (App #2E).
+    ///
+    /// The 2016 edition extends ST 2067-20 (App #2) and adds constraints for
+    /// COLOR.4–COLOR.7: the UL values of §6.1.1–6.1.3, Component Max/Min Ref
+    /// for 12/16-bit R'G'B' (§6.2 Table 6), Black/White Ref Level and Color
+    /// Range (§6.3 Table 7), ApplicationIdentification (§7.1 Table 8) and
+    /// MaxCLL/MaxFALL (§7.2).
+    St2067_21_2016 {
+        ColorSystem => "ST2067-21:2016:6.1/ColorSystem",
+        ComponentRefValues => "ST2067-21:2016:6.2/ComponentRefValues",
+        BlackRefLevel => "ST2067-21:2016:6.3/BlackRefLevel",
+        WhiteRefLevel => "ST2067-21:2016:6.3/WhiteRefLevel",
+        ColorRange => "ST2067-21:2016:6.3/ColorRange",
+        ApplicationIdentification => "ST2067-21:2016:7.1/ApplicationIdentification",
+        AppIdMismatch => "ST2067-21:2016:7.1/AppIdMismatch",
+        MaxCLLMaxFALL => "ST2067-21:2016:7.2/MaxCLLMaxFALL",
+    }
 }
 
-impl_into_string!(St2067_21_2025);
+define_app2e_edition! {
+    /// Validation codes for SMPTE ST 2067-21:2020 (App #2E), including
+    /// Amendment 1:2020 (COLOR.8 / HLG).
+    ///
+    /// Clause numbering of §5–§7 is identical to the 2023 edition. Not in
+    /// this edition: HT-J2K (and with it J2KExtendedCapabilities, Table 14
+    /// of 2023), which is reported as `J2KHtNotAllowed` instead.
+    St2067_21_2020 {
+        FrameRate => "ST2067-21:2020:5.2/FrameRate",
+        Resolution => "ST2067-21:2020:5.2/Resolution",
+        ColorSystem => "ST2067-21:2020:6.2/ColorSystem",
+        RequiredStoredWidth => "ST2067-21:2020:6.2/Required-StoredWidth",
+        RequiredStoredHeight => "ST2067-21:2020:6.2/Required-StoredHeight",
+        RequiredSampleRate => "ST2067-21:2020:6.2/Required-SampleRate",
+        RequiredFrameLayout => "ST2067-21:2020:6.2/Required-FrameLayout",
+        RequiredColorPrimaries => "ST2067-21:2020:6.2/Required-ColorPrimaries",
+        RequiredTransferCharacteristic => "ST2067-21:2020:6.2/Required-TransferCharacteristic",
+        RequiredPictureCompression => "ST2067-21:2020:6.2/Required-PictureCompression",
+        RequiredComponentDepth => "ST2067-21:2020:6.2/Required-ComponentDepth",
+        AlphaTransparency => "ST2067-21:2020:6.2.1/AlphaTransparency",
+        CodingEquationsMissing => "ST2067-21:2020:6.2.1/CodingEquationsMissing",
+        ColorPrimariesMissing => "ST2067-21:2020:6.2.1/ColorPrimariesMissing",
+        FieldDominance => "ST2067-21:2020:6.2.1/FieldDominance",
+        FrameLayout => "ST2067-21:2020:6.2.1/FrameLayout",
+        FrameLayoutInterlaced => "ST2067-21:2020:6.2.1/FrameLayoutInterlaced",
+        ImageAlignmentOffset => "ST2067-21:2020:6.2.1/ImageAlignmentOffset",
+        ImageEndOffset => "ST2067-21:2020:6.2.1/ImageEndOffset",
+        ImageStartOffset => "ST2067-21:2020:6.2.1/ImageStartOffset",
+        SampledHeight => "ST2067-21:2020:6.2.1/SampledHeight",
+        SampledWidth => "ST2067-21:2020:6.2.1/SampledWidth",
+        SampledXOffset => "ST2067-21:2020:6.2.1/SampledXOffset",
+        SampledYOffset => "ST2067-21:2020:6.2.1/SampledYOffset",
+        StoredF2Offset => "ST2067-21:2020:6.2.1/StoredF2Offset",
+        TransferCharacteristicMissing => "ST2067-21:2020:6.2.1/TransferCharacteristicMissing",
+        TransferCharacteristicUnknown => "ST2067-21:2020:6.2.2/TransferCharacteristicUnknown",
+        CodingEquationsUnknown => "ST2067-21:2020:6.2.3/CodingEquationsUnknown",
+        ColorPrimariesUnknown => "ST2067-21:2020:6.2.4/ColorPrimariesUnknown",
+        J2KRequired => "ST2067-21:2020:6.2.5/J2KRequired",
+        AlphaMaxRef => "ST2067-21:2020:6.3/AlphaMaxRef",
+        AlphaMinRef => "ST2067-21:2020:6.3/AlphaMinRef",
+        ComponentMaxRef => "ST2067-21:2020:6.3/ComponentMaxRef",
+        ComponentMinRef => "ST2067-21:2020:6.3/ComponentMinRef",
+        Palette => "ST2067-21:2020:6.3/Palette",
+        PaletteLayout => "ST2067-21:2020:6.3/PaletteLayout",
+        ScanningDirection => "ST2067-21:2020:6.3/ScanningDirection",
+        ComponentRefValues => "ST2067-21:2020:6.3.2/ComponentRefValues",
+        AlphaSampleDepth => "ST2067-21:2020:6.4/AlphaSampleDepth",
+        ColorSiting => "ST2067-21:2020:6.4/ColorSiting",
+        ComponentDepth => "ST2067-21:2020:6.4/ComponentDepth",
+        HorizontalSubsampling => "ST2067-21:2020:6.4/HorizontalSubsampling",
+        PaddingBits => "ST2067-21:2020:6.4/PaddingBits",
+        ReversedByteOrder => "ST2067-21:2020:6.4/ReversedByteOrder",
+        VerticalSubsampling => "ST2067-21:2020:6.4/VerticalSubsampling",
+        BlackRefLevel => "ST2067-21:2020:6.4.3/BlackRefLevel",
+        ColorRange => "ST2067-21:2020:6.4.3/ColorRange",
+        WhiteRefLevel => "ST2067-21:2020:6.4.3/WhiteRefLevel",
+        CodingStyle => "ST2067-21:2020:6.5.2/CodingStyle",
+        J2CLayout => "ST2067-21:2020:6.5.2/J2CLayout",
+        Jpeg2000SubDescriptor => "ST2067-21:2020:6.5.2/JPEG2000SubDescriptor",
+        J2KHtNotAllowed => "ST2067-21:2020:6.2.5/J2K-HT-Not-Allowed",
+        J2K4KResolution => "ST2067-21:2020:6.2.5/J2K-4K-Resolution",
+        J2K2KResolution => "ST2067-21:2020:6.2.5/J2K-2K-Resolution",
+        J2KBcpResolution => "ST2067-21:2020:6.2.5/J2K-BCP-Resolution",
+        J2KProfileNotAllowed => "ST2067-21:2020:6.2.5/J2K-Profile-Not-Allowed",
+        ApplicationIdentification => "ST2067-21:2020:7.1/ApplicationIdentification",
+        HomogeneousImageEssence => "ST2067-21:2020:7.2/HomogeneousImageEssence",
+        AppIdMismatch => "ST2067-21:2020:7.1/AppIdMismatch",
+        SegmentDurationMultiple => "ST2067-21:2020:7.4/SegmentDurationMultiple",
+        MaxCLLMaxFALL => "ST2067-21:2020:7.5/MaxCLLMaxFALL",
+    }
+}
+
+define_app2e_edition! {
+    /// Validation codes for SMPTE ST 2067-21:2023 (App #2E).
+    ///
+    /// Code strings are kept as published by earlier releases.
+    St2067_21_2023 {
+        FrameRate => "ST2067-21:2023:5.2/FrameRate",
+        Resolution => "ST2067-21:2023:5.2/Resolution",
+        ColorSystem => "ST2067-21:2023:6.2/ColorSystem",
+        RequiredStoredWidth => "ST2067-21:2023:6.2/Required-StoredWidth",
+        RequiredStoredHeight => "ST2067-21:2023:6.2/Required-StoredHeight",
+        RequiredSampleRate => "ST2067-21:2023:6.2/Required-SampleRate",
+        RequiredFrameLayout => "ST2067-21:2023:6.2/Required-FrameLayout",
+        RequiredColorPrimaries => "ST2067-21:2023:6.2/Required-ColorPrimaries",
+        RequiredTransferCharacteristic => "ST2067-21:2023:6.2/Required-TransferCharacteristic",
+        RequiredPictureCompression => "ST2067-21:2023:6.2/Required-PictureCompression",
+        RequiredComponentDepth => "ST2067-21:2023:6.2/Required-ComponentDepth",
+        AlphaTransparency => "ST2067-21:2023:6.2.1/AlphaTransparency",
+        CodingEquationsMissing => "ST2067-21:2023:6.2.1/CodingEquationsMissing",
+        ColorPrimariesMissing => "ST2067-21:2023:6.2.1/ColorPrimariesMissing",
+        FieldDominance => "ST2067-21:2023:6.2.1/FieldDominance",
+        FrameLayout => "ST2067-21:2023:6.2.1/FrameLayout",
+        FrameLayoutInterlaced => "ST2067-21:2023:6.2.1/FrameLayoutInterlaced",
+        ImageAlignmentOffset => "ST2067-21:2023:6.2.1/ImageAlignmentOffset",
+        ImageEndOffset => "ST2067-21:2023:6.2.1/ImageEndOffset",
+        ImageStartOffset => "ST2067-21:2023:6.2.1/ImageStartOffset",
+        SampledHeight => "ST2067-21:2023:6.2.1/SampledHeight",
+        SampledWidth => "ST2067-21:2023:6.2.1/SampledWidth",
+        SampledXOffset => "ST2067-21:2023:6.2.1/SampledXOffset",
+        SampledYOffset => "ST2067-21:2023:6.2.1/SampledYOffset",
+        StoredF2Offset => "ST2067-21:2023:6.2.1/StoredF2Offset",
+        TransferCharacteristicMissing => "ST2067-21:2023:6.2.1/TransferCharacteristicMissing",
+        TransferCharacteristicUnknown => "ST2067-21:2023:6.2.2/TransferCharacteristicUnknown",
+        CodingEquationsUnknown => "ST2067-21:2023:6.2.3/CodingEquationsUnknown",
+        ColorPrimariesUnknown => "ST2067-21:2023:6.2.4/ColorPrimariesUnknown",
+        J2KRequired => "ST2067-21:2023:6.2.5/J2KRequired",
+        AlphaMaxRef => "ST2067-21:2023:6.3/AlphaMaxRef",
+        AlphaMinRef => "ST2067-21:2023:6.3/AlphaMinRef",
+        ComponentMaxRef => "ST2067-21:2023:6.3/ComponentMaxRef",
+        ComponentMinRef => "ST2067-21:2023:6.3/ComponentMinRef",
+        Palette => "ST2067-21:2023:6.3/Palette",
+        PaletteLayout => "ST2067-21:2023:6.3/PaletteLayout",
+        ScanningDirection => "ST2067-21:2023:6.3/ScanningDirection",
+        ComponentRefValues => "ST2067-21:2023:6.3.2/ComponentRefValues",
+        AlphaSampleDepth => "ST2067-21:2023:6.4/AlphaSampleDepth",
+        ColorSiting => "ST2067-21:2023:6.4/ColorSiting",
+        ComponentDepth => "ST2067-21:2023:6.4/ComponentDepth",
+        HorizontalSubsampling => "ST2067-21:2023:6.4/HorizontalSubsampling",
+        PaddingBits => "ST2067-21:2023:6.4/PaddingBits",
+        ReversedByteOrder => "ST2067-21:2023:6.4/ReversedByteOrder",
+        VerticalSubsampling => "ST2067-21:2023:6.4/VerticalSubsampling",
+        BlackRefLevel => "ST2067-21:2023:6.4.3/BlackRefLevel",
+        ColorRange => "ST2067-21:2023:6.4.3/ColorRange",
+        WhiteRefLevel => "ST2067-21:2023:6.4.3/WhiteRefLevel",
+        CodingStyle => "ST2067-21:2023:6.5.2/CodingStyle",
+        J2CLayout => "ST2067-21:2023:6.5.2/J2CLayout",
+        J2KExtendedCapabilities => "ST2067-21:2023:6.5.2/J2KExtendedCapabilities",
+        Jpeg2000SubDescriptor => "ST2067-21:2023:6.5.2/JPEG2000SubDescriptor",
+        J2K4KResolution => "ST2067-21:2023:6.2.5/J2K-4K-Resolution",
+        J2K2KResolution => "ST2067-21:2023:6.2.5/J2K-2K-Resolution",
+        J2KBcpResolution => "ST2067-21:2023:6.2.5/J2K-BCP-Resolution",
+        J2KProfileNotAllowed => "ST2067-21:2023:6.2.5/J2K-Profile-Not-Allowed",
+        ApplicationIdentification => "ST2067-21:2023:7.1/ApplicationIdentification",
+        HomogeneousImageEssence => "ST2067-21:2023:7.2/HomogeneousImageEssence",
+        AppIdMismatch => "ST2067-21:2023:7.1/AppIdMismatch",
+        SegmentDurationMultiple => "ST2067-21:2023:7.4/SegmentDurationMultiple",
+        MaxCLLMaxFALL => "ST2067-21:2023:7.5/MaxCLLMaxFALL",
+    }
+}
+
+define_app2e_edition! {
+    /// Validation codes for SMPTE ST 2067-21:2026 (App #2E, HTML edition).
+    ///
+    /// Clauses shift by one against 2023 (Image Essence is §6, Image Track
+    /// Files §7, Composition §8). Not in this edition: AlphaTransparency
+    /// (Table 7 says "Shall be ignored") and HT-J2K exclusion.
+    St2067_21_2026 {
+        FrameRate => "ST2067-21:2026:6.2.1/FrameRate",
+        Resolution => "ST2067-21:2026:6.2.1/Resolution",
+        ColorSystem => "ST2067-21:2026:7.2/ColorSystem",
+        RequiredStoredWidth => "ST2067-21:2026:7.2.1.1/Required-StoredWidth",
+        RequiredStoredHeight => "ST2067-21:2026:7.2.1.1/Required-StoredHeight",
+        RequiredSampleRate => "ST2067-21:2026:7.2.1.1/Required-SampleRate",
+        RequiredFrameLayout => "ST2067-21:2026:7.2.1.1/Required-FrameLayout",
+        RequiredColorPrimaries => "ST2067-21:2026:7.2.1.1/Required-ColorPrimaries",
+        RequiredTransferCharacteristic => "ST2067-21:2026:7.2.1.1/Required-TransferCharacteristic",
+        RequiredPictureCompression => "ST2067-21:2026:7.2.1.1/Required-PictureCompression",
+        RequiredComponentDepth => "ST2067-21:2026:7.4.1/Required-ComponentDepth",
+        CodingEquationsMissing => "ST2067-21:2026:7.2.1.1/CodingEquationsMissing",
+        ColorPrimariesMissing => "ST2067-21:2026:7.2.1.1/ColorPrimariesMissing",
+        FieldDominance => "ST2067-21:2026:7.2.1.1/FieldDominance",
+        FrameLayout => "ST2067-21:2026:7.2.1.4/FrameLayout",
+        FrameLayoutInterlaced => "ST2067-21:2026:6.2.1/FrameLayoutInterlaced",
+        ImageAlignmentOffset => "ST2067-21:2026:7.2.1.1/ImageAlignmentOffset",
+        ImageEndOffset => "ST2067-21:2026:7.2.1.1/ImageEndOffset",
+        ImageStartOffset => "ST2067-21:2026:7.2.1.1/ImageStartOffset",
+        SampledHeight => "ST2067-21:2026:7.2.1.1/SampledHeight",
+        SampledWidth => "ST2067-21:2026:7.2.1.1/SampledWidth",
+        SampledXOffset => "ST2067-21:2026:7.2.1.1/SampledXOffset",
+        SampledYOffset => "ST2067-21:2026:7.2.1.1/SampledYOffset",
+        StoredF2Offset => "ST2067-21:2026:7.2.1.1/StoredF2Offset",
+        TransferCharacteristicMissing => "ST2067-21:2026:7.2.1.1/TransferCharacteristicMissing",
+        TransferCharacteristicUnknown => "ST2067-21:2026:7.2.2/TransferCharacteristicUnknown",
+        CodingEquationsUnknown => "ST2067-21:2026:7.2.3/CodingEquationsUnknown",
+        ColorPrimariesUnknown => "ST2067-21:2026:7.2.4/ColorPrimariesUnknown",
+        J2KRequired => "ST2067-21:2026:7.2.5/J2KRequired",
+        AlphaMaxRef => "ST2067-21:2026:7.3.1/AlphaMaxRef",
+        AlphaMinRef => "ST2067-21:2026:7.3.1/AlphaMinRef",
+        ComponentMaxRef => "ST2067-21:2026:7.3.1/ComponentMaxRef",
+        ComponentMinRef => "ST2067-21:2026:7.3.1/ComponentMinRef",
+        Palette => "ST2067-21:2026:7.3.1/Palette",
+        PaletteLayout => "ST2067-21:2026:7.3.1/PaletteLayout",
+        ScanningDirection => "ST2067-21:2026:7.3.1/ScanningDirection",
+        ComponentRefValues => "ST2067-21:2026:7.3.2/ComponentRefValues",
+        AlphaSampleDepth => "ST2067-21:2026:7.4.1/AlphaSampleDepth",
+        ColorSiting => "ST2067-21:2026:7.4.1/ColorSiting",
+        ComponentDepth => "ST2067-21:2026:7.4.1/ComponentDepth",
+        HorizontalSubsampling => "ST2067-21:2026:7.4.2/HorizontalSubsampling",
+        PaddingBits => "ST2067-21:2026:7.4.1/PaddingBits",
+        ReversedByteOrder => "ST2067-21:2026:7.4.1/ReversedByteOrder",
+        VerticalSubsampling => "ST2067-21:2026:7.4.1/VerticalSubsampling",
+        BlackRefLevel => "ST2067-21:2026:7.4.3/BlackRefLevel",
+        ColorRange => "ST2067-21:2026:7.4.3/ColorRange",
+        WhiteRefLevel => "ST2067-21:2026:7.4.3/WhiteRefLevel",
+        CodingStyle => "ST2067-21:2026:7.5.1/CodingStyle",
+        J2CLayout => "ST2067-21:2026:7.5.2/J2CLayout",
+        J2KExtendedCapabilities => "ST2067-21:2026:7.5.1/J2KExtendedCapabilities",
+        Jpeg2000SubDescriptor => "ST2067-21:2026:7.5.1/JPEG2000SubDescriptor",
+        J2K4KResolution => "ST2067-21:2026:7.2.5/J2K-4K-Resolution",
+        J2K2KResolution => "ST2067-21:2026:7.2.5/J2K-2K-Resolution",
+        J2KBcpResolution => "ST2067-21:2026:7.2.5/J2K-BCP-Resolution",
+        J2K8KResolution => "ST2067-21:2026:7.2.5/J2K-8K-Resolution",
+        ApplicationIdentification => "ST2067-21:2026:8.1/ApplicationIdentification",
+        AppIdMismatch => "ST2067-21:2026:8.1/AppIdMismatch",
+        HomogeneousImageEssence => "ST2067-21:2026:8.2/HomogeneousImageEssence",
+        SegmentDurationMultiple => "ST2067-21:2026:8.3.2/SegmentDurationMultiple",
+        MaxCLLMaxFALL => "ST2067-21:2026:8.3.3/MaxCLLMaxFALL",
+    }
+}

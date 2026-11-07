@@ -118,7 +118,7 @@ All exports are **async** (WASM must be initialized before use).
 | Field | Values | Default |
 |-------|--------|---------|
 | `coreSpec` | `"auto"`, `"v2013"`, `"v2016"`, `"v2020"` | auto-detect |
-| `app2eSpec` | `"auto"`, `"none"`, `"v2020"`, `"v2021"`, `"v2023"` | auto-detect |
+| `app2eSpec` | `"auto"`, `"none"`, `"v2014"`, `"v2016"`, `"v2020"`, `"v2023"`, `"v2026"` | auto-detect |
 | `rules` | ESLint-style rules object (`{ [code]: severity }`) | all enabled |
 
 Rule severities: `"critical"`, `"error"`, `"warning"`, `"info"`, `"off"`.

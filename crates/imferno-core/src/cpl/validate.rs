@@ -11,7 +11,7 @@
 //! - §6.12     Locale language tags (RFC 5646)
 //! - §6.14.1.2 Marker label vocabulary (2013 and 2016 scopes)
 //! - §7.3      TrackId uniqueness within segment; sequence duration integer edit-units
-//! - §7.4      Marker offset bounds
+//! - §6.13     Marker offset bounds
 //!
 //! Note: §7.2.2 (segment duration homogeneity) is enforced by the st2067-21
 //! core structure validator which handles edit-rate normalisation across all
@@ -22,9 +22,7 @@ use std::collections::HashSet;
 use crate::diagnostics::{Category, Location, Severity, ValidationIssue};
 
 use crate::cpl::codes::St2067_3Code;
-use crate::cpl::{
-    CompositionPlaylist, ContentKind, CplNamespace, MarkerLabel, CONTENT_KIND_DEFAULT_SCOPE,
-};
+use crate::cpl::{CompositionPlaylist, ContentKind, CplNamespace, CONTENT_KIND_DEFAULT_SCOPE};
 
 // ─── Code dispatch helper ─────────────────────────────────────────────────────
 
@@ -64,25 +62,160 @@ pub fn validate_cpl(cpl: &CompositionPlaylist) -> Vec<ValidationIssue> {
 
 // ─── §5.5.1.2 ContentKind vocabulary ────────────────────────────────────────
 
-/// ST 2067-3 §5.5.1.2: Under the SMPTE scope, ContentKind shall use a valid vocabulary value.
+/// ST 2067-3:2013 / 2016 §6.1.8 Table 3: ContentKind values under the
+/// default scope (identical in both editions).
+const CONTENT_KINDS_TABLE_3: &[&str] = &[
+    "advertisement",
+    "feature",
+    "psa",
+    "rating",
+    "short",
+    "teaser",
+    "test",
+    "trailer",
+    "transitional",
+    "episode",
+    "highlights",
+    "event",
+];
+
+/// ST 2067-3:2016 §6.1.8 Table 4: ContentKind values under the
+/// `2016#content-kind` scope. This scope does not exist in the 2013 edition.
+const CONTENT_KINDS_TABLE_4_2016: &[&str] = &["supplemental", "documentary"];
+
+const CONTENT_KIND_SCOPE_2016: &str = "http://www.smpte-ra.org/schemas/2067-3/2016#content-kind";
+
+/// The CompositionPlaylist's top-level `ContentKind` element in the source XML.
+enum RawContentKind {
+    /// Element present; its text exactly as written (xs:string, untrimmed).
+    Present(String),
+    /// The root element closed without a `ContentKind` child.
+    Absent,
+    /// The XML could not be scanned.
+    Unreadable,
+}
+
+fn raw_content_kind(xml: &str) -> RawContentKind {
+    raw_content_kind_text(xml).unwrap_or(RawContentKind::Unreadable)
+}
+
+fn raw_content_kind_text(xml: &str) -> Option<RawContentKind> {
+    use quick_xml::events::Event;
+    let mut reader = quick_xml::Reader::from_str(xml);
+    let mut depth = 0usize;
+    let mut in_content_kind = false;
+    let mut text = String::new();
+    loop {
+        match reader.read_event().ok()? {
+            Event::Start(e) => {
+                depth += 1;
+                if depth == 2 && e.local_name().as_ref() == "ContentKind" {
+                    in_content_kind = true;
+                }
+            }
+            Event::End(_) => {
+                if in_content_kind && depth == 2 {
+                    return Some(RawContentKind::Present(text));
+                }
+                if depth == 1 {
+                    return Some(RawContentKind::Absent);
+                }
+                depth = depth.saturating_sub(1);
+            }
+            Event::Empty(e) => {
+                if depth == 1 && e.local_name().as_ref() == "ContentKind" {
+                    return Some(RawContentKind::Present(String::new()));
+                }
+            }
+            Event::Text(t) if in_content_kind => {
+                text.push_str(&quick_xml::escape::unescape(&t).ok()?);
+            }
+            Event::GeneralRef(r) if in_content_kind => {
+                // Predefined and character references; anything else
+                // makes the raw value unrecoverable here.
+                let entity = format!("&{};", r.into_inner());
+                text.push_str(&quick_xml::escape::unescape(&entity).ok()?);
+            }
+            Event::CData(c) if in_content_kind => {
+                text.push_str(&c);
+            }
+            Event::Eof => return None,
+            _ => {}
+        }
+    }
+}
+
+/// ST 2067-3 §6.1.8: under the default scope ContentKind shall match a value
+/// of Table 3; under the 2016 scope (2016 edition only) a value of Table 4.
+/// Any other scope is outside the specification.
 fn validate_content_kind_vocabulary(
     cpl: &CompositionPlaylist,
     code: fn(St2067_3Code) -> &'static str,
     issues: &mut Vec<ValidationIssue>,
 ) {
-    if cpl.content_kind.effective_scope() != CONTENT_KIND_DEFAULT_SCOPE {
+    let scope = cpl.content_kind.effective_scope();
+    let is_2013_edition = matches!(
+        cpl.namespace,
+        CplNamespace::Dci429_7 | CplNamespace::Smpte2067_3_2013
+    );
+    let (allowed, table) = if scope == CONTENT_KIND_DEFAULT_SCOPE {
+        (CONTENT_KINDS_TABLE_3, "Table 3")
+    } else if scope == CONTENT_KIND_SCOPE_2016 && !is_2013_edition {
+        (CONTENT_KINDS_TABLE_4_2016, "Table 4")
+    } else {
         return;
-    }
-    if let ContentKind::Other(ref s) = cpl.content_kind.kind {
+    };
+
+    use RawContentKind::{Absent, Present, Unreadable};
+    // "shall match" is an exact, case-sensitive comparison. `ContentKind::parse`
+    // folds case variants and synonyms ("Feature", "PSA", ...) into named
+    // variants, so compare the raw element text from the source XML when
+    // it is available. ContentKindType extends xs:string, so leading and
+    // trailing whitespace is part of the value and is not trimmed.
+    let raw = cpl
+        .source_xml
+        .as_deref()
+        .map_or(RawContentKind::Unreadable, raw_content_kind);
+    let value = match raw {
+        Present(raw) => raw,
+        // ContentKind is optional (minOccurs="0" in the 2013 and 2016
+        // schemas): nothing to check.
+        Absent => return,
+        // No usable source XML (e.g. a CPL built in memory or deserialised
+        // from JSON): best effort from the parsed variant. Folded
+        // spellings cannot be recovered here, and the parser's default for
+        // a missing element (`Other("unknown")`, no scope) is treated as
+        // absent.
+        Unreadable => match &cpl.content_kind.kind {
+            ContentKind::Other(s) if s == "unknown" && cpl.content_kind.scope.is_none() => {
+                return;
+            }
+            ContentKind::Feature => "feature".to_string(),
+            ContentKind::Trailer => "trailer".to_string(),
+            ContentKind::Test => "test".to_string(),
+            ContentKind::Teaser => "teaser".to_string(),
+            ContentKind::Advertisement => "advertisement".to_string(),
+            ContentKind::Episode => "episode".to_string(),
+            ContentKind::Short => "short".to_string(),
+            ContentKind::PublicServiceAnnouncement => "psa".to_string(),
+            ContentKind::Promo => "promo".to_string(),
+            ContentKind::RatingBump => "rating-bump".to_string(),
+            ContentKind::Commercial => "commercial".to_string(),
+            ContentKind::Other(s) => s.clone(),
+        },
+    };
+
+    if !allowed.contains(&value.as_str()) {
         issues.push(
             ValidationIssue::new(
                 Severity::Warning,
                 Category::Metadata,
                 code(St2067_3Code::ContentKindUnknown),
                 format!(
-                    "ContentKind '{s}' is not a recognized value under the SMPTE scope \
-                     (expected: feature, trailer, test, promo, teaser, rating-bump, \
-                     advertisement, episode, short, commercial, psa)",
+                    "ContentKind {:?} is not a recognized value under scope {scope} \
+                     (expected one of {table}: {})",
+                    value,
+                    allowed.join(", "),
                 ),
             )
             .with_location(Location::new().with_cpl(cpl.id)),
@@ -308,9 +441,9 @@ fn validate_track_id_uniqueness(
     }
 }
 
-// ─── §7.4 Marker offset bounds ───────────────────────────────────────────────
+// ─── §6.13 Marker offset bounds ──────────────────────────────────────────────
 
-/// ST 2067-3 §7.4: Marker offset shall be within the temporal bounds of its resource.
+/// ST 2067-3 §6.13: a Marker Offset shall not exceed the IntrinsicDuration of its resource.
 fn validate_marker_offsets(
     cpl: &CompositionPlaylist,
     code: fn(St2067_3Code) -> &'static str,
@@ -321,20 +454,21 @@ fn validate_marker_offsets(
     for (seg_idx, segment) in cpl.segment_list.segments.iter().enumerate() {
         for seq in &segment.sequence_list.marker_sequences {
             for (res_idx, resource) in seq.resource_list.resources.iter().enumerate() {
-                let effective_duration = resource
-                    .source_duration
-                    .unwrap_or(resource.intrinsic_duration - resource.entry_point.unwrap_or(0));
+                // §6.13: IntrinsicDuration shall be equal or larger than the
+                // largest marker Offset. EntryPoint/SourceDuration (the
+                // playable region) do not constrain Offset.
+                let intrinsic_duration = resource.intrinsic_duration;
 
                 for marker in &resource.markers {
-                    if marker.offset >= effective_duration {
+                    if marker.offset > intrinsic_duration {
                         issues.push(
                             ValidationIssue::new(
                                 Severity::Error,
                                 Category::Timing,
                                 code(St2067_3Code::MarkerOffsetOutOfRange),
                                 format!(
-                                    "Marker '{}' offset {} exceeds resource effective duration {}",
-                                    marker.label, marker.offset, effective_duration,
+                                    "Marker '{}' offset {} exceeds resource IntrinsicDuration {}",
+                                    marker.label, marker.offset, intrinsic_duration,
                                 ),
                             )
                             .with_location(
@@ -351,66 +485,74 @@ fn validate_marker_offsets(
     }
 }
 
-// ─── §7.4 Marker label vocabulary ────────────────────────────────────────────
+// ─── Marker label vocabulary (§6.14.2 / §6.14.1.2) ───────────────────────────
 
 const SMPTE_MARKER_SCOPE: &str = "http://www.smpte-ra.org/schemas/2067-3/2013#standard-markers";
 
 const SMPTE_MARKER_SCOPE_2016: &str =
     "http://www.smpte-ra.org/schemas/2067-3/2016#standard-markers";
 
-/// ST 2067-3 §7.4: SMPTE marker labels shall use the normative vocabulary.
+/// Labels for the default `2013#standard-markers` scope: ST 2067-3:2013
+/// §6.14.2 Table 19, repeated unchanged in ST 2067-3:2016 §6.14.1.2 Table 21.
+const STANDARD_MARKER_LABELS_2013: &[&str] = &[
+    "FFBT", "FFCB", "FFCL", "FFDL", "FFEC", "FFHS", "FFMC", "FFOB", "FFOC", "FFOI", "FFSP", "FFTC",
+    "FFTS", "FTXC", "FTXE", "FTXM", "LFBT", "LFCB", "LFCL", "LFDL", "LFEC", "LFHS", "LFMC", "LFOB",
+    "LFOC", "LFOI", "LFSP", "LFTC", "LFTS", "LTXC", "LTXE", "LTXM", "FPCI", "FFCO", "LFCO", "FFOA",
+    "LFOA",
+];
+
+/// Labels for the `2016#standard-markers` scope: ST 2067-3:2016 §6.14.1.2
+/// Table 21. This scope does not exist in the 2013 edition.
+const STANDARD_MARKER_LABELS_2016: &[&str] = &["FFDC", "LFDC"];
+
+/// ST 2067-3:2013 §6.14.2 / ST 2067-3:2016 §6.14.1.2: labels under the SMPTE
+/// standard-marker scopes shall use the values of Table 19 / Table 21.
+/// Other scopes are outside the scope of the specification. The 2016 scope is
+/// only checked on 2016 (and later/unknown) CPLs; for a 2013 CPL it is a
+/// non-default scope and therefore out of scope.
 fn validate_marker_labels(
     cpl: &CompositionPlaylist,
     code: fn(St2067_3Code) -> &'static str,
     issues: &mut Vec<ValidationIssue>,
 ) {
     let cpl_id = cpl.id;
+    let check_2016_scope = !matches!(
+        cpl.namespace,
+        CplNamespace::Dci429_7 | CplNamespace::Smpte2067_3_2013
+    );
 
     for (seg_idx, segment) in cpl.segment_list.segments.iter().enumerate() {
         for seq in &segment.sequence_list.marker_sequences {
             for (res_idx, resource) in seq.resource_list.resources.iter().enumerate() {
                 for marker in &resource.markers {
                     let scope = marker.label.effective_scope();
-                    if scope == SMPTE_MARKER_SCOPE {
-                        if let MarkerLabel::Other(ref s) = marker.label.label {
-                            issues.push(
-                                ValidationIssue::new(
-                                    Severity::Warning,
-                                    Category::Metadata,
-                                    code(St2067_3Code::MarkerLabelUnknown),
-                                    format!(
-                                        "Marker label '{s}' is not a recognized SMPTE standard marker \
-                                         (expected: FFOC, LFOC, FFAC, LFAC, FFMC, LFMC, FFHC, LFHC)",
-                                    ),
-                                )
-                                .with_location(
-                                    Location::new()
-                                        .with_cpl(cpl_id)
-                                        .with_segment(seg_idx)
-                                        .with_resource(res_idx),
+                    let (allowed, which) = if scope == SMPTE_MARKER_SCOPE {
+                        (STANDARD_MARKER_LABELS_2013, "SMPTE standard marker")
+                    } else if scope == SMPTE_MARKER_SCOPE_2016 && check_2016_scope {
+                        (STANDARD_MARKER_LABELS_2016, "SMPTE 2016 standard marker")
+                    } else {
+                        continue;
+                    };
+                    let label = marker.label.label.to_string();
+                    if !allowed.contains(&label.as_str()) {
+                        issues.push(
+                            ValidationIssue::new(
+                                Severity::Warning,
+                                Category::Metadata,
+                                code(St2067_3Code::MarkerLabelUnknown),
+                                format!(
+                                    "Marker label '{label}' is not a recognized {which} \
+                                     (expected one of: {})",
+                                    allowed.join(", "),
                                 ),
-                            );
-                        }
-                    } else if scope == SMPTE_MARKER_SCOPE_2016 {
-                        if let MarkerLabel::Other(ref s) = marker.label.label {
-                            issues.push(
-                                ValidationIssue::new(
-                                    Severity::Warning,
-                                    Category::Metadata,
-                                    code(St2067_3Code::MarkerLabelUnknown),
-                                    format!(
-                                        "Marker label '{s}' is not a recognized SMPTE 2016 standard \
-                                         marker (expected: FFDC, LFDC)",
-                                    ),
-                                )
-                                .with_location(
-                                    Location::new()
-                                        .with_cpl(cpl_id)
-                                        .with_segment(seg_idx)
-                                        .with_resource(res_idx),
-                                ),
-                            );
-                        }
+                            )
+                            .with_location(
+                                Location::new()
+                                    .with_cpl(cpl_id)
+                                    .with_segment(seg_idx)
+                                    .with_resource(res_idx),
+                            ),
+                        );
                     }
                 }
             }
@@ -789,5 +931,394 @@ mod tests {
                 .any(|i| i.code.contains("MarkerLabelUnknown") && i.message.contains("FFDC, LFDC")),
             "expected 2016 MarkerLabelUnknown, got: {issues:?}",
         );
+    }
+
+    // ── MarkerLabelUnknown vocabulary (ST 2067-3:2013 Table 19,
+    //    ST 2067-3:2016 Table 21) ────────────────────────────────────────────
+
+    fn cpl_with_marker(ns: &str, scope: Option<&str>, label: &str) -> CompositionPlaylist {
+        let scope_attr = scope
+            .map(|s| format!(r#" scope="{s}""#))
+            .unwrap_or_default();
+        let xml = format!(
+            r#"<?xml version="1.0" encoding="UTF-8"?>
+<CompositionPlaylist xmlns="{ns}">
+  <Id>urn:uuid:00000000-0000-0000-0000-000000000001</Id>
+  <IssueDate>2024-01-01T00:00:00Z</IssueDate>
+  <ContentTitle>Test</ContentTitle>
+  <EditRate>24 1</EditRate>
+  <ContentKind>feature</ContentKind>
+  <SegmentList>
+    <Segment>
+      <Id>urn:uuid:00000000-0000-0000-0000-000000000002</Id>
+      <SequenceList>
+        <MarkerSequence>
+          <Id>urn:uuid:00000000-0000-0000-0000-000000000003</Id>
+          <TrackId>urn:uuid:00000000-0000-0000-0000-000000000004</TrackId>
+          <ResourceList>
+            <Resource>
+              <Id>urn:uuid:00000000-0000-0000-0000-000000000005</Id>
+              <IntrinsicDuration>100</IntrinsicDuration>
+              <Marker>
+                <Label{scope_attr}>{label}</Label>
+                <Offset>0</Offset>
+              </Marker>
+            </Resource>
+          </ResourceList>
+        </MarkerSequence>
+      </SequenceList>
+    </Segment>
+  </SegmentList>
+</CompositionPlaylist>"#
+        );
+        crate::cpl::parse_cpl(&xml).expect("parse failed")
+    }
+
+    const NS_2013: &str = "http://www.smpte-ra.org/schemas/2067-3/2013";
+    const NS_2016: &str = "http://www.smpte-ra.org/schemas/2067-3/2016";
+    const SCOPE_2013: &str = "http://www.smpte-ra.org/schemas/2067-3/2013#standard-markers";
+    const SCOPE_2016: &str = "http://www.smpte-ra.org/schemas/2067-3/2016#standard-markers";
+
+    fn has_marker_label_unknown(cpl: &CompositionPlaylist) -> bool {
+        validate_cpl(cpl)
+            .iter()
+            .any(|i| i.code.contains("MarkerLabelUnknown"))
+    }
+
+    #[test]
+    fn marker_labels_from_spec_table_are_accepted() {
+        for ns in [NS_2013, NS_2016] {
+            for label in [
+                "FFOC", "LFOC", "FFEC", "LFEC", "FFTC", "FPCI", "FTXM", "LTXM", "FFOA", "LFOA",
+                "FFCO", "LFCO",
+            ] {
+                for scope in [None, Some(SCOPE_2013)] {
+                    let cpl = cpl_with_marker(ns, scope, label);
+                    assert!(
+                        !has_marker_label_unknown(&cpl),
+                        "{label} (ns {ns}, scope {scope:?}) is in the spec table and must not be flagged",
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn marker_labels_not_in_spec_table_are_flagged() {
+        for ns in [NS_2013, NS_2016] {
+            for label in ["FFAC", "LFAC", "FFHC", "LFHC", "FFDC"] {
+                let cpl = cpl_with_marker(ns, None, label);
+                assert!(
+                    has_marker_label_unknown(&cpl),
+                    "{label} (ns {ns}) is not in the default-scope table and must be flagged",
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn marker_labels_2016_scope_accepts_ffdc_lfdc() {
+        for label in ["FFDC", "LFDC"] {
+            let cpl = cpl_with_marker(NS_2016, Some(SCOPE_2016), label);
+            assert!(
+                !has_marker_label_unknown(&cpl),
+                "{label} under the 2016 scope must not be flagged",
+            );
+        }
+        let cpl = cpl_with_marker(NS_2016, Some(SCOPE_2016), "FFOC");
+        assert!(
+            has_marker_label_unknown(&cpl),
+            "FFOC is not listed under the 2016 scope",
+        );
+    }
+
+    /// ST 2067-3:2013 §6.14.2: a non-default scope is outside the scope of
+    /// the 2013 edition, so the 2016 scope is not checked on 2013 CPLs.
+    #[test]
+    fn marker_labels_2016_scope_not_checked_on_2013_cpl() {
+        let cpl = cpl_with_marker(NS_2013, Some(SCOPE_2016), "UNKNOWN_LABEL");
+        assert!(!has_marker_label_unknown(&cpl));
+    }
+
+    // ── ContentKindUnknown vocabulary (ST 2067-3 §6.1.8 Tables 3 and 4) ─────
+
+    /// Parse a CPL from XML so the raw ContentKind text is available, as in
+    /// real packages.
+    fn cpl_with_content_kind(
+        ns: CplNamespace,
+        scope: Option<&str>,
+        value: &str,
+    ) -> CompositionPlaylist {
+        let ns_uri = match ns {
+            CplNamespace::Smpte2067_3_2013 => "http://www.smpte-ra.org/schemas/2067-3/2013",
+            CplNamespace::Smpte2067_3_2016 => "http://www.smpte-ra.org/schemas/2067-3/2016",
+            other => panic!("unsupported namespace in test helper: {other:?}"),
+        };
+        let scope_attr = scope
+            .map(|s| format!(r#" scope="{s}""#))
+            .unwrap_or_default();
+        let xml = format!(
+            r#"<?xml version="1.0" encoding="UTF-8"?>
+<CompositionPlaylist xmlns="{ns_uri}">
+  <Id>urn:uuid:00000000-0000-0000-0000-000000000001</Id>
+  <IssueDate>2024-01-01T00:00:00Z</IssueDate>
+  <ContentTitle>Test</ContentTitle>
+  <ContentKind{scope_attr}>{value}</ContentKind>
+  <EditRate>24 1</EditRate>
+  <SegmentList>
+    <Segment>
+      <Id>urn:uuid:00000000-0000-0000-0000-000000000002</Id>
+      <SequenceList/>
+    </Segment>
+  </SegmentList>
+</CompositionPlaylist>"#
+        );
+        let cpl = crate::cpl::parse_cpl(&xml).expect("parse failed");
+        assert_eq!(cpl.namespace, ns);
+        cpl
+    }
+
+    fn has_content_kind_unknown(cpl: &CompositionPlaylist) -> bool {
+        validate_cpl(cpl)
+            .iter()
+            .any(|i| i.code.contains("ContentKindUnknown"))
+    }
+
+    const CK_SCOPE_2016: &str = "http://www.smpte-ra.org/schemas/2067-3/2016#content-kind";
+
+    #[test]
+    fn content_kind_table_3_values_are_accepted() {
+        for ns in [
+            CplNamespace::Smpte2067_3_2013,
+            CplNamespace::Smpte2067_3_2016,
+        ] {
+            for value in [
+                "advertisement",
+                "feature",
+                "psa",
+                "rating",
+                "short",
+                "teaser",
+                "test",
+                "trailer",
+                "transitional",
+                "episode",
+                "highlights",
+                "event",
+            ] {
+                let cpl = cpl_with_content_kind(ns.clone(), None, value);
+                assert!(
+                    !has_content_kind_unknown(&cpl),
+                    "'{value}' ({ns:?}) is in Table 3 and must not be flagged",
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn content_kind_values_not_in_table_3_are_flagged() {
+        for ns in [
+            CplNamespace::Smpte2067_3_2013,
+            CplNamespace::Smpte2067_3_2016,
+        ] {
+            for value in ["promo", "rating-bump", "commercial", "supplemental"] {
+                let cpl = cpl_with_content_kind(ns.clone(), None, value);
+                assert!(
+                    has_content_kind_unknown(&cpl),
+                    "'{value}' ({ns:?}) is not in Table 3 and must be flagged",
+                );
+            }
+        }
+    }
+
+    /// ContentKindType is an extension of xs:string (ST 2067-3:2013 and 2016
+    /// schema), so whitespace is part of the value and " feature " does not
+    /// "match" the Table 3 value "feature".
+    #[test]
+    fn content_kind_with_surrounding_whitespace_is_flagged() {
+        for ns in [
+            CplNamespace::Smpte2067_3_2013,
+            CplNamespace::Smpte2067_3_2016,
+        ] {
+            for value in [" feature ", "feature ", " feature", "\nfeature\n"] {
+                let cpl = cpl_with_content_kind(ns.clone(), None, value);
+                assert!(
+                    has_content_kind_unknown(&cpl),
+                    "{value:?} ({ns:?}) is not exactly a Table 3 value and must be flagged",
+                );
+            }
+        }
+        let cpl = cpl_with_content_kind(
+            CplNamespace::Smpte2067_3_2016,
+            Some(CK_SCOPE_2016),
+            " documentary",
+        );
+        assert!(has_content_kind_unknown(&cpl));
+    }
+
+    /// ST 2067-3 §6.1.8: the value "shall match" a Table 3 value (2013 p11,
+    /// 2016 p10). Matching is exact, so case variants and synonyms that the
+    /// parser used to fold are not Table 3 values.
+    #[test]
+    fn content_kind_requires_exact_table_3_token() {
+        for ns in [
+            CplNamespace::Smpte2067_3_2013,
+            CplNamespace::Smpte2067_3_2016,
+        ] {
+            for value in [
+                "Feature",
+                "RATING",
+                "Episode",
+                "PSA",
+                "public-service-announcement",
+                "PublicServiceAnnouncement",
+                "RatingBump",
+            ] {
+                let cpl = cpl_with_content_kind(ns.clone(), None, value);
+                assert!(
+                    has_content_kind_unknown(&cpl),
+                    "'{value}' ({ns:?}) is not an exact Table 3 value and must be flagged",
+                );
+            }
+        }
+        let cpl = cpl_with_content_kind(
+            CplNamespace::Smpte2067_3_2016,
+            Some(CK_SCOPE_2016),
+            "Documentary",
+        );
+        assert!(
+            has_content_kind_unknown(&cpl),
+            "'Documentary' is not a Table 4 value"
+        );
+    }
+
+    /// ContentKind is optional (minOccurs="0" in the ST 2067-3:2013 and
+    /// 2016 CompositionPlaylistType schema), so an absent element is not
+    /// an unknown value.
+    #[test]
+    fn content_kind_absent_is_not_flagged() {
+        for ns_uri in [
+            "http://www.smpte-ra.org/schemas/2067-3/2013",
+            "http://www.smpte-ra.org/schemas/2067-3/2016",
+        ] {
+            let xml = format!(
+                r#"<?xml version="1.0" encoding="UTF-8"?>
+<CompositionPlaylist xmlns="{ns_uri}">
+  <Id>urn:uuid:00000000-0000-0000-0000-000000000001</Id>
+  <IssueDate>2024-01-01T00:00:00Z</IssueDate>
+  <ContentTitle>Test</ContentTitle>
+  <EditRate>24 1</EditRate>
+  <SegmentList>
+    <Segment>
+      <Id>urn:uuid:00000000-0000-0000-0000-000000000002</Id>
+      <SequenceList/>
+    </Segment>
+  </SegmentList>
+</CompositionPlaylist>"#
+            );
+            let cpl = crate::cpl::parse_cpl(&xml).expect("parse failed");
+            assert!(
+                !has_content_kind_unknown(&cpl),
+                "absent ContentKind ({ns_uri}) must not be flagged",
+            );
+        }
+
+        // Same for an in-memory CPL left at the parser's default.
+        let mut cpl = minimal_cpl();
+        cpl.content_kind = crate::cpl::ContentKindElement {
+            kind: ContentKind::Other("unknown".to_string()),
+            scope: None,
+        };
+        assert!(!has_content_kind_unknown(&cpl));
+    }
+
+    #[test]
+    fn content_kind_2016_scope_uses_table_4() {
+        for value in ["supplemental", "documentary"] {
+            let cpl =
+                cpl_with_content_kind(CplNamespace::Smpte2067_3_2016, Some(CK_SCOPE_2016), value);
+            assert!(!has_content_kind_unknown(&cpl), "'{value}' is in Table 4");
+        }
+        let cpl = cpl_with_content_kind(
+            CplNamespace::Smpte2067_3_2016,
+            Some(CK_SCOPE_2016),
+            "feature",
+        );
+        assert!(
+            has_content_kind_unknown(&cpl),
+            "'feature' is not in Table 4 (2016 scope)",
+        );
+        // The 2016 scope does not exist in the 2013 edition: out of scope.
+        let cpl = cpl_with_content_kind(
+            CplNamespace::Smpte2067_3_2013,
+            Some(CK_SCOPE_2016),
+            "anything",
+        );
+        assert!(!has_content_kind_unknown(&cpl));
+    }
+
+    // ── MarkerOffsetOutOfRange (ST 2067-3 §6.13) ─────────────────────────────
+
+    fn cpl_with_marker_offsets(
+        intrinsic_duration: u64,
+        entry_point: Option<u64>,
+        source_duration: Option<u64>,
+        offsets: &[u64],
+    ) -> CompositionPlaylist {
+        use crate::cpl::{MarkerInfo, MarkerLabel, MarkerLabelElement, MarkerSequence};
+        let mut resource = make_resource(intrinsic_duration, source_duration, None);
+        resource.entry_point = entry_point;
+        resource.markers = offsets
+            .iter()
+            .map(|&offset| MarkerInfo {
+                annotation: None,
+                label: MarkerLabelElement::from(MarkerLabel::Ffoc),
+                offset,
+            })
+            .collect();
+        let mut sl = empty_sequence_list();
+        sl.marker_sequences.push(MarkerSequence {
+            id: dummy_uuid(),
+            track_id: dummy_uuid(),
+            resource_list: ResourceList {
+                resources: vec![resource],
+            },
+        });
+        let mut cpl = minimal_cpl();
+        cpl.segment_list = SegmentList {
+            segments: vec![Segment {
+                id: dummy_uuid(),
+                sequence_list: sl,
+            }],
+        };
+        cpl
+    }
+
+    fn has_marker_offset_out_of_range(cpl: &CompositionPlaylist) -> bool {
+        validate_cpl(cpl)
+            .iter()
+            .any(|i| i.code.contains("MarkerOffsetOutOfRange"))
+    }
+
+    /// §6.13: IntrinsicDuration shall be equal or larger than the largest
+    /// Offset, so Offset == IntrinsicDuration is allowed.
+    #[test]
+    fn marker_offset_equal_to_intrinsic_duration_ok() {
+        let cpl = cpl_with_marker_offsets(100, None, None, &[0, 100]);
+        assert!(!has_marker_offset_out_of_range(&cpl));
+    }
+
+    /// §6.13 bounds Offset by IntrinsicDuration only; markers outside the
+    /// EntryPoint/SourceDuration playable region are not flagged.
+    #[test]
+    fn marker_offset_outside_playable_region_ok() {
+        let cpl = cpl_with_marker_offsets(100, Some(10), Some(20), &[0, 5, 50, 99]);
+        assert!(!has_marker_offset_out_of_range(&cpl));
+    }
+
+    #[test]
+    fn marker_offset_beyond_intrinsic_duration_flagged() {
+        let cpl = cpl_with_marker_offsets(100, None, None, &[101]);
+        assert!(has_marker_offset_out_of_range(&cpl));
     }
 }

@@ -14,7 +14,9 @@ use imferno_core::diagnostics::codes::ValidationCode;
 use imferno_core::mxf::codes::{ImfernoMxf, St2067_2_2016, St377_1_2011, St377_4_2012};
 use imferno_core::package::codes::ImfernoCode;
 use imferno_core::scm::codes::St2067_9_2018;
-use imferno_core::validation::codes::{St2067_21_2020, St2067_21_2023, St2067_21_2025};
+use imferno_core::validation::codes::{
+    St2067_21_2014, St2067_21_2016, St2067_21_2020, St2067_21_2023, St2067_21_2026,
+};
 use imferno_core::validation::iab_codes::{St2067_201_2019, St2067_201_2021, St2067_201_2026Delta};
 use imferno_core::validation::isxd_codes::St2067_202_2023;
 use imferno_core::xsd::codes::XsdConstraintCode;
@@ -151,14 +153,20 @@ fn codes_page() -> String {
 
     // ── ST 2067-21 ──
     s.push_str("## ST 2067-21 — Application #2E\n\n");
-    s.push_str("### 2020\n\n");
+    s.push_str("### 2014\n\n");
+    s.push_str(&code_table(St2067_21_2014::ALL));
+    s.push('\n');
+    s.push_str("### 2016\n\n");
+    s.push_str(&code_table(St2067_21_2016::ALL));
+    s.push('\n');
+    s.push_str("### 2020 (incl. Amendment 1:2020)\n\n");
     s.push_str(&code_table(St2067_21_2020::ALL));
     s.push('\n');
     s.push_str("### 2023\n\n");
     s.push_str(&code_table(St2067_21_2023::ALL));
     s.push('\n');
-    s.push_str("### 2025\n\n");
-    s.push_str(&code_table(St2067_21_2025::ALL));
+    s.push_str("### 2026\n\n");
+    s.push_str(&code_table(St2067_21_2026::ALL));
     s.push('\n');
 
     // ── ST 2067-201 ──

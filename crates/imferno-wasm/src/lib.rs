@@ -54,7 +54,7 @@ pub fn get_version() -> String {
 ///
 /// Options (all optional):
 /// - `coreSpec`: `"auto"` | `"v2013"` | `"v2016"` | `"v2020"`
-/// - `app2eSpec`: `"auto"` | `"none"` | `"v2020"` | `"v2021"` | `"v2023"`
+/// - `app2eSpec`: `"auto"` | `"none"` | `"v2014"` | `"v2016"` | `"v2020"` | `"v2023"` | `"v2026"`
 /// - `rules`: ESLint-style rules configuration object
 #[allow(deprecated)]
 #[wasm_bindgen(js_name = "buildReport")]

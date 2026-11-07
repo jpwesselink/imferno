@@ -20,8 +20,8 @@ export function parseVolindexTyped(xmlContent: string): Promise<any>;
 export interface ValidateOptions {
     /** Core constraints spec version: "auto" | "v2013" | "v2016" | "v2020" */
     coreSpec?: "auto" | "v2013" | "v2016" | "v2020";
-    /** Application profile version: "auto" | "none" | "v2020" | "v2021" | "v2023" */
-    app2eSpec?: "auto" | "none" | "v2020" | "v2021" | "v2023";
+    /** Application profile version: "auto" | "none" | "v2014" | "v2016" | "v2020" | "v2023" | "v2026" */
+    app2eSpec?: "auto" | "none" | "v2014" | "v2016" | "v2020" | "v2023" | "v2026";
     /** ESLint-style rules configuration */
     rules?: Record<string, string>;
 }

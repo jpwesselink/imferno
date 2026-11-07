@@ -10,7 +10,7 @@
 //! ## Validation Architecture
 //!
 //! ```text
-//! CPL namespaces ──→ Factory ──→ [CoreConstraints2020, App2E2021, ...]
+//! CPL namespaces ──→ Factory ──→ [CoreConstraints2020, App2E2023, ...]
 //!                                  │                    │
 //!                             validate_cpl()       validate_cpl()
 //!                                  │                    │
@@ -23,27 +23,29 @@
 //! - **ST 2067-2:2020** Core Constraints (`CoreConstraints2020`)
 //! - **ST 2067-2:2016** Core Constraints (`CoreConstraints2016`)
 //! - **ST 2067-2:2013** Core Constraints (`CoreConstraints2013`)
-//! - **ST 2067-21:2020/2023/2025** Application Profile #2E (`App2E2021`)
+//! - **ST 2067-21:2014/2016/2020 (+Am1)/2023/2026** Application Profile #2E
+//!   (`App2E2014`, `App2E2016`, `App2E2020`, `App2E2023`, `App2E2026`), each
+//!   against its own edition's text
 //! - **ST 2067-201:2019/2021** IAB Level 0 Plug-in (`AppIabPlugin2019`, `AppIabPlugin2021`)
 //! - **ST 2067-202:2023** ISXD Plug-in (`AppIsxdPlugin2023`)
 
+mod app2e;
 pub mod codes;
 pub mod iab;
 pub mod iab_codes;
 pub mod isxd;
 pub mod isxd_codes;
 
+pub use app2e::{App2E, App2E2014, App2E2016, App2E2020, App2E2023, App2E2026, App2EEdition};
 pub use iab::{AppIabPlugin2019, AppIabPlugin2021, AppIabPlugin2026, URI_2019, URI_2019_SCHEMAS};
 pub use isxd::{AppIsxdPlugin2023, URI_2022};
 
 use std::collections::{HashMap, HashSet};
 
-use self::codes::{St2067_21_2020, St2067_21_2023, St2067_21_2025};
 use crate::assetmap::codes::CoreConstraintsCode;
 use crate::cpl::codes::{St2067_3Code, St2067_3_2013, St2067_3_2016};
 use crate::cpl::CompositionPlaylist;
 use crate::cpl::{CodingEquations, ColorPrimaries, CplNamespace, EditRate, TransferCharacteristic};
-use crate::diagnostics::codes::ValidationCode;
 use crate::diagnostics::{Category, Location, Severity, ValidationIssue};
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -160,16 +162,18 @@ pub struct BuiltinValidatorRegistry;
 
 impl ValidatorRegistry for BuiltinValidatorRegistry {
     fn resolve_namespace(&self, namespace_uri: &str) -> Option<Box<dyn ConstraintsValidator>> {
+        // ST 2067-21: each edition's own ApplicationIdentification value
+        // (2014 §7 Table 5, 2016 §7.1 Table 8, 2020 and 2023 §7.1 Table 15,
+        // 2026 §8.1 Figure 2) selects that edition. The 2023 edition's value
+        // is `.../ns/2067-21/2021`; no edition defines `.../2067-21/2015` or
+        // `.../ns/2067-21/2023`.
+        if let Some(edition) = App2EEdition::from_application_identification(namespace_uri) {
+            return Some(app2e_validator(edition));
+        }
         match namespace_uri {
             "http://www.smpte-ra.org/schemas/2067-2/2013" => Some(Box::new(CoreConstraints2013)),
             "http://www.smpte-ra.org/schemas/2067-2/2016" => Some(Box::new(CoreConstraints2016)),
             "http://www.smpte-ra.org/ns/2067-2/2020" => Some(Box::new(CoreConstraints2020)),
-            "http://www.smpte-ra.org/ns/2067-21/2020" => Some(Box::new(App2E2020)),
-            "http://www.smpte-ra.org/schemas/2067-21/2014"
-            | "http://www.smpte-ra.org/schemas/2067-21/2015"
-            | "http://www.smpte-ra.org/schemas/2067-21/2016"
-            | "http://www.smpte-ra.org/ns/2067-21/2021"
-            | "http://www.smpte-ra.org/ns/2067-21/2023" => Some(Box::new(App2E2021)),
             // ST 2067-201 IAB Level 0 plug-in. Every published edition
             // (2019/2021/2026) reuses the 2019 namespace URI — see the
             // note above `iab::URI_2019` — so the URI resolves to the
@@ -180,6 +184,17 @@ impl ValidatorRegistry for BuiltinValidatorRegistry {
             isxd::URI_2022 => Some(Box::new(AppIsxdPlugin2023)),
             _ => None,
         }
+    }
+}
+
+/// The App #2E validator of `edition`.
+pub fn app2e_validator(edition: App2EEdition) -> Box<dyn ConstraintsValidator> {
+    match edition {
+        App2EEdition::V2014 => Box::new(App2E2014),
+        App2EEdition::V2016 => Box::new(App2E2016),
+        App2EEdition::V2020 => Box::new(App2E2020),
+        App2EEdition::V2023 => Box::new(App2E2023),
+        App2EEdition::V2026 => Box::new(App2E2026),
     }
 }
 
@@ -220,20 +235,32 @@ impl std::str::FromStr for CoreSpecTarget {
     }
 }
 
+/// An ST 2067-21 (App #2E) edition to validate against.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AppSpecTarget {
+    St2067_21_2014,
+    St2067_21_2016,
+    /// ST 2067-21:2020 including Amendment 1:2020.
     St2067_21_2020,
-    St2067_21_2021,
     St2067_21_2023,
+    St2067_21_2026,
 }
 
 impl AppSpecTarget {
-    pub fn application_identification_uri(&self) -> &'static str {
+    /// The edition this target selects.
+    pub fn edition(&self) -> App2EEdition {
         match self {
-            Self::St2067_21_2020 => "http://www.smpte-ra.org/ns/2067-21/2020",
-            Self::St2067_21_2021 => "http://www.smpte-ra.org/ns/2067-21/2021",
-            Self::St2067_21_2023 => "http://www.smpte-ra.org/ns/2067-21/2023",
+            Self::St2067_21_2014 => App2EEdition::V2014,
+            Self::St2067_21_2016 => App2EEdition::V2016,
+            Self::St2067_21_2020 => App2EEdition::V2020,
+            Self::St2067_21_2023 => App2EEdition::V2023,
+            Self::St2067_21_2026 => App2EEdition::V2026,
         }
+    }
+
+    /// The ApplicationIdentification value the edition defines.
+    pub fn application_identification_uri(&self) -> &'static str {
+        self.edition().application_identification_uri()
     }
 }
 
@@ -242,11 +269,13 @@ impl std::str::FromStr for AppSpecTarget {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
+            "v2014" => Ok(Self::St2067_21_2014),
+            "v2016" => Ok(Self::St2067_21_2016),
             "v2020" => Ok(Self::St2067_21_2020),
-            "v2021" => Ok(Self::St2067_21_2021),
             "v2023" => Ok(Self::St2067_21_2023),
+            "v2026" => Ok(Self::St2067_21_2026),
             other => Err(format!(
-                "Unsupported app2eSpec '{}'. Use auto|none|v2020|v2021|v2023",
+                "Unsupported app2eSpec '{}'. Use auto|none|v2014|v2016|v2020|v2023|v2026",
                 other
             )),
         }
@@ -421,7 +450,7 @@ pub fn validate_cpl_with_registry(
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-// Colorimetry — ST 2067-21:2023 Table 2 / Table 3
+// Colorimetry — ST 2067-21 colorimetry systems (2020/2023 §5.3 Table 4)
 // ═════════════════════════════════════════════════════════════════════════════
 
 /// Named colorimetry systems per ST 2067-21:2023 Table 3.
@@ -512,6 +541,20 @@ impl ColorSystem {
         }
     }
 
+    /// The system's designator, e.g. `"COLOR.3"`.
+    pub fn designator(&self) -> &'static str {
+        match self {
+            Self::Color1 => "COLOR.1",
+            Self::Color2 => "COLOR.2",
+            Self::Color3 => "COLOR.3",
+            Self::Color4 => "COLOR.4",
+            Self::Color5 => "COLOR.5",
+            Self::Color6 => "COLOR.6",
+            Self::Color7 => "COLOR.7",
+            Self::Color8 => "COLOR.8",
+        }
+    }
+
     /// Returns `true` for HDR color systems (PQ or HLG based).
     pub fn is_hdr(&self) -> bool {
         matches!(self, Self::Color6 | Self::Color7 | Self::Color8)
@@ -549,14 +592,6 @@ impl std::fmt::Display for ColorSystem {
 // xs:dateTime, TimecodeType pattern, and TotalRunningTime regex helpers were
 // gutted along with their XSD-overlap emission sites — see the runtime-XSD
 // architecture spike (uppsala-based) for the replacement path.
-
-/// Validates xs:anyURI: must not contain ASCII whitespace.
-///
-/// xs:anyURI allows empty strings per XSD spec, but IMF requires non-empty Agency values
-/// (checked separately). This validates the character-level constraint.
-fn is_valid_any_uri(s: &str) -> bool {
-    !s.chars().any(|c| c.is_ascii_whitespace())
-}
 
 // `validate_resource_list_non_empty` was gutted — XSD-overlap check
 // (CoreConstraintsCode::ResourceListEmpty mirrors xs:sequence + minOccurs=1
@@ -1018,8 +1053,8 @@ fn validate_virtual_track_continuity(
 
 /// All resources in a virtual track shall have the same edit rate.
 ///
-/// ST 2067-2 §6.9.3: "The value of the EditRate element within each Resource
-/// of a Virtual Track shall be identical."
+/// Applies to image, audio, IAB and ISXD virtual tracks. Timed Text virtual
+/// tracks are excluded (ST 2067-2:2020 §6.3.3: any edit rate).
 fn validate_virtual_track_edit_rates(
     cpl: &CompositionPlaylist,
     code: fn(CoreConstraintsCode) -> &'static str,
@@ -1087,25 +1122,10 @@ fn validate_virtual_track_edit_rates(
         for seq in &sl.main_audio_sequences {
             check_sequence(seq, "MainAudioSequence", issues, &mut track_edit_rates);
         }
-        for seq in &sl.subtitles_sequences {
-            check_sequence(seq, "SubtitlesSequence", issues, &mut track_edit_rates);
-        }
-        for seq in &sl.hearing_impaired_captions_sequences {
-            check_sequence(
-                seq,
-                "HearingImpairedCaptionsSequence",
-                issues,
-                &mut track_edit_rates,
-            );
-        }
-        for seq in &sl.forced_narrative_sequences {
-            check_sequence(
-                seq,
-                "ForcedNarrativeSequence",
-                issues,
-                &mut track_edit_rates,
-            );
-        }
+        // Timed Text virtual tracks (Subtitles, HearingImpairedCaptions,
+        // ForcedNarrative) are not checked: ST 2067-2:2020 §6.3.3 lets their
+        // Resource edit rate be any value, and 2013/2016 §6.3.3 set no
+        // edit-rate constraint on these tracks.
         for seq in &sl.iab_sequences {
             check_sequence(seq, "IABSequence", issues, &mut track_edit_rates);
         }
@@ -1219,7 +1239,8 @@ fn expected_channel_count(tag: &crate::cpl::McaTagSymbol) -> Option<u32> {
 /// Checks per ST 377-4 / ST 2067-2:
 /// - WAVEPCMDescriptor with ChannelCount > 0 should have MCA sub-descriptors
 /// - SoundfieldGroupLabelSubDescriptor should have MCATagSymbol
-/// - Soundfield channel count should be consistent with WAVEPCMDescriptor.ChannelCount
+/// - WAVEPCMDescriptor.ChannelCount should not exceed the soundfield group size
+///   (a subset is allowed, ST 2067-2 §5.3.6.6)
 /// - Audio sample rate should be present
 fn validate_audio_mca_labels(
     cpl: &CompositionPlaylist,
@@ -1346,9 +1367,11 @@ fn validate_audio_mca_labels(
             }
         };
 
-        // Channel count consistency with soundfield group
+        // Channel count vs soundfield group. ST 2067-2 §5.3.6.6: not all
+        // channels of the soundfield group need be present in the track
+        // file, so only a ChannelCount above the group size is flagged.
         if let Some(expected) = expected_channel_count(tag) {
-            if channel_count != expected {
+            if channel_count > expected {
                 issues.push(
                     ValidationIssue::new(
                         Severity::Error,
@@ -1356,7 +1379,7 @@ fn validate_audio_mca_labels(
                         code(CoreConstraintsCode::SoundfieldChannelCount),
                         format!(
                             "WAVEPCMDescriptor {} has ChannelCount {} but MCATagSymbol '{}' \
-                             expects {} channels",
+                             defines only {} channels",
                             ed.id, channel_count, tag, expected,
                         ),
                     )
@@ -1743,7 +1766,7 @@ impl ConstraintsValidator for CoreConstraints2013 {
 // ═════════════════════════════════════════════════════════════════════════════
 
 /// Quantization system per ST 2067-21:2023 Table 5.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum QuantizationSystem {
     /// QE.1: Narrow range (BT.709/BT.601 quantization)
     /// R'G'B': D = INT((219 * X + 16) * 2^(n-8))
@@ -1807,2263 +1830,7 @@ pub fn cdci_ref_values(color_sys: &ColorSystem, bit_depth: u32) -> Option<(u32, 
     }
 }
 
-// ═════════════════════════════════════════════════════════════════════════════
-// Application Profile #2E — ST 2067-21
-//
-// Validates image essence against Table 2 (allowed parameters) and
-// Table 3 (named colorimetry systems).
-//
-// ST 2067-21 Application #2 / #2E — shared abstract base across editions.
-// ═════════════════════════════════════════════════════════════════════════════
-
-/// The exact ApplicationIdentification URI per ST 2067-21:2023 Table 15.
-const APP2E_APPLICATION_IDENTIFICATION: &str = "http://www.smpte-ra.org/ns/2067-21/2021";
-
-/// ST 2067-21:2023 Application Profile #2E Validator.
-///
-/// Validates:
-/// - Table 8: Generic Picture Essence Descriptor constraints (FrameLayout, etc.)
-///
-/// Validate a J2K PictureEssenceCoding UL against the App2E profile constraints.
-///
-/// Rules (§6.2.5):
-/// - `Jpeg2000Ht`: allowed only when `allow_ht = true` (App2E from 2021 onward).
-/// - `Jpeg2000Imf4k`: stored width must be 2049–4096, stored height ≤ 3112.
-/// - `Jpeg2000Imf2k`: stored width must be 1–2048, stored height ≤ 1556.
-/// - `Jpeg2000Broadcast`: stored width must be 1–3840, stored height ≤ 2160.
-/// - `Jpeg2000` (generic node): no resolution bounds enforced.
-/// - All other J2K variants (should not occur after CODEC_TABLE is correct): error.
-// `clippy::collapsible_match` would suggest moving each `if !cond` into a guard, but
-// the wildcard arm has different semantics (specific to non-J2K codecs), so collapsing
-// would route the "passes-validation" case through it incorrectly.
-#[allow(clippy::collapsible_match)]
-fn validate_j2k_profile(
-    codec: &crate::cpl::VideoCodec,
-    stored_width: u32,
-    stored_height: u32,
-    allow_ht: bool,
-    loc: &Location,
-    issues: &mut Vec<ValidationIssue>,
-) {
-    use crate::cpl::VideoCodec;
-    match codec {
-        VideoCodec::Jpeg2000Ht => {
-            if !allow_ht {
-                // App2E 2020 does not include HT-J2K. Added in 2021.
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Encoding,
-                        St2067_21_2023::J2KHtNotAllowed.code(),
-                        "JPEG 2000 HT (ISO 15444-15) is not permitted by App2E 2020. \
-                         HT-J2K was introduced in ST 2067-21:2021.",
-                    )
-                    .with_location(loc.clone()),
-                );
-            }
-            // When allowed, no resolution bounds check for HT — HT
-            // conformance lives in the codestream parameters, not the
-            // resolution envelope.
-        }
-        VideoCodec::Jpeg2000Imf4k => {
-            // 4K IMF profile: width in (2048, 4096], height in (0, 3112]
-            if !(stored_width > 2048
-                && stored_width <= 4096
-                && stored_height > 0
-                && stored_height <= 3112)
-            {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Encoding,
-                        St2067_21_2023::J2K4KResolution.code(),
-                        format!(
-                            "JPEG 2000 IMF 4K Profile does not support image resolution \
-                             ({}/{}); width must be 2049–4096, height 1–3112",
-                            stored_width, stored_height
-                        ),
-                    )
-                    .with_location(loc.clone()),
-                );
-            }
-        }
-        VideoCodec::Jpeg2000Imf2k => {
-            // 2K IMF profile: width in (0, 2048], height in (0, 1556]
-            if !(stored_width > 0
-                && stored_width <= 2048
-                && stored_height > 0
-                && stored_height <= 1556)
-            {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Encoding,
-                        St2067_21_2023::J2K2KResolution.code(),
-                        format!(
-                            "JPEG 2000 IMF 2K Profile does not support image resolution \
-                             ({}/{}); width must be 1–2048, height 1–1556",
-                            stored_width, stored_height
-                        ),
-                    )
-                    .with_location(loc.clone()),
-                );
-            }
-        }
-        VideoCodec::Jpeg2000Broadcast => {
-            // Broadcast Contribution profile: width in (0, 3840], height in (0, 2160]
-            if !(stored_width > 0
-                && stored_width <= 3840
-                && stored_height > 0
-                && stored_height <= 2160)
-            {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Encoding,
-                        St2067_21_2023::J2KBcpResolution.code(),
-                        format!(
-                            "JPEG 2000 Broadcast Contribution Profile does not support image \
-                             resolution ({}/{}); width must be 1–3840, height 1–2160",
-                            stored_width, stored_height
-                        ),
-                    )
-                    .with_location(loc.clone()),
-                );
-            }
-        }
-        VideoCodec::Jpeg2000 => {
-            // Generic J2K node UL (03010100) — accepted without resolution bounds check.
-            // In well-formed App2E content this should always be a specific sub-profile,
-            // but generic ULs appear in some older packages and are not rejected by the
-            // profile check (they fall outside the profile/resolution table).
-        }
-        _ => {
-            // Any non-J2K codec: already caught by is_jpeg2000_family() check upstream.
-        }
-    }
-}
-
-/// - Table 10: RGBA Descriptor constraints (ComponentMaxRef/MinRef, ScanningDirection)
-/// - Table 11: Component Max/Min Ref values by quantization system and bit depth
-/// - Table 12: CDCI Descriptor constraints (subsampling, siting, ref levels)
-/// - Table 13: Black/White Ref Level and Color Range by colorimetry and bit depth
-/// - Table 3: Colorimetry system cross-validation (COLOR.1 through COLOR.8)
-/// - §6.2.5: JPEG 2000 codec requirement + J2K profile/resolution validation
-/// - §7.1 / Table 15: ApplicationIdentification exact URI
-/// - §7.2: Homogeneous image essence within a composition
-/// - §7.5: MaxCLL/MaxFALL presence for PQ-based HDR (COLOR.6/COLOR.7)
-pub struct App2E2021;
-
-impl App2E2021 {
-    /// Validate all image essence descriptors in the CPL.
-    /// `allow_ht`: when false, HT-J2K is rejected (App2E 2020 mode).
-    fn validate_image_descriptors(
-        &self,
-        cpl: &CompositionPlaylist,
-        allow_ht: bool,
-        issues: &mut Vec<ValidationIssue>,
-    ) {
-        let edl = match &cpl.essence_descriptor_list {
-            Some(edl) => edl,
-            None => return, // Core constraints will catch missing EDL
-        };
-
-        for ed in &edl.essence_descriptors {
-            if let Some(ref rgba) = ed.rgba_descriptor {
-                self.validate_rgba_descriptor(&ed.id.to_string(), rgba, cpl, allow_ht, issues);
-            }
-            if let Some(ref cdci) = ed.cdci_descriptor {
-                self.validate_cdci_descriptor(&ed.id.to_string(), cdci, cpl, allow_ht, issues);
-            }
-        }
-    }
-
-    /// Validate an RGBA (RGB) picture descriptor.
-    ///
-    /// Checks Table 8 (Generic Picture Descriptor), Table 10 (RGBA Descriptor),
-    /// Table 11 (Component Max/Min Ref), and Table 3 (colorimetry systems).
-    fn validate_rgba_descriptor(
-        &self,
-        ed_id: &str,
-        rgba: &crate::cpl::RGBADescriptor,
-        cpl: &CompositionPlaylist,
-        allow_ht: bool,
-        issues: &mut Vec<ValidationIssue>,
-    ) {
-        let loc = Location::new()
-            .with_cpl(cpl.id)
-            .with_path(format!("EssenceDescriptor[{}]/RGBADescriptor", ed_id));
-
-        // ── Table 8: Generic Picture Essence Descriptor ──────────────────────
-
-        // §6.2.5: PictureCompression shall be JPEG 2000 (ISO 15444-1 or 15444-15)
-        if let Some(ref codec) = rgba.picture_compression {
-            if !codec.is_jpeg2000_family() {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Encoding,
-                        St2067_21_2023::J2KRequired.code().to_string(),
-                        format!(
-                            "PictureCompression shall be JPEG 2000 for App2E, found: {}",
-                            codec
-                        ),
-                    )
-                    .with_location(loc.clone()),
-                );
-            } else {
-                // §6.2.5: J2K profile must be a recognized App2E profile with valid resolution.
-                let w = rgba.stored_width.unwrap_or(0);
-                let h = rgba.stored_height.unwrap_or(0);
-                validate_j2k_profile(codec, w, h, allow_ht, &loc, issues);
-            }
-        }
-
-        // Table 8: FrameLayout — §6.2.1.3
-        if let Some(ref fl) = rgba.frame_layout {
-            if fl != "FullFrame" && fl != "SeparateFields" {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Video,
-                        St2067_21_2023::FrameLayout.code().to_string(),
-                        format!(
-                            "FrameLayout shall be FullFrame (00h) or SeparateFields (01h), found: {}",
-                            fl
-                        ),
-                    )
-                    .with_location(loc.clone()),
-                );
-            }
-        }
-
-        // Table 8: StoredF2Offset — shall not be present
-        if rgba.stored_f2_offset.is_some() {
-            issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Video,
-                    St2067_21_2023::StoredF2Offset.code().to_string(),
-                    "StoredF2Offset shall not be present (Table 8)",
-                )
-                .with_location(loc.clone()),
-            );
-        }
-
-        // Table 8: SampledWidth — shall not be present or shall be equal to StoredWidth
-        if let Some(sw) = rgba.sampled_width {
-            if let Some(stored_w) = rgba.stored_width {
-                if sw != stored_w {
-                    issues.push(
-                        ValidationIssue::new(
-                            Severity::Error,
-                            Category::Video,
-                            St2067_21_2023::SampledWidth.code().to_string(),
-                            format!(
-                                "SampledWidth ({}) shall not be present or shall be equal to StoredWidth ({})",
-                                sw, stored_w
-                            ),
-                        )
-                        .with_location(loc.clone()),
-                    );
-                }
-            }
-        }
-
-        // Table 8: SampledHeight — shall not be present or shall be equal to StoredHeight
-        if let Some(sh) = rgba.sampled_height {
-            if let Some(stored_h) = rgba.stored_height {
-                if sh != stored_h {
-                    issues.push(
-                        ValidationIssue::new(
-                            Severity::Error,
-                            Category::Video,
-                            St2067_21_2023::SampledHeight.code().to_string(),
-                            format!(
-                                "SampledHeight ({}) shall not be present or shall be equal to StoredHeight ({})",
-                                sh, stored_h
-                            ),
-                        )
-                        .with_location(loc.clone()),
-                    );
-                }
-            }
-        }
-
-        // Table 8: SampledXOffset — shall not be present or shall be 0
-        if let Some(sxo) = rgba.sampled_x_offset {
-            if sxo != 0 {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Video,
-                        St2067_21_2023::SampledXOffset.code().to_string(),
-                        format!(
-                            "SampledXOffset shall not be present or shall be 0, found: {}",
-                            sxo
-                        ),
-                    )
-                    .with_location(loc.clone()),
-                );
-            }
-        }
-
-        // Table 8: SampledYOffset — shall not be present or shall be 0
-        if let Some(syo) = rgba.sampled_y_offset {
-            if syo != 0 {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Video,
-                        St2067_21_2023::SampledYOffset.code().to_string(),
-                        format!(
-                            "SampledYOffset shall not be present or shall be 0, found: {}",
-                            syo
-                        ),
-                    )
-                    .with_location(loc.clone()),
-                );
-            }
-        }
-
-        // Table 8: AlphaTransparency — shall not be present
-        if rgba.alpha_transparency.is_some() {
-            issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Video,
-                    St2067_21_2023::AlphaTransparency.code().to_string(),
-                    "AlphaTransparency shall not be present (Table 8)",
-                )
-                .with_location(loc.clone()),
-            );
-        }
-
-        // Table 8: ImageAlignmentOffset — shall not be present
-        if rgba.image_alignment_offset.is_some() {
-            issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Video,
-                    St2067_21_2023::ImageAlignmentOffset.code().to_string(),
-                    "ImageAlignmentOffset shall not be present (Table 8)",
-                )
-                .with_location(loc.clone()),
-            );
-        }
-
-        // Table 8: ImageStartOffset — shall not be present
-        if rgba.image_start_offset.is_some() {
-            issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Video,
-                    St2067_21_2023::ImageStartOffset.code().to_string(),
-                    "ImageStartOffset shall not be present (Table 8)",
-                )
-                .with_location(loc.clone()),
-            );
-        }
-
-        // Table 8: ImageEndOffset — shall not be present
-        if rgba.image_end_offset.is_some() {
-            issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Video,
-                    St2067_21_2023::ImageEndOffset.code().to_string(),
-                    "ImageEndOffset shall not be present (Table 8)",
-                )
-                .with_location(loc.clone()),
-            );
-        }
-
-        // Table 8: FieldDominance — conditional on FrameLayout
-        if let Some(ref fl) = rgba.frame_layout {
-            if fl == "FullFrame" && rgba.field_dominance.is_some() {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Video,
-                        St2067_21_2023::FieldDominance.code().to_string(),
-                        "FieldDominance shall not be present for progressive (FullFrame) content",
-                    )
-                    .with_location(loc.clone()),
-                );
-            }
-            if fl == "SeparateFields" && rgba.field_dominance.is_none() {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Video,
-                        St2067_21_2023::FieldDominance.code().to_string(),
-                        "FieldDominance shall be present for interlaced (SeparateFields) content",
-                    )
-                    .with_location(loc.clone()),
-                );
-            }
-        }
-
-        // Table 9: StoredWidth/StoredHeight vs FrameLayout
-        // For interlaced (SeparateFields), StoredHeight = ImageFrameHeight / 2
-        // For progressive (FullFrame), StoredHeight = ImageFrameHeight
-        // Note: We validate that StoredWidth/StoredHeight are present since they define
-        // the image dimensions required by Section 6.2.1.1
-
-        // §6.2.4: ColorPrimaries shall be present and recognized
-        match &rgba.color_primaries {
-            Some(cp) if matches!(cp, ColorPrimaries::Unknown(_)) => {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Video,
-                        St2067_21_2023::ColorPrimariesUnknown.code().to_string(),
-                        format!("Unrecognized ColorPrimaries UL: {}", cp),
-                    )
-                    .with_location(loc.clone()),
-                );
-            }
-            None => {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Video,
-                        St2067_21_2023::ColorPrimariesMissing.code().to_string(),
-                        "ColorPrimaries shall be present (Table 8)",
-                    )
-                    .with_location(loc.clone()),
-                );
-            }
-            _ => {}
-        }
-
-        // §6.2.2: TransferCharacteristic shall be present and recognized
-        match &rgba.transfer_characteristic {
-            Some(tc) if matches!(tc, TransferCharacteristic::Unknown(_)) => {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Video,
-                        St2067_21_2023::TransferCharacteristicUnknown
-                            .code()
-                            .to_string(),
-                        format!("Unrecognized TransferCharacteristic UL: {}", tc),
-                    )
-                    .with_location(loc.clone()),
-                );
-            }
-            None => {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Video,
-                        St2067_21_2023::TransferCharacteristicMissing
-                            .code()
-                            .to_string(),
-                        "TransferCharacteristic shall be present (Table 8)",
-                    )
-                    .with_location(loc.clone()),
-                );
-            }
-            _ => {}
-        }
-
-        // ── Table 10: RGBA Descriptor ────────────────────────────────────────
-
-        // Table 10: ComponentMaxRef shall be present
-        if rgba.component_max_ref.is_none() {
-            issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Video,
-                    St2067_21_2023::ComponentMaxRef.code().to_string(),
-                    "ComponentMaxRef shall be present (Table 10)",
-                )
-                .with_location(loc.clone()),
-            );
-        }
-
-        // Table 10: ComponentMinRef shall be present
-        if rgba.component_min_ref.is_none() {
-            issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Video,
-                    St2067_21_2023::ComponentMinRef.code().to_string(),
-                    "ComponentMinRef shall be present (Table 10)",
-                )
-                .with_location(loc.clone()),
-            );
-        }
-
-        // Table 10: ScanningDirection shall be present and equal to 00h
-        match &rgba.scanning_direction {
-            Some(sd) if sd != "ScanningDirection_LeftToRightTopToBottom" => {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Video,
-                        St2067_21_2023::ScanningDirection.code().to_string(),
-                        format!(
-                            "ScanningDirection shall be 00h (LeftToRightTopToBottom), found: {}",
-                            sd
-                        ),
-                    )
-                    .with_location(loc.clone()),
-                );
-            }
-            None => {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Video,
-                        St2067_21_2023::ScanningDirection.code().to_string(),
-                        "ScanningDirection shall be present (Table 10)",
-                    )
-                    .with_location(loc.clone()),
-                );
-            }
-            _ => {} // Valid: present and equals 00h
-        }
-
-        // Table 10: AlphaMaxRef — shall not be present
-        if rgba.alpha_max_ref.is_some() {
-            issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Video,
-                    St2067_21_2023::AlphaMaxRef.code().to_string(),
-                    "AlphaMaxRef shall not be present (Table 10)",
-                )
-                .with_location(loc.clone()),
-            );
-        }
-
-        // Table 10: AlphaMinRef — shall not be present
-        if rgba.alpha_min_ref.is_some() {
-            issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Video,
-                    St2067_21_2023::AlphaMinRef.code().to_string(),
-                    "AlphaMinRef shall not be present (Table 10)",
-                )
-                .with_location(loc.clone()),
-            );
-        }
-
-        // Table 10: Palette — shall not be present
-        if rgba.palette.is_some() {
-            issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Video,
-                    St2067_21_2023::Palette.code().to_string(),
-                    "Palette shall not be present (Table 10)",
-                )
-                .with_location(loc.clone()),
-            );
-        }
-
-        // Table 10: PaletteLayout — shall not be present
-        if rgba.palette_layout.is_some() {
-            issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Video,
-                    St2067_21_2023::PaletteLayout.code().to_string(),
-                    "PaletteLayout shall not be present (Table 10)",
-                )
-                .with_location(loc.clone()),
-            );
-        }
-
-        // Table 11: Validate ComponentMaxRef/MinRef values against quantization system.
-        // Determine QE from the component ref values themselves:
-        // QE.2 has MinRef=0 at all bit depths; QE.1 has MinRef>0.
-        if let (Some(min_ref), Some(max_ref)) = (rgba.component_min_ref, rgba.component_max_ref) {
-            let qe = if min_ref == 0 {
-                QuantizationSystem::Qe2
-            } else {
-                QuantizationSystem::Qe1
-            };
-            // Determine bit depth from max_ref
-            let bit_depth = match max_ref {
-                235 | 255 => Some(8u32),
-                940 | 1023 => Some(10),
-                3760 | 4095 => Some(12),
-                60160 | 65535 => Some(16),
-                _ => None,
-            };
-            if let Some(bd) = bit_depth {
-                if let Some((expected_min, expected_max)) = component_ref_values(qe, bd) {
-                    if min_ref != expected_min || max_ref != expected_max {
-                        issues.push(
-                            ValidationIssue::new(
-                                Severity::Error,
-                                Category::Video,
-                                St2067_21_2023::ComponentRefValues.code().to_string(),
-                                format!(
-                                    "ComponentMinRef={}, ComponentMaxRef={} do not match \
-                                     {:?} at {} bits (expected min={}, max={})",
-                                    min_ref, max_ref, qe, bd, expected_min, expected_max
-                                ),
-                            )
-                            .with_location(loc.clone()),
-                        );
-                    }
-                }
-            }
-        }
-
-        // ── Table 3: Colorimetry system ──────────────────────────────────────
-
-        if let (Some(cp), Some(tc)) = (&rgba.color_primaries, &rgba.transfer_characteristic) {
-            let color_sys = ColorSystem::from_components(cp, tc, None);
-            if color_sys.is_none()
-                && !matches!(cp, ColorPrimaries::Unknown(_))
-                && !matches!(tc, TransferCharacteristic::Unknown(_))
-            {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Video,
-                        St2067_21_2023::ColorSystem.code().to_string(),
-                        format!(
-                            "ColorPrimaries={} + TransferCharacteristic={} does not form a \
-                             recognized Color System for RGB",
-                            cp, tc
-                        ),
-                    )
-                    .with_location(loc.clone()),
-                );
-            }
-        }
-
-        // §7.5: MaxCLL/MaxFALL for PQ-based systems (optional per spec)
-        self.check_hdr_metadata(rgba.transfer_characteristic.as_ref(), cpl, &loc, issues);
-
-        // ── Table 14: JPEG 2000 Picture Sub Descriptor ────────────────────────
-        self.validate_j2k_sub_descriptor(
-            rgba.sub_descriptors.as_ref(),
-            rgba.picture_compression.as_ref(),
-            &loc,
-            issues,
-        );
-    }
-
-    /// Validate a CDCI (Y'C'BC'R) picture descriptor.
-    ///
-    /// Checks Table 8 (Generic Picture Descriptor), Table 12 (CDCI Descriptor),
-    /// Table 13 (Black/White Ref Level), and Table 3 (colorimetry systems).
-    fn validate_cdci_descriptor(
-        &self,
-        ed_id: &str,
-        cdci: &crate::cpl::CDCIDescriptor,
-        cpl: &CompositionPlaylist,
-        allow_ht: bool,
-        issues: &mut Vec<ValidationIssue>,
-    ) {
-        let loc = Location::new()
-            .with_cpl(cpl.id)
-            .with_path(format!("EssenceDescriptor[{}]/CDCIDescriptor", ed_id));
-
-        // ── Table 8: Generic Picture Essence Descriptor ──────────────────────
-
-        // §6.2.5: PictureCompression shall be JPEG 2000
-        if let Some(ref codec) = cdci.picture_compression {
-            if !codec.is_jpeg2000_family() {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Encoding,
-                        St2067_21_2023::J2KRequired.code().to_string(),
-                        format!(
-                            "PictureCompression shall be JPEG 2000 for App2E, found: {}",
-                            codec
-                        ),
-                    )
-                    .with_location(loc.clone()),
-                );
-            } else {
-                // §6.2.5: J2K profile must be a recognized App2E profile with valid resolution.
-                let w = cdci.stored_width.unwrap_or(0);
-                let h = cdci.stored_height.unwrap_or(0);
-                validate_j2k_profile(codec, w, h, allow_ht, &loc, issues);
-            }
-        }
-
-        // Table 8: FrameLayout — §6.2.1.3
-        if let Some(ref fl) = cdci.frame_layout {
-            if fl != "FullFrame" && fl != "SeparateFields" {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Video,
-                        St2067_21_2023::FrameLayout.code().to_string(),
-                        format!(
-                            "FrameLayout shall be FullFrame (00h) or SeparateFields (01h), found: {}",
-                            fl
-                        ),
-                    )
-                    .with_location(loc.clone()),
-                );
-            }
-        }
-
-        // Table 8: StoredF2Offset — shall not be present
-        if cdci.stored_f2_offset.is_some() {
-            issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Video,
-                    St2067_21_2023::StoredF2Offset.code().to_string(),
-                    "StoredF2Offset shall not be present (Table 8)",
-                )
-                .with_location(loc.clone()),
-            );
-        }
-
-        // Table 8: SampledWidth — shall not be present or shall be equal to StoredWidth
-        if let Some(sw) = cdci.sampled_width {
-            if let Some(stored_w) = cdci.stored_width {
-                if sw != stored_w {
-                    issues.push(
-                        ValidationIssue::new(
-                            Severity::Error,
-                            Category::Video,
-                            St2067_21_2023::SampledWidth.code().to_string(),
-                            format!(
-                                "SampledWidth ({}) shall not be present or shall be equal to StoredWidth ({})",
-                                sw, stored_w
-                            ),
-                        )
-                        .with_location(loc.clone()),
-                    );
-                }
-            }
-        }
-
-        // Table 8: SampledHeight — shall not be present or shall be equal to StoredHeight
-        if let Some(sh) = cdci.sampled_height {
-            if let Some(stored_h) = cdci.stored_height {
-                if sh != stored_h {
-                    issues.push(
-                        ValidationIssue::new(
-                            Severity::Error,
-                            Category::Video,
-                            St2067_21_2023::SampledHeight.code().to_string(),
-                            format!(
-                                "SampledHeight ({}) shall not be present or shall be equal to StoredHeight ({})",
-                                sh, stored_h
-                            ),
-                        )
-                        .with_location(loc.clone()),
-                    );
-                }
-            }
-        }
-
-        // Table 8: SampledXOffset — shall not be present or shall be 0
-        if let Some(sxo) = cdci.sampled_x_offset {
-            if sxo != 0 {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Video,
-                        St2067_21_2023::SampledXOffset.code().to_string(),
-                        format!(
-                            "SampledXOffset shall not be present or shall be 0, found: {}",
-                            sxo
-                        ),
-                    )
-                    .with_location(loc.clone()),
-                );
-            }
-        }
-
-        // Table 8: SampledYOffset — shall not be present or shall be 0
-        if let Some(syo) = cdci.sampled_y_offset {
-            if syo != 0 {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Video,
-                        St2067_21_2023::SampledYOffset.code().to_string(),
-                        format!(
-                            "SampledYOffset shall not be present or shall be 0, found: {}",
-                            syo
-                        ),
-                    )
-                    .with_location(loc.clone()),
-                );
-            }
-        }
-
-        // Table 8: AlphaTransparency — shall not be present
-        if cdci.alpha_transparency.is_some() {
-            issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Video,
-                    St2067_21_2023::AlphaTransparency.code().to_string(),
-                    "AlphaTransparency shall not be present (Table 8)",
-                )
-                .with_location(loc.clone()),
-            );
-        }
-
-        // Table 8: ImageAlignmentOffset — shall not be present
-        if cdci.image_alignment_offset.is_some() {
-            issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Video,
-                    St2067_21_2023::ImageAlignmentOffset.code().to_string(),
-                    "ImageAlignmentOffset shall not be present (Table 8)",
-                )
-                .with_location(loc.clone()),
-            );
-        }
-
-        // Table 8: ImageStartOffset — shall not be present
-        if cdci.image_start_offset.is_some() {
-            issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Video,
-                    St2067_21_2023::ImageStartOffset.code().to_string(),
-                    "ImageStartOffset shall not be present (Table 8)",
-                )
-                .with_location(loc.clone()),
-            );
-        }
-
-        // Table 8: ImageEndOffset — shall not be present
-        if cdci.image_end_offset.is_some() {
-            issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Video,
-                    St2067_21_2023::ImageEndOffset.code().to_string(),
-                    "ImageEndOffset shall not be present (Table 8)",
-                )
-                .with_location(loc.clone()),
-            );
-        }
-
-        // Table 8: FieldDominance — conditional on FrameLayout
-        if let Some(ref fl) = cdci.frame_layout {
-            if fl == "FullFrame" && cdci.field_dominance.is_some() {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Video,
-                        St2067_21_2023::FieldDominance.code().to_string(),
-                        "FieldDominance shall not be present for progressive (FullFrame) content",
-                    )
-                    .with_location(loc.clone()),
-                );
-            }
-            if fl == "SeparateFields" && cdci.field_dominance.is_none() {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Video,
-                        St2067_21_2023::FieldDominance.code().to_string(),
-                        "FieldDominance shall be present for interlaced (SeparateFields) content",
-                    )
-                    .with_location(loc.clone()),
-                );
-            }
-        }
-
-        // §6.2.4: ColorPrimaries shall be present and recognized
-        match &cdci.color_primaries {
-            Some(cp) if matches!(cp, ColorPrimaries::Unknown(_)) => {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Video,
-                        St2067_21_2023::ColorPrimariesUnknown.code().to_string(),
-                        format!("Unrecognized ColorPrimaries UL: {}", cp),
-                    )
-                    .with_location(loc.clone()),
-                );
-            }
-            None => {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Video,
-                        St2067_21_2023::ColorPrimariesMissing.code().to_string(),
-                        "ColorPrimaries shall be present (Table 8)",
-                    )
-                    .with_location(loc.clone()),
-                );
-            }
-            _ => {}
-        }
-
-        // §6.2.2: TransferCharacteristic shall be present and recognized
-        match &cdci.transfer_characteristic {
-            Some(tc) if matches!(tc, TransferCharacteristic::Unknown(_)) => {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Video,
-                        St2067_21_2023::TransferCharacteristicUnknown
-                            .code()
-                            .to_string(),
-                        format!("Unrecognized TransferCharacteristic UL: {}", tc),
-                    )
-                    .with_location(loc.clone()),
-                );
-            }
-            None => {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Video,
-                        St2067_21_2023::TransferCharacteristicMissing
-                            .code()
-                            .to_string(),
-                        "TransferCharacteristic shall be present (Table 8)",
-                    )
-                    .with_location(loc.clone()),
-                );
-            }
-            _ => {}
-        }
-
-        // §6.2.3: CodingEquations shall be present for Y'C'BC'R
-        match &cdci.coding_equations {
-            Some(ce) if matches!(ce, CodingEquations::Unknown(_)) => {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Video,
-                        St2067_21_2023::CodingEquationsUnknown.code().to_string(),
-                        format!("Unrecognized CodingEquations UL: {}", ce),
-                    )
-                    .with_location(loc.clone()),
-                );
-            }
-            None => {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Video,
-                        St2067_21_2023::CodingEquationsMissing.code().to_string(),
-                        "CodingEquations shall be present for Y'C'BC'R (Table 8)",
-                    )
-                    .with_location(loc.clone()),
-                );
-            }
-            _ => {}
-        }
-
-        // ── Table 12: CDCI Descriptor ────────────────────────────────────────
-
-        // Table 12: ComponentDepth shall be present and equal to pixel bit depth (8/10/12/16)
-        match cdci.component_depth {
-            Some(depth) if !matches!(depth, 8 | 10 | 12 | 16) => {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Video,
-                        St2067_21_2023::ComponentDepth.code().to_string(),
-                        format!(
-                            "ComponentDepth {} is not allowed; shall be 8, 10, 12, or 16",
-                            depth
-                        ),
-                    )
-                    .with_location(loc.clone()),
-                );
-            }
-            None => {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Video,
-                        St2067_21_2023::ComponentDepth.code().to_string(),
-                        "ComponentDepth shall be present (Table 12)",
-                    )
-                    .with_location(loc.clone()),
-                );
-            }
-            _ => {}
-        }
-
-        // Table 12: HorizontalSubsampling — §6.4.2
-        // 1 = 4:4:4, 2 = 4:2:2
-        match cdci.horizontal_subsampling {
-            Some(hs) if hs != 1 && hs != 2 => {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Video,
-                        St2067_21_2023::HorizontalSubsampling.code().to_string(),
-                        format!(
-                            "HorizontalSubsampling shall be 1 (4:4:4) or 2 (4:2:2), found: {}",
-                            hs
-                        ),
-                    )
-                    .with_location(loc.clone()),
-                );
-            }
-            None => {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Video,
-                        St2067_21_2023::HorizontalSubsampling.code().to_string(),
-                        "HorizontalSubsampling shall be present and equal to 1 (4:4:4) or 2 (4:2:2)",
-                    )
-                    .with_location(loc.clone()),
-                );
-            }
-            _ => {}
-        }
-
-        // Table 12: VerticalSubsampling shall be 1
-        match cdci.vertical_subsampling {
-            Some(vs) if vs != 1 => {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Video,
-                        St2067_21_2023::VerticalSubsampling.code().to_string(),
-                        format!("VerticalSubsampling shall be 1, found: {}", vs),
-                    )
-                    .with_location(loc.clone()),
-                );
-            }
-            None => {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Video,
-                        St2067_21_2023::VerticalSubsampling.code().to_string(),
-                        "VerticalSubsampling shall be present and equal to 1",
-                    )
-                    .with_location(loc.clone()),
-                );
-            }
-            _ => {}
-        }
-
-        // Table 12: ColorSiting shall be present and 0
-        match cdci.color_siting {
-            Some(cs) if cs != 0 => {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Video,
-                        St2067_21_2023::ColorSiting.code().to_string(),
-                        format!("ColorSiting shall be 0, found: {}", cs),
-                    )
-                    .with_location(loc.clone()),
-                );
-            }
-            None => {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Video,
-                        St2067_21_2023::ColorSiting.code().to_string(),
-                        "ColorSiting shall be present and equal to 0",
-                    )
-                    .with_location(loc.clone()),
-                );
-            }
-            _ => {}
-        }
-
-        // Table 12: ReversedByteOrder — shall not be present
-        if cdci.reversed_byte_order.is_some() {
-            issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Video,
-                    St2067_21_2023::ReversedByteOrder.code().to_string(),
-                    "ReversedByteOrder shall not be present (Table 12)",
-                )
-                .with_location(loc.clone()),
-            );
-        }
-
-        // Table 12: PaddingBits — shall not be present
-        if cdci.padding_bits.is_some() {
-            issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Video,
-                    St2067_21_2023::PaddingBits.code().to_string(),
-                    "PaddingBits shall not be present (Table 12)",
-                )
-                .with_location(loc.clone()),
-            );
-        }
-
-        // Table 12: AlphaSampleDepth — shall not be present
-        if cdci.alpha_sample_depth.is_some() {
-            issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Video,
-                    St2067_21_2023::AlphaSampleDepth.code().to_string(),
-                    "AlphaSampleDepth shall not be present (Table 12)",
-                )
-                .with_location(loc.clone()),
-            );
-        }
-
-        // ── Table 13: Black/White Ref Level and Color Range ──────────────────
-
-        // Determine the color system to look up correct reference values
-        if let (Some(cp), Some(tc), Some(ce)) = (
-            &cdci.color_primaries,
-            &cdci.transfer_characteristic,
-            &cdci.coding_equations,
-        ) {
-            // Table 3: Validate colorimetry system triplet
-            let color_sys = ColorSystem::from_components(cp, tc, Some(ce));
-            if let Some(ref cs) = color_sys {
-                // Table 13: Validate Black/White Ref Level and Color Range
-                if let Some(depth) = cdci.component_depth {
-                    if let Some((exp_black, exp_white, exp_range)) = cdci_ref_values(cs, depth) {
-                        if let Some(black) = cdci.black_ref_level {
-                            if black != exp_black {
-                                issues.push(
-                                    ValidationIssue::new(
-                                        Severity::Error,
-                                        Category::Video,
-                                        St2067_21_2023::BlackRefLevel.code().to_string(),
-                                        format!(
-                                            "BlackRefLevel={} for {} at {}-bit; expected {}",
-                                            black, cs, depth, exp_black
-                                        ),
-                                    )
-                                    .with_location(loc.clone()),
-                                );
-                            }
-                        }
-                        if let Some(white) = cdci.white_ref_level {
-                            if white != exp_white {
-                                issues.push(
-                                    ValidationIssue::new(
-                                        Severity::Error,
-                                        Category::Video,
-                                        St2067_21_2023::WhiteRefLevel.code().to_string(),
-                                        format!(
-                                            "WhiteRefLevel={} for {} at {}-bit; expected {}",
-                                            white, cs, depth, exp_white
-                                        ),
-                                    )
-                                    .with_location(loc.clone()),
-                                );
-                            }
-                        }
-                        if let Some(range) = cdci.color_range {
-                            if range != exp_range {
-                                issues.push(
-                                    ValidationIssue::new(
-                                        Severity::Error,
-                                        Category::Video,
-                                        St2067_21_2023::ColorRange.code().to_string(),
-                                        format!(
-                                            "ColorRange={} for {} at {}-bit; expected {}",
-                                            range, cs, depth, exp_range
-                                        ),
-                                    )
-                                    .with_location(loc.clone()),
-                                );
-                            }
-                        }
-                    }
-                }
-            } else if !matches!(cp, ColorPrimaries::Unknown(_))
-                && !matches!(tc, TransferCharacteristic::Unknown(_))
-                && !matches!(ce, CodingEquations::Unknown(_))
-            {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Video,
-                        St2067_21_2023::ColorSystem.code().to_string(),
-                        format!(
-                            "ColorPrimaries={} + TransferCharacteristic={} + CodingEquations={} \
-                             does not form a recognized Color System",
-                            cp, tc, ce
-                        ),
-                    )
-                    .with_location(loc.clone()),
-                );
-            }
-        }
-
-        // §7.5: MaxCLL/MaxFALL for PQ-based systems (optional per spec)
-        self.check_hdr_metadata(cdci.transfer_characteristic.as_ref(), cpl, &loc, issues);
-
-        // ── Table 14: JPEG 2000 Picture Sub Descriptor ────────────────────────
-        self.validate_j2k_sub_descriptor(
-            cdci.sub_descriptors.as_ref(),
-            cdci.picture_compression.as_ref(),
-            &loc,
-            issues,
-        );
-    }
-
-    /// Section 7.5: MaxCLL and MaxFALL for PQ (ST 2084) content.
-    ///
-    /// Per ST 2067-21:2023 §7.5, MaxCLL and MaxFALL have 0..1 cardinality for
-    /// COLOR.6/COLOR.7 (PQ-based systems). They are OPTIONAL, not required.
-    /// We emit an informational note when they are absent.
-    fn check_hdr_metadata(
-        &self,
-        tc: Option<&TransferCharacteristic>,
-        cpl: &CompositionPlaylist,
-        loc: &Location,
-        issues: &mut Vec<ValidationIssue>,
-    ) {
-        if let Some(TransferCharacteristic::PqSt2084) = tc {
-            let has_hdr_metadata = cpl
-                .extension_properties
-                .as_ref()
-                .map(|ext| ext.max_cll.is_some() && ext.max_fall.is_some())
-                .unwrap_or(false);
-            if !has_hdr_metadata {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Info,
-                        Category::Video,
-                        St2067_21_2023::MaxCLLMaxFALL.code().to_string(),
-                        "MaxCLL and MaxFALL are not present for PQ (ST 2084) content; \
-                         per §7.5 they are optional (0..1 cardinality)",
-                    )
-                    .with_location(loc.clone())
-                    .with_suggestion("Consider adding MaxCLL and MaxFALL to ExtensionProperties"),
-                );
-            }
-        }
-    }
-
-    /// Table 14: JPEG 2000 Picture Sub Descriptor validation.
-    ///
-    /// Shared between RGBA and CDCI descriptor validation.
-    fn validate_j2k_sub_descriptor(
-        &self,
-        sub_descriptors: Option<&crate::cpl::VideoSubDescriptors>,
-        picture_compression: Option<&crate::cpl::VideoCodec>,
-        loc: &Location,
-        issues: &mut Vec<ValidationIssue>,
-    ) {
-        // Only validate J2K sub-descriptor if codec is JPEG 2000
-        let is_j2k = picture_compression
-            .map(|pc| pc.is_jpeg2000_family())
-            .unwrap_or(false);
-        if !is_j2k {
-            return;
-        }
-
-        let j2k_sub = sub_descriptors.and_then(|sd| sd.jpeg2000_sub_descriptor.as_ref());
-
-        let j2k_sub = match j2k_sub {
-            Some(sub) => sub,
-            None => {
-                // Table 14 says it shall be present, but it might not be serialized in CPL
-                // (it's an MXF concept). Emit warning to make this normative gap visible.
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Warning,
-                        Category::Encoding,
-                        St2067_21_2023::Jpeg2000SubDescriptor.code().to_string(),
-                        "JPEG2000SubDescriptor is missing; Table 14 requires this descriptor for JPEG 2000 picture essence",
-                    )
-                    .with_location(loc.clone())
-                    .with_suggestion("Include JPEG2000SubDescriptor metadata in CPL/mapping when available"),
-                );
-                return;
-            }
-        };
-
-        // Table 14: CodingStyleDefault (Coding Style) — shall be present
-        if j2k_sub.coding_style_default.is_none() {
-            issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Encoding,
-                    St2067_21_2023::CodingStyle.code().to_string(),
-                    "CodingStyleDefault (Coding Style) shall be present (Table 14)",
-                )
-                .with_location(loc.clone()),
-            );
-        }
-
-        // Table 14: J2CLayout — shall be present (§6.5.2)
-        if j2k_sub.j2c_layout.is_none() {
-            issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Encoding,
-                    St2067_21_2023::J2CLayout.code().to_string(),
-                    "J2CLayout shall be present (Table 14, §6.5.2)",
-                )
-                .with_location(loc.clone()),
-            );
-        }
-
-        // Table 14: J2KExtendedCapabilities — shall be present if ISO/IEC 15444-15 coding
-        // Rsiz bit 14 (0x4000 = 16384) indicates Part 15 (HTJ2K) profile
-        if let Some(rsiz) = j2k_sub.rsiz {
-            if rsiz & 0x4000 != 0 && j2k_sub.j2k_extended_capabilities.is_none() {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Encoding,
-                        St2067_21_2023::J2KExtendedCapabilities.code().to_string(),
-                        "J2KExtendedCapabilities shall be present when ISO/IEC 15444-15 coding is used (Table 14)",
-                    )
-                    .with_location(loc.clone()),
-                );
-            }
-        }
-    }
-
-    /// Section 7.2: All image descriptors in a composition must use the same color system.
-    fn validate_homogeneous_image_essence(
-        &self,
-        cpl: &CompositionPlaylist,
-        issues: &mut Vec<ValidationIssue>,
-    ) {
-        let edl = match &cpl.essence_descriptor_list {
-            Some(edl) => edl,
-            None => return,
-        };
-
-        let mut color_systems: Vec<ColorSystem> = Vec::new();
-
-        for ed in &edl.essence_descriptors {
-            if let Some(ref cdci) = ed.cdci_descriptor {
-                if let (Some(cp), Some(tc), Some(ce)) = (
-                    &cdci.color_primaries,
-                    &cdci.transfer_characteristic,
-                    &cdci.coding_equations,
-                ) {
-                    if let Some(cs) = ColorSystem::from_components(cp, tc, Some(ce)) {
-                        color_systems.push(cs);
-                    }
-                }
-            }
-            if let Some(ref rgba) = ed.rgba_descriptor {
-                if let (Some(cp), Some(tc)) = (&rgba.color_primaries, &rgba.transfer_characteristic)
-                {
-                    if let Some(cs) = ColorSystem::from_components(cp, tc, None) {
-                        color_systems.push(cs);
-                    }
-                }
-            }
-        }
-
-        if !color_systems.is_empty() {
-            let first = &color_systems[0];
-            if !color_systems.iter().all(|cs| cs == first) {
-                let unique: HashSet<_> = color_systems.iter().collect();
-                let mut systems: Vec<_> = unique.iter().map(|cs| cs.to_string()).collect();
-                systems.sort();
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Video,
-                        St2067_21_2023::HomogeneousImageEssence.code(),
-                        format!(
-                            "Heterogeneous image essence: found {} different color systems ({}); \
-                             all image essence in a composition shall use the same color system",
-                            unique.len(),
-                            systems.join(", ")
-                        ),
-                    )
-                    .with_location(Location::new().with_cpl(cpl.id)),
-                );
-            }
-        }
-    }
-
-    /// §7.4 Segment Duration: If the average number of audio samples per Composition
-    /// Edit Unit is not an integer, the duration of each Segment shall be an integer
-    /// multiple of 5/Composition Edit Rate (i.e., segment duration in edit units must
-    /// be divisible by 5).
-    fn validate_segment_duration(
-        &self,
-        cpl: &CompositionPlaylist,
-        issues: &mut Vec<ValidationIssue>,
-    ) {
-        // Need Composition Edit Rate to compute samples-per-edit-unit.
-        let edit_rate = match &cpl.edit_rate {
-            Some(er) if er.numerator > 0 && er.denominator > 0 => er,
-            _ => return,
-        };
-
-        // Collect audio sample rates from WAVEPCMDescriptors.
-        let edl = match &cpl.essence_descriptor_list {
-            Some(edl) => edl,
-            None => return,
-        };
-
-        let mut non_integer_audio = false;
-        for ed in &edl.essence_descriptors {
-            if let Some(ref wave) = ed.wave_pcm_descriptor {
-                if let Some(ref asr) = wave.audio_sample_rate {
-                    // samples_per_edit_unit = (asr_num / asr_den) / (er_num / er_den)
-                    //                       = (asr_num * er_den) / (asr_den * er_num)
-                    // Non-integer if (asr_num * er_den) % (asr_den * er_num) != 0
-                    let numerator = asr.numerator as u64 * edit_rate.denominator as u64;
-                    let denominator = asr.denominator as u64 * edit_rate.numerator as u64;
-                    if denominator > 0 && !numerator.is_multiple_of(denominator) {
-                        non_integer_audio = true;
-                        break;
-                    }
-                }
-            }
-        }
-
-        if !non_integer_audio {
-            return;
-        }
-
-        // Constraint applies: each segment's duration (in edit units) must be divisible by 5.
-        // Segment duration = sum of effective durations of resources in the main image track.
-        for (seg_idx, segment) in cpl.segment_list.segments.iter().enumerate() {
-            let mut segment_duration: u64 = 0;
-            for seq in &segment.sequence_list.main_image_sequences {
-                for resource in &seq.resource_list.resources {
-                    let effective = resource
-                        .source_duration
-                        .unwrap_or(resource.intrinsic_duration);
-                    segment_duration += effective;
-                }
-            }
-
-            if segment_duration > 0 && !segment_duration.is_multiple_of(5) {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Timing,
-                        St2067_21_2023::SegmentDurationMultiple.code().to_string(),
-                        format!(
-                            "Segment {} duration ({} edit units) is not a multiple of 5; \
-                             §7.4 requires segment duration to be an integer multiple of \
-                             5/Composition Edit Rate when audio samples per edit unit is non-integer",
-                            seg_idx + 1,
-                            segment_duration,
-                        ),
-                    )
-                    .with_location(
-                        Location::new()
-                            .with_cpl(cpl.id)
-                            .with_segment(seg_idx),
-                    ),
-                );
-            }
-        }
-    }
-
-    /// Common App2E validation rules, parameterised by `allow_ht`.
-    ///
-    /// Called by both `App2E2021::validate_cpl` (allow_ht = true) and
-    /// `App2E2020::validate_cpl` (allow_ht = false). This avoids duplicating
-    /// the complete rule set for the 2020 vs 2021 HT-J2K difference.
-    pub fn validate_all(
-        &self,
-        cpl: &CompositionPlaylist,
-        allow_ht: bool,
-        issues: &mut Vec<ValidationIssue>,
-    ) {
-        // Validate image descriptors (Tables 8/10/11/12/13)
-        self.validate_image_descriptors(cpl, allow_ht, issues);
-        // §8.2: Homogeneous image essence
-        self.validate_homogeneous_image_essence(cpl, issues);
-        // §7.4: Segment duration alignment for non-integer audio sample counts
-        self.validate_segment_duration(cpl, issues);
-        // §6.5: Audio quantization bits
-        self.validate_audio_quantization(cpl, issues);
-        // Tables 4-6: Image resolution
-        self.validate_image_resolution(cpl, issues);
-        // Tables 4-6: Image frame rate
-        self.validate_image_frame_rate(cpl, issues);
-        // §6.5: Audio sample rate (48000 Hz)
-        self.validate_audio_sample_rate(cpl, issues);
-        // §6.2: Essence descriptor completeness
-        self.validate_descriptor_completeness(cpl, issues);
-        // §6.2.1: FrameLayout shall be FullFrame (progressive)
-        self.validate_frame_layout_progressive(cpl, issues);
-        // §7.3: Audio channel layout homogeneity within a composition
-        self.validate_audio_channel_homogeneity(cpl, issues);
-        // §5.6: HearingImpaired/ForcedNarrative captions shall use timed text
-        self.validate_caption_track_constraints(cpl, issues);
-        // §5.1.3: ContentMaturityRating shall use recognized agency/rating pairs
-        self.validate_content_maturity_rating(cpl, issues);
-        // §5.3: LocaleList language/region validation
-        self.validate_locale_list(cpl, issues);
-    }
-}
-
-impl ConstraintsValidator for App2E2021 {
-    fn spec_id(&self) -> &str {
-        "ST 2067-21:2023 (App2E)"
-    }
-
-    fn validate_cpl(&self, cpl: &CompositionPlaylist) -> Vec<ValidationIssue> {
-        let mut issues = Vec::new();
-
-        // §7.1 / Table 15: ApplicationIdentification shall be the exact URI
-        if let Some(ref ext) = cpl.extension_properties {
-            if let Some(ref app_id) = ext.application_identification {
-                if app_id != APP2E_APPLICATION_IDENTIFICATION {
-                    issues.push(
-                        ValidationIssue::new(
-                            Severity::Warning,
-                            Category::Metadata,
-                            St2067_21_2023::AppIdMismatch.code().to_string(),
-                            format!(
-                                "ApplicationIdentification '{}' does not match Table 15 value '{}'",
-                                app_id, APP2E_APPLICATION_IDENTIFICATION
-                            ),
-                        )
-                        .with_location(Location::new().with_cpl(cpl.id)),
-                    );
-                }
-            }
-        }
-
-        self.validate_all(
-            cpl,
-            true, /* HT-J2K permitted in App2E 2021 */
-            &mut issues,
-        );
-
-        issues
-    }
-}
-
-// ═════════════════════════════════════════════════════════════════════════════
-// App2E 2020 Validator
-// ═════════════════════════════════════════════════════════════════════════════
-
-/// The exact ApplicationIdentification URI per ST 2067-21:2020 Table 15.
-const APP2E_2020_APPLICATION_IDENTIFICATION: &str = "http://www.smpte-ra.org/ns/2067-21/2020";
-
-/// ST 2067-21:2020 Application Profile #2E Validator.
-///
-/// Identical to App2E 2021 except HT-J2K (ISO 15444-15) is **not** permitted —
-/// HT-J2K support was only added in the 2021 edition of ST 2067-21.
-pub struct App2E2020;
-
-impl ConstraintsValidator for App2E2020 {
-    fn spec_id(&self) -> &str {
-        "ST 2067-21:2020 (App2E)"
-    }
-
-    fn validate_cpl(&self, cpl: &CompositionPlaylist) -> Vec<ValidationIssue> {
-        let mut issues = Vec::new();
-
-        // §7.1 / Table 15: ApplicationIdentification shall be the exact URI
-        if let Some(ref ext) = cpl.extension_properties {
-            if let Some(ref app_id) = ext.application_identification {
-                if app_id != APP2E_2020_APPLICATION_IDENTIFICATION {
-                    issues.push(
-                        ValidationIssue::new(
-                            Severity::Warning,
-                            Category::Metadata,
-                            St2067_21_2020::AppIdMismatch.code().to_string(),
-                            format!(
-                                "ApplicationIdentification '{}' does not match Table 15 value '{}'",
-                                app_id, APP2E_2020_APPLICATION_IDENTIFICATION
-                            ),
-                        )
-                        .with_location(Location::new().with_cpl(cpl.id)),
-                    );
-                }
-            }
-        }
-
-        App2E2021.validate_all(
-            cpl,
-            false, /* HT-J2K not permitted in App2E 2020 */
-            &mut issues,
-        );
-
-        issues
-    }
-}
-
-impl App2E2021 {
-    /// ST 2067-21 §6.5: QuantizationBits shall be 16 or 24.
-    fn validate_audio_quantization(
-        &self,
-        cpl: &CompositionPlaylist,
-        issues: &mut Vec<ValidationIssue>,
-    ) {
-        let edl = match &cpl.essence_descriptor_list {
-            Some(edl) => edl,
-            None => return,
-        };
-
-        for ed in &edl.essence_descriptors {
-            if let Some(ref wave) = ed.wave_pcm_descriptor {
-                if let Some(qb) = wave.quantization_bits {
-                    if qb != 16 && qb != 24 {
-                        issues.push(
-                            ValidationIssue::new(
-                                Severity::Error,
-                                Category::Audio,
-                                St2067_21_2023::QuantizationBits.code().to_string(),
-                                format!(
-                                    "WAVEPCMDescriptor {} has QuantizationBits {} \
-                                     but ST 2067-21 §6.5 requires 16 or 24",
-                                    ed.id, qb,
-                                ),
-                            )
-                            .with_location(
-                                Location::new()
-                                    .with_cpl(cpl.id)
-                                    .with_path(format!("EssenceDescriptor/{}", ed.id)),
-                            ),
-                        );
-                    }
-                }
-            }
-        }
-    }
-}
-
-// ── ST 2067-21 Tables 4-6: Image system constraints ─────────────────────────
-
-/// Allowed image system tiers per ST 2067-21 Tables 4-6.
-///
-/// Each tier defines valid (StoredWidth, StoredHeight) pairs and the set of
-/// allowed frame rates (as EditRate numerator/denominator pairs).
-struct ImageSystemTier {
-    name: &'static str,
-    dimensions: &'static [(u32, u32)],
-}
-
-/// ST 2067-21 Tables 4-6: Allowed frame rates for all image system tiers.
-///
-/// These are common across 2K, 4K, and 8K tiers.
-const ALLOWED_FRAME_RATES: &[(u32, u32)] = &[
-    (24, 1),       // 24 fps
-    (24000, 1001), // 23.976 fps
-    (25, 1),       // 25 fps
-    (30, 1),       // 30 fps
-    (30000, 1001), // 29.97 fps
-    (48, 1),       // 48 fps (HFR)
-    (48000, 1001), // 47.952 fps (HFR)
-    (50, 1),       // 50 fps (HFR)
-    (60, 1),       // 60 fps (HFR)
-    (60000, 1001), // 59.94 fps (HFR)
-];
-
-/// All defined image system tiers.
-const IMAGE_SYSTEM_TIERS: &[ImageSystemTier] = &[
-    ImageSystemTier {
-        name: "2K (Table 4)",
-        dimensions: &[(1920, 1080), (2048, 1080)],
-    },
-    ImageSystemTier {
-        name: "4K (Table 5)",
-        dimensions: &[(3840, 2160), (4096, 2160)],
-    },
-    ImageSystemTier {
-        name: "8K (Table 6)",
-        dimensions: &[(7680, 4320)],
-    },
-];
-
-impl App2E2021 {
-    /// ST 2067-21 §5.2: Validate image resolution (StoredWidth × StoredHeight).
-    ///
-    /// The stored dimensions must match one of the allowed image system tiers.
-    fn validate_image_resolution(
-        &self,
-        cpl: &CompositionPlaylist,
-        issues: &mut Vec<ValidationIssue>,
-    ) {
-        let edl = match &cpl.essence_descriptor_list {
-            Some(edl) => edl,
-            None => return,
-        };
-
-        let all_allowed: Vec<(u32, u32)> = IMAGE_SYSTEM_TIERS
-            .iter()
-            .flat_map(|t| t.dimensions.iter().copied())
-            .collect();
-
-        for ed in &edl.essence_descriptors {
-            let (width, height, desc_type) = if let Some(ref rgba) = ed.rgba_descriptor {
-                (rgba.stored_width, rgba.stored_height, "RGBA")
-            } else if let Some(ref cdci) = ed.cdci_descriptor {
-                (cdci.stored_width, cdci.stored_height, "CDCI")
-            } else {
-                continue;
-            };
-
-            let (w, h) = match (width, height) {
-                (Some(w), Some(h)) => (w, h),
-                _ => continue, // Completeness validation will catch missing fields
-            };
-
-            if !all_allowed.contains(&(w, h)) {
-                let tier_names: Vec<&str> = IMAGE_SYSTEM_TIERS.iter().map(|t| t.name).collect();
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Video,
-                        St2067_21_2023::Resolution.code().to_string(),
-                        format!(
-                            "{} descriptor {}: StoredWidth×StoredHeight {}×{} is not an allowed App2E image system dimension (allowed tiers: {})",
-                            desc_type, ed.id, w, h, tier_names.join(", ")
-                        ),
-                    )
-                    .with_location(
-                        Location::new()
-                            .with_cpl(cpl.id)
-                            .with_path(format!("EssenceDescriptor/{}", ed.id)),
-                    ),
-                );
-            }
-        }
-    }
-
-    /// ST 2067-21 §5.2: Validate image frame rate (SampleRate on descriptor).
-    ///
-    /// The descriptor's SampleRate must be one of the allowed edit rates.
-    fn validate_image_frame_rate(
-        &self,
-        cpl: &CompositionPlaylist,
-        issues: &mut Vec<ValidationIssue>,
-    ) {
-        let edl = match &cpl.essence_descriptor_list {
-            Some(edl) => edl,
-            None => return,
-        };
-
-        for ed in &edl.essence_descriptors {
-            let (sample_rate, desc_type) = if let Some(ref rgba) = ed.rgba_descriptor {
-                (rgba.sample_rate.as_ref(), "RGBA")
-            } else if let Some(ref cdci) = ed.cdci_descriptor {
-                (cdci.sample_rate.as_ref(), "CDCI")
-            } else {
-                continue;
-            };
-
-            let rate = match sample_rate {
-                Some(r) => r,
-                None => continue, // Completeness validation will catch missing SampleRate
-            };
-
-            let is_allowed = ALLOWED_FRAME_RATES
-                .iter()
-                .any(|&(n, d)| rate.numerator == n && rate.denominator == d);
-
-            if !is_allowed {
-                let allowed_str: Vec<String> = ALLOWED_FRAME_RATES
-                    .iter()
-                    .map(|&(n, d)| {
-                        let fps = n as f64 / d as f64;
-                        format!("{:.3}", fps)
-                    })
-                    .collect();
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Video,
-                        St2067_21_2023::FrameRate.code().to_string(),
-                        format!(
-                            "{} descriptor {}: SampleRate {}/{} ({:.3} fps) is not an allowed App2E frame rate (allowed: {} fps)",
-                            desc_type, ed.id, rate.numerator, rate.denominator,
-                            rate.as_f64(),
-                            allowed_str.join(", ")
-                        ),
-                    )
-                    .with_location(
-                        Location::new()
-                            .with_cpl(cpl.id)
-                            .with_path(format!("EssenceDescriptor/{}", ed.id)),
-                    ),
-                );
-            }
-        }
-    }
-
-    /// ST 2067-21 §6.5: AudioSampleRate shall be 48000 Hz.
-    fn validate_audio_sample_rate(
-        &self,
-        cpl: &CompositionPlaylist,
-        issues: &mut Vec<ValidationIssue>,
-    ) {
-        let edl = match &cpl.essence_descriptor_list {
-            Some(edl) => edl,
-            None => return,
-        };
-
-        for ed in &edl.essence_descriptors {
-            let wave = match &ed.wave_pcm_descriptor {
-                Some(w) => w,
-                None => continue,
-            };
-
-            if let Some(ref rate) = wave.audio_sample_rate {
-                // 48000 Hz = 48000/1
-                if rate.numerator != 48000 || rate.denominator != 1 {
-                    issues.push(
-                        ValidationIssue::new(
-                            Severity::Error,
-                            Category::Audio,
-                            St2067_21_2023::AudioSampleRate.code().to_string(),
-                            format!(
-                                "WAVEPCMDescriptor {}: AudioSampleRate {}/{} ({} Hz) is not 48000 Hz",
-                                ed.id, rate.numerator, rate.denominator,
-                                rate.numerator / rate.denominator.max(1)
-                            ),
-                        )
-                        .with_location(
-                            Location::new()
-                                .with_cpl(cpl.id)
-                                .with_path(format!("EssenceDescriptor/{}", ed.id)),
-                        ),
-                    );
-                }
-            }
-        }
-    }
-
-    /// ST 2067-21 §6.2: Validate that required fields are present on essence descriptors.
-    ///
-    /// Image descriptors (RGBA/CDCI) must have: StoredWidth, StoredHeight, SampleRate,
-    /// FrameLayout, ColorPrimaries, TransferCharacteristic, PictureCompression.
-    /// Audio descriptors (WAVE PCM) must have: ChannelCount, QuantizationBits.
-    fn validate_descriptor_completeness(
-        &self,
-        cpl: &CompositionPlaylist,
-        issues: &mut Vec<ValidationIssue>,
-    ) {
-        let edl = match &cpl.essence_descriptor_list {
-            Some(edl) => edl,
-            None => return,
-        };
-
-        for ed in &edl.essence_descriptors {
-            let ed_loc = Location::new()
-                .with_cpl(cpl.id)
-                .with_path(format!("EssenceDescriptor/{}", ed.id));
-
-            // Image descriptor required fields
-            if let Some(ref rgba) = ed.rgba_descriptor {
-                let mut push = |code: &'static str, field: &'static str| {
-                    issues.push(
-                        ValidationIssue::new(
-                            Severity::Error,
-                            Category::Encoding,
-                            code.to_string(),
-                            format!(
-                                "RGBADescriptor {}: required field {} is missing",
-                                ed.id, field
-                            ),
-                        )
-                        .with_location(ed_loc.clone()),
-                    );
-                };
-                if rgba.stored_width.is_none() {
-                    push(St2067_21_2023::RequiredStoredWidth.code(), "StoredWidth");
-                }
-                if rgba.stored_height.is_none() {
-                    push(St2067_21_2023::RequiredStoredHeight.code(), "StoredHeight");
-                }
-                if rgba.sample_rate.is_none() {
-                    push(St2067_21_2023::RequiredSampleRate.code(), "SampleRate");
-                }
-                if rgba.frame_layout.is_none() {
-                    push(St2067_21_2023::RequiredFrameLayout.code(), "FrameLayout");
-                }
-                if rgba.color_primaries.is_none() {
-                    push(
-                        St2067_21_2023::RequiredColorPrimaries.code(),
-                        "ColorPrimaries",
-                    );
-                }
-                if rgba.transfer_characteristic.is_none() {
-                    push(
-                        St2067_21_2023::RequiredTransferCharacteristic.code(),
-                        "TransferCharacteristic",
-                    );
-                }
-                if rgba.picture_compression.is_none() {
-                    push(
-                        St2067_21_2023::RequiredPictureCompression.code(),
-                        "PictureCompression",
-                    );
-                }
-            }
-
-            if let Some(ref cdci) = ed.cdci_descriptor {
-                let mut push = |code: &'static str, field: &'static str| {
-                    issues.push(
-                        ValidationIssue::new(
-                            Severity::Error,
-                            Category::Encoding,
-                            code.to_string(),
-                            format!(
-                                "CDCIDescriptor {}: required field {} is missing",
-                                ed.id, field
-                            ),
-                        )
-                        .with_location(ed_loc.clone()),
-                    );
-                };
-                if cdci.stored_width.is_none() {
-                    push(St2067_21_2023::RequiredStoredWidth.code(), "StoredWidth");
-                }
-                if cdci.stored_height.is_none() {
-                    push(St2067_21_2023::RequiredStoredHeight.code(), "StoredHeight");
-                }
-                if cdci.sample_rate.is_none() {
-                    push(St2067_21_2023::RequiredSampleRate.code(), "SampleRate");
-                }
-                if cdci.frame_layout.is_none() {
-                    push(St2067_21_2023::RequiredFrameLayout.code(), "FrameLayout");
-                }
-                if cdci.color_primaries.is_none() {
-                    push(
-                        St2067_21_2023::RequiredColorPrimaries.code(),
-                        "ColorPrimaries",
-                    );
-                }
-                if cdci.transfer_characteristic.is_none() {
-                    push(
-                        St2067_21_2023::RequiredTransferCharacteristic.code(),
-                        "TransferCharacteristic",
-                    );
-                }
-                if cdci.picture_compression.is_none() {
-                    push(
-                        St2067_21_2023::RequiredPictureCompression.code(),
-                        "PictureCompression",
-                    );
-                }
-                if cdci.component_depth.is_none() {
-                    push(
-                        St2067_21_2023::RequiredComponentDepth.code(),
-                        "ComponentDepth",
-                    );
-                }
-            }
-
-            if let Some(ref wave) = ed.wave_pcm_descriptor {
-                let mut push = |code: &'static str, field: &'static str| {
-                    issues.push(
-                        ValidationIssue::new(
-                            Severity::Error,
-                            Category::Audio,
-                            code.to_string(),
-                            format!(
-                                "WAVEPCMDescriptor {}: required field {} is missing",
-                                ed.id, field
-                            ),
-                        )
-                        .with_location(ed_loc.clone()),
-                    );
-                };
-                if wave.channel_count.is_none() {
-                    push(St2067_21_2023::RequiredChannelCount.code(), "ChannelCount");
-                }
-                if wave.quantization_bits.is_none() {
-                    push(
-                        St2067_21_2023::RequiredQuantizationBits.code(),
-                        "QuantizationBits",
-                    );
-                }
-            }
-        }
-    }
-
-    /// ST 2067-21 §6.2.1: FrameLayout shall be FullFrame (progressive) for App2E.
-    ///
-    /// All image systems defined in Tables 4-6 (2K, 4K, 8K) are progressive-scan only.
-    /// SeparateFields (interlaced) is not permitted for App2E content.
-    fn validate_frame_layout_progressive(
-        &self,
-        cpl: &CompositionPlaylist,
-        issues: &mut Vec<ValidationIssue>,
-    ) {
-        let edl = match &cpl.essence_descriptor_list {
-            Some(edl) => edl,
-            None => return,
-        };
-
-        for ed in &edl.essence_descriptors {
-            let (frame_layout, desc_type) = if let Some(ref rgba) = ed.rgba_descriptor {
-                (rgba.frame_layout.as_deref(), "RGBA")
-            } else if let Some(ref cdci) = ed.cdci_descriptor {
-                (cdci.frame_layout.as_deref(), "CDCI")
-            } else {
-                continue;
-            };
-
-            if let Some(fl) = frame_layout {
-                if fl != "FullFrame" {
-                    issues.push(
-                        ValidationIssue::new(
-                            Severity::Error,
-                            Category::Video,
-                            St2067_21_2023::FrameLayoutInterlaced.code().to_string(),
-                            format!(
-                                "{} descriptor {}: FrameLayout '{}' is not permitted for App2E; \
-                                 all image systems (Tables 4-6) shall be FullFrame (progressive)",
-                                desc_type, ed.id, fl,
-                            ),
-                        )
-                        .with_location(
-                            Location::new()
-                                .with_cpl(cpl.id)
-                                .with_path(format!("EssenceDescriptor/{}", ed.id)),
-                        )
-                        .with_suggestion("Set FrameLayout to FullFrame (00h)"),
-                    );
-                }
-            }
-        }
-    }
-
-    /// Intentionally empty — per-virtual-track descriptor homogeneity is
-    /// enforced by CoreConstraints `6.9/Homogeneity` SourceEncoding checks.
-    #[allow(clippy::ptr_arg)]
-    fn validate_audio_channel_homogeneity(
-        &self,
-        _cpl: &CompositionPlaylist,
-        _issues: &mut Vec<ValidationIssue>,
-    ) {
-    }
-
-    /// ST 2067-21 §5.6: HearingImpairedCaptions and ForcedNarrative sequences
-    /// shall reference timed text essence descriptors.
-    fn validate_caption_track_constraints(
-        &self,
-        cpl: &CompositionPlaylist,
-        issues: &mut Vec<ValidationIssue>,
-    ) {
-        // Build map from EssenceDescriptor ID → has DCTimedTextDescriptor
-        let ed_map: HashMap<String, bool> = cpl
-            .essence_descriptor_list
-            .as_ref()
-            .map(|edl| {
-                edl.essence_descriptors
-                    .iter()
-                    .map(|ed| (ed.id.to_string(), ed.dc_timed_text_descriptor.is_some()))
-                    .collect()
-            })
-            .unwrap_or_default();
-
-        // Check HIC sequences
-        for (seg_idx, segment) in cpl.segment_list.segments.iter().enumerate() {
-            for seq in &segment.sequence_list.hearing_impaired_captions_sequences {
-                for (res_idx, resource) in seq.resource_list.resources.iter().enumerate() {
-                    if let Some(ref se) = resource.source_encoding {
-                        let se_str = se.to_string();
-                        if let Some(&has_ttml) = ed_map.get(&se_str) {
-                            if !has_ttml {
-                                issues.push(
-                                    ValidationIssue::new(
-                                        Severity::Error,
-                                        Category::Subtitle,
-                                        St2067_21_2025::HICTimedText.code().to_string(),
-                                        format!(
-                                            "HearingImpairedCaptions resource {} references descriptor '{}' \
-                                             which is not a DCTimedTextDescriptor",
-                                            res_idx, se_str,
-                                        ),
-                                    )
-                                    .with_location(
-                                        Location::new()
-                                            .with_cpl(cpl.id)
-                                            .with_segment(seg_idx)
-                                            .with_resource(res_idx),
-                                    ),
-                                );
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Check ForcedNarrative sequences
-            for seq in &segment.sequence_list.forced_narrative_sequences {
-                for (res_idx, resource) in seq.resource_list.resources.iter().enumerate() {
-                    if let Some(ref se) = resource.source_encoding {
-                        let se_str = se.to_string();
-                        if let Some(&has_ttml) = ed_map.get(&se_str) {
-                            if !has_ttml {
-                                issues.push(
-                                    ValidationIssue::new(
-                                        Severity::Error,
-                                        Category::Subtitle,
-                                        St2067_21_2025::FNTimedText.code().to_string(),
-                                        format!(
-                                            "ForcedNarrative resource {} references descriptor '{}' \
-                                             which is not a DCTimedTextDescriptor",
-                                            res_idx, se_str,
-                                        ),
-                                    )
-                                    .with_location(
-                                        Location::new()
-                                            .with_cpl(cpl.id)
-                                            .with_segment(seg_idx)
-                                            .with_resource(res_idx),
-                                    ),
-                                );
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    /// ST 2067-21 §5.1.3: ContentMaturityRating — if present, agency must be non-empty.
-    /// Also validates ApplicationIdentification is present (required for App2E).
-    fn validate_content_maturity_rating(
-        &self,
-        cpl: &CompositionPlaylist,
-        issues: &mut Vec<ValidationIssue>,
-    ) {
-        // App2E requires ApplicationIdentification when ExtensionProperties is present.
-        // If ExtensionProperties is absent, the check is deferred (CPL may lack it
-        // because it's being tested for other properties only).
-        if let Some(ref ext) = cpl.extension_properties {
-            if ext.application_identification.is_none() {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Metadata,
-                        St2067_21_2023::ApplicationIdentification.code(),
-                        "ApplicationIdentification is required for App2E compositions",
-                    )
-                    .with_location(Location::new().with_cpl(cpl.id)),
-                );
-            }
-        }
-
-        // Validate ContentMaturityRating entries in each Locale
-        if let Some(ref locale_list) = cpl.locale_list {
-            for (locale_idx, locale) in locale_list.locales.iter().enumerate() {
-                if let Some(ref cmr_list) = locale.content_maturity_rating_list {
-                    for (rating_idx, rating) in cmr_list.ratings.iter().enumerate() {
-                        // Agency is required and must be non-empty
-                        if rating.agency.trim().is_empty() {
-                            issues.push(
-                                ValidationIssue::new(
-                                    Severity::Error,
-                                    Category::Metadata,
-                                    St2067_21_2023::ContentMaturityRatingAgency.code(),
-                                    format!(
-                                        "ContentMaturityRating[{}] in Locale[{}] has empty Agency",
-                                        rating_idx, locale_idx
-                                    ),
-                                )
-                                .with_location(Location::new().with_cpl(cpl.id)),
-                            );
-                        } else if !is_valid_any_uri(&rating.agency) {
-                            // XSD: Agency is xs:anyURI — no ASCII whitespace allowed
-                            issues.push(
-                                ValidationIssue::new(
-                                    Severity::Error,
-                                    Category::Metadata,
-                                    St2067_21_2023::ContentMaturityRatingAgencyUri.code(),
-                                    format!(
-                                        "ContentMaturityRating[{}] in Locale[{}] Agency '{}' \
-                                         is not a valid xs:anyURI (contains whitespace)",
-                                        rating_idx, locale_idx, rating.agency,
-                                    ),
-                                )
-                                .with_location(Location::new().with_cpl(cpl.id)),
-                            );
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    /// ST 2067-21 §5.3: Validate LocaleList language tags and region codes.
-    ///
-    /// Language tags should be well-formed RFC 5646 (start with alpha).
-    /// Region codes should be well-formed ISO 3166-1 alpha-2 (2 uppercase letters).
-    fn validate_locale_list(&self, cpl: &CompositionPlaylist, issues: &mut Vec<ValidationIssue>) {
-        let locale_list = match &cpl.locale_list {
-            Some(ll) => ll,
-            None => return,
-        };
-
-        let cpl_loc = Location::new().with_cpl(cpl.id);
-
-        for (i, locale) in locale_list.locales.iter().enumerate() {
-            // Validate language tags
-            if let Some(ref ll) = locale.language_list {
-                for tag in &ll.languages {
-                    let s = tag.as_str();
-                    if s.is_empty() {
-                        issues.push(
-                            ValidationIssue::new(
-                                Severity::Warning,
-                                Category::Metadata,
-                                St2067_21_2023::EmptyLanguageTag.code().to_string(),
-                                format!("Locale[{}]: empty language tag in LanguageList", i),
-                            )
-                            .with_location(cpl_loc.clone()),
-                        );
-                    } else if !s.chars().next().unwrap_or(' ').is_ascii_alphabetic() {
-                        issues.push(
-                            ValidationIssue::new(
-                                Severity::Warning,
-                                Category::Metadata,
-                                St2067_21_2023::MalformedLanguageTag.code().to_string(),
-                                format!(
-                                    "Locale[{}]: language tag '{}' does not start with an ASCII letter (RFC 5646)",
-                                    i, s,
-                                ),
-                            )
-                            .with_location(cpl_loc.clone()),
-                        );
-                    }
-                }
-            }
-
-            // Validate region codes: BCP 47 §2.2.4 — 2-letter ISO 3166-1 or 3-digit UN M.49
-            if let Some(ref rl) = locale.region_list {
-                for region in &rl.regions {
-                    let is_alpha2 =
-                        region.len() == 2 && region.chars().all(|c| c.is_ascii_uppercase());
-                    let is_un_m49 = region.len() == 3 && region.chars().all(|c| c.is_ascii_digit());
-                    if !is_alpha2 && !is_un_m49 {
-                        issues.push(
-                            ValidationIssue::new(
-                                Severity::Warning,
-                                Category::Metadata,
-                                St2067_21_2023::RegionCode.code().to_string(),
-                                format!(
-                                    "Locale[{}]: region '{}' is not a valid BCP 47 region subtag (expected 2-letter ISO 3166-1 or 3-digit UN M.49)",
-                                    i, region,
-                                ),
-                            )
-                            .with_location(cpl_loc.clone()),
-                        );
-                    }
-                }
-            }
-        }
-    }
-}
+// Application Profile #2E (ST 2067-21) lives in `app2e.rs`.
 
 // ═════════════════════════════════════════════════════════════════════════════
 // Tests
@@ -4105,12 +1872,20 @@ mod spec_target_tests {
             AppSpecTarget::St2067_21_2020
         );
         assert_eq!(
-            "v2021".parse::<AppSpecTarget>().unwrap(),
-            AppSpecTarget::St2067_21_2021
+            "v2014".parse::<AppSpecTarget>().unwrap(),
+            AppSpecTarget::St2067_21_2014
+        );
+        assert_eq!(
+            "v2016".parse::<AppSpecTarget>().unwrap(),
+            AppSpecTarget::St2067_21_2016
         );
         assert_eq!(
             "v2023".parse::<AppSpecTarget>().unwrap(),
             AppSpecTarget::St2067_21_2023
+        );
+        assert_eq!(
+            "v2026".parse::<AppSpecTarget>().unwrap(),
+            AppSpecTarget::St2067_21_2026
         );
     }
 
@@ -4118,6 +1893,9 @@ mod spec_target_tests {
     fn app_spec_target_from_str_invalid() {
         assert!("none".parse::<AppSpecTarget>().is_err());
         assert!("garbage".parse::<AppSpecTarget>().is_err());
+        // There is no 2021 edition of ST 2067-21 (the 2023 edition's
+        // ApplicationIdentification value merely ends in /2021).
+        assert!("v2021".parse::<AppSpecTarget>().is_err());
     }
 
     #[test]
@@ -4172,7 +1950,10 @@ mod tests {
     };
     use crate::cpl::{ContentKind, EditRate, LanguageTag, MarkerLabel, VideoCodec};
     use crate::diagnostics::codes::ValidationCode;
-    use crate::validation::codes::St2067_21_2023;
+    use crate::validation::codes::{St2067_21_2020, St2067_21_2023};
+
+    /// ST 2067-21:2023 §7.1 Table 15 value.
+    const APP2E_APPLICATION_IDENTIFICATION: &str = "http://www.smpte-ra.org/ns/2067-21/2021";
 
     // ── Helpers ──────────────────────────────────────────────────────────────
 
@@ -4434,11 +2215,48 @@ mod tests {
         assert_eq!(v.unwrap().spec_id(), "ST 2067-21:2023 (App2E)");
     }
 
+    /// Each edition's own ApplicationIdentification value selects that
+    /// edition: 2014 §7 Table 5 (p6), 2016 §7.1 Table 8 (p10), 2020 §7.1
+    /// Table 15 (p17), 2023 §7.1 Table 15 (p20), 2026 §8.1 Figure 2.
     #[test]
-    fn factory_returns_app2e_for_2023_namespace() {
-        let v = get_validator("http://www.smpte-ra.org/ns/2067-21/2023");
-        assert!(v.is_some());
-        assert_eq!(v.unwrap().spec_id(), "ST 2067-21:2023 (App2E)");
+    fn factory_routes_each_app2e_edition_uri_to_its_own_validator() {
+        for (uri, spec_id) in [
+            (
+                "http://www.smpte-ra.org/schemas/2067-21/2014",
+                "ST 2067-21:2014 (App2E)",
+            ),
+            (
+                "http://www.smpte-ra.org/schemas/2067-21/2016",
+                "ST 2067-21:2016 (App2E)",
+            ),
+            (
+                "http://www.smpte-ra.org/ns/2067-21/2020",
+                "ST 2067-21:2020 (App2E)",
+            ),
+            (
+                "http://www.smpte-ra.org/ns/2067-21/2021",
+                "ST 2067-21:2023 (App2E)",
+            ),
+            (
+                "http://www.smpte-ra.org/ns/2067-21/5ED",
+                "ST 2067-21:2026 (App2E)",
+            ),
+        ] {
+            let v = get_validator(uri).unwrap_or_else(|| panic!("{uri} not routed"));
+            assert_eq!(v.spec_id(), spec_id, "{uri}");
+        }
+    }
+
+    /// No edition defines `.../schemas/2067-21/2015` or
+    /// `.../ns/2067-21/2023`, so neither selects an App #2E validator.
+    #[test]
+    fn factory_does_not_route_app2e_uris_no_edition_defines() {
+        for uri in [
+            "http://www.smpte-ra.org/schemas/2067-21/2015",
+            "http://www.smpte-ra.org/ns/2067-21/2023",
+        ] {
+            assert!(get_validator(uri).is_none(), "{uri} must not be routed");
+        }
     }
 
     #[test]
@@ -4538,7 +2356,7 @@ mod tests {
     fn configurable_registry_overrides_application_identification_uris() {
         let cpl = minimal_cpl();
         let registry = ConfigurableValidatorRegistry::new(ValidatorSelection {
-            app_specs: Some(vec![AppSpecTarget::St2067_21_2021]),
+            app_specs: Some(vec![AppSpecTarget::St2067_21_2023]),
             ..Default::default()
         });
 
@@ -4616,7 +2434,7 @@ mod tests {
         let validators = get_validators_for_cpl(&cpl);
         assert_eq!(validators.len(), 2);
         assert_eq!(validators[0].spec_id(), "ST 2067-2:2016");
-        assert_eq!(validators[1].spec_id(), "ST 2067-21:2023 (App2E)");
+        assert_eq!(validators[1].spec_id(), "ST 2067-21:2016 (App2E)");
     }
 
     #[test]
@@ -4896,15 +2714,26 @@ mod tests {
 
     // ── App2E Tests ──────────────────────────────────────────────────────────
 
+    /// Add the ST 2067-21:2023 Table 15 ApplicationIdentification, which
+    /// ST 2067-2 §6.1 requires, so "no errors" fixtures are conforming.
+    fn with_app2e_app_id(mut cpl: CompositionPlaylist) -> CompositionPlaylist {
+        cpl.extension_properties = Some(ExtensionProperties {
+            application_identification: Some(APP2E_APPLICATION_IDENTIFICATION.to_string()),
+            max_cll: None,
+            max_fall: None,
+        });
+        cpl
+    }
+
     #[test]
     fn app2e_validates_valid_color3_hd() {
-        let cpl = cpl_with_cdci_descriptor(
+        let cpl = with_app2e_app_id(cpl_with_cdci_descriptor(
             ColorPrimaries::Bt709,
             TransferCharacteristic::Bt709,
             CodingEquations::Bt709,
             10,
-        );
-        let v = App2E2021;
+        ));
+        let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         // COLOR.3 with 10-bit J2K should have no App2E errors
         let errors: Vec<_> = issues
@@ -4927,7 +2756,7 @@ mod tests {
             CodingEquations::Bt601,
             10,
         );
-        let v = App2E2021;
+        let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
             issues.iter().any(|i| i.code.contains("6.2/ColorSystem")),
@@ -4951,7 +2780,7 @@ mod tests {
                 }
             }
         }
-        let v = App2E2021;
+        let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
             issues.iter().any(|i| i.code.contains("6.2.5")),
@@ -4967,7 +2796,7 @@ mod tests {
             CodingEquations::Bt709,
             14, // Not an allowed depth
         );
-        let v = App2E2021;
+        let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
             issues.iter().any(|i| i.code.contains("6.4/ComponentDepth")),
@@ -4985,7 +2814,7 @@ mod tests {
             CodingEquations::Bt2020Ncl,
             10,
         );
-        let v = App2E2021;
+        let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         let hdr_issues: Vec<_> = issues.iter().filter(|i| i.code.contains("7.5")).collect();
         assert!(
@@ -5011,7 +2840,7 @@ mod tests {
             max_cll: Some(1000),
             max_fall: Some(400),
         });
-        let v = App2E2021;
+        let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
             !issues.iter().any(|i| i.code.contains("7.5")),
@@ -5028,12 +2857,35 @@ mod tests {
             CodingEquations::Bt2020Ncl,
             10,
         );
-        let v = App2E2021;
+        let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
             !issues.iter().any(|i| i.code.contains("8.3.3")),
             "HLG should not require MaxCLL/MaxFALL"
         );
+    }
+
+    /// COLOR.8 (BT.2020 / HLG) is added to ST 2067-21:2020 by Amendment
+    /// 1:2020 (§3.2 Table 3, §3.3 6.2.2–6.2.4, p3–4) and is in the 2023
+    /// Table 3 (p7). The 2020 validator applies the amendment, so both
+    /// accept it.
+    #[test]
+    fn color8_is_accepted_by_app2e_2020_with_am1_and_2023() {
+        let cdci = cpl_with_cdci_descriptor(
+            ColorPrimaries::Bt2020,
+            TransferCharacteristic::Hlg,
+            CodingEquations::Bt2020Ncl,
+            10,
+        );
+        let rgba = cpl_with_rgba_descriptor(ColorPrimaries::Bt2020, TransferCharacteristic::Hlg);
+        for cpl in [&cdci, &rgba] {
+            for issues in [App2E2020.validate_cpl(cpl), App2E2023.validate_cpl(cpl)] {
+                assert!(
+                    !issues.iter().any(|i| i.code.ends_with("/ColorSystem")),
+                    "COLOR.8 is permitted: {issues:#?}",
+                );
+            }
+        }
     }
 
     #[test]
@@ -5052,7 +2904,7 @@ mod tests {
                 }
             }
         }
-        let v = App2E2021;
+        let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
             issues
@@ -5177,7 +3029,7 @@ mod tests {
         });
         cpl.segment_list.segments[0].sequence_list = sl;
 
-        let v = App2E2021;
+        let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
             issues
@@ -5231,7 +3083,7 @@ mod tests {
         };
 
         let ed_id = uuid(10);
-        let mut cpl = minimal_cpl();
+        let mut cpl = with_app2e_app_id(minimal_cpl());
         cpl.essence_descriptor_list = Some(EssenceDescriptorList {
             essence_descriptors: vec![EssenceDescriptor {
                 id: ed_id,
@@ -5325,7 +3177,7 @@ mod tests {
         });
         cpl.segment_list.segments[0].sequence_list = sl;
 
-        let v = App2E2021;
+        let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         let errors: Vec<_> = issues
             .iter()
@@ -5430,7 +3282,7 @@ mod tests {
         });
         cpl.segment_list.segments[0].sequence_list = sl;
 
-        let v = App2E2021;
+        let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
             issues.iter().any(|i| i.code.contains("6.5.2/CodingStyle")),
@@ -5525,7 +3377,7 @@ mod tests {
         });
         cpl.segment_list.segments[0].sequence_list = sl;
 
-        let v = App2E2021;
+        let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
             issues.iter().any(|i| i.code.contains("6.5.2/J2CLayout")),
@@ -5624,7 +3476,7 @@ mod tests {
         });
         cpl.segment_list.segments[0].sequence_list = sl;
 
-        let v = App2E2021;
+        let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
             issues
@@ -5639,7 +3491,7 @@ mod tests {
     fn app2e_warns_j2k_sub_descriptor_missing() {
         let cpl = cpl_with_rgba_descriptor(ColorPrimaries::P3D65, TransferCharacteristic::PqSt2084);
 
-        let v = App2E2021;
+        let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
 
         assert!(
@@ -5666,7 +3518,7 @@ mod tests {
                 }
             }
         }
-        let v = App2E2021;
+        let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
             issues
@@ -5766,7 +3618,7 @@ mod tests {
             EditRate::new(30000, 1001), // 29.97 fps — 1601.6 samples/EU (non-integer)
             &[7],                       // 7 edit units, not divisible by 5
         );
-        let v = App2E2021;
+        let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
             issues.iter().any(|i| i.code.contains("7.4")),
@@ -5783,7 +3635,7 @@ mod tests {
             EditRate::new(30000, 1001), // 29.97 fps — non-integer samples/EU
             &[10],                      // 10 edit units, divisible by 5
         );
-        let v = App2E2021;
+        let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
             !issues.iter().any(|i| i.code.contains("7.4")),
@@ -5801,7 +3653,7 @@ mod tests {
             EditRate::new(24, 1),    // 24 fps — 2000 samples/EU (integer)
             &[7], // 7 edit units, not divisible by 5 — but constraint doesn't apply
         );
-        let v = App2E2021;
+        let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
             !issues.iter().any(|i| i.code.contains("7.4")),
@@ -5818,7 +3670,7 @@ mod tests {
             EditRate::new(30000, 1001), // 29.97 fps — non-integer
             &[10, 7, 15],               // 10=ok, 7=bad, 15=ok
         );
-        let v = App2E2021;
+        let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         let seg_issues: Vec<_> = issues.iter().filter(|i| i.code.contains("7.4")).collect();
         assert_eq!(
@@ -5842,7 +3694,7 @@ mod tests {
             EditRate::new(24000, 1001), // 23.976 fps — 2002 samples/EU (integer)
             &[13],                      // Not divisible by 5, but constraint doesn't apply
         );
-        let v = App2E2021;
+        let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
             !issues.iter().any(|i| i.code.contains("7.4")),
@@ -6593,6 +4445,82 @@ mod tests {
         );
     }
 
+    /// ST 2067-2:2020 §6.3.3: Timed Text resource edit rates may be any
+    /// value (2013/2016 §6.3.3 set no edit-rate constraint on these tracks
+    /// either), so mixed edit rates in a Subtitles / HearingImpairedCaptions /
+    /// ForcedNarrative virtual track are not flagged.
+    #[test]
+    fn core_accepts_mixed_edit_rates_in_timed_text_virtual_track() {
+        use crate::cpl::{
+            ForcedNarrativeSequence, HearingImpairedCaptionsSequence, Segment, SubtitlesSequence,
+        };
+
+        let resource = |id: u8, er: u32| {
+            let mut r = make_resource(None);
+            r.id = uuid(id);
+            r.edit_rate = Some(EditRate::new(er, 1));
+            r
+        };
+        let mut cpl = minimal_cpl();
+        cpl.edit_rate = Some(EditRate::new(24, 1));
+        let mut sl1 = empty_sequence_list();
+        let mut sl2 = empty_sequence_list();
+        sl1.subtitles_sequences.push(SubtitlesSequence {
+            id: uuid(10),
+            track_id: uuid(40),
+            resource_list: ResourceList {
+                resources: vec![resource(90, 24), resource(91, 1000)],
+            },
+        });
+        sl2.subtitles_sequences.push(SubtitlesSequence {
+            id: uuid(11),
+            track_id: uuid(40),
+            resource_list: ResourceList {
+                resources: vec![resource(92, 25)],
+            },
+        });
+        sl1.hearing_impaired_captions_sequences
+            .push(HearingImpairedCaptionsSequence {
+                id: uuid(12),
+                track_id: uuid(41),
+                resource_list: ResourceList {
+                    resources: vec![resource(93, 24), resource(94, 30)],
+                },
+            });
+        sl1.forced_narrative_sequences
+            .push(ForcedNarrativeSequence {
+                id: uuid(13),
+                track_id: uuid(42),
+                resource_list: ResourceList {
+                    resources: vec![resource(95, 24), resource(96, 60)],
+                },
+            });
+        cpl.segment_list.segments = vec![
+            Segment {
+                id: uuid(30),
+                sequence_list: sl1,
+            },
+            Segment {
+                id: uuid(31),
+                sequence_list: sl2,
+            },
+        ];
+
+        for issues in [
+            CoreConstraints2013.validate_cpl(&cpl),
+            CoreConstraints2016.validate_cpl(&cpl),
+            CoreConstraints2020.validate_cpl(&cpl),
+        ] {
+            assert!(
+                !issues
+                    .iter()
+                    .any(|i| i.code.contains("VirtualTrackEditRate")),
+                "Timed text edit rates must not be flagged: {:#?}",
+                issues,
+            );
+        }
+    }
+
     /// ST 2067-3 §6.9.3 / XSD: Resource EditRate is optional (minOccurs="0").
     /// Absent EditRate means "inherit the CPL's EditRate". A resource with no
     /// explicit EditRate in the same virtual track as resources with an explicit
@@ -6744,7 +4672,7 @@ mod tests {
                         edit_rate: None,
                         intrinsic_duration: 100,
                         entry_point: Some(10),
-                        source_duration: Some(50), // effective duration = 50
+                        source_duration: Some(50),
                         source_encoding: None,
                         track_file_id: None,
                         repeat_count: None,
@@ -6753,7 +4681,9 @@ mod tests {
                         markers: vec![MarkerInfo {
                             annotation: None,
                             label: MarkerLabelElement::from(MarkerLabel::Ffoc),
-                            offset: 60, // 60 >= 50 → out of bounds
+                            // ST 2067-3 §6.13 bounds Offset by IntrinsicDuration
+                            // (100), not by SourceDuration.
+                            offset: 120,
                         }],
                     }],
                 },
@@ -7142,8 +5072,11 @@ mod tests {
         );
     }
 
+    /// ST 2067-2 §5.3.6.6 (2013, 2016, 2020): not all channels of a
+    /// soundfield group need be present in an Audio Track File, so fewer
+    /// channels than the soundfield implies is not an error.
     #[test]
-    fn audio_flags_channel_count_mismatch() {
+    fn audio_accepts_partial_soundfield_channel_count() {
         use crate::cpl::McaTagSymbol;
         use crate::cpl::{AudioSubDescriptors, SoundfieldGroupLabelSubDescriptor};
 
@@ -7151,7 +5084,7 @@ mod tests {
             instance_id: None,
             sample_rate: None,
             audio_sample_rate: Some(EditRate::new(48000, 1)),
-            channel_count: Some(2), // 2 channels but 5.1 soundfield!
+            channel_count: Some(2), // subset of a 5.1 soundfield
             quantization_bits: Some(24),
             linked_track_id: None,
             sub_descriptors: Some(AudioSubDescriptors {
@@ -7165,10 +5098,42 @@ mod tests {
         });
         let issues = CoreConstraints2020.validate_cpl(&cpl);
         assert!(
+            !issues
+                .iter()
+                .any(|i| i.code.contains("SoundfieldChannelCount")),
+            "Partial soundfield (fewer channels) should not be flagged: {:#?}",
+            issues,
+        );
+    }
+
+    /// More channels than the soundfield group defines is still flagged.
+    #[test]
+    fn audio_flags_channel_count_exceeding_soundfield() {
+        use crate::cpl::McaTagSymbol;
+        use crate::cpl::{AudioSubDescriptors, SoundfieldGroupLabelSubDescriptor};
+
+        let cpl = cpl_with_audio(WAVEPCMDescriptor {
+            instance_id: None,
+            sample_rate: None,
+            audio_sample_rate: Some(EditRate::new(48000, 1)),
+            channel_count: Some(8),
+            quantization_bits: Some(24),
+            linked_track_id: None,
+            sub_descriptors: Some(AudioSubDescriptors {
+                soundfield_group_label_sub_descriptor: Some(SoundfieldGroupLabelSubDescriptor {
+                    mca_tag_symbol: Some(McaTagSymbol::Sg51),
+                    mca_tag_name: Some("5.1".to_string()),
+                    mca_audio_content_kind: None,
+                    rfc5646_spoken_language: None,
+                }),
+            }),
+        });
+        let issues = CoreConstraints2020.validate_cpl(&cpl);
+        assert!(
             issues
                 .iter()
                 .any(|i| i.code.contains("SoundfieldChannelCount")),
-            "Channel count mismatch with soundfield should be flagged: {:#?}",
+            "8 channels under a 5.1 soundfield should be flagged: {:#?}",
             issues,
         );
     }
@@ -7260,83 +5225,83 @@ mod tests {
     // App2E QuantizationBits tests
     // ════════════════════════════════════════════════════════════════════════
 
+    // ── Image resolution validation (Table 3) ───────────────────────────────
+
+    /// HT-J2K (ISO/IEC 15444-15) is permitted by ST 2067-21:2023
+    /// (§5.5.2 Table 6, Annex I) but not by the 2020 edition, whose §5.5.2
+    /// lists only ISO/IEC 15444-1 profiles. J2K-HT-Not-Allowed must only
+    /// fire under the 2020 validator.
     #[test]
-    fn app2e_accepts_24bit_audio() {
-        let cpl = cpl_with_audio(WAVEPCMDescriptor {
-            instance_id: None,
-            sample_rate: None,
-            audio_sample_rate: Some(EditRate::new(48000, 1)),
-            channel_count: Some(2),
-            quantization_bits: Some(24),
-            linked_track_id: None,
-            sub_descriptors: None,
-        });
-        let issues = App2E2021.validate_cpl(&cpl);
+    fn j2k_ht_not_allowed_only_fires_for_app2e_2020() {
+        let mut cpl = cpl_with_image_resolution(1920, 1080, Some(EditRate::new(24, 1)));
+        cpl.essence_descriptor_list
+            .as_mut()
+            .unwrap()
+            .essence_descriptors[0]
+            .cdci_descriptor
+            .as_mut()
+            .unwrap()
+            .picture_compression = Some(VideoCodec::Jpeg2000Ht);
+        let ht = St2067_21_2020::J2KHtNotAllowed.code();
+
+        let issues_2023 = App2E2023.validate_cpl(&cpl);
         assert!(
-            !issues.iter().any(|i| i.code.contains("QuantizationBits")),
-            "24-bit audio should be accepted: {:#?}",
-            issues,
+            !issues_2023
+                .iter()
+                .any(|i| i.code.contains("J2K-HT-Not-Allowed")),
+            "HT-J2K must be accepted by App2E 2023: {issues_2023:#?}",
+        );
+
+        let issues_2020 = App2E2020.validate_cpl(&cpl);
+        assert!(
+            issues_2020.iter().any(|i| i.code == ht),
+            "HT-J2K must be rejected by App2E 2020: {issues_2020:#?}",
         );
     }
 
+    /// ST 2067-2:2020 §6.1 Table 10: ApplicationIdentification is a list of
+    /// URIs; ST 2067-21 §7.1 (2020, 2023) only requires it to include the
+    /// Table 15 value. A list containing it must not raise AppIdMismatch.
     #[test]
-    fn app2e_accepts_16bit_audio() {
-        let cpl = cpl_with_audio(WAVEPCMDescriptor {
-            instance_id: None,
-            sample_rate: None,
-            audio_sample_rate: Some(EditRate::new(48000, 1)),
-            channel_count: Some(2),
-            quantization_bits: Some(16),
-            linked_track_id: None,
-            sub_descriptors: None,
-        });
-        let issues = App2E2021.validate_cpl(&cpl);
-        assert!(
-            !issues.iter().any(|i| i.code.contains("QuantizationBits")),
-            "16-bit audio should be accepted: {:#?}",
-            issues,
-        );
-    }
+    fn app_id_mismatch_accepts_list_including_table_15_value() {
+        let with_app_id = |app_id: &str| {
+            let mut cpl = minimal_cpl();
+            cpl.extension_properties = Some(ExtensionProperties {
+                application_identification: Some(app_id.to_string()),
+                max_cll: None,
+                max_fall: None,
+            });
+            cpl
+        };
+        let mismatch =
+            |issues: &[ValidationIssue], code: &str| issues.iter().any(|i| i.code == code);
+        let code_2023 = St2067_21_2023::AppIdMismatch.code();
+        let code_2020 = crate::validation::codes::St2067_21_2020::AppIdMismatch.code();
 
-    #[test]
-    fn app2e_rejects_8bit_audio() {
-        let cpl = cpl_with_audio(WAVEPCMDescriptor {
-            instance_id: None,
-            sample_rate: None,
-            audio_sample_rate: Some(EditRate::new(48000, 1)),
-            channel_count: Some(2),
-            quantization_bits: Some(8), // Not allowed by ST 2067-21
-            linked_track_id: None,
-            sub_descriptors: None,
-        });
-        let issues = App2E2021.validate_cpl(&cpl);
-        assert!(
-            issues.iter().any(|i| i.code.contains("QuantizationBits")),
-            "8-bit audio should be rejected: {:#?}",
-            issues,
-        );
-    }
+        let both = "http://example.com/other-app \
+                    http://www.smpte-ra.org/ns/2067-21/2020\n\
+                    http://www.smpte-ra.org/ns/2067-21/2021";
+        assert!(!mismatch(
+            &App2E2023.validate_cpl(&with_app_id(both)),
+            code_2023
+        ));
+        assert!(!mismatch(
+            &App2E2020.validate_cpl(&with_app_id(both)),
+            code_2020
+        ));
 
-    #[test]
-    fn app2e_rejects_32bit_audio() {
-        let cpl = cpl_with_audio(WAVEPCMDescriptor {
-            instance_id: None,
-            sample_rate: None,
-            audio_sample_rate: Some(EditRate::new(48000, 1)),
-            channel_count: Some(2),
-            quantization_bits: Some(32), // Not allowed by ST 2067-21
-            linked_track_id: None,
-            sub_descriptors: None,
-        });
-        let issues = App2E2021.validate_cpl(&cpl);
-        assert!(
-            issues.iter().any(|i| i.code.contains("QuantizationBits")),
-            "32-bit audio should be rejected: {:#?}",
-            issues,
-        );
+        // A list that does not include the Table 15 value is still flagged.
+        let other = "http://example.com/other-app http://www.smpte-ra.org/ns/2067-21/2020";
+        assert!(mismatch(
+            &App2E2023.validate_cpl(&with_app_id(other)),
+            code_2023
+        ));
+        let other = "http://example.com/other-app http://www.smpte-ra.org/ns/2067-21/2021";
+        assert!(mismatch(
+            &App2E2020.validate_cpl(&with_app_id(other)),
+            code_2020
+        ));
     }
-
-    // ── Image resolution validation (Tables 4-6) ────────────────────────────
 
     fn cpl_with_image_resolution(
         width: u32,
@@ -7406,10 +5371,61 @@ mod tests {
         cpl
     }
 
+    /// A conforming 1080i CDCI descriptor: ST 2067-21 Table 9 stores each
+    /// field, so StoredWidth×StoredHeight = 1920×540 for a 1920×1080 frame;
+    /// Table 3 interlaced column: 25 / 30 / 30000/1001, 4:2:2 Y'C'BC'R,
+    /// COLOR.1-3, 8 or 10 bit. FieldDominance and DisplayF2Offset are
+    /// present as Table 8 requires for interlaced.
+    fn cpl_1080i(rate: EditRate) -> CompositionPlaylist {
+        let mut cpl = cpl_with_image_resolution(1920, 540, Some(rate));
+        let cdci = cpl
+            .essence_descriptor_list
+            .as_mut()
+            .unwrap()
+            .essence_descriptors[0]
+            .cdci_descriptor
+            .as_mut()
+            .unwrap();
+        cdci.frame_layout = Some("SeparateFields".to_string());
+        cdci.field_dominance = Some(1);
+        cdci.display_f2_offset = Some(0);
+        cpl
+    }
+
+    fn cdci_mut(cpl: &mut CompositionPlaylist) -> &mut CDCIDescriptor {
+        cpl.essence_descriptor_list
+            .as_mut()
+            .unwrap()
+            .essence_descriptors[0]
+            .cdci_descriptor
+            .as_mut()
+            .unwrap()
+    }
+
+    /// ST 2067-21 §6.2.1 Table 9 (2020 p13, 2023 p15): for interlaced
+    /// content StoredHeight is the frame height / 2, so the image frame is
+    /// 1920×1080 and must pass the resolution rule.
+    #[test]
+    fn app2e_resolution_accepts_1080i_stored_per_field() {
+        for rate in [
+            EditRate::new(25, 1),
+            EditRate::new(30, 1),
+            EditRate::new(30000, 1001),
+        ] {
+            let issues = App2E2023.validate_cpl(&cpl_1080i(rate));
+            assert!(
+                !issues
+                    .iter()
+                    .any(|i| i.code == St2067_21_2023::Resolution.code()),
+                "1080i (stored 1920x540) should pass the resolution rule: {issues:#?}",
+            );
+        }
+    }
+
     #[test]
     fn app2e_accepts_1920x1080() {
         let cpl = cpl_with_image_resolution(1920, 1080, Some(EditRate::new(24, 1)));
-        let issues = App2E2021.validate_cpl(&cpl);
+        let issues = App2E2023.validate_cpl(&cpl);
         assert!(
             !issues.iter().any(|i| i.code.contains("Resolution")),
             "1920x1080 should be accepted: {:#?}",
@@ -7420,7 +5436,7 @@ mod tests {
     #[test]
     fn app2e_accepts_2048x1080() {
         let cpl = cpl_with_image_resolution(2048, 1080, Some(EditRate::new(25, 1)));
-        let issues = App2E2021.validate_cpl(&cpl);
+        let issues = App2E2023.validate_cpl(&cpl);
         assert!(
             !issues.iter().any(|i| i.code.contains("Resolution")),
             "2048x1080 should be accepted: {:#?}",
@@ -7431,7 +5447,7 @@ mod tests {
     #[test]
     fn app2e_accepts_3840x2160() {
         let cpl = cpl_with_image_resolution(3840, 2160, Some(EditRate::new(24, 1)));
-        let issues = App2E2021.validate_cpl(&cpl);
+        let issues = App2E2023.validate_cpl(&cpl);
         assert!(
             !issues.iter().any(|i| i.code.contains("Resolution")),
             "3840x2160 should be accepted: {:#?}",
@@ -7441,54 +5457,113 @@ mod tests {
 
     #[test]
     fn app2e_accepts_4096x2160() {
-        let cpl = cpl_with_image_resolution(4096, 2160, Some(EditRate::new(24000, 1001)));
-        let issues = App2E2021.validate_cpl(&cpl);
+        // Table 3: sizes above 3840x2160 exist only in the R'G'B' column.
+        let cpl = cpl_with_rgba_size(4096, 2160);
+        let issues = App2E2023.validate_cpl(&cpl);
         assert!(
             !issues.iter().any(|i| i.code.contains("Resolution")),
-            "4096x2160 should be accepted: {:#?}",
+            "4096x2160 R'G'B' should be accepted: {:#?}",
             issues,
         );
     }
 
+    /// ST 2067-21 §5.2 Table 3 (2020 p6, 2023 p7): the largest image frame
+    /// is 4096x3112; 7680x4320 is outside every column.
     #[test]
-    fn app2e_accepts_7680x4320() {
+    fn app2e_rejects_7680x4320() {
         let cpl = cpl_with_image_resolution(7680, 4320, Some(EditRate::new(24, 1)));
-        let issues = App2E2021.validate_cpl(&cpl);
+        let issues = App2E2023.validate_cpl(&cpl);
+        assert!(
+            issues.iter().any(|i| i.code.contains("Resolution")),
+            "7680x4320 should be rejected: {:#?}",
+            issues,
+        );
+    }
+
+    /// Table 3 gives ranges ("a..b ... including a and b"), not exact sizes:
+    /// 1280x720 is within 1..1920 x 1..1080.
+    #[test]
+    fn app2e_accepts_1280x720() {
+        let cpl = cpl_with_image_resolution(1280, 720, Some(EditRate::new(24, 1)));
+        let issues = App2E2023.validate_cpl(&cpl);
         assert!(
             !issues.iter().any(|i| i.code.contains("Resolution")),
-            "7680x4320 should be accepted: {:#?}",
+            "1280x720 should be accepted: {:#?}",
             issues,
         );
     }
 
+    /// 1920x800 is within 1..1920 x 1..1080 (Table 3 ranges).
     #[test]
-    fn app2e_rejects_1280x720() {
-        let cpl = cpl_with_image_resolution(1280, 720, Some(EditRate::new(24, 1)));
-        let issues = App2E2021.validate_cpl(&cpl);
-        assert!(
-            issues.iter().any(|i| i.code.contains("Resolution")),
-            "1280x720 should be rejected: {:#?}",
-            issues,
-        );
-    }
-
-    #[test]
-    fn app2e_rejects_1920x800() {
+    fn app2e_accepts_1920x800() {
         let cpl = cpl_with_image_resolution(1920, 800, Some(EditRate::new(24, 1)));
-        let issues = App2E2021.validate_cpl(&cpl);
+        let issues = App2E2023.validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| i.code.contains("Resolution")),
-            "1920x800 should be rejected: {:#?}",
+            !issues.iter().any(|i| i.code.contains("Resolution")),
+            "1920x800 should be accepted: {:#?}",
             issues,
         );
     }
 
-    // ── Image frame rate validation (Tables 4-6) ────────────────────────────
+    /// Table 3 range edges: 4096x3112 is the largest frame; one more pixel
+    /// in either direction is outside every column. Same in 2020 and 2023.
+    #[test]
+    fn app2e_resolution_uses_table_3_range_edges() {
+        let flagged = |cpl: CompositionPlaylist| {
+            let a = App2E2023
+                .validate_cpl(&cpl)
+                .iter()
+                .any(|i| i.code == St2067_21_2023::Resolution.code());
+            let b = App2E2020
+                .validate_cpl(&cpl)
+                .iter()
+                .any(|i| i.code == St2067_21_2020::Resolution.code());
+            assert_eq!(a, b, "2020 and 2023 Table 3 are identical");
+            a
+        };
+        let cdci = |w, h| cpl_with_image_resolution(w, h, Some(EditRate::new(24, 1)));
+
+        // R'G'B' (RGBA): up to 1..4096 x 1..3112 (Table 3 R'G'B' column).
+        assert!(!flagged(cpl_with_rgba_size(4096, 3112)));
+        assert!(!flagged(cpl_with_rgba_size(3996, 2160)));
+        assert!(flagged(cpl_with_rgba_size(4097, 2160)));
+        assert!(flagged(cpl_with_rgba_size(4096, 3113)));
+
+        // Y'C'BC'R (CDCI): every column allowing it stops at 3840x2160.
+        assert!(!flagged(cdci(1, 1)));
+        assert!(!flagged(cdci(3840, 2160)));
+        assert!(flagged(cdci(3841, 2160)));
+        assert!(flagged(cdci(3840, 2161)));
+        assert!(flagged(cdci(3996, 2160)));
+        assert!(flagged(cdci(4096, 2160)));
+        assert!(flagged(cdci(4096, 3112)));
+    }
+
+    /// RGBA (R'G'B') COLOR.3 descriptor with the given stored size.
+    fn cpl_with_rgba_size(width: u32, height: u32) -> CompositionPlaylist {
+        let mut cpl =
+            cpl_with_rgba_descriptor(ColorPrimaries::Bt709, TransferCharacteristic::Bt709);
+        let rgba = cpl
+            .essence_descriptor_list
+            .as_mut()
+            .unwrap()
+            .essence_descriptors[0]
+            .rgba_descriptor
+            .as_mut()
+            .unwrap();
+        rgba.stored_width = Some(width);
+        rgba.stored_height = Some(height);
+        rgba.display_width = Some(width);
+        rgba.display_height = Some(height);
+        cpl
+    }
+
+    // ── Image frame rate validation (Table 3) ───────────────────────────────
 
     #[test]
     fn app2e_accepts_24fps() {
         let cpl = cpl_with_image_resolution(1920, 1080, Some(EditRate::new(24, 1)));
-        let issues = App2E2021.validate_cpl(&cpl);
+        let issues = App2E2023.validate_cpl(&cpl);
         assert!(
             !issues.iter().any(|i| i.code.contains("FrameRate")),
             "24 fps should be accepted: {:#?}",
@@ -7499,7 +5574,7 @@ mod tests {
     #[test]
     fn app2e_accepts_23976fps() {
         let cpl = cpl_with_image_resolution(1920, 1080, Some(EditRate::new(24000, 1001)));
-        let issues = App2E2021.validate_cpl(&cpl);
+        let issues = App2E2023.validate_cpl(&cpl);
         assert!(
             !issues.iter().any(|i| i.code.contains("FrameRate")),
             "23.976 fps should be accepted: {:#?}",
@@ -7510,7 +5585,7 @@ mod tests {
     #[test]
     fn app2e_accepts_25fps() {
         let cpl = cpl_with_image_resolution(1920, 1080, Some(EditRate::new(25, 1)));
-        let issues = App2E2021.validate_cpl(&cpl);
+        let issues = App2E2023.validate_cpl(&cpl);
         assert!(
             !issues.iter().any(|i| i.code.contains("FrameRate")),
             "25 fps should be accepted: {:#?}",
@@ -7521,7 +5596,7 @@ mod tests {
     #[test]
     fn app2e_accepts_60fps() {
         let cpl = cpl_with_image_resolution(3840, 2160, Some(EditRate::new(60, 1)));
-        let issues = App2E2021.validate_cpl(&cpl);
+        let issues = App2E2023.validate_cpl(&cpl);
         assert!(
             !issues.iter().any(|i| i.code.contains("FrameRate")),
             "60 fps should be accepted: {:#?}",
@@ -7532,7 +5607,7 @@ mod tests {
     #[test]
     fn app2e_accepts_5994fps() {
         let cpl = cpl_with_image_resolution(3840, 2160, Some(EditRate::new(60000, 1001)));
-        let issues = App2E2021.validate_cpl(&cpl);
+        let issues = App2E2023.validate_cpl(&cpl);
         assert!(
             !issues.iter().any(|i| i.code.contains("FrameRate")),
             "59.94 fps should be accepted: {:#?}",
@@ -7540,10 +5615,12 @@ mod tests {
         );
     }
 
+    /// Table 3: 120 fps is only in the R'G'B' column, so a Y'C'BC'R (CDCI)
+    /// descriptor at 120 fps is rejected.
     #[test]
     fn app2e_rejects_120fps() {
         let cpl = cpl_with_image_resolution(1920, 1080, Some(EditRate::new(120, 1)));
-        let issues = App2E2021.validate_cpl(&cpl);
+        let issues = App2E2023.validate_cpl(&cpl);
         assert!(
             issues.iter().any(|i| i.code.contains("FrameRate")),
             "120 fps should be rejected: {:#?}",
@@ -7551,10 +5628,58 @@ mod tests {
         );
     }
 
+    /// ST 2067-21 §5.2 Table 3 (2020 p6, 2023 p7): no column lists 48 or
+    /// 48000/1001.
+    #[test]
+    fn app2e_rejects_48fps() {
+        for rate in [EditRate::new(48, 1), EditRate::new(48000, 1001)] {
+            let cpl = cpl_with_image_resolution(1920, 1080, Some(rate));
+            for (issues, code) in [
+                (
+                    App2E2023.validate_cpl(&cpl),
+                    St2067_21_2023::FrameRate.code(),
+                ),
+                (
+                    App2E2020.validate_cpl(&cpl),
+                    St2067_21_2020::FrameRate.code(),
+                ),
+            ] {
+                assert!(
+                    issues.iter().any(|i| i.code == code),
+                    "{rate:?} should be rejected: {issues:#?}",
+                );
+            }
+        }
+    }
+
+    /// Table 3: 120 fps is listed only in the 1..4096 x 1..3112 R'G'B'
+    /// 4:4:4 column, so it is accepted on an RGBA descriptor.
+    #[test]
+    fn app2e_accepts_120fps_rgb() {
+        let mut cpl =
+            cpl_with_rgba_descriptor(ColorPrimaries::Bt709, TransferCharacteristic::Bt709);
+        cpl.essence_descriptor_list
+            .as_mut()
+            .unwrap()
+            .essence_descriptors[0]
+            .rgba_descriptor
+            .as_mut()
+            .unwrap()
+            .sample_rate = Some(EditRate::new(120, 1));
+        for issues in [App2E2023.validate_cpl(&cpl), App2E2020.validate_cpl(&cpl)] {
+            assert!(
+                !issues
+                    .iter()
+                    .any(|i| i.code == St2067_21_2023::FrameRate.code()),
+                "120 fps R'G'B' should be accepted: {issues:#?}",
+            );
+        }
+    }
+
     #[test]
     fn app2e_rejects_15fps() {
         let cpl = cpl_with_image_resolution(1920, 1080, Some(EditRate::new(15, 1)));
-        let issues = App2E2021.validate_cpl(&cpl);
+        let issues = App2E2023.validate_cpl(&cpl);
         assert!(
             issues.iter().any(|i| i.code.contains("FrameRate")),
             "15 fps should be rejected: {:#?}",
@@ -7563,63 +5688,6 @@ mod tests {
     }
 
     // ── Audio sample rate validation (§6.5) ────────────────────────────────
-
-    #[test]
-    fn app2e_accepts_48000hz_audio() {
-        let cpl = cpl_with_audio(WAVEPCMDescriptor {
-            instance_id: None,
-            sample_rate: None,
-            audio_sample_rate: Some(EditRate::new(48000, 1)),
-            channel_count: Some(2),
-            quantization_bits: Some(24),
-            linked_track_id: None,
-            sub_descriptors: None,
-        });
-        let issues = App2E2021.validate_cpl(&cpl);
-        assert!(
-            !issues.iter().any(|i| i.code.contains("AudioSampleRate")),
-            "48000 Hz should be accepted: {:#?}",
-            issues,
-        );
-    }
-
-    #[test]
-    fn app2e_rejects_44100hz_audio() {
-        let cpl = cpl_with_audio(WAVEPCMDescriptor {
-            instance_id: None,
-            sample_rate: None,
-            audio_sample_rate: Some(EditRate::new(44100, 1)),
-            channel_count: Some(2),
-            quantization_bits: Some(24),
-            linked_track_id: None,
-            sub_descriptors: None,
-        });
-        let issues = App2E2021.validate_cpl(&cpl);
-        assert!(
-            issues.iter().any(|i| i.code.contains("AudioSampleRate")),
-            "44100 Hz should be rejected: {:#?}",
-            issues,
-        );
-    }
-
-    #[test]
-    fn app2e_rejects_96000hz_audio() {
-        let cpl = cpl_with_audio(WAVEPCMDescriptor {
-            instance_id: None,
-            sample_rate: None,
-            audio_sample_rate: Some(EditRate::new(96000, 1)),
-            channel_count: Some(2),
-            quantization_bits: Some(24),
-            linked_track_id: None,
-            sub_descriptors: None,
-        });
-        let issues = App2E2021.validate_cpl(&cpl);
-        assert!(
-            issues.iter().any(|i| i.code.contains("AudioSampleRate")),
-            "96000 Hz should be rejected: {:#?}",
-            issues,
-        );
-    }
 
     // ════════════════════════════════════════════════════════════════════════
     // Essence descriptor completeness (§6.2)
@@ -7679,54 +5747,12 @@ mod tests {
             }],
         });
 
-        let issues = App2E2021.validate_cpl(&cpl);
+        let issues = App2E2023.validate_cpl(&cpl);
         assert!(
             issues
                 .iter()
                 .any(|i| i.code == St2067_21_2023::RequiredSampleRate.code()),
             "Missing SampleRate should be flagged: {:#?}",
-            issues,
-        );
-    }
-
-    #[test]
-    fn app2e_flags_wave_missing_channel_count() {
-        let cpl = cpl_with_audio(WAVEPCMDescriptor {
-            instance_id: None,
-            sample_rate: None,
-            audio_sample_rate: Some(EditRate::new(48000, 1)),
-            channel_count: None, // Missing!
-            quantization_bits: Some(24),
-            linked_track_id: None,
-            sub_descriptors: None,
-        });
-        let issues = App2E2021.validate_cpl(&cpl);
-        assert!(
-            issues
-                .iter()
-                .any(|i| i.code == St2067_21_2023::RequiredChannelCount.code()),
-            "Missing ChannelCount should be flagged: {:#?}",
-            issues,
-        );
-    }
-
-    #[test]
-    fn app2e_flags_wave_missing_quantization_bits() {
-        let cpl = cpl_with_audio(WAVEPCMDescriptor {
-            instance_id: None,
-            sample_rate: None,
-            audio_sample_rate: Some(EditRate::new(48000, 1)),
-            channel_count: Some(2),
-            quantization_bits: None, // Missing!
-            linked_track_id: None,
-            sub_descriptors: None,
-        });
-        let issues = App2E2021.validate_cpl(&cpl);
-        assert!(
-            issues
-                .iter()
-                .any(|i| i.code == St2067_21_2023::RequiredQuantizationBits.code()),
-            "Missing QuantizationBits should be flagged: {:#?}",
             issues,
         );
     }
@@ -8091,7 +6117,7 @@ mod tests {
             CodingEquations::Bt709,
             10,
         );
-        let v = App2E2021;
+        let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
             !issues
@@ -8102,74 +6128,151 @@ mod tests {
         );
     }
 
-    /// App2E: SeparateFields (interlaced) FrameLayout should be flagged.
+    /// App2E: a conforming 1080i image is accepted. ST 2067-21 §5.2.2,
+    /// §5.2 Table 3 interlaced column (2020 p6, 2023 p7), §6.2.1 Table 9 and
+    /// the Frame Layout clause (01h if interlaced).
     #[test]
-    fn app2e_flags_interlaced_frame_layout() {
-        let ed_id = uuid(10);
-        let mut cpl = minimal_cpl();
-        cpl.edit_rate = Some(EditRate::new(24, 1));
-        cpl.extension_properties = Some(ExtensionProperties {
-            application_identification: Some(APP2E_APPLICATION_IDENTIFICATION.to_string()),
-            max_cll: None,
-            max_fall: None,
-        });
-        cpl.essence_descriptor_list = Some(EssenceDescriptorList {
-            essence_descriptors: vec![EssenceDescriptor {
-                id: ed_id,
-                rgba_descriptor: None,
-                cdci_descriptor: Some(CDCIDescriptor {
-                    instance_id: None,
-                    stored_width: Some(1920),
-                    stored_height: Some(1080),
-                    display_width: Some(1920),
-                    display_height: Some(1080),
-                    sample_rate: Some(EditRate::new(24, 1)),
-                    image_aspect_ratio: None,
-                    color_primaries: Some(ColorPrimaries::Bt709),
-                    transfer_characteristic: Some(TransferCharacteristic::Bt709),
-                    coding_equations: Some(CodingEquations::Bt709),
-                    picture_compression: Some(VideoCodec::Jpeg2000),
-                    component_depth: Some(10),
-                    frame_layout: Some("SeparateFields".to_string()),
-                    display_f2_offset: None,
-                    horizontal_subsampling: Some(2),
-                    vertical_subsampling: Some(1),
-                    color_siting: Some(0),
-                    black_ref_level: Some(64),
-                    white_ref_level: Some(940),
-                    color_range: Some(897),
-                    stored_f2_offset: None,
-                    sampled_width: None,
-                    sampled_height: None,
-                    sampled_x_offset: None,
-                    sampled_y_offset: None,
-                    alpha_transparency: None,
-                    image_alignment_offset: None,
-                    image_start_offset: None,
-                    image_end_offset: None,
-                    field_dominance: Some(1),
-                    reversed_byte_order: None,
-                    padding_bits: None,
-                    alpha_sample_depth: None,
-                    linked_track_id: None,
-                    active_width: None,
-                    active_height: None,
-                    sub_descriptors: None,
-                }),
-                wave_pcm_descriptor: None,
-                iab_essence_descriptor: None,
-                dc_timed_text_descriptor: None,
-                isxd_data_essence_descriptor: None,
-            }],
-        });
-        let v = App2E2021;
+    fn app2e_accepts_interlaced_frame_layout() {
+        let v = App2E2023;
+        for rate in [
+            EditRate::new(25, 1),
+            EditRate::new(30, 1),
+            EditRate::new(30000, 1001),
+        ] {
+            let issues = v.validate_cpl(&with_app2e_app_id(cpl_1080i(rate)));
+            let errors: Vec<_> = issues
+                .iter()
+                .filter(|i| matches!(i.severity, Severity::Error | Severity::Critical))
+                .collect();
+            assert!(
+                errors.is_empty(),
+                "conforming 1080i at {rate:?} should have no errors: {errors:#?}",
+            );
+        }
+        let mut cpl = cpl_1080i(EditRate::new(25, 1));
+
+        // A layout outside {FullFrame, SeparateFields} is still rejected by
+        // the §6.2.1.3 FrameLayout rule.
+        cpl.essence_descriptor_list
+            .as_mut()
+            .unwrap()
+            .essence_descriptors[0]
+            .cdci_descriptor
+            .as_mut()
+            .unwrap()
+            .frame_layout = Some("MixedFields".to_string());
         let issues = v.validate_cpl(&cpl);
         assert!(
             issues
                 .iter()
-                .any(|i| i.code == St2067_21_2023::FrameLayoutInterlaced.code()),
-            "SeparateFields FrameLayout should be flagged for App2E: {:#?}",
+                .any(|i| i.code == St2067_21_2023::FrameLayout.code()),
+            "MixedFields FrameLayout should be flagged for App2E: {:#?}",
             issues,
+        );
+    }
+
+    /// ST 2067-21 §5.2 Table 3 (2020 p6, 2023 p7): the only interlaced
+    /// column is <=1920x1080, COLOR.1/2/3, 8 or 10 bit, 25 / 30 / 30000/1001,
+    /// 4:2:2 Y'C'BC'R. Interlaced content outside it fits no column; the
+    /// differing characteristic is reported against the interlaced column
+    /// (closest, frame structure preferred on ties) under its own code.
+    #[test]
+    fn app2e_rejects_interlaced_outside_table_3_column() {
+        let flagged_with = |cpl: &CompositionPlaylist, suffix: &str| {
+            App2E2023
+                .validate_cpl(cpl)
+                .iter()
+                .any(|i| i.code.starts_with("ST2067-21:2023:") && i.code.ends_with(suffix))
+                && App2E2020
+                    .validate_cpl(cpl)
+                    .iter()
+                    .any(|i| i.code.starts_with("ST2067-21:2020:") && i.code.ends_with(suffix))
+        };
+        let table_3_errors = |cpl: &CompositionPlaylist| {
+            App2E2023
+                .validate_cpl(cpl)
+                .into_iter()
+                .filter(|i| i.message.contains("Table 3"))
+                .collect::<Vec<_>>()
+        };
+        let base = || cpl_1080i(EditRate::new(25, 1));
+        assert!(
+            table_3_errors(&base()).is_empty(),
+            "conforming 1080i must not be flagged"
+        );
+
+        type Mutation = Box<dyn Fn(&mut CDCIDescriptor)>;
+        let cases: Vec<(&str, &str, Mutation)> = vec![
+            (
+                "24 fps",
+                "/FrameRate",
+                Box::new(|c| c.sample_rate = Some(EditRate::new(24, 1))),
+            ),
+            (
+                "50 fps",
+                "/FrameRate",
+                Box::new(|c| c.sample_rate = Some(EditRate::new(50, 1))),
+            ),
+            (
+                "frame height 2160 (stored 1080 per field)",
+                "/Resolution",
+                Box::new(|c| c.stored_height = Some(1080)),
+            ),
+            (
+                "width 3840",
+                "/Resolution",
+                Box::new(|c| c.stored_width = Some(3840)),
+            ),
+            (
+                "12-bit",
+                "/ComponentDepth",
+                Box::new(|c| c.component_depth = Some(12)),
+            ),
+            (
+                "4:4:4",
+                "/HorizontalSubsampling",
+                Box::new(|c| c.horizontal_subsampling = Some(1)),
+            ),
+            (
+                "COLOR.5",
+                "/ColorSystem",
+                Box::new(|c| {
+                    c.color_primaries = Some(ColorPrimaries::Bt2020);
+                    c.transfer_characteristic = Some(TransferCharacteristic::Bt2020);
+                    c.coding_equations = Some(CodingEquations::Bt2020Ncl);
+                }),
+            ),
+        ];
+        for (name, suffix, mutate) in cases {
+            let mut cpl = base();
+            mutate(cdci_mut(&mut cpl));
+            assert!(
+                flagged_with(&cpl, suffix),
+                "interlaced {name} must be flagged with {suffix}: {:#?}",
+                table_3_errors(&cpl)
+            );
+        }
+
+        // R'G'B' (RGBA descriptor) is never permitted with interlaced: the
+        // closest column is the 1..1920 progressive 4:4:4 one.
+        let mut cpl =
+            cpl_with_rgba_descriptor(ColorPrimaries::Bt709, TransferCharacteristic::Bt709);
+        let rgba = cpl
+            .essence_descriptor_list
+            .as_mut()
+            .unwrap()
+            .essence_descriptors[0]
+            .rgba_descriptor
+            .as_mut()
+            .unwrap();
+        rgba.frame_layout = Some("SeparateFields".to_string());
+        rgba.stored_height = Some(540);
+        rgba.sample_rate = Some(EditRate::new(25, 1));
+        rgba.field_dominance = Some(1);
+        assert!(
+            flagged_with(&cpl, "/FrameLayoutInterlaced"),
+            "RGBA + SeparateFields must be flagged: {:#?}",
+            table_3_errors(&cpl)
         );
     }
 
@@ -8437,7 +6540,7 @@ mod tests {
                 },
             ],
         });
-        let v = App2E2021;
+        let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
             !issues.iter().any(|i| i.code.contains("AudioHomogeneity")),
@@ -8495,7 +6598,7 @@ mod tests {
                 },
             ],
         });
-        let v = App2E2021;
+        let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
             !issues.iter().any(|i| i.code.contains("AudioHomogeneity")),
@@ -8557,7 +6660,7 @@ mod tests {
                     }],
                 },
             });
-        let v = App2E2021;
+        let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
             !issues.iter().any(|i| i.code.contains("5.6-HIC")),
@@ -8566,9 +6669,12 @@ mod tests {
         );
     }
 
-    /// HearingImpaired captions referencing non-timed-text descriptor should be flagged.
+    /// The HearingImpairedCaptions / ForcedNarrative timed-text requirement
+    /// is ST 2067-2 §6.3.3 (2020 p20), not an ST 2067-21 provision: no
+    /// edition of ST 2067-21 (2014–2026) mentions these sequences. The App
+    /// #2E validator therefore does not report it.
     #[test]
-    fn app2e_flags_hic_without_timed_text() {
+    fn app2e_does_not_report_hic_timed_text_rule_from_st_2067_2() {
         let ed_id = uuid(10);
         let mut cpl = minimal_cpl();
         cpl.edit_rate = Some(EditRate::new(24, 1));
@@ -8619,18 +6725,18 @@ mod tests {
                     }],
                 },
             });
-        let v = App2E2021;
+        let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| i.code.contains("5.6/HICTimedText")),
-            "HIC without timed text should be flagged: {:#?}",
+            !issues.iter().any(|i| i.code.contains("TimedText")),
+            "not an ST 2067-21 rule: {:#?}",
             issues,
         );
     }
 
-    /// ForcedNarrative referencing non-timed-text descriptor should be flagged.
+    /// See `app2e_does_not_report_hic_timed_text_rule_from_st_2067_2`.
     #[test]
-    fn app2e_flags_fn_without_timed_text() {
+    fn app2e_does_not_report_fn_timed_text_rule_from_st_2067_2() {
         let ed_id = uuid(10);
         let mut cpl = minimal_cpl();
         cpl.edit_rate = Some(EditRate::new(24, 1));
@@ -8681,11 +6787,11 @@ mod tests {
                     }],
                 },
             });
-        let v = App2E2021;
+        let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| i.code.contains("5.6/FNTimedText")),
-            "ForcedNarrative without timed text should be flagged: {:#?}",
+            !issues.iter().any(|i| i.code.contains("TimedText")),
+            "not an ST 2067-21 rule: {:#?}",
             issues,
         );
     }
@@ -8702,7 +6808,7 @@ mod tests {
             max_cll: None,
             max_fall: None,
         });
-        let v = App2E2021;
+        let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
             issues
@@ -8713,95 +6819,33 @@ mod tests {
         );
     }
 
+    /// ST 2067-2:2020 §6.1 (p18): ExtensionProperties "shall include a
+    /// single instance" of ApplicationIdentification, and ST 2067-21 §7.1
+    /// requires it to include the Table 15 value. A CPL with no
+    /// ExtensionProperties at all therefore lacks it too.
+    #[test]
+    fn app2e_flags_missing_extension_properties() {
+        let mut cpl = minimal_cpl();
+        cpl.edit_rate = Some(EditRate::new(24, 1));
+        cpl.extension_properties = None;
+        for (issues, code) in [
+            (
+                App2E2023.validate_cpl(&cpl),
+                St2067_21_2023::ApplicationIdentification.code(),
+            ),
+            (
+                App2E2020.validate_cpl(&cpl),
+                St2067_21_2020::ApplicationIdentification.code(),
+            ),
+        ] {
+            assert!(
+                issues.iter().any(|i| i.code == code),
+                "Missing ExtensionProperties/ApplicationIdentification should be flagged: {issues:#?}",
+            );
+        }
+    }
+
     // ── #47: LocaleList / RFC 5646 / ISO 3166-1 validation ──────────────
-
-    /// Valid LocaleList with proper language tags and region codes should pass.
-    #[test]
-    fn app2e_accepts_valid_locale_list() {
-        let mut cpl = minimal_cpl();
-        cpl.edit_rate = Some(EditRate::new(24, 1));
-        cpl.extension_properties = Some(ExtensionProperties {
-            application_identification: Some(APP2E_APPLICATION_IDENTIFICATION.to_string()),
-            max_cll: None,
-            max_fall: None,
-        });
-        cpl.locale_list = Some(LocaleList {
-            locales: vec![Locale {
-                language_list: Some(LanguageList {
-                    languages: vec![LanguageTag::new("en"), LanguageTag::new("fr")],
-                }),
-                content_maturity_rating_list: None,
-                region_list: Some(RegionList {
-                    regions: vec!["US".to_string(), "FR".to_string()],
-                }),
-            }],
-        });
-        let v = App2E2021;
-        let issues = v.validate_cpl(&cpl);
-        assert!(
-            !issues.iter().any(|i| i.code.contains("5.3/")),
-            "Valid locale should not be flagged: {:#?}",
-            issues,
-        );
-    }
-
-    /// Invalid region code (lowercase) should be flagged.
-    #[test]
-    fn app2e_flags_invalid_region_code() {
-        let mut cpl = minimal_cpl();
-        cpl.edit_rate = Some(EditRate::new(24, 1));
-        cpl.extension_properties = Some(ExtensionProperties {
-            application_identification: Some(APP2E_APPLICATION_IDENTIFICATION.to_string()),
-            max_cll: None,
-            max_fall: None,
-        });
-        cpl.locale_list = Some(LocaleList {
-            locales: vec![Locale {
-                language_list: None,
-                region_list: Some(RegionList {
-                    regions: vec!["us".to_string()], // Lowercase = invalid
-                }),
-                content_maturity_rating_list: None,
-            }],
-        });
-        let v = App2E2021;
-        let issues = v.validate_cpl(&cpl);
-        assert!(
-            issues.iter().any(|i| i.code.contains("5.3/RegionCode")),
-            "Invalid region code should be flagged: {:#?}",
-            issues,
-        );
-    }
-
-    /// Empty language tag should be flagged.
-    #[test]
-    fn app2e_flags_empty_locale_language_tag() {
-        let mut cpl = minimal_cpl();
-        cpl.edit_rate = Some(EditRate::new(24, 1));
-        cpl.extension_properties = Some(ExtensionProperties {
-            application_identification: Some(APP2E_APPLICATION_IDENTIFICATION.to_string()),
-            max_cll: None,
-            max_fall: None,
-        });
-        cpl.locale_list = Some(LocaleList {
-            locales: vec![Locale {
-                language_list: Some(LanguageList {
-                    languages: vec![LanguageTag::new("")],
-                }),
-                region_list: None,
-                content_maturity_rating_list: None,
-            }],
-        });
-        let v = App2E2021;
-        let issues = v.validate_cpl(&cpl);
-        assert!(
-            issues
-                .iter()
-                .any(|i| i.code.contains("5.3/EmptyLanguageTag")),
-            "Empty language tag should be flagged: {:#?}",
-            issues,
-        );
-    }
 
     // ── #48: Timed text extended validation ──────────────────────────────
 
@@ -8952,7 +6996,7 @@ mod tests {
                 }
             }
         }
-        let v = App2E2021;
+        let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
             issues
@@ -8979,7 +7023,7 @@ mod tests {
                 }
             }
         }
-        let v = App2E2021;
+        let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
             issues
@@ -9006,7 +7050,7 @@ mod tests {
                 }
             }
         }
-        let v = App2E2021;
+        let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
             issues
@@ -9033,7 +7077,7 @@ mod tests {
                 }
             }
         }
-        let v = App2E2021;
+        let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
             issues
@@ -9062,7 +7106,7 @@ mod tests {
                 }
             }
         }
-        let v = App2E2021;
+        let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
             issues.iter().any(|i| i.code.contains("6.2.3")),
@@ -9087,7 +7131,7 @@ mod tests {
                 }
             }
         }
-        let v = App2E2021;
+        let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
             issues
@@ -9116,7 +7160,7 @@ mod tests {
                 }
             }
         }
-        let v = App2E2021;
+        let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
             issues.iter().any(|i| i.code.contains("6.2.2")),
@@ -9141,7 +7185,7 @@ mod tests {
                 }
             }
         }
-        let v = App2E2021;
+        let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
             issues
@@ -9170,7 +7214,7 @@ mod tests {
                 }
             }
         }
-        let v = App2E2021;
+        let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
             issues.iter().any(|i| i.code.contains("6.2.4")),
@@ -9199,7 +7243,7 @@ mod tests {
                 }
             }
         }
-        let v = App2E2021;
+        let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
             issues
@@ -9226,7 +7270,7 @@ mod tests {
                 }
             }
         }
-        let v = App2E2021;
+        let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
             issues
@@ -9253,7 +7297,7 @@ mod tests {
                 }
             }
         }
-        let v = App2E2021;
+        let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
             issues.iter().any(|i| i.code.contains("6.4/ColorSiting")),
@@ -9278,7 +7322,7 @@ mod tests {
                 }
             }
         }
-        let v = App2E2021;
+        let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
             issues.iter().any(|i| i.code.contains("6.4/ColorSiting")),
@@ -9303,7 +7347,7 @@ mod tests {
                 }
             }
         }
-        let v = App2E2021;
+        let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
             issues
@@ -9330,7 +7374,7 @@ mod tests {
                 }
             }
         }
-        let v = App2E2021;
+        let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
             issues
@@ -9357,7 +7401,7 @@ mod tests {
                 }
             }
         }
-        let v = App2E2021;
+        let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
             issues.iter().any(|i| i.code.contains("6.4/ComponentDepth")),
@@ -9382,7 +7426,7 @@ mod tests {
                 }
             }
         }
-        let v = App2E2021;
+        let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
             issues.iter().any(|i| i.code.contains("6.4/ComponentDepth")),
@@ -9407,7 +7451,7 @@ mod tests {
                 }
             }
         }
-        let v = App2E2021;
+        let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
             issues
@@ -9430,7 +7474,7 @@ mod tests {
                 }
             }
         }
-        let v = App2E2021;
+        let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
             issues
@@ -9453,7 +7497,7 @@ mod tests {
                 }
             }
         }
-        let v = App2E2021;
+        let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
             issues
@@ -9477,7 +7521,7 @@ mod tests {
                 }
             }
         }
-        let v = App2E2021;
+        let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
             issues
@@ -9503,7 +7547,7 @@ mod tests {
                 }
             }
         }
-        let v = App2E2021;
+        let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
             issues.iter().any(|i| i.code.contains("6.3.2/")),
@@ -9586,7 +7630,7 @@ mod tests {
             core_issues,
         );
 
-        let app2e_issues = App2E2021.validate_cpl(&cpl);
+        let app2e_issues = App2E2023.validate_cpl(&cpl);
         assert!(
             !app2e_issues.iter().any(|i| i.code.contains(":General/")),
             "App2E validator emitted :General fallback codes: {:#?}",
@@ -9597,22 +7641,7 @@ mod tests {
     // ── XSD constraint helpers ────────────────────────────────────────────────
     // helper_timecode_address_* and helper_total_running_time_* were deleted
     // along with the helper functions they exercised (gutted as part of the
-    // runtime-XSD migration). Only is_valid_any_uri remains.
-
-    #[test]
-    fn helper_any_uri_valid() {
-        assert!(is_valid_any_uri("http://www.movielabs.com/md/ratings"));
-        assert!(is_valid_any_uri("urn:smpte:2067-3:ag"));
-        assert!(is_valid_any_uri("https://example.com/agency"));
-        assert!(is_valid_any_uri("relative/path"));
-    }
-
-    #[test]
-    fn helper_any_uri_invalid() {
-        assert!(!is_valid_any_uri("http://example.com with space"));
-        assert!(!is_valid_any_uri("has\ttab"));
-        assert!(!is_valid_any_uri("has\nnewline"));
-    }
+    // runtime-XSD migration).
 
     // ── XSD: TotalRunningTime pattern ────────────────────────────────────────
 
@@ -9861,55 +7890,622 @@ mod tests {
 
     // ── XSD: ContentMaturityRating.Agency as xs:anyURI ───────────────────────
 
+    // ── Per-edition App #2E: image-characteristics columns ───────────────
+    //
+    // Fixture values below are taken from the spec tables, not from the
+    // validator's constants: ST 2067-21:2020 Table 3 (p6) + Am1:2020 Table 3
+    // (p4), ST 2067-21:2023 Table 3 (p7), ST 2067-21:2026 Table 2 (§6.2.1).
+
+    const C1: (ColorPrimaries, TransferCharacteristic, CodingEquations) = (
+        ColorPrimaries::Bt601_625,
+        TransferCharacteristic::Bt709,
+        CodingEquations::Bt601,
+    );
+    const C2: (ColorPrimaries, TransferCharacteristic, CodingEquations) = (
+        ColorPrimaries::Bt601_525,
+        TransferCharacteristic::Bt709,
+        CodingEquations::Bt601,
+    );
+    const C3: (ColorPrimaries, TransferCharacteristic, CodingEquations) = (
+        ColorPrimaries::Bt709,
+        TransferCharacteristic::Bt709,
+        CodingEquations::Bt709,
+    );
+    const C4: (ColorPrimaries, TransferCharacteristic, CodingEquations) = (
+        ColorPrimaries::Bt709,
+        TransferCharacteristic::XvYcc709,
+        CodingEquations::Bt709,
+    );
+    const C5: (ColorPrimaries, TransferCharacteristic, CodingEquations) = (
+        ColorPrimaries::Bt2020,
+        TransferCharacteristic::Bt2020,
+        CodingEquations::Bt2020Ncl,
+    );
+    const C7: (ColorPrimaries, TransferCharacteristic, CodingEquations) = (
+        ColorPrimaries::Bt2020,
+        TransferCharacteristic::PqSt2084,
+        CodingEquations::Bt2020Ncl,
+    );
+    const C8: (ColorPrimaries, TransferCharacteristic, CodingEquations) = (
+        ColorPrimaries::Bt2020,
+        TransferCharacteristic::Hlg,
+        CodingEquations::Bt2020Ncl,
+    );
+
+    /// A CDCI descriptor. `height` is the image frame height; for
+    /// interlaced the stored height is one field (Table 9).
+    #[allow(clippy::too_many_arguments)]
+    fn cdci_frame(
+        width: u32,
+        height: u32,
+        interlaced: bool,
+        rate: (u32, u32),
+        color: (ColorPrimaries, TransferCharacteristic, CodingEquations),
+        depth: u32,
+        h_sub: u32,
+    ) -> CompositionPlaylist {
+        let stored_h = if interlaced { height / 2 } else { height };
+        let mut cpl =
+            cpl_with_image_resolution(width, stored_h, Some(EditRate::new(rate.0, rate.1)));
+        let c = cdci_mut(&mut cpl);
+        c.frame_layout = Some(
+            if interlaced {
+                "SeparateFields"
+            } else {
+                "FullFrame"
+            }
+            .to_string(),
+        );
+        if interlaced {
+            c.field_dominance = Some(1);
+        }
+        c.color_primaries = Some(color.0);
+        c.transfer_characteristic = Some(color.1);
+        c.coding_equations = Some(color.2);
+        c.component_depth = Some(depth);
+        c.horizontal_subsampling = Some(h_sub);
+        c.picture_compression = Some(VideoCodec::Jpeg2000);
+        cpl
+    }
+
+    /// An RGBA descriptor; `refs` is (ComponentMinRef, ComponentMaxRef).
+    fn rgba_frame(
+        width: u32,
+        height: u32,
+        rate: (u32, u32),
+        color: (ColorPrimaries, TransferCharacteristic),
+        refs: (u32, u32),
+    ) -> CompositionPlaylist {
+        let mut cpl = cpl_with_rgba_descriptor(color.0, color.1);
+        let r = cpl
+            .essence_descriptor_list
+            .as_mut()
+            .unwrap()
+            .essence_descriptors[0]
+            .rgba_descriptor
+            .as_mut()
+            .unwrap();
+        r.stored_width = Some(width);
+        r.stored_height = Some(height);
+        r.sample_rate = Some(EditRate::new(rate.0, rate.1));
+        r.component_min_ref = Some(refs.0);
+        r.component_max_ref = Some(refs.1);
+        r.picture_compression = Some(VideoCodec::Jpeg2000);
+        cpl
+    }
+
+    fn codes_of(issues: Vec<ValidationIssue>) -> Vec<String> {
+        issues.into_iter().map(|i| i.code).collect()
+    }
+
+    /// Codes of the image-characteristics findings (all columns differ).
+    fn column_findings(v: &dyn ConstraintsValidator, cpl: &CompositionPlaylist) -> Vec<String> {
+        v.validate_cpl(cpl)
+            .into_iter()
+            .filter(|i| i.message.contains("fit no column"))
+            .map(|i| i.code)
+            .collect()
+    }
+
+    /// One frame per column of the 2023 Table 3 (and of the 2020 table with
+    /// Am1): each fits its column, under both editions.
     #[test]
-    fn app2e_flags_agency_with_whitespace() {
-        let mut cpl = minimal_cpl();
-        cpl.locale_list = Some(LocaleList {
+    fn app2e_table_3_every_column_accepts_a_conforming_frame() {
+        let frames = [
+            // 1..1920 x 1..1080, interlaced, COLOR.1/2/3, 8/10, 25/30/30000/1001, 4:2:2
+            cdci_frame(1920, 1080, true, (30000, 1001), C2, 8, 2),
+            cdci_frame(720, 576, true, (25, 1), C1, 10, 2),
+            // 1..1920 x 1..1080, progressive, COLOR.1/2/3, 8/10, 24..60, 4:4:4 Y'C'BC'R
+            cdci_frame(1920, 1080, false, (50, 1), C1, 10, 1),
+            // ... or R'G'B' (QE.1)
+            rgba_frame(1920, 1080, (60000, 1001), (C3.0, C3.1), (16, 235)),
+            // 1..3840 x 1..2160 4:2:2: COLOR.4 8/10, COLOR.3 8..16, COLOR.5/8 10/12, COLOR.7 10/12/16
+            cdci_frame(3840, 2160, false, (24, 1), C4, 10, 2),
+            cdci_frame(3840, 2160, false, (60, 1), C3, 16, 2),
+            cdci_frame(3840, 2160, false, (25, 1), C5, 12, 2),
+            cdci_frame(3840, 2160, false, (24000, 1001), C8, 10, 2),
+            cdci_frame(3840, 2160, false, (30, 1), C7, 16, 2),
+            // 1..4096 x 1..3112 R'G'B' 4:4:4: COLOR.3 8..16, COLOR.5/8 10/12,
+            // COLOR.6/7 10/12/16, 24..60 and 120, QE.1/QE.2
+            rgba_frame(4096, 3112, (120, 1), (C3.0, C3.1), (0, 255)),
+            rgba_frame(4096, 2160, (24, 1), (C5.0, C5.1), (0, 4095)),
+            rgba_frame(
+                4096,
+                2160,
+                (24, 1),
+                (ColorPrimaries::Bt2020, TransferCharacteristic::Hlg),
+                (64, 940),
+            ),
+            rgba_frame(
+                3996,
+                2160,
+                (48, 2),
+                (ColorPrimaries::P3D65, TransferCharacteristic::PqSt2084),
+                (0, 65535),
+            ),
+            rgba_frame(4096, 1716, (120, 1), (C7.0, C7.1), (256, 3760)),
+        ];
+        for cpl in &frames {
+            assert_eq!(column_findings(&App2E2023, cpl), Vec::<String>::new());
+            assert_eq!(column_findings(&App2E2020, cpl), Vec::<String>::new());
+        }
+    }
+
+    /// Characteristics each allowed somewhere in Table 3 but not together in
+    /// one column are rejected, with the differing characteristic's code.
+    #[test]
+    fn app2e_table_3_rejects_combinations_that_fit_no_single_column() {
+        let cases = [
+            // COLOR.4 is 8/10 bit only.
+            (
+                cdci_frame(3840, 2160, false, (24, 1), C4, 12, 2),
+                "6.4/ComponentDepth",
+            ),
+            // COLOR.5 has no 8-bit column.
+            (
+                cdci_frame(3840, 2160, false, (24, 1), C5, 8, 2),
+                "6.4/ComponentDepth",
+            ),
+            // Progressive 4:2:2 with COLOR.1 (only COLOR.3 has a 4:2:2
+            // progressive column among COLOR.1/2/3).
+            (
+                cdci_frame(1920, 1080, false, (25, 1), C1, 10, 2),
+                "6.4/HorizontalSubsampling",
+            ),
+            // 120 fps exists only for R'G'B'.
+            (
+                cdci_frame(3840, 2160, false, (120, 1), C3, 10, 2),
+                "5.2/FrameRate",
+            ),
+            // R'G'B' COLOR.1 is QE.1 only (1..1920 column).
+            (
+                rgba_frame(1920, 1080, (24, 1), (C1.0, C1.1), (0, 1023)),
+                "6.3.2/ComponentRefValues",
+            ),
+            // R'G'B' COLOR.4: no R'G'B' column lists COLOR.4.
+            (
+                rgba_frame(1920, 1080, (24, 1), (C4.0, C4.1), (64, 940)),
+                "6.2/ColorSystem",
+            ),
+            // Y'C'BC'R 4:4:4 exists only for COLOR.1/2/3 (1..1920 column).
+            (
+                cdci_frame(1920, 1080, false, (24, 1), C5, 10, 1),
+                "6.4/HorizontalSubsampling",
+            ),
+        ];
+        for (cpl, suffix) in &cases {
+            for (v, label) in [
+                (&App2E2023 as &dyn ConstraintsValidator, "ST2067-21:2023:"),
+                (&App2E2020, "ST2067-21:2020:"),
+            ] {
+                let found = column_findings(v, cpl);
+                assert!(
+                    found.iter().any(|c| *c == format!("{label}{suffix}")),
+                    "expected {label}{suffix}, got {found:?}",
+                );
+            }
+        }
+    }
+
+    /// ST 2067-21:2026 Table 2 (§6.2.1): 4:2:2 Y'C'BC'R COLOR.3/5/7/8 up to
+    /// 1..7680 x 1..4320, R'G'B' up to 1..8192 x 1..6224, COLOR.4 still
+    /// 1..3840 x 1..2160, and a 1..1920 progressive 4:2:2 COLOR.1/2/3 column.
+    /// None of these fit the 2023 table.
+    #[test]
+    fn app2e_2026_table_2_columns_differ_from_2023() {
+        let only_2026 = [
+            cdci_frame(7680, 4320, false, (24, 1), C7, 12, 2),
+            cdci_frame(7680, 4320, false, (60, 1), C3, 8, 2),
+            rgba_frame(
+                8192,
+                6224,
+                (120, 1),
+                (ColorPrimaries::P3D65, TransferCharacteristic::PqSt2084),
+                (0, 65535),
+            ),
+            cdci_frame(1920, 1080, false, (25, 1), C1, 10, 2),
+        ];
+        for cpl in &only_2026 {
+            assert_eq!(column_findings(&App2E2026, cpl), Vec::<String>::new());
+            assert!(!column_findings(&App2E2023, cpl).is_empty());
+        }
+        let c4_8k = cdci_frame(7680, 4320, false, (24, 1), C4, 10, 2);
+        assert!(column_findings(&App2E2026, &c4_8k)
+            .contains(&"ST2067-21:2026:6.2.1/Resolution".to_string()));
+        let too_big = cdci_frame(7681, 4320, false, (24, 1), C3, 10, 2);
+        assert!(column_findings(&App2E2026, &too_big)
+            .contains(&"ST2067-21:2026:6.2.1/Resolution".to_string()));
+    }
+
+    /// 2026 Table 7 (§7.2.1.1): Alpha Transparency "Shall be ignored";
+    /// 2020/2023 Table 8: "Shall not be present".
+    #[test]
+    fn app2e_alpha_transparency_is_ignored_in_2026_only() {
+        let mut cpl = cdci_frame(1920, 1080, false, (24, 1), C3, 10, 2);
+        cdci_mut(&mut cpl).alpha_transparency = Some("0".to_string());
+        let has = |issues: Vec<ValidationIssue>| {
+            issues
+                .iter()
+                .any(|i| i.code.ends_with("/AlphaTransparency"))
+        };
+        assert!(has(App2E2023.validate_cpl(&cpl)));
+        assert!(has(App2E2020.validate_cpl(&cpl)));
+        assert!(!has(App2E2026.validate_cpl(&cpl)));
+    }
+
+    /// Every code a validator emits carries its own edition's label; rules
+    /// that are not in an edition's text are not reported under it.
+    #[test]
+    fn app2e_validators_emit_only_their_own_edition_codes() {
+        let mut broken = cdci_frame(9000, 9000, true, (48, 1), C5, 9, 3);
+        {
+            let c = cdci_mut(&mut broken);
+            c.stored_f2_offset = Some(1);
+            c.alpha_transparency = Some("1".to_string());
+            c.black_ref_level = Some(1);
+            c.picture_compression = Some(VideoCodec::Jpeg2000Ht);
+        }
+        let mut broken_rgba = rgba_frame(9000, 9000, (48, 1), (C4.0, C4.1), (1, 2));
+        broken_rgba
+            .essence_descriptor_list
+            .as_mut()
+            .unwrap()
+            .essence_descriptors[0]
+            .rgba_descriptor
+            .as_mut()
+            .unwrap()
+            .palette = Some("x".to_string());
+        broken.locale_list = Some(LocaleList {
             locales: vec![Locale {
-                language_list: None,
-                region_list: None,
-                content_maturity_rating_list: Some(ContentMaturityRatingList {
-                    ratings: vec![ContentMaturityRating {
-                        agency: "http://www.example.com bad uri".to_string(),
-                        rating: Some("PG".to_string()),
-                        audience: None,
-                    }],
+                language_list: Some(LanguageList {
+                    languages: vec![LanguageTag::new("")],
+                }),
+                content_maturity_rating_list: None,
+                region_list: Some(RegionList {
+                    regions: vec!["usa".to_string()],
                 }),
             }],
         });
-        let issues = App2E2021.validate_cpl(&cpl);
-        assert!(
-            issues
+        for (v, label) in [
+            (&App2E2014 as &dyn ConstraintsValidator, "ST2067-21:2014:"),
+            (&App2E2016, "ST2067-21:2016:"),
+            (&App2E2020, "ST2067-21:2020:"),
+            (&App2E2023, "ST2067-21:2023:"),
+            (&App2E2026, "ST2067-21:2026:"),
+        ] {
+            for cpl in [&broken, &broken_rgba, &minimal_cpl()] {
+                let issues = v.validate_cpl(cpl);
+                assert!(!issues.is_empty());
+                for i in &issues {
+                    assert!(
+                        i.code.starts_with(label),
+                        "{} emitted {}",
+                        v.spec_id(),
+                        i.code
+                    );
+                }
+            }
+        }
+    }
+
+    // ── ST 2067-21:2014 / 2016 ───────────────────────────────────────────
+
+    fn with_app_id_uri(mut cpl: CompositionPlaylist, uri: &str) -> CompositionPlaylist {
+        cpl.extension_properties = Some(ExtensionProperties {
+            application_identification: Some(uri.to_string()),
+            max_cll: None,
+            max_fall: None,
+        });
+        cpl
+    }
+
+    /// ST 2067-21:2014 §6.1.2 (p6): Coding Equations shall be the BT.709 UL
+    /// (…02.02.00.00) if COLOR.4 or COLOR.5 is used; §6.1.4 Table 4: COLOR.5
+    /// at 10 bit is 64 / 940 / 897.
+    #[test]
+    fn app2e_2014_color5_uses_bt709_coding_equations() {
+        let uri = "http://www.smpte-ra.org/schemas/2067-21/2014";
+        let bt709_ce = (
+            ColorPrimaries::Bt2020,
+            TransferCharacteristic::Bt2020,
+            CodingEquations::Bt709,
+        );
+        let ok = with_app_id_uri(
+            cdci_frame(3840, 2160, false, (24, 1), bt709_ce.clone(), 10, 2),
+            uri,
+        );
+        assert_eq!(codes_of(App2E2014.validate_cpl(&ok)), Vec::<String>::new());
+
+        // The BT.2020 NCL coding equations of later editions are not the
+        // 2014 COLOR.5 value.
+        let ncl = with_app_id_uri(cdci_frame(3840, 2160, false, (24, 1), C5, 10, 2), uri);
+        let issues = App2E2014.validate_cpl(&ncl);
+        assert_eq!(
+            issues.iter().map(|i| i.code.as_str()).collect::<Vec<_>>(),
+            vec!["ST2067-21:2014:6.1/ColorSystem"]
+        );
+
+        let mut wrong_range = with_app_id_uri(
+            cdci_frame(3840, 2160, false, (24, 1), bt709_ce.clone(), 10, 2),
+            uri,
+        );
+        cdci_mut(&mut wrong_range).color_range = Some(1013);
+        assert_eq!(
+            App2E2014
+                .validate_cpl(&wrong_range)
                 .iter()
-                .any(|i| i.code.contains("ContentMaturityRating-Agency-URI")),
-            "Agency with whitespace should be flagged: {:#?}",
-            issues,
+                .map(|i| i.code.as_str())
+                .collect::<Vec<_>>(),
+            vec!["ST2067-21:2014:6.1.4/ColorRange"]
         );
     }
 
+    /// The 2014 edition only constrains COLOR.4/5 descriptors; COLOR.3 and
+    /// descriptor items governed by ST 2067-20 are not checked under it.
     #[test]
-    fn app2e_accepts_valid_agency_uri() {
-        let mut cpl = minimal_cpl();
-        cpl.locale_list = Some(LocaleList {
-            locales: vec![Locale {
-                language_list: None,
-                region_list: None,
-                content_maturity_rating_list: Some(ContentMaturityRatingList {
-                    ratings: vec![ContentMaturityRating {
-                        agency: "http://www.movielabs.com/md/ratings".to_string(),
-                        rating: Some("PG-13".to_string()),
-                        audience: None,
-                    }],
-                }),
-            }],
-        });
-        let issues = App2E2021.validate_cpl(&cpl);
-        assert!(
-            !issues
-                .iter()
-                .any(|i| i.code.contains("ContentMaturityRating-Agency-URI")),
-            "Valid Agency URI should be accepted: {:#?}",
-            issues,
+    fn app2e_2014_does_not_apply_later_edition_rules() {
+        let uri = "http://www.smpte-ra.org/schemas/2067-21/2014";
+        let mut cpl = with_app_id_uri(cdci_frame(4096, 3112, true, (48, 1), C3, 12, 1), uri);
+        cdci_mut(&mut cpl).stored_f2_offset = Some(3);
+        cdci_mut(&mut cpl).picture_compression = Some(VideoCodec::Mpeg2);
+        assert_eq!(codes_of(App2E2014.validate_cpl(&cpl)), Vec::<String>::new());
+    }
+
+    /// ST 2067-21:2016 §6.1.1–6.1.3 (p8–9): COLOR.5 and COLOR.7 use the
+    /// BT.2020 NCL coding equations; COLOR.6 uses P3D65 primaries with the
+    /// ST 2084 transfer characteristic. §6.3 Table 7 (p10): COLOR.5/7 at
+    /// 12 bit are 256 / 3760 / 3585.
+    #[test]
+    fn app2e_2016_colorimetry_items() {
+        let uri = "http://www.smpte-ra.org/schemas/2067-21/2016";
+        let color7_12_bit = || {
+            let mut c7 = with_app_id_uri(cdci_frame(3840, 2160, false, (24, 1), C7, 12, 2), uri);
+            {
+                let c = cdci_mut(&mut c7);
+                c.black_ref_level = Some(256);
+                c.white_ref_level = Some(3760);
+                c.color_range = Some(3585);
+            }
+            c7.extension_properties.as_mut().unwrap().max_cll = Some(1000);
+            c7.extension_properties.as_mut().unwrap().max_fall = Some(400);
+            c7
+        };
+        assert_eq!(
+            codes_of(App2E2016.validate_cpl(&color7_12_bit())),
+            Vec::<String>::new()
         );
+
+        let bt709_ce = (
+            ColorPrimaries::Bt2020,
+            TransferCharacteristic::PqSt2084,
+            CodingEquations::Bt709,
+        );
+        let wrong = with_app_id_uri(cdci_frame(3840, 2160, false, (24, 1), bt709_ce, 12, 2), uri);
+        assert!(App2E2016
+            .validate_cpl(&wrong)
+            .iter()
+            .any(|i| i.code == "ST2067-21:2016:6.1/ColorSystem"));
+
+        let mut wrong_white = color7_12_bit();
+        cdci_mut(&mut wrong_white).white_ref_level = Some(940);
+        assert!(App2E2016
+            .validate_cpl(&wrong_white)
+            .iter()
+            .any(|i| i.code == "ST2067-21:2016:6.3/WhiteRefLevel"));
+
+        let c6 = with_app_id_uri(
+            rgba_frame(
+                4096,
+                2160,
+                (24, 1),
+                (ColorPrimaries::P3D65, TransferCharacteristic::PqSt2084),
+                (256, 3760),
+            ),
+            uri,
+        );
+        let issues = App2E2016.validate_cpl(&c6);
+        assert!(
+            !issues.iter().any(|i| i.code.ends_with("/ColorSystem")),
+            "{issues:#?}"
+        );
+        // §7.2: MaxCLL / MaxFALL are 0..1 for COLOR.6/7 — informational.
+        assert!(issues
+            .iter()
+            .any(|i| i.code == "ST2067-21:2016:7.2/MaxCLLMaxFALL" && i.severity == Severity::Info));
+    }
+
+    /// ST 2067-21:2016 §6.2 Table 6 (p10): 12-bit R'G'B' is 256/3760 (QE.1)
+    /// or 0/4095 (QE.2).
+    #[test]
+    fn app2e_2016_component_ref_values_12_bit() {
+        let uri = "http://www.smpte-ra.org/schemas/2067-21/2016";
+        let c = (ColorPrimaries::P3D65, TransferCharacteristic::PqSt2084);
+        for refs in [(256, 3760), (0, 4095)] {
+            let cpl = with_app_id_uri(rgba_frame(4096, 2160, (24, 1), c.clone(), refs), uri);
+            assert!(!App2E2016
+                .validate_cpl(&cpl)
+                .iter()
+                .any(|i| i.code.ends_with("/ComponentRefValues")));
+        }
+        let cpl = with_app_id_uri(rgba_frame(4096, 2160, (24, 1), c, (0, 3760)), uri);
+        assert!(App2E2016
+            .validate_cpl(&cpl)
+            .iter()
+            .any(|i| i.code == "ST2067-21:2016:6.2/ComponentRefValues"));
+    }
+
+    /// Pinning an edition against a CPL that declares another edition's
+    /// value reports that edition's own clause and value.
+    #[test]
+    fn app2e_app_id_mismatch_names_the_validated_edition() {
+        let cpl = with_app_id_uri(
+            cdci_frame(1920, 1080, false, (24, 1), C3, 10, 2),
+            "http://www.smpte-ra.org/ns/2067-21/2021",
+        );
+        let issues = App2E2026.validate_cpl(&cpl);
+        let mismatch = issues
+            .iter()
+            .find(|i| i.code == "ST2067-21:2026:8.1/AppIdMismatch")
+            .expect("2026 AppIdMismatch");
+        assert!(mismatch
+            .message
+            .contains("http://www.smpte-ra.org/ns/2067-21/5ED"));
+        assert!(App2E2014
+            .validate_cpl(&cpl)
+            .iter()
+            .any(|i| i.code == "ST2067-21:2014:7/AppIdMismatch"));
+    }
+
+    /// ST 2067-21:2026 §6.5.2 Table 5 adds a 4097..8192 x 1..6224 column
+    /// with the 8K IMF Single/Multi Tile Reversible (Sublevel 0 only) and
+    /// 8K IMF Single Tile Lossy (no Sublevel 0) profiles, Mainlevels 1–10.
+    /// ULs from the vendored SMPTE Labels register (Labels.xml):
+    /// `…04010202.03010403` "8K IMF Single Tile Lossy Profile (Mainlevel 1
+    /// Sublevel 1)", `…04010202.03010702` "8K IMF Single/Multi-Tile
+    /// Reversible Profile (Mainlevel 1 Sublevel 0)". The 2023 Table 6 has no
+    /// 8K column.
+    #[test]
+    fn app2e_8k_imf_profiles_are_2026_only() {
+        for ul in [
+            "urn:smpte:ul:060e2b34.0401010d.04010202.03010403",
+            "urn:smpte:ul:060e2b34.0401010d.04010202.03010729",
+            "urn:smpte:ul:060e2b34.0401010d.04010202.03010702",
+        ] {
+            let mut cpl = cdci_frame(7680, 4320, false, (24, 1), C3, 10, 2);
+            cdci_mut(&mut cpl).picture_compression = Some(VideoCodec::from_ul(ul));
+            let j2k = |issues: Vec<ValidationIssue>| {
+                issues
+                    .into_iter()
+                    .filter(|i| i.code.contains("/J2K"))
+                    .map(|i| i.code)
+                    .collect::<Vec<_>>()
+            };
+            assert_eq!(
+                j2k(App2E2026.validate_cpl(&cpl)),
+                Vec::<String>::new(),
+                "{ul} at 7680x4320 is a 2026 Table 5 profile"
+            );
+            assert_eq!(
+                j2k(App2E2023.validate_cpl(&cpl)),
+                vec!["ST2067-21:2023:6.2.5/J2K-Profile-Not-Allowed".to_string()],
+                "{ul}: no 8K profile in 2023 Table 6"
+            );
+
+            // 8K profiles cover 4097..8192 x 1..6224 only.
+            let mut small = cdci_frame(3840, 2160, false, (24, 1), C3, 10, 2);
+            cdci_mut(&mut small).picture_compression = Some(VideoCodec::from_ul(ul));
+            assert_eq!(
+                j2k(App2E2026.validate_cpl(&small)),
+                vec!["ST2067-21:2026:7.2.5/J2K-8K-Resolution".to_string()],
+            );
+        }
+    }
+
+    /// Language tags, region codes, ContentMaturityRating and audio sample
+    /// rate / quantization are not provisions of ST 2067-21:2023: §5.3 is
+    /// Colorimetry (p9), §6.5 the JPEG 2000 Picture Sub Descriptor (p19) and
+    /// §7.1 ApplicationIdentification (p20). The App #2E validator does not
+    /// report them under any edition.
+    #[test]
+    fn app2e_does_not_report_rules_from_other_documents() {
+        let mut cpl = cpl_with_audio(WAVEPCMDescriptor {
+            instance_id: None,
+            sample_rate: Some(EditRate::new(44100, 1)),
+            quantization_bits: None,
+            channel_count: None,
+            audio_sample_rate: Some(EditRate::new(44100, 1)),
+            linked_track_id: None,
+            sub_descriptors: None,
+        });
+        let mut wave16 = cpl_with_audio(WAVEPCMDescriptor {
+            instance_id: None,
+            sample_rate: Some(EditRate::new(48000, 1)),
+            quantization_bits: Some(16),
+            channel_count: Some(2),
+            audio_sample_rate: Some(EditRate::new(48000, 1)),
+            linked_track_id: None,
+            sub_descriptors: None,
+        });
+        for c in [&mut cpl, &mut wave16] {
+            c.locale_list = Some(LocaleList {
+                locales: vec![Locale {
+                    language_list: Some(LanguageList {
+                        languages: vec![LanguageTag::new(""), LanguageTag::new("1en")],
+                    }),
+                    content_maturity_rating_list: Some(ContentMaturityRatingList {
+                        ratings: vec![
+                            ContentMaturityRating {
+                                agency: String::new(),
+                                rating: Some("R".to_string()),
+                                audience: None,
+                            },
+                            ContentMaturityRating {
+                                agency: "not a uri".to_string(),
+                                rating: Some("R".to_string()),
+                                audience: None,
+                            },
+                        ],
+                    }),
+                    region_list: Some(RegionList {
+                        regions: vec!["usa".to_string()],
+                    }),
+                }],
+            });
+        }
+        let gone = [
+            "/EmptyLanguageTag",
+            "/MalformedLanguageTag",
+            "/RegionCode",
+            "/AudioSampleRate",
+            "/QuantizationBits",
+            "/Required-ChannelCount",
+            "/Required-QuantizationBits",
+            "/ContentMaturityRating-Agency",
+            "/ContentMaturityRating-Agency-URI",
+        ];
+        for v in [
+            &App2E2014 as &dyn ConstraintsValidator,
+            &App2E2016,
+            &App2E2020,
+            &App2E2023,
+            &App2E2026,
+        ] {
+            for c in [&cpl, &wave16] {
+                for i in v.validate_cpl(c) {
+                    assert!(
+                        !gone.iter().any(|g| i.code.ends_with(g)),
+                        "{} emitted {}",
+                        v.spec_id(),
+                        i.code
+                    );
+                }
+            }
+        }
+        for g in gone {
+            assert!(
+                !St2067_21_2023::ALL.iter().any(|c| c.code().ends_with(g)),
+                "{g} still in the 2023 code set"
+            );
+        }
     }
 }

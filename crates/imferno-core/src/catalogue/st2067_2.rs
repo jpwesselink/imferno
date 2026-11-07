@@ -633,7 +633,7 @@ pub static TimedTextNamespaceNotIMSC: Rule<E> = Rule {
     editions: &[
         absent(E::V2013).verified(),
         checked(E::V2016, "5.4.2", Shall),
-        checked(E::V2020, "5.4.2", Shall),
+        checked(E::V2020, "5.4.2", Shall).interpret("2020 §5.4.2 Note: NamespaceURI may hold designators of superset profiles beyond IMSC 1.1; only an empty value is reported.", None),
     ],
 };
 

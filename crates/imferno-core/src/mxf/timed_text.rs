@@ -100,7 +100,17 @@ pub fn check_timed_text(
             "http://www.w3.org/ns/ttml/profile/imsc1.1/text",
             "http://www.w3.org/ns/ttml/profile/imsc1.1/image",
         ];
-        if !ACCEPTABLE.contains(&ns) {
+        // 2020 §5.4.2: NamespaceURI shall be a profile designator of a
+        // profile the Document Instance conforms to, and its Note allows
+        // designators of superset profiles beyond IMSC 1.1. imferno cannot
+        // test conformance to an arbitrary profile, so for 2020 only an
+        // empty value is reported.
+        let violates = if spec_ed == St2067_2Edition::V2020 {
+            ns.is_empty()
+        } else {
+            !ACCEPTABLE.contains(&ns)
+        };
+        if violates {
             issues.push(
                 ValidationIssue::from_rule(
                     &st2067_2::TimedTextNamespaceNotIMSC,
@@ -262,6 +272,31 @@ mod tests {
             "expected TimedTextNamespaceNotIMSC, got: {:#?}",
             issues
         );
+    }
+
+    /// 2020 §5.4.2 Note: designators of superset profiles are allowed, so a
+    /// non-IMSC designator is not reported for 2020; an empty one is.
+    #[test]
+    fn namespace_2020_accepts_superset_designators() {
+        let xml = |ns: &str| {
+            format!(
+                r#"<ns1:TimedTextDescriptor>
+            <ns2:UCSEncoding>UTF-8</ns2:UCSEncoding>
+            <ns2:NamespaceURI>{ns}</ns2:NamespaceURI>
+        </ns1:TimedTextDescriptor>"#
+            )
+        };
+        let flagged = |ns: &str| {
+            check_timed_text(
+                &xml(ns),
+                std::path::Path::new("/synth.mxf"),
+                St2067_2Edition::V2020,
+            )
+            .iter()
+            .any(|i| i.is(&st2067_2::TimedTextNamespaceNotIMSC))
+        };
+        assert!(!flagged("http://example.org/superset-profile"));
+        assert!(flagged(""));
     }
 
     #[test]

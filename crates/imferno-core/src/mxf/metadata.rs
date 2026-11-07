@@ -15,8 +15,8 @@ use std::sync::OnceLock;
 use regxml::{MxfFragmentBuilder, MxfFragmentError, MxfFragmentOptions};
 use regxml_dict::{importer::import_registers, MetaDictionary};
 
+use crate::catalogue::imferno::{self, ImfernoEdition};
 use crate::diagnostics::{Location, ValidationIssue};
-use crate::mxf::codes::ImfernoMxf;
 
 // ── Embedded SMPTE registers ────────────────────────────────────────────────
 //
@@ -128,8 +128,9 @@ fn partition_error_indicates_missing_metadata(err: &MxfFragmentError) -> bool {
 /// fold it into the unified `ValidationReport` alongside the
 /// partition-pack diagnostics from `mxf::essence`.
 pub fn regxml_error_issue(path: &Path, err: &MxfFragmentError) -> ValidationIssue {
-    ValidationIssue::from_code(
-        ImfernoMxf::RegXmlConversionFailed,
+    ValidationIssue::from_rule(
+        &imferno::RegXmlConversionFailed,
+        ImfernoEdition::Current,
         format!(
             "Could not convert MXF header metadata of {} to RegXML: {}",
             path.display(),

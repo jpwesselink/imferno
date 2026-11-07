@@ -10,10 +10,10 @@
 //! | 2023    | `http://www.smpte-ra.org/ns/2067-21/2021` (§7.1 Table 15)     | [`App2E2023`] |
 //! | 2026    | `http://www.smpte-ra.org/ns/2067-21/5ED` (§8.1 Figure 2)      | [`App2E2026`] |
 //!
-//! Findings are reported per [`App2ERule`]; each edition's code enum maps
-//! only the rules its text contains. A finding whose rule has no code in the
-//! validated edition is dropped, so a validator never emits another
-//! edition's code.
+//! Findings are reported per rule of [`crate::catalogue::st2067_21`]; each
+//! rule's edition table says which editions contain it. A check whose rule
+//! the validated edition does not contain is not reported (see
+//! [`App2E::issue`]), so a validator never reports another edition's rule.
 //!
 //! Table numbers in comments below refer to the 2020/2023 editions (which
 //! share their numbering) unless stated otherwise; the 2026 edition numbers
@@ -21,16 +21,13 @@
 
 use std::collections::HashSet;
 
-use super::codes::{
-    App2ERule, St2067_21_2014, St2067_21_2016, St2067_21_2020, St2067_21_2023, St2067_21_2026,
-};
 use super::{
     cdci_ref_values, component_ref_values, ColorSystem, ConstraintsValidator, QuantizationSystem,
 };
+use crate::catalogue::st2067_21;
 use crate::cpl::CompositionPlaylist;
 use crate::cpl::{CodingEquations, ColorPrimaries, EditRate, TransferCharacteristic};
-use crate::diagnostics::codes::ValidationCode;
-use crate::diagnostics::{Category, Location, Severity, ValidationIssue};
+use crate::diagnostics::{Location, Rule, ValidationIssue};
 
 // ═════════════════════════════════════════════════════════════════════════════
 // Editions
@@ -91,18 +88,6 @@ impl App2EEdition {
             .iter()
             .copied()
             .find(|e| e.application_identification_uri() == uri)
-    }
-
-    /// This edition's code for `rule`, or `None` when the edition's text
-    /// does not contain the rule.
-    pub fn code(&self, rule: App2ERule) -> Option<&'static str> {
-        match self {
-            Self::V2014 => St2067_21_2014::for_rule(rule).map(|c| c.code()),
-            Self::V2016 => St2067_21_2016::for_rule(rule).map(|c| c.code()),
-            Self::V2020 => St2067_21_2020::for_rule(rule).map(|c| c.code()),
-            Self::V2023 => St2067_21_2023::for_rule(rule).map(|c| c.code()),
-            Self::V2026 => St2067_21_2026::for_rule(rule).map(|c| c.code()),
-        }
     }
 
     /// HT-J2K (ISO/IEC 15444-15) is listed in the JPEG 2000 table from the
@@ -668,10 +653,16 @@ impl App2E {
         self.edition
     }
 
-    /// This edition's code for `rule`; empty when the edition does not
-    /// contain the rule (such findings are dropped by [`App2E::validate`]).
-    fn code(&self, rule: App2ERule) -> &'static str {
-        self.edition.code(rule).unwrap_or("")
+    /// A finding for `rule` in this edition, or `None` when this edition's
+    /// text does not contain the rule (the check is then not part of the
+    /// edition and nothing is reported).
+    fn issue(
+        &self,
+        rule: &'static Rule<App2EEdition>,
+        message: impl Into<String>,
+    ) -> Option<ValidationIssue> {
+        rule.in_edition(self.edition)
+            .then(|| ValidationIssue::from_rule(rule, self.edition, message))
     }
 
     /// Run every check of the edition.
@@ -694,8 +685,6 @@ impl App2E {
                 self.validate_descriptor_completeness(cpl, &mut issues);
             }
         }
-        // A finding whose rule is not part of this edition has no code.
-        issues.retain(|i| !i.code.is_empty());
         issues
     }
 
@@ -713,11 +702,9 @@ impl App2E {
             .as_ref()
             .and_then(|ext| ext.application_identification.as_deref());
         match app_id {
-            None => issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Metadata,
-                    self.code(App2ERule::ApplicationIdentification),
+            None => issues.extend(
+                self.issue(
+                    &st2067_21::ApplicationIdentification,
                     format!(
                         "ApplicationIdentification is absent; {} requires it to include '{}'",
                         self.edition.name(),
@@ -726,11 +713,9 @@ impl App2E {
                 )
                 .with_location(Location::new().with_cpl(cpl.id)),
             ),
-            Some(app_id) if !application_identification_includes(app_id, uri) => issues.push(
-                ValidationIssue::new(
-                    Severity::Warning,
-                    Category::Metadata,
-                    self.code(App2ERule::AppIdMismatch),
+            Some(app_id) if !application_identification_includes(app_id, uri) => issues.extend(
+                self.issue(
+                    &st2067_21::AppIdMismatch,
                     format!(
                         "ApplicationIdentification '{}' does not include the {} value '{}'",
                         app_id,
@@ -794,11 +779,9 @@ impl App2E {
                 if !self.edition.allows_ht() {
                     // ST 2067-21:2020 Table 6 lists no HT-J2K profile;
                     // HT-J2K is added by the 2023 edition.
-                    issues.push(
-                        ValidationIssue::new(
-                            Severity::Error,
-                            Category::Encoding,
-                            self.code(App2ERule::J2KHtNotAllowed),
+                    issues.extend(
+                        self.issue(
+                            &st2067_21::J2KHtNotAllowed,
                             "JPEG 2000 HT (ISO 15444-15) is not a JPEG 2000 profile of \
                              ST 2067-21:2020 (Table 6)",
                         )
@@ -816,11 +799,9 @@ impl App2E {
                     && stored_height > 0
                     && stored_height <= 3112)
                 {
-                    issues.push(
-                        ValidationIssue::new(
-                            Severity::Error,
-                            Category::Encoding,
-                            self.code(App2ERule::J2K4KResolution),
+                    issues.extend(
+                        self.issue(
+                            &st2067_21::J2K4KResolution,
                             format!(
                                 "JPEG 2000 IMF 4K Profile does not support image resolution \
                                  ({}/{}); width must be 2049–4096, height 1–3112",
@@ -838,11 +819,9 @@ impl App2E {
                     && stored_height > 0
                     && stored_height <= 1556)
                 {
-                    issues.push(
-                        ValidationIssue::new(
-                            Severity::Error,
-                            Category::Encoding,
-                            self.code(App2ERule::J2K2KResolution),
+                    issues.extend(
+                        self.issue(
+                            &st2067_21::J2K2KResolution,
                             format!(
                                 "JPEG 2000 IMF 2K Profile does not support image resolution \
                                  ({}/{}); width must be 1–2048, height 1–1556",
@@ -856,11 +835,8 @@ impl App2E {
             VideoCodec::Jpeg2000Imf8k => {
                 if !self.edition.allows_8k() {
                     // 2020 and 2023 Table 6 have no 8K column.
-                    issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Encoding,
-                        self.code(App2ERule::J2KProfileNotAllowed),
+                    issues.extend(
+                    self.issue(&st2067_21::J2KProfileNotAllowed,
                         format!(
                             "JPEG 2000 IMF 8K profiles are not in the JPEG 2000 profile table of {}",
                             self.edition.name()
@@ -874,11 +850,9 @@ impl App2E {
                     && stored_height <= 6224)
                 {
                     // 2026 §6.5.2 Table 5: 8K column is 4097..8192 x 1..6224.
-                    issues.push(
-                        ValidationIssue::new(
-                            Severity::Error,
-                            Category::Encoding,
-                            self.code(App2ERule::J2K8KResolution),
+                    issues.extend(
+                        self.issue(
+                            &st2067_21::J2K8KResolution,
                             format!(
                                 "JPEG 2000 IMF 8K Profile does not support image resolution \
                              ({}/{}); width must be 4097–8192, height 1–6224",
@@ -896,11 +870,9 @@ impl App2E {
                     && stored_height > 0
                     && stored_height <= 2160)
                 {
-                    issues.push(
-                        ValidationIssue::new(
-                            Severity::Error,
-                            Category::Encoding,
-                            self.code(App2ERule::J2KBcpResolution),
+                    issues.extend(
+                        self.issue(
+                            &st2067_21::J2KBcpResolution,
                             format!(
                                 "JPEG 2000 Broadcast Contribution Profile does not support image \
                                  resolution ({}/{}); width must be 1–3840, height 1–2160",
@@ -964,11 +936,9 @@ impl App2E {
         // §6.2.5: PictureCompression shall be JPEG 2000 (ISO 15444-1 or 15444-15)
         if let Some(ref codec) = rgba.picture_compression {
             if !codec.is_jpeg2000_family() {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Encoding,
-                        self.code(App2ERule::J2KRequired).to_string(),
+                issues.extend(
+                    self.issue(
+                        &st2067_21::J2KRequired,
                         format!(
                             "PictureCompression shall be JPEG 2000 for App2E, found: {}",
                             codec
@@ -987,11 +957,8 @@ impl App2E {
         // Table 8: FrameLayout — §6.2.1.3
         if let Some(ref fl) = rgba.frame_layout {
             if fl != "FullFrame" && fl != "SeparateFields" {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Video,
-                        self.code(App2ERule::FrameLayout).to_string(),
+                issues.extend(
+                    self.issue(&st2067_21::FrameLayout,
                         format!(
                             "FrameLayout shall be FullFrame (00h) or SeparateFields (01h), found: {}",
                             fl
@@ -1004,11 +971,9 @@ impl App2E {
 
         // Table 8: StoredF2Offset — shall not be present
         if rgba.stored_f2_offset.is_some() {
-            issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Video,
-                    self.code(App2ERule::StoredF2Offset).to_string(),
+            issues.extend(
+                self.issue(
+                    &st2067_21::StoredF2Offset,
                     "StoredF2Offset shall not be present",
                 )
                 .with_location(loc.clone()),
@@ -1019,11 +984,8 @@ impl App2E {
         if let Some(sw) = rgba.sampled_width {
             if let Some(stored_w) = rgba.stored_width {
                 if sw != stored_w {
-                    issues.push(
-                        ValidationIssue::new(
-                            Severity::Error,
-                            Category::Video,
-                            self.code(App2ERule::SampledWidth).to_string(),
+                    issues.extend(
+                        self.issue(&st2067_21::SampledWidth,
                             format!(
                                 "SampledWidth ({}) shall not be present or shall be equal to StoredWidth ({})",
                                 sw, stored_w
@@ -1039,11 +1001,8 @@ impl App2E {
         if let Some(sh) = rgba.sampled_height {
             if let Some(stored_h) = rgba.stored_height {
                 if sh != stored_h {
-                    issues.push(
-                        ValidationIssue::new(
-                            Severity::Error,
-                            Category::Video,
-                            self.code(App2ERule::SampledHeight).to_string(),
+                    issues.extend(
+                        self.issue(&st2067_21::SampledHeight,
                             format!(
                                 "SampledHeight ({}) shall not be present or shall be equal to StoredHeight ({})",
                                 sh, stored_h
@@ -1058,11 +1017,9 @@ impl App2E {
         // Table 8: SampledXOffset — shall not be present or shall be 0
         if let Some(sxo) = rgba.sampled_x_offset {
             if sxo != 0 {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Video,
-                        self.code(App2ERule::SampledXOffset).to_string(),
+                issues.extend(
+                    self.issue(
+                        &st2067_21::SampledXOffset,
                         format!(
                             "SampledXOffset shall not be present or shall be 0, found: {}",
                             sxo
@@ -1076,11 +1033,9 @@ impl App2E {
         // Table 8: SampledYOffset — shall not be present or shall be 0
         if let Some(syo) = rgba.sampled_y_offset {
             if syo != 0 {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Video,
-                        self.code(App2ERule::SampledYOffset).to_string(),
+                issues.extend(
+                    self.issue(
+                        &st2067_21::SampledYOffset,
                         format!(
                             "SampledYOffset shall not be present or shall be 0, found: {}",
                             syo
@@ -1093,11 +1048,9 @@ impl App2E {
 
         // Table 8: AlphaTransparency — shall not be present
         if rgba.alpha_transparency.is_some() {
-            issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Video,
-                    self.code(App2ERule::AlphaTransparency).to_string(),
+            issues.extend(
+                self.issue(
+                    &st2067_21::AlphaTransparency,
                     "AlphaTransparency shall not be present",
                 )
                 .with_location(loc.clone()),
@@ -1106,11 +1059,9 @@ impl App2E {
 
         // Table 8: ImageAlignmentOffset — shall not be present
         if rgba.image_alignment_offset.is_some() {
-            issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Video,
-                    self.code(App2ERule::ImageAlignmentOffset).to_string(),
+            issues.extend(
+                self.issue(
+                    &st2067_21::ImageAlignmentOffset,
                     "ImageAlignmentOffset shall not be present",
                 )
                 .with_location(loc.clone()),
@@ -1119,11 +1070,9 @@ impl App2E {
 
         // Table 8: ImageStartOffset — shall not be present
         if rgba.image_start_offset.is_some() {
-            issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Video,
-                    self.code(App2ERule::ImageStartOffset).to_string(),
+            issues.extend(
+                self.issue(
+                    &st2067_21::ImageStartOffset,
                     "ImageStartOffset shall not be present",
                 )
                 .with_location(loc.clone()),
@@ -1132,11 +1081,9 @@ impl App2E {
 
         // Table 8: ImageEndOffset — shall not be present
         if rgba.image_end_offset.is_some() {
-            issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Video,
-                    self.code(App2ERule::ImageEndOffset).to_string(),
+            issues.extend(
+                self.issue(
+                    &st2067_21::ImageEndOffset,
                     "ImageEndOffset shall not be present",
                 )
                 .with_location(loc.clone()),
@@ -1146,22 +1093,18 @@ impl App2E {
         // Table 8: FieldDominance — conditional on FrameLayout
         if let Some(ref fl) = rgba.frame_layout {
             if fl == "FullFrame" && rgba.field_dominance.is_some() {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Video,
-                        self.code(App2ERule::FieldDominance).to_string(),
+                issues.extend(
+                    self.issue(
+                        &st2067_21::FieldDominance,
                         "FieldDominance shall not be present for progressive (FullFrame) content",
                     )
                     .with_location(loc.clone()),
                 );
             }
             if fl == "SeparateFields" && rgba.field_dominance.is_none() {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Video,
-                        self.code(App2ERule::FieldDominance).to_string(),
+                issues.extend(
+                    self.issue(
+                        &st2067_21::FieldDominance,
                         "FieldDominance shall be present for interlaced (SeparateFields) content",
                     )
                     .with_location(loc.clone()),
@@ -1178,22 +1121,18 @@ impl App2E {
         // §6.2.4: ColorPrimaries shall be present and recognized
         match &rgba.color_primaries {
             Some(cp) if matches!(cp, ColorPrimaries::Unknown(_)) => {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Video,
-                        self.code(App2ERule::ColorPrimariesUnknown).to_string(),
+                issues.extend(
+                    self.issue(
+                        &st2067_21::ColorPrimariesUnknown,
                         format!("Unrecognized ColorPrimaries UL: {}", cp),
                     )
                     .with_location(loc.clone()),
                 );
             }
             None => {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Video,
-                        self.code(App2ERule::ColorPrimariesMissing).to_string(),
+                issues.extend(
+                    self.issue(
+                        &st2067_21::ColorPrimariesMissing,
                         "ColorPrimaries shall be present",
                     )
                     .with_location(loc.clone()),
@@ -1205,24 +1144,18 @@ impl App2E {
         // §6.2.2: TransferCharacteristic shall be present and recognized
         match &rgba.transfer_characteristic {
             Some(tc) if matches!(tc, TransferCharacteristic::Unknown(_)) => {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Video,
-                        self.code(App2ERule::TransferCharacteristicUnknown)
-                            .to_string(),
+                issues.extend(
+                    self.issue(
+                        &st2067_21::TransferCharacteristicUnknown,
                         format!("Unrecognized TransferCharacteristic UL: {}", tc),
                     )
                     .with_location(loc.clone()),
                 );
             }
             None => {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Video,
-                        self.code(App2ERule::TransferCharacteristicMissing)
-                            .to_string(),
+                issues.extend(
+                    self.issue(
+                        &st2067_21::TransferCharacteristicMissing,
                         "TransferCharacteristic shall be present",
                     )
                     .with_location(loc.clone()),
@@ -1235,11 +1168,9 @@ impl App2E {
 
         // Table 10: ComponentMaxRef shall be present
         if rgba.component_max_ref.is_none() {
-            issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Video,
-                    self.code(App2ERule::ComponentMaxRef).to_string(),
+            issues.extend(
+                self.issue(
+                    &st2067_21::ComponentMaxRef,
                     "ComponentMaxRef shall be present",
                 )
                 .with_location(loc.clone()),
@@ -1248,11 +1179,9 @@ impl App2E {
 
         // Table 10: ComponentMinRef shall be present
         if rgba.component_min_ref.is_none() {
-            issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Video,
-                    self.code(App2ERule::ComponentMinRef).to_string(),
+            issues.extend(
+                self.issue(
+                    &st2067_21::ComponentMinRef,
                     "ComponentMinRef shall be present",
                 )
                 .with_location(loc.clone()),
@@ -1262,11 +1191,9 @@ impl App2E {
         // Table 10: ScanningDirection shall be present and equal to 00h
         match &rgba.scanning_direction {
             Some(sd) if sd != "ScanningDirection_LeftToRightTopToBottom" => {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Video,
-                        self.code(App2ERule::ScanningDirection).to_string(),
+                issues.extend(
+                    self.issue(
+                        &st2067_21::ScanningDirection,
                         format!(
                             "ScanningDirection shall be 00h (LeftToRightTopToBottom), found: {}",
                             sd
@@ -1276,11 +1203,9 @@ impl App2E {
                 );
             }
             None => {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Video,
-                        self.code(App2ERule::ScanningDirection).to_string(),
+                issues.extend(
+                    self.issue(
+                        &st2067_21::ScanningDirection,
                         "ScanningDirection shall be present",
                     )
                     .with_location(loc.clone()),
@@ -1291,50 +1216,33 @@ impl App2E {
 
         // Table 10: AlphaMaxRef — shall not be present
         if rgba.alpha_max_ref.is_some() {
-            issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Video,
-                    self.code(App2ERule::AlphaMaxRef).to_string(),
-                    "AlphaMaxRef shall not be present",
-                )
-                .with_location(loc.clone()),
+            issues.extend(
+                self.issue(&st2067_21::AlphaMaxRef, "AlphaMaxRef shall not be present")
+                    .with_location(loc.clone()),
             );
         }
 
         // Table 10: AlphaMinRef — shall not be present
         if rgba.alpha_min_ref.is_some() {
-            issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Video,
-                    self.code(App2ERule::AlphaMinRef).to_string(),
-                    "AlphaMinRef shall not be present",
-                )
-                .with_location(loc.clone()),
+            issues.extend(
+                self.issue(&st2067_21::AlphaMinRef, "AlphaMinRef shall not be present")
+                    .with_location(loc.clone()),
             );
         }
 
         // Table 10: Palette — shall not be present
         if rgba.palette.is_some() {
-            issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Video,
-                    self.code(App2ERule::Palette).to_string(),
-                    "Palette shall not be present",
-                )
-                .with_location(loc.clone()),
+            issues.extend(
+                self.issue(&st2067_21::Palette, "Palette shall not be present")
+                    .with_location(loc.clone()),
             );
         }
 
         // Table 10: PaletteLayout — shall not be present
         if rgba.palette_layout.is_some() {
-            issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Video,
-                    self.code(App2ERule::PaletteLayout).to_string(),
+            issues.extend(
+                self.issue(
+                    &st2067_21::PaletteLayout,
                     "PaletteLayout shall not be present",
                 )
                 .with_location(loc.clone()),
@@ -1361,11 +1269,9 @@ impl App2E {
             if let Some(bd) = bit_depth {
                 if let Some((expected_min, expected_max)) = component_ref_values(qe, bd) {
                     if min_ref != expected_min || max_ref != expected_max {
-                        issues.push(
-                            ValidationIssue::new(
-                                Severity::Error,
-                                Category::Video,
-                                self.code(App2ERule::ComponentRefValues).to_string(),
+                        issues.extend(
+                            self.issue(
+                                &st2067_21::ComponentRefValues,
                                 format!(
                                     "ComponentMinRef={}, ComponentMaxRef={} do not match \
                                      {:?} at {} bits (expected min={}, max={})",
@@ -1387,11 +1293,9 @@ impl App2E {
                 && !matches!(cp, ColorPrimaries::Unknown(_))
                 && !matches!(tc, TransferCharacteristic::Unknown(_))
             {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Video,
-                        self.code(App2ERule::ColorSystem).to_string(),
+                issues.extend(
+                    self.issue(
+                        &st2067_21::ColorSystem,
                         format!(
                             "ColorPrimaries={} + TransferCharacteristic={} does not form a \
                              recognized Color System for RGB",
@@ -1435,11 +1339,9 @@ impl App2E {
         // §6.2.5: PictureCompression shall be JPEG 2000
         if let Some(ref codec) = cdci.picture_compression {
             if !codec.is_jpeg2000_family() {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Encoding,
-                        self.code(App2ERule::J2KRequired).to_string(),
+                issues.extend(
+                    self.issue(
+                        &st2067_21::J2KRequired,
                         format!(
                             "PictureCompression shall be JPEG 2000 for App2E, found: {}",
                             codec
@@ -1458,11 +1360,8 @@ impl App2E {
         // Table 8: FrameLayout — §6.2.1.3
         if let Some(ref fl) = cdci.frame_layout {
             if fl != "FullFrame" && fl != "SeparateFields" {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Video,
-                        self.code(App2ERule::FrameLayout).to_string(),
+                issues.extend(
+                    self.issue(&st2067_21::FrameLayout,
                         format!(
                             "FrameLayout shall be FullFrame (00h) or SeparateFields (01h), found: {}",
                             fl
@@ -1475,11 +1374,9 @@ impl App2E {
 
         // Table 8: StoredF2Offset — shall not be present
         if cdci.stored_f2_offset.is_some() {
-            issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Video,
-                    self.code(App2ERule::StoredF2Offset).to_string(),
+            issues.extend(
+                self.issue(
+                    &st2067_21::StoredF2Offset,
                     "StoredF2Offset shall not be present",
                 )
                 .with_location(loc.clone()),
@@ -1490,11 +1387,8 @@ impl App2E {
         if let Some(sw) = cdci.sampled_width {
             if let Some(stored_w) = cdci.stored_width {
                 if sw != stored_w {
-                    issues.push(
-                        ValidationIssue::new(
-                            Severity::Error,
-                            Category::Video,
-                            self.code(App2ERule::SampledWidth).to_string(),
+                    issues.extend(
+                        self.issue(&st2067_21::SampledWidth,
                             format!(
                                 "SampledWidth ({}) shall not be present or shall be equal to StoredWidth ({})",
                                 sw, stored_w
@@ -1510,11 +1404,8 @@ impl App2E {
         if let Some(sh) = cdci.sampled_height {
             if let Some(stored_h) = cdci.stored_height {
                 if sh != stored_h {
-                    issues.push(
-                        ValidationIssue::new(
-                            Severity::Error,
-                            Category::Video,
-                            self.code(App2ERule::SampledHeight).to_string(),
+                    issues.extend(
+                        self.issue(&st2067_21::SampledHeight,
                             format!(
                                 "SampledHeight ({}) shall not be present or shall be equal to StoredHeight ({})",
                                 sh, stored_h
@@ -1529,11 +1420,9 @@ impl App2E {
         // Table 8: SampledXOffset — shall not be present or shall be 0
         if let Some(sxo) = cdci.sampled_x_offset {
             if sxo != 0 {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Video,
-                        self.code(App2ERule::SampledXOffset).to_string(),
+                issues.extend(
+                    self.issue(
+                        &st2067_21::SampledXOffset,
                         format!(
                             "SampledXOffset shall not be present or shall be 0, found: {}",
                             sxo
@@ -1547,11 +1436,9 @@ impl App2E {
         // Table 8: SampledYOffset — shall not be present or shall be 0
         if let Some(syo) = cdci.sampled_y_offset {
             if syo != 0 {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Video,
-                        self.code(App2ERule::SampledYOffset).to_string(),
+                issues.extend(
+                    self.issue(
+                        &st2067_21::SampledYOffset,
                         format!(
                             "SampledYOffset shall not be present or shall be 0, found: {}",
                             syo
@@ -1564,11 +1451,9 @@ impl App2E {
 
         // Table 8: AlphaTransparency — shall not be present
         if cdci.alpha_transparency.is_some() {
-            issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Video,
-                    self.code(App2ERule::AlphaTransparency).to_string(),
+            issues.extend(
+                self.issue(
+                    &st2067_21::AlphaTransparency,
                     "AlphaTransparency shall not be present",
                 )
                 .with_location(loc.clone()),
@@ -1577,11 +1462,9 @@ impl App2E {
 
         // Table 8: ImageAlignmentOffset — shall not be present
         if cdci.image_alignment_offset.is_some() {
-            issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Video,
-                    self.code(App2ERule::ImageAlignmentOffset).to_string(),
+            issues.extend(
+                self.issue(
+                    &st2067_21::ImageAlignmentOffset,
                     "ImageAlignmentOffset shall not be present",
                 )
                 .with_location(loc.clone()),
@@ -1590,11 +1473,9 @@ impl App2E {
 
         // Table 8: ImageStartOffset — shall not be present
         if cdci.image_start_offset.is_some() {
-            issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Video,
-                    self.code(App2ERule::ImageStartOffset).to_string(),
+            issues.extend(
+                self.issue(
+                    &st2067_21::ImageStartOffset,
                     "ImageStartOffset shall not be present",
                 )
                 .with_location(loc.clone()),
@@ -1603,11 +1484,9 @@ impl App2E {
 
         // Table 8: ImageEndOffset — shall not be present
         if cdci.image_end_offset.is_some() {
-            issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Video,
-                    self.code(App2ERule::ImageEndOffset).to_string(),
+            issues.extend(
+                self.issue(
+                    &st2067_21::ImageEndOffset,
                     "ImageEndOffset shall not be present",
                 )
                 .with_location(loc.clone()),
@@ -1617,22 +1496,18 @@ impl App2E {
         // Table 8: FieldDominance — conditional on FrameLayout
         if let Some(ref fl) = cdci.frame_layout {
             if fl == "FullFrame" && cdci.field_dominance.is_some() {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Video,
-                        self.code(App2ERule::FieldDominance).to_string(),
+                issues.extend(
+                    self.issue(
+                        &st2067_21::FieldDominance,
                         "FieldDominance shall not be present for progressive (FullFrame) content",
                     )
                     .with_location(loc.clone()),
                 );
             }
             if fl == "SeparateFields" && cdci.field_dominance.is_none() {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Video,
-                        self.code(App2ERule::FieldDominance).to_string(),
+                issues.extend(
+                    self.issue(
+                        &st2067_21::FieldDominance,
                         "FieldDominance shall be present for interlaced (SeparateFields) content",
                     )
                     .with_location(loc.clone()),
@@ -1643,22 +1518,18 @@ impl App2E {
         // §6.2.4: ColorPrimaries shall be present and recognized
         match &cdci.color_primaries {
             Some(cp) if matches!(cp, ColorPrimaries::Unknown(_)) => {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Video,
-                        self.code(App2ERule::ColorPrimariesUnknown).to_string(),
+                issues.extend(
+                    self.issue(
+                        &st2067_21::ColorPrimariesUnknown,
                         format!("Unrecognized ColorPrimaries UL: {}", cp),
                     )
                     .with_location(loc.clone()),
                 );
             }
             None => {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Video,
-                        self.code(App2ERule::ColorPrimariesMissing).to_string(),
+                issues.extend(
+                    self.issue(
+                        &st2067_21::ColorPrimariesMissing,
                         "ColorPrimaries shall be present",
                     )
                     .with_location(loc.clone()),
@@ -1670,24 +1541,18 @@ impl App2E {
         // §6.2.2: TransferCharacteristic shall be present and recognized
         match &cdci.transfer_characteristic {
             Some(tc) if matches!(tc, TransferCharacteristic::Unknown(_)) => {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Video,
-                        self.code(App2ERule::TransferCharacteristicUnknown)
-                            .to_string(),
+                issues.extend(
+                    self.issue(
+                        &st2067_21::TransferCharacteristicUnknown,
                         format!("Unrecognized TransferCharacteristic UL: {}", tc),
                     )
                     .with_location(loc.clone()),
                 );
             }
             None => {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Video,
-                        self.code(App2ERule::TransferCharacteristicMissing)
-                            .to_string(),
+                issues.extend(
+                    self.issue(
+                        &st2067_21::TransferCharacteristicMissing,
                         "TransferCharacteristic shall be present",
                     )
                     .with_location(loc.clone()),
@@ -1699,22 +1564,18 @@ impl App2E {
         // §6.2.3: CodingEquations shall be present for Y'C'BC'R
         match &cdci.coding_equations {
             Some(ce) if matches!(ce, CodingEquations::Unknown(_)) => {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Video,
-                        self.code(App2ERule::CodingEquationsUnknown).to_string(),
+                issues.extend(
+                    self.issue(
+                        &st2067_21::CodingEquationsUnknown,
                         format!("Unrecognized CodingEquations UL: {}", ce),
                     )
                     .with_location(loc.clone()),
                 );
             }
             None => {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Video,
-                        self.code(App2ERule::CodingEquationsMissing).to_string(),
+                issues.extend(
+                    self.issue(
+                        &st2067_21::CodingEquationsMissing,
                         "CodingEquations shall be present for Y'C'BC'R",
                     )
                     .with_location(loc.clone()),
@@ -1729,11 +1590,9 @@ impl App2E {
         // pixel bit depth, which Table 3 constrains per column; the value is
         // checked by `validate_image_characteristics`.
         if cdci.component_depth.is_none() {
-            issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Video,
-                    self.code(App2ERule::ComponentDepth).to_string(),
+            issues.extend(
+                self.issue(
+                    &st2067_21::ComponentDepth,
                     "ComponentDepth shall be present",
                 )
                 .with_location(loc.clone()),
@@ -1744,11 +1603,9 @@ impl App2E {
         // 1 = 4:4:4, 2 = 4:2:2
         match cdci.horizontal_subsampling {
             Some(hs) if hs != 1 && hs != 2 => {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Video,
-                        self.code(App2ERule::HorizontalSubsampling).to_string(),
+                issues.extend(
+                    self.issue(
+                        &st2067_21::HorizontalSubsampling,
                         format!(
                             "HorizontalSubsampling shall be 1 (4:4:4) or 2 (4:2:2), found: {}",
                             hs
@@ -1758,11 +1615,8 @@ impl App2E {
                 );
             }
             None => {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Video,
-                        self.code(App2ERule::HorizontalSubsampling).to_string(),
+                issues.extend(
+                    self.issue(&st2067_21::HorizontalSubsampling,
                         "HorizontalSubsampling shall be present and equal to 1 (4:4:4) or 2 (4:2:2)",
                     )
                     .with_location(loc.clone()),
@@ -1774,22 +1628,18 @@ impl App2E {
         // Table 12: VerticalSubsampling shall be 1
         match cdci.vertical_subsampling {
             Some(vs) if vs != 1 => {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Video,
-                        self.code(App2ERule::VerticalSubsampling).to_string(),
+                issues.extend(
+                    self.issue(
+                        &st2067_21::VerticalSubsampling,
                         format!("VerticalSubsampling shall be 1, found: {}", vs),
                     )
                     .with_location(loc.clone()),
                 );
             }
             None => {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Video,
-                        self.code(App2ERule::VerticalSubsampling).to_string(),
+                issues.extend(
+                    self.issue(
+                        &st2067_21::VerticalSubsampling,
                         "VerticalSubsampling shall be present and equal to 1",
                     )
                     .with_location(loc.clone()),
@@ -1801,22 +1651,18 @@ impl App2E {
         // Table 12: ColorSiting shall be present and 0
         match cdci.color_siting {
             Some(cs) if cs != 0 => {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Video,
-                        self.code(App2ERule::ColorSiting).to_string(),
+                issues.extend(
+                    self.issue(
+                        &st2067_21::ColorSiting,
                         format!("ColorSiting shall be 0, found: {}", cs),
                     )
                     .with_location(loc.clone()),
                 );
             }
             None => {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Video,
-                        self.code(App2ERule::ColorSiting).to_string(),
+                issues.extend(
+                    self.issue(
+                        &st2067_21::ColorSiting,
                         "ColorSiting shall be present and equal to 0",
                     )
                     .with_location(loc.clone()),
@@ -1827,11 +1673,9 @@ impl App2E {
 
         // Table 12: ReversedByteOrder — shall not be present
         if cdci.reversed_byte_order.is_some() {
-            issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Video,
-                    self.code(App2ERule::ReversedByteOrder).to_string(),
+            issues.extend(
+                self.issue(
+                    &st2067_21::ReversedByteOrder,
                     "ReversedByteOrder shall not be present",
                 )
                 .with_location(loc.clone()),
@@ -1840,24 +1684,17 @@ impl App2E {
 
         // Table 12: PaddingBits — shall not be present
         if cdci.padding_bits.is_some() {
-            issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Video,
-                    self.code(App2ERule::PaddingBits).to_string(),
-                    "PaddingBits shall not be present",
-                )
-                .with_location(loc.clone()),
+            issues.extend(
+                self.issue(&st2067_21::PaddingBits, "PaddingBits shall not be present")
+                    .with_location(loc.clone()),
             );
         }
 
         // Table 12: AlphaSampleDepth — shall not be present
         if cdci.alpha_sample_depth.is_some() {
-            issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Video,
-                    self.code(App2ERule::AlphaSampleDepth).to_string(),
+            issues.extend(
+                self.issue(
+                    &st2067_21::AlphaSampleDepth,
                     "AlphaSampleDepth shall not be present",
                 )
                 .with_location(loc.clone()),
@@ -1880,11 +1717,9 @@ impl App2E {
                     if let Some((exp_black, exp_white, exp_range)) = cdci_ref_values(cs, depth) {
                         if let Some(black) = cdci.black_ref_level {
                             if black != exp_black {
-                                issues.push(
-                                    ValidationIssue::new(
-                                        Severity::Error,
-                                        Category::Video,
-                                        self.code(App2ERule::BlackRefLevel).to_string(),
+                                issues.extend(
+                                    self.issue(
+                                        &st2067_21::BlackRefLevel,
                                         format!(
                                             "BlackRefLevel={} for {} at {}-bit; expected {}",
                                             black, cs, depth, exp_black
@@ -1896,11 +1731,9 @@ impl App2E {
                         }
                         if let Some(white) = cdci.white_ref_level {
                             if white != exp_white {
-                                issues.push(
-                                    ValidationIssue::new(
-                                        Severity::Error,
-                                        Category::Video,
-                                        self.code(App2ERule::WhiteRefLevel).to_string(),
+                                issues.extend(
+                                    self.issue(
+                                        &st2067_21::WhiteRefLevel,
                                         format!(
                                             "WhiteRefLevel={} for {} at {}-bit; expected {}",
                                             white, cs, depth, exp_white
@@ -1912,11 +1745,9 @@ impl App2E {
                         }
                         if let Some(range) = cdci.color_range {
                             if range != exp_range {
-                                issues.push(
-                                    ValidationIssue::new(
-                                        Severity::Error,
-                                        Category::Video,
-                                        self.code(App2ERule::ColorRange).to_string(),
+                                issues.extend(
+                                    self.issue(
+                                        &st2067_21::ColorRange,
                                         format!(
                                             "ColorRange={} for {} at {}-bit; expected {}",
                                             range, cs, depth, exp_range
@@ -1932,11 +1763,9 @@ impl App2E {
                 && !matches!(tc, TransferCharacteristic::Unknown(_))
                 && !matches!(ce, CodingEquations::Unknown(_))
             {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Video,
-                        self.code(App2ERule::ColorSystem).to_string(),
+                issues.extend(
+                    self.issue(
+                        &st2067_21::ColorSystem,
                         format!(
                             "ColorPrimaries={} + TransferCharacteristic={} + CodingEquations={} \
                              does not form a recognized Color System",
@@ -1981,11 +1810,9 @@ impl App2E {
                 .map(|ext| ext.max_cll.is_some() && ext.max_fall.is_some())
                 .unwrap_or(false);
             if !has_hdr_metadata {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Info,
-                        Category::Video,
-                        self.code(App2ERule::MaxCLLMaxFALL).to_string(),
+                issues.extend(
+                    self.issue(
+                        &st2067_21::MaxCLLMaxFALL,
                         "MaxCLL and MaxFALL are not present for PQ (ST 2084) content; \
                          they are optional (0..1 cardinality)",
                     )
@@ -2021,11 +1848,8 @@ impl App2E {
             None => {
                 // Table 14 says it shall be present, but it might not be serialized in CPL
                 // (it's an MXF concept). Emit warning to make this normative gap visible.
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Warning,
-                        Category::Encoding,
-                        self.code(App2ERule::Jpeg2000SubDescriptor).to_string(),
+                issues.extend(
+                    self.issue(&st2067_21::Jpeg2000SubDescriptor,
                         "JPEG2000SubDescriptor is missing; it is required for JPEG 2000 picture essence",
                     )
                     .with_location(loc.clone())
@@ -2037,11 +1861,9 @@ impl App2E {
 
         // Table 14: CodingStyleDefault (Coding Style) — shall be present
         if j2k_sub.coding_style_default.is_none() {
-            issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Encoding,
-                    self.code(App2ERule::CodingStyle).to_string(),
+            issues.extend(
+                self.issue(
+                    &st2067_21::CodingStyle,
                     "CodingStyleDefault (Coding Style) shall be present",
                 )
                 .with_location(loc.clone()),
@@ -2050,14 +1872,9 @@ impl App2E {
 
         // Table 14: J2CLayout — shall be present (§6.5.2)
         if j2k_sub.j2c_layout.is_none() {
-            issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Encoding,
-                    self.code(App2ERule::J2CLayout).to_string(),
-                    "J2CLayout shall be present",
-                )
-                .with_location(loc.clone()),
+            issues.extend(
+                self.issue(&st2067_21::J2CLayout, "J2CLayout shall be present")
+                    .with_location(loc.clone()),
             );
         }
 
@@ -2065,11 +1882,8 @@ impl App2E {
         // Rsiz bit 14 (0x4000 = 16384) indicates Part 15 (HTJ2K) profile
         if let Some(rsiz) = j2k_sub.rsiz {
             if rsiz & 0x4000 != 0 && j2k_sub.j2k_extended_capabilities.is_none() {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Encoding,
-                        self.code(App2ERule::J2KExtendedCapabilities).to_string(),
+                issues.extend(
+                    self.issue(&st2067_21::J2KExtendedCapabilities,
                         "J2KExtendedCapabilities shall be present when ISO/IEC 15444-15 coding is used",
                     )
                     .with_location(loc.clone()),
@@ -2116,11 +1930,9 @@ impl App2E {
         let magb_p = ccap15 & 0x1f;
 
         if magb_p > magb_p_for_parameter_b(31) {
-            issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Encoding,
-                    self.code(App2ERule::HtIrvParameterBMax).to_string(),
+            issues.extend(
+                self.issue(
+                    &st2067_21::HtIrvParameterBMax,
                     format!(
                         "Ccap15 signals MAGB_P {magb_p} (parameter B = {}); \
                          APP2.HT.IRV requires parameter B of at most 31",
@@ -2159,11 +1971,9 @@ impl App2E {
             _ => return,
         };
         if magb_p > magb_p_for_parameter_b(recommended) {
-            issues.push(
-                ValidationIssue::new(
-                    Severity::Warning,
-                    Category::Encoding,
-                    self.code(App2ERule::HtIrvParameterBRecommended).to_string(),
+            issues.extend(
+                self.issue(
+                    &st2067_21::HtIrvParameterBRecommended,
                     format!(
                         "Ccap15 signals MAGB_P {magb_p} (parameter B = {}); \
                          for Ssiz {ssiz} and SGcod.C = {mct}, parameter B should be \
@@ -2217,11 +2027,9 @@ impl App2E {
                 let unique: HashSet<_> = color_systems.iter().collect();
                 let mut systems: Vec<_> = unique.iter().map(|cs| cs.to_string()).collect();
                 systems.sort();
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Video,
-                        self.code(App2ERule::HomogeneousImageEssence),
+                issues.extend(
+                    self.issue(
+                        &st2067_21::HomogeneousImageEssence,
                         format!(
                             "Heterogeneous image essence: found {} different color systems ({}); \
                              all image essence in a composition shall use the same color system",
@@ -2310,11 +2118,9 @@ impl App2E {
                 .unwrap_or(0);
 
             if segment_duration > 0 && !segment_duration.is_multiple_of(5) {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Timing,
-                        self.code(App2ERule::SegmentDurationMultiple).to_string(),
+                issues.extend(
+                    self.issue(
+                        &st2067_21::SegmentDurationMultiple,
                         format!(
                             "Segment {} duration ({} edit units) is not a multiple of 5; \
                              audio at {}/{} Hz and Composition Edit Rate {}/{} give {:.3} \
@@ -2356,12 +2162,10 @@ impl App2E {
 
             // Image descriptor required fields
             if let Some(ref rgba) = ed.rgba_descriptor {
-                let mut push = |code: &'static str, field: &'static str| {
-                    issues.push(
-                        ValidationIssue::new(
-                            Severity::Error,
-                            Category::Encoding,
-                            code.to_string(),
+                let mut push = |rule: &'static Rule<App2EEdition>, field: &'static str| {
+                    issues.extend(
+                        self.issue(
+                            rule,
                             format!(
                                 "RGBADescriptor {}: required field {} is missing",
                                 ed.id, field
@@ -2371,44 +2175,36 @@ impl App2E {
                     );
                 };
                 if rgba.stored_width.is_none() {
-                    push(self.code(App2ERule::RequiredStoredWidth), "StoredWidth");
+                    push(&st2067_21::RequiredStoredWidth, "StoredWidth");
                 }
                 if rgba.stored_height.is_none() {
-                    push(self.code(App2ERule::RequiredStoredHeight), "StoredHeight");
+                    push(&st2067_21::RequiredStoredHeight, "StoredHeight");
                 }
                 if rgba.sample_rate.is_none() {
-                    push(self.code(App2ERule::RequiredSampleRate), "SampleRate");
+                    push(&st2067_21::RequiredSampleRate, "SampleRate");
                 }
                 if rgba.frame_layout.is_none() {
-                    push(self.code(App2ERule::RequiredFrameLayout), "FrameLayout");
+                    push(&st2067_21::RequiredFrameLayout, "FrameLayout");
                 }
                 if rgba.color_primaries.is_none() {
-                    push(
-                        self.code(App2ERule::RequiredColorPrimaries),
-                        "ColorPrimaries",
-                    );
+                    push(&st2067_21::RequiredColorPrimaries, "ColorPrimaries");
                 }
                 if rgba.transfer_characteristic.is_none() {
                     push(
-                        self.code(App2ERule::RequiredTransferCharacteristic),
+                        &st2067_21::RequiredTransferCharacteristic,
                         "TransferCharacteristic",
                     );
                 }
                 if rgba.picture_compression.is_none() {
-                    push(
-                        self.code(App2ERule::RequiredPictureCompression),
-                        "PictureCompression",
-                    );
+                    push(&st2067_21::RequiredPictureCompression, "PictureCompression");
                 }
             }
 
             if let Some(ref cdci) = ed.cdci_descriptor {
-                let mut push = |code: &'static str, field: &'static str| {
-                    issues.push(
-                        ValidationIssue::new(
-                            Severity::Error,
-                            Category::Encoding,
-                            code.to_string(),
+                let mut push = |rule: &'static Rule<App2EEdition>, field: &'static str| {
+                    issues.extend(
+                        self.issue(
+                            rule,
                             format!(
                                 "CDCIDescriptor {}: required field {} is missing",
                                 ed.id, field
@@ -2418,40 +2214,31 @@ impl App2E {
                     );
                 };
                 if cdci.stored_width.is_none() {
-                    push(self.code(App2ERule::RequiredStoredWidth), "StoredWidth");
+                    push(&st2067_21::RequiredStoredWidth, "StoredWidth");
                 }
                 if cdci.stored_height.is_none() {
-                    push(self.code(App2ERule::RequiredStoredHeight), "StoredHeight");
+                    push(&st2067_21::RequiredStoredHeight, "StoredHeight");
                 }
                 if cdci.sample_rate.is_none() {
-                    push(self.code(App2ERule::RequiredSampleRate), "SampleRate");
+                    push(&st2067_21::RequiredSampleRate, "SampleRate");
                 }
                 if cdci.frame_layout.is_none() {
-                    push(self.code(App2ERule::RequiredFrameLayout), "FrameLayout");
+                    push(&st2067_21::RequiredFrameLayout, "FrameLayout");
                 }
                 if cdci.color_primaries.is_none() {
-                    push(
-                        self.code(App2ERule::RequiredColorPrimaries),
-                        "ColorPrimaries",
-                    );
+                    push(&st2067_21::RequiredColorPrimaries, "ColorPrimaries");
                 }
                 if cdci.transfer_characteristic.is_none() {
                     push(
-                        self.code(App2ERule::RequiredTransferCharacteristic),
+                        &st2067_21::RequiredTransferCharacteristic,
                         "TransferCharacteristic",
                     );
                 }
                 if cdci.picture_compression.is_none() {
-                    push(
-                        self.code(App2ERule::RequiredPictureCompression),
-                        "PictureCompression",
-                    );
+                    push(&st2067_21::RequiredPictureCompression, "PictureCompression");
                 }
                 if cdci.component_depth.is_none() {
-                    push(
-                        self.code(App2ERule::RequiredComponentDepth),
-                        "ComponentDepth",
-                    );
+                    push(&st2067_21::RequiredComponentDepth, "ComponentDepth");
                 }
             }
         }
@@ -2582,7 +2369,7 @@ impl App2E {
             for difference in differences {
                 let (rule, detail) = match difference {
                     Characteristic::Size => (
-                        App2ERule::Resolution,
+                        &st2067_21::Resolution,
                         format!(
                             "image frame {}x{} is outside 1..{} x 1..{}",
                             frame.width.unwrap_or(0),
@@ -2592,7 +2379,7 @@ impl App2E {
                         ),
                     ),
                     Characteristic::Colorimetry => (
-                        App2ERule::ColorSystem,
+                        &st2067_21::ColorSystem,
                         format!(
                             "colorimetry {} is not {}",
                             frame.colorimetry.map(|c| c.designator()).unwrap_or("?"),
@@ -2601,9 +2388,9 @@ impl App2E {
                     ),
                     Characteristic::BitDepth => (
                         if kind == "CDCI" {
-                            App2ERule::ComponentDepth
+                            &st2067_21::ComponentDepth
                         } else {
-                            App2ERule::ComponentRefValues
+                            &st2067_21::ComponentRefValues
                         },
                         format!(
                             "pixel bit depth {} is not {}",
@@ -2612,7 +2399,7 @@ impl App2E {
                         ),
                     ),
                     Characteristic::Structure => (
-                        App2ERule::FrameLayoutInterlaced,
+                        &st2067_21::FrameLayoutInterlaced,
                         format!(
                             "frame structure is {}, the column is {}",
                             match frame.structure {
@@ -2626,7 +2413,7 @@ impl App2E {
                         ),
                     ),
                     Characteristic::FrameRate => (
-                        App2ERule::FrameRate,
+                        &st2067_21::FrameRate,
                         format!(
                             "frame rate {} is not {}",
                             frame.frame_rate.as_ref().map(rate_name).unwrap_or_default(),
@@ -2634,7 +2421,7 @@ impl App2E {
                         ),
                     ),
                     Characteristic::Sampling => (
-                        App2ERule::HorizontalSubsampling,
+                        &st2067_21::HorizontalSubsampling,
                         format!(
                             "sampling is {}, the column is {}",
                             match frame.sampling {
@@ -2648,7 +2435,7 @@ impl App2E {
                         ),
                     ),
                     Characteristic::Components => (
-                        App2ERule::ColorSystem,
+                        &st2067_21::ColorSystem,
                         format!(
                             "color components are {}, the column allows {}",
                             match frame.components {
@@ -2662,7 +2449,7 @@ impl App2E {
                         ),
                     ),
                     Characteristic::Quantization => (
-                        App2ERule::ComponentRefValues,
+                        &st2067_21::ComponentRefValues,
                         format!(
                             "quantization {:?} is not {}",
                             frame.quantization.unwrap_or(QuantizationSystem::Qe1),
@@ -2670,11 +2457,9 @@ impl App2E {
                         ),
                     ),
                 };
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Video,
-                        self.code(rule),
+                issues.extend(
+                    self.issue(
+                        rule,
                         format!(
                             "{kind} descriptor {}: image characteristics fit no column of {} {}; \
                              closest column \"{}\": {}",
@@ -2759,11 +2544,9 @@ impl App2E {
                     }
             });
             let Some(system) = matched else {
-                issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Video,
-                        self.code(App2ERule::ColorSystem),
+                issues.extend(
+                    self.issue(
+                        &st2067_21::ColorSystem,
                         format!(
                             "{kind} {}: ColorPrimaries={}, TransferCharacteristic={}{} do not \
                              carry the values {} requires for {}",
@@ -2793,26 +2576,28 @@ impl App2E {
                 };
                 for (rule, item, value, expected) in [
                     (
-                        App2ERule::BlackRefLevel,
+                        &st2067_21::BlackRefLevel,
                         "BlackRefLevel",
                         cdci.black_ref_level,
                         black,
                     ),
                     (
-                        App2ERule::WhiteRefLevel,
+                        &st2067_21::WhiteRefLevel,
                         "WhiteRefLevel",
                         cdci.white_ref_level,
                         white,
                     ),
-                    (App2ERule::ColorRange, "ColorRange", cdci.color_range, range),
+                    (
+                        &st2067_21::ColorRange,
+                        "ColorRange",
+                        cdci.color_range,
+                        range,
+                    ),
                 ] {
                     if let Some(value) = value {
                         if value != expected {
-                            issues.push(
-                                ValidationIssue::new(
-                                    Severity::Error,
-                                    Category::Video,
-                                    self.code(rule),
+                            issues.extend(
+                                self.issue(rule,
                                     format!(
                                         "{item}={value} for {} at {depth}-bit; {} requires {expected}",
                                         system.name,
@@ -2850,11 +2635,9 @@ impl App2E {
                         (QuantizationSystem::Qe2, _) => (0, 65535),
                     };
                     if (min_ref, max_ref) != expected {
-                        issues.push(
-                            ValidationIssue::new(
-                                Severity::Error,
-                                Category::Video,
-                                self.code(App2ERule::ComponentRefValues),
+                        issues.extend(
+                            self.issue(
+                                &st2067_21::ComponentRefValues,
                                 format!(
                                     "ComponentMinRef={min_ref}, ComponentMaxRef={max_ref} do not \
                                      match {qe:?} at {depth} bits (expected min={}, max={})",
@@ -2995,10 +2778,27 @@ fn parameter_b(magb_p: u16) -> u16 {
     }
 }
 
+/// Builder methods on a finding that may not exist in the validated edition
+/// (see [`App2E::issue`]).
+trait MaybeIssue {
+    fn with_location(self, location: Location) -> Self;
+    fn with_suggestion(self, suggestion: impl Into<String>) -> Self;
+}
+
+impl MaybeIssue for Option<ValidationIssue> {
+    fn with_location(self, location: Location) -> Self {
+        self.map(|i| i.with_location(location))
+    }
+    fn with_suggestion(self, suggestion: impl Into<String>) -> Self {
+        self.map(|i| i.with_suggestion(suggestion))
+    }
+}
+
 #[cfg(test)]
 mod ht_parameter_b_tests {
     use super::*;
     use crate::cpl::parse_cpl;
+    use crate::Severity;
 
     const HT_CPL: &str = include_str!(concat!(
         env!("CARGO_MANIFEST_DIR"),
@@ -3020,8 +2820,8 @@ mod ht_parameter_b_tests {
         issues.iter().any(|i| i.code == code)
     }
 
-    const MAX: &str = "ST2067-21:2026:H/HT-IRV-ParameterB-Max";
-    const REC: &str = "ST2067-21:2026:H/HT-IRV-ParameterB-Recommended";
+    const MAX: &str = "ST2067-21:2026:H/HtIrvParameterBMax";
+    const REC: &str = "ST2067-21:2026:H/HtIrvParameterBRecommended";
 
     #[test]
     fn magb_mapping_round_trips() {

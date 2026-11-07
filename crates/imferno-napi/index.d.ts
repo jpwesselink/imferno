@@ -2,10 +2,11 @@
 /* eslint-disable */
 
 import type {
-  Category,
   ImfReport,
   Imferno,
+  RuleInfo,
   ValidateOptions,
+  ValidationReport,
   ValidationResult,
 } from "./types";
 
@@ -33,28 +34,11 @@ export interface UriValidateOptions extends PathValidateOptions {
   credentials?: S3Credentials | null;
 }
 
-/** Which rule catalogue a code belongs to. */
-export type RuleSpec =
-  | "core"
-  | "cpl"
-  | "app2e"
-  | "volindex"
-  | "mxf"
-  | "scm"
-  | "isxd"
-  | "iab"
-  | "imferno";
-
-/** One entry of the `listRules()` catalogue. */
-export interface RuleInfo {
-  /** Normalised rule code, usable as a `rules` key. */
-  code: string;
-  spec: RuleSpec;
-  description: string;
-  defaultSeverity: "info" | "warning" | "error" | "critical";
-  category: Extract<Category, string>;
-  /** Present when this edition's code set is identical to an earlier edition's (that edition's prefix). */
-  sameAsPreviousEdition?: string;
+/** A SARIF 2.1.0 log (https://docs.oasis-open.org/sarif/sarif/v2.1.0/). */
+export interface SarifLog {
+  $schema?: string;
+  version: "2.1.0";
+  runs: Array<Record<string, unknown>>;
 }
 
 /**
@@ -105,10 +89,10 @@ export declare function formatReport(report: ValidationResult | ImfReport): stri
 export declare function getVersion(): string
 
 /**
- * Returns the engine's full catalogue of validation rule codes, one entry per
- * per-spec enum variant. Useful for building settings UIs that render a
- * configurable severity dropdown per rule. The shape is stable JSON, so
- * downstream callers can store severity overrides keyed by `code`.
+ * Returns the engine's rule catalogue: one entry per rule, each with its
+ * table of editions (clause, strength, default severity, display code).
+ * Useful for building settings UIs; `id`, `name`, `SPEC:EDITION/Name` and
+ * the display codes are all usable as `rules` keys.
  */
 export declare function listRules(): RuleInfo[]
 
@@ -131,6 +115,19 @@ export declare function parsePackage(files: Record<string, string>): Imferno
  * @throws If the directory cannot be read or the package cannot be parsed.
  */
 export declare function parsePackageFromPath(path: string): Imferno
+
+/**
+ * Convert a validation result to a SARIF 2.1.0 log.
+ *
+ * Rules are reported by rule id (`ST2067-3/SegmentDuration`); each finding
+ * points at the applied edition's clause in that edition's taxonomy
+ * (`ST2067-3:2016`).
+ *
+ * @param report - The object returned by `validate*` (or its `validation`)
+ * @returns A SARIF 2.1.0 log object.
+ * @throws If `report` is not a validation result or report.
+ */
+export declare function toSarif(report: ValidationResult | ValidationReport): SarifLog
 
 /**
  * Parse and validate an IMF package from in-memory XML strings. This is the

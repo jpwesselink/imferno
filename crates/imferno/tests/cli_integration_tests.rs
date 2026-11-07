@@ -146,6 +146,28 @@ fn test_cli_validate_failure() {
 }
 
 #[test]
+fn test_cli_validate_format_sarif() {
+    let (_, stdout, stderr) = run_cli_command(&[
+        "validate",
+        INVALID_PACKAGE,
+        "--skip-hashes",
+        "--format",
+        "sarif",
+    ]);
+    let log: serde_json::Value = serde_json::from_str(&stdout)
+        .unwrap_or_else(|e| panic!("stdout is not JSON ({e}); stderr: {stderr}"));
+    assert_eq!(log["version"], "2.1.0");
+    let run = &log["runs"][0];
+    assert_eq!(run["tool"]["driver"]["name"], "imferno");
+    let results = run["results"].as_array().expect("results");
+    assert!(results.iter().any(|r| r["level"] == "error"), "{log:#}");
+    for r in results {
+        let id = r["ruleId"].as_str().unwrap();
+        assert!(id.contains('/') && !id.contains(':'), "{id} is a rule id");
+    }
+}
+
+#[test]
 fn test_cli_error_handling_invalid_path() {
     let invalid_path = "/nonexistent/path/to/package";
 

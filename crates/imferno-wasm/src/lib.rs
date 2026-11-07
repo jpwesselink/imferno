@@ -100,6 +100,28 @@ pub fn format_report_js(
 }
 
 // =============================================================================
+// SARIF + rule catalogue
+// =============================================================================
+
+/// Convert a validation result (or its `validation` report) to a SARIF 2.1.0 log.
+#[wasm_bindgen(js_name = "toSarif")]
+pub fn to_sarif_js(
+    #[wasm_bindgen(js_name = "report")] report_js: JsValue,
+) -> Result<JsValue, JsValue> {
+    let value: serde_json::Value = serde_wasm_bindgen::from_value(report_js)
+        .map_err(|e| JsValue::from_str(&format!("Invalid report: {}", e)))?;
+    let log =
+        imferno_core::diagnostics::sarif_from_json(value).map_err(|e| JsValue::from_str(&e))?;
+    to_js_value(&log)
+}
+
+/// The rule catalogue: one entry per rule with its per-edition table.
+#[wasm_bindgen(js_name = "listRules")]
+pub fn list_rules_js() -> Result<JsValue, JsValue> {
+    to_js_value(&imferno_core::catalogue::rule_infos())
+}
+
+// =============================================================================
 // PARSE PACKAGE — full serialized Imferno struct
 // =============================================================================
 

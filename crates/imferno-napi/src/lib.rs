@@ -12,7 +12,6 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use imferno_core::diagnostics::codes::ValidationCode;
 #[allow(deprecated)]
 use imferno_core::package::{
     build_report, format_json_report, validate as validate_package, Imferno, RulesConfig,
@@ -22,8 +21,6 @@ use imferno_core::validation::{
     parse_app_spec_targets, parse_core_spec_target, AppSpecTarget, CoreSpecTarget,
 };
 use napi_derive::napi;
-use serde_json::json;
-use strum::IntoEnumIterator;
 
 // =============================================================================
 // Version
@@ -39,66 +36,13 @@ pub fn get_version() -> String {
 // listRules — enumerate every configurable validation code
 // =============================================================================
 
-/// Returns the engine's full catalogue of validation rule codes, one entry per
-/// per-spec enum variant. Useful for building settings UIs that render a
-/// configurable severity dropdown per rule. The shape is stable JSON, so
-/// downstream callers can store severity overrides keyed by `code`.
+/// Returns the engine's rule catalogue: one entry per rule, each with its
+/// table of editions (clause, strength, default severity, display code).
+/// Useful for building settings UIs; `id`, `name`, `SPEC:EDITION/Name` and
+/// the display codes are all usable as `rules` keys.
 #[napi(js_name = "listRules", ts_return_type = "RuleInfo[]")]
 pub fn list_rules_js() -> serde_json::Value {
-    fn collect<C: ValidationCode + IntoEnumIterator>(spec: &str, out: &mut Vec<serde_json::Value>) {
-        for c in C::iter() {
-            let mut entry = json!({
-                "code": c.code(),
-                "spec": spec,
-                "description": c.description(),
-                "defaultSeverity": format!("{:?}", c.default_severity()).to_lowercase(),
-                "category": format!("{:?}", c.category()),
-            });
-            // Cross-edition annotation: when the enum's code set is
-            // bit-for-bit identical to its predecessor (e.g. ST 2067-3:2016 → :2013),
-            // expose the predecessor's prefix so UIs can group / hide
-            // the duplicate block. Skipped when None to keep the
-            // on-wire shape backwards-compatible.
-            if let Some(prev) = c.previous_identical_edition() {
-                entry["sameAsPreviousEdition"] = json!(prev);
-            }
-            out.push(entry);
-        }
-    }
-
-    let mut out: Vec<serde_json::Value> = Vec::new();
-
-    // Core (ASSETMAP / PKL)
-    collect::<imferno_core::assetmap::codes::St2067_2_2020>("core", &mut out);
-
-    // CPL — 2013 + 2016. ST 2067-3:2020 reuses the 2016 namespace and is
-    // covered by the 2016 rule set (canonical XSD is byte-identical).
-    collect::<imferno_core::cpl::codes::St2067_3_2013>("cpl", &mut out);
-    collect::<imferno_core::cpl::codes::St2067_3_2016>("cpl", &mut out);
-
-    // App 2E — one catalogue per ST 2067-21 edition
-    collect::<imferno_core::validation::codes::St2067_21_2014>("app2e", &mut out);
-    collect::<imferno_core::validation::codes::St2067_21_2016>("app2e", &mut out);
-    collect::<imferno_core::validation::codes::St2067_21_2020>("app2e", &mut out);
-    collect::<imferno_core::validation::codes::St2067_21_2023>("app2e", &mut out);
-    collect::<imferno_core::validation::codes::St2067_21_2026>("app2e", &mut out);
-
-    // Volume Index, MXF, Sidecar Composition Map, ISXD, IAB
-    collect::<imferno_core::assetmap::volindex_codes::St429_9_2014>("volindex", &mut out);
-    collect::<imferno_core::mxf::codes::St377_1_2011>("mxf", &mut out);
-    collect::<imferno_core::scm::codes::St2067_9_2018>("scm", &mut out);
-    collect::<imferno_core::validation::isxd_codes::St2067_202_2023>("isxd", &mut out);
-    collect::<imferno_core::validation::iab_codes::St2067_201_2019>("iab", &mut out);
-    // 2021 catalogue is the 2019 one minus the 2019-only ChannelCountNotZero.
-    collect::<imferno_core::validation::iab_codes::St2067_201_2021>("iab", &mut out);
-    // 2026 adds exactly one Annex E recommendation on top of the 2021
-    // catalogue; the delta enum surfaces only the new rule.
-    collect::<imferno_core::validation::iab_codes::St2067_201_2026Delta>("iab", &mut out);
-
-    // Imferno's own rule namespace (cross-cutting checks beyond pure SMPTE).
-    collect::<imferno_core::package::codes::ImfernoCode>("imferno", &mut out);
-
-    serde_json::Value::Array(out)
+    serde_json::to_value(imferno_core::catalogue::rule_infos()).unwrap_or_default()
 }
 
 // =============================================================================
@@ -207,6 +151,28 @@ pub fn build_report_from_path(
 )]
 pub fn format_report_js(report: serde_json::Value) -> napi::Result<String> {
     format_json_report(report).map_err(napi::Error::from_reason)
+}
+
+// =============================================================================
+// SARIF — validation findings as a SARIF 2.1.0 log
+// =============================================================================
+
+/// Convert a validation result to a SARIF 2.1.0 log.
+///
+/// Rules are reported by rule id (`ST2067-3/SegmentDuration`); each finding
+/// points at the applied edition's clause in that edition's taxonomy
+/// (`ST2067-3:2016`).
+///
+/// @param report - The object returned by `validate*` (or its `validation`)
+/// @returns A SARIF 2.1.0 log object.
+/// @throws If `report` is not a validation result or report.
+#[napi(
+    js_name = "toSarif",
+    ts_args_type = "report: ValidationResult | ValidationReport",
+    ts_return_type = "SarifLog"
+)]
+pub fn to_sarif_js(report: serde_json::Value) -> napi::Result<serde_json::Value> {
+    imferno_core::diagnostics::sarif_from_json(report).map_err(napi::Error::from_reason)
 }
 
 // =============================================================================

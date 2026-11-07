@@ -25,20 +25,25 @@
 
 use std::path::Path;
 
-use crate::diagnostics::{Category, Location, Severity, ValidationIssue};
+use crate::catalogue::st2067_201::{self, St2067_201Edition};
+use crate::diagnostics::{Location, ValidationIssue};
 use crate::mxf::audio_mca::count_elements;
-use crate::validation::iab_codes::{IabCode, St2067_201_2021};
 
 /// Apply the §5.10.2 / Annex C.2 IAB labeling rules. Returns an empty Vec
 /// when no `IABEssenceDescriptor` is present (the file is not IAB essence).
-pub fn check_iab_labeling(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
+///
+/// `spec_ed` is the ST 2067-201 edition applied to the track file.
+pub fn check_iab_labeling(
+    regxml: &str,
+    path: &Path,
+    spec_ed: St2067_201Edition,
+) -> Vec<ValidationIssue> {
     let mut issues = Vec::new();
 
     if !regxml.contains("IABEssenceDescriptor") {
         return issues;
     }
 
-    let code = St2067_201_2021::for_code;
     let loc = || Location::new().with_file(path.to_path_buf());
 
     // §5.10.2 — plain MCA label sub-descriptors are prohibited. The three
@@ -53,10 +58,9 @@ pub fn check_iab_labeling(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
         let n = count_elements(regxml, forbidden);
         if n > 0 {
             issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Audio,
-                    code(IabCode::ForbiddenMCASubDescriptor),
+                ValidationIssue::from_rule(
+                    &st2067_201::ForbiddenMCASubDescriptor,
+                    spec_ed,
                     format!(
                         "MXF {} IAB Track File carries {n} {forbidden} instance(s) — \
                          ST 2067-201 §5.10.2 prohibits AudioChannelLabel, SoundfieldGroupLabel \
@@ -74,10 +78,9 @@ pub fn check_iab_labeling(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
     match sfl_count {
         0 => {
             issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Audio,
-                    code(IabCode::SubDescriptorMissing),
+                ValidationIssue::from_rule(
+                    &st2067_201::SubDescriptorMissing,
+                    spec_ed,
                     format!(
                         "MXF {} IAB Track File carries no IABSoundfieldLabelSubDescriptor — \
                          ST 2067-201 §5.10.2 requires exactly one instance.",
@@ -90,10 +93,9 @@ pub fn check_iab_labeling(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
         1 => {}
         n => {
             issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Audio,
-                    code(IabCode::SubDescriptorDuplicate),
+                ValidationIssue::from_rule(
+                    &st2067_201::SubDescriptorDuplicate,
+                    spec_ed,
                     format!(
                         "MXF {} IAB Track File carries {n} IABSoundfieldLabelSubDescriptor \
                          instances — ST 2067-201 §5.10.2 requires exactly one.",
@@ -112,10 +114,9 @@ pub fn check_iab_labeling(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
     let mca_channel_ids = count_elements(regxml, "MCAChannelID");
     if mca_channel_ids > 0 {
         issues.push(
-            ValidationIssue::new(
-                Severity::Error,
-                Category::Audio,
-                code(IabCode::MCAChannelIDForbidden),
+            ValidationIssue::from_rule(
+                &st2067_201::MCAChannelIDForbidden,
+                spec_ed,
                 format!(
                     "MXF {} IAB Track File carries {mca_channel_ids} MCAChannelID item(s) — \
                      ST 2067-201 Annex C.2 excludes MCAChannelID from the IAB Soundfield \
@@ -139,7 +140,7 @@ mod tests {
         let xml = r#"<ns1:Preface><ns1:WAVEPCMDescriptor>
             <ns2:MCAChannelID>1</ns2:MCAChannelID>
         </ns1:WAVEPCMDescriptor></ns1:Preface>"#;
-        let issues = check_iab_labeling(xml, Path::new("/synth.mxf"));
+        let issues = check_iab_labeling(xml, Path::new("/synth.mxf"), St2067_201Edition::V2021);
         assert!(
             issues.is_empty(),
             "IAB labeling rules must be silent on non-IAB MXF, got: {issues:#?}"
@@ -155,7 +156,7 @@ mod tests {
                 </ns1:IABSoundfieldLabelSubDescriptor>
             </ns2:SubDescriptors>
         </ns1:IABEssenceDescriptor></ns1:Preface>"#;
-        let issues = check_iab_labeling(xml, Path::new("/iab.mxf"));
+        let issues = check_iab_labeling(xml, Path::new("/iab.mxf"), St2067_201Edition::V2021);
         assert!(
             issues.is_empty(),
             "conformant IAB labeling must produce no issues, got: {issues:#?}"
@@ -172,7 +173,7 @@ mod tests {
                 <ns1:GroupOfSoundfieldGroupsLabelSubDescriptor/>
             </ns2:SubDescriptors>
         </ns1:IABEssenceDescriptor></ns1:Preface>"#;
-        let issues = check_iab_labeling(xml, Path::new("/iab.mxf"));
+        let issues = check_iab_labeling(xml, Path::new("/iab.mxf"), St2067_201Edition::V2021);
         let hits = issues
             .iter()
             .filter(|i| i.code.contains("5.10.2/ForbiddenMCASubDescriptor"))
@@ -188,7 +189,7 @@ mod tests {
         let missing = r#"<ns1:Preface><ns1:IABEssenceDescriptor>
             <ns2:SubDescriptors/>
         </ns1:IABEssenceDescriptor></ns1:Preface>"#;
-        let issues = check_iab_labeling(missing, Path::new("/iab.mxf"));
+        let issues = check_iab_labeling(missing, Path::new("/iab.mxf"), St2067_201Edition::V2021);
         assert!(
             issues
                 .iter()
@@ -202,7 +203,7 @@ mod tests {
                 <ns1:IABSoundfieldLabelSubDescriptor/>
             </ns2:SubDescriptors>
         </ns1:IABEssenceDescriptor></ns1:Preface>"#;
-        let issues = check_iab_labeling(duplicate, Path::new("/iab.mxf"));
+        let issues = check_iab_labeling(duplicate, Path::new("/iab.mxf"), St2067_201Edition::V2021);
         assert!(
             issues
                 .iter()
@@ -220,7 +221,7 @@ mod tests {
                 </ns1:IABSoundfieldLabelSubDescriptor>
             </ns2:SubDescriptors>
         </ns1:IABEssenceDescriptor></ns1:Preface>"#;
-        let issues = check_iab_labeling(xml, Path::new("/iab.mxf"));
+        let issues = check_iab_labeling(xml, Path::new("/iab.mxf"), St2067_201Edition::V2021);
         assert!(
             issues
                 .iter()

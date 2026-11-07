@@ -30,11 +30,8 @@
 //! - **ST 2067-202:2023** ISXD Plug-in (`AppIsxdPlugin2023`)
 
 mod app2e;
-pub mod codes;
 pub mod iab;
-pub mod iab_codes;
 pub mod isxd;
-pub mod isxd_codes;
 
 pub use app2e::{App2E, App2E2014, App2E2016, App2E2020, App2E2023, App2E2026, App2EEdition};
 pub use iab::{AppIabPlugin2019, AppIabPlugin2021, AppIabPlugin2026, URI_2019, URI_2019_SCHEMAS};
@@ -42,11 +39,12 @@ pub use isxd::{AppIsxdPlugin2023, URI_2022};
 
 use std::collections::{HashMap, HashSet};
 
-use crate::assetmap::codes::CoreConstraintsCode;
-use crate::cpl::codes::{St2067_3Code, St2067_3_2013, St2067_3_2016};
+use crate::catalogue::imferno::{self, ImfernoEdition};
+use crate::catalogue::st2067_2::{self, St2067_2Edition};
+use crate::catalogue::st2067_3;
 use crate::cpl::CompositionPlaylist;
 use crate::cpl::{CodingEquations, ColorPrimaries, CplNamespace, EditRate, TransferCharacteristic};
-use crate::diagnostics::{Category, Location, Severity, ValidationIssue};
+use crate::diagnostics::{Location, ValidationIssue};
 
 // ═════════════════════════════════════════════════════════════════════════════
 // Trait
@@ -161,7 +159,6 @@ impl ConstraintsValidator for ApplicationProfileNotValidated {
     }
 
     fn validate_cpl(&self, cpl: &CompositionPlaylist) -> Vec<ValidationIssue> {
-        use crate::package::codes::ImfernoCode;
         let message = if self.unrecognised.is_empty() && self.not_app_profile.is_empty() {
             "CPL has no ApplicationIdentification, so no application-profile \
              validation was performed"
@@ -192,10 +189,12 @@ impl ConstraintsValidator for ApplicationProfileNotValidated {
                 }
             )
         };
-        vec![
-            ValidationIssue::from_code(ImfernoCode::ApplicationProfileNotValidated, message)
-                .with_location(crate::diagnostics::Location::new().with_cpl(cpl.id)),
-        ]
+        vec![ValidationIssue::from_rule(
+            &imferno::ApplicationProfileNotValidated,
+            ImfernoEdition::Current,
+            message,
+        )
+        .with_location(crate::diagnostics::Location::new().with_cpl(cpl.id))]
     }
 }
 
@@ -372,6 +371,29 @@ impl std::str::FromStr for AppSpecTarget {
                 other
             )),
         }
+    }
+}
+
+/// The ST 2067-2 edition whose Core Constraints namespace a CPL declares
+/// (e.g. `xmlns:cc="http://www.smpte-ra.org/ns/2067-2/2020"`), or `None`
+/// when it declares none, several, or its source XML was not kept.
+pub fn declared_core_constraints_edition(
+    cpl: &CompositionPlaylist,
+) -> Option<crate::catalogue::st2067_2::St2067_2Edition> {
+    use crate::catalogue::st2067_2::St2067_2Edition;
+    let xml = cpl.source_xml.as_deref()?;
+    let declared: Vec<St2067_2Edition> = [
+        (CoreSpecTarget::St2067_2_2013, St2067_2Edition::V2013),
+        (CoreSpecTarget::St2067_2_2016, St2067_2Edition::V2016),
+        (CoreSpecTarget::St2067_2_2020, St2067_2Edition::V2020),
+    ]
+    .into_iter()
+    .filter(|(target, _)| xml.contains(&format!("\"{}\"", target.namespace_uri())))
+    .map(|(_, e)| e)
+    .collect();
+    match declared.as_slice() {
+        [one] => Some(*one),
+        _ => None,
     }
 }
 
@@ -679,13 +701,13 @@ impl std::fmt::Display for ColorSystem {
 // architecture spike (uppsala-based) for the replacement path.
 
 // `validate_resource_list_non_empty` was gutted — XSD-overlap check
-// (CoreConstraintsCode::ResourceListEmpty mirrors xs:sequence + minOccurs=1
+// (ST2067-2/ResourceListEmpty mirrors xs:sequence + minOccurs=1
 // on the Resource element). Replacement comes via runtime-XSD validation.
 
 /// Shared core structure checks applied by all spec versions.
 fn validate_core_structure(
     cpl: &CompositionPlaylist,
-    code: fn(CoreConstraintsCode) -> &'static str,
+    spec_ed: St2067_2Edition,
     issues: &mut Vec<ValidationIssue>,
 ) {
     // Runtime XSD pre-pass: run the schema-level validator before the
@@ -704,7 +726,7 @@ fn validate_core_structure(
     // format) were gutted. They mirrored constraints already expressed in the
     // SMPTE XSDs and will be re-emitted by the runtime-XSD validation path
     // (see spike branch) via a translator that maps schema diagnostics back
-    // into the CoreConstraintsCode catalogue.
+    // into the ST 2067-2 rule table.
     // ───────────────────────────────────────────────────────────────────────────
 
     // Cross-field semantic check: TimecodeRate must equal rounded CPL EditRate.
@@ -719,10 +741,7 @@ fn validate_core_structure(
             };
             if tc_rate != edit_fps {
                 issues.push(
-                    ValidationIssue::new(
-                        Severity::Warning,
-                        Category::Timing,
-                        code(CoreConstraintsCode::CompositionTimecodeRateMismatch),
+                    ValidationIssue::from_rule(&st2067_2::CompositionTimecodeRateMismatch, spec_ed,
                         format!(
                             "CompositionTimecode.TimecodeRate {} does not match CPL EditRate {}/{}  (≈{} fps)",
                             tc_rate, er.numerator, er.denominator, edit_fps,
@@ -741,35 +760,35 @@ fn validate_core_structure(
     issues.extend(crate::cpl::validate_cpl_constraints(cpl));
 
     // UUID uniqueness
-    validate_uuid_uniqueness(cpl, code, issues);
+    validate_uuid_uniqueness(cpl, spec_ed, issues);
 
     // Resource constraints (duration, timing)
-    validate_resource_constraints(cpl, code, issues);
+    validate_resource_constraints(cpl, spec_ed, issues);
 
     // Virtual track continuity across segments
-    validate_virtual_track_continuity(cpl, code, issues);
+    validate_virtual_track_continuity(cpl, spec_ed, issues);
 
     // Virtual track edit rate consistency
-    validate_virtual_track_edit_rates(cpl, code, issues);
+    validate_virtual_track_edit_rates(cpl, spec_ed, issues);
 
     // Audio MCA label validation
-    validate_audio_mca_labels(cpl, code, issues);
+    validate_audio_mca_labels(cpl, spec_ed, issues);
 
     // Timed text descriptor constraints (ST 2067-2 §10)
-    validate_timed_text_extended(cpl, code, issues);
+    validate_timed_text_extended(cpl, spec_ed, issues);
 
     // Segment track duration consistency
     validate_segment_track_durations(cpl, issues);
 
     // Digital Signatures (ST 2067-2 §6.9)
-    validate_digital_signature_notice(cpl, code, issues);
+    validate_digital_signature_notice(cpl, spec_ed, issues);
 
     // §6.4.2: Every EssenceDescriptor must be referenced by at least one Resource.
     // Applies to all spec versions (no-op when EDL is absent).
-    validate_dangling_essence_descriptors(cpl, code, issues);
+    validate_dangling_essence_descriptors(cpl, spec_ed, issues);
 
     // Asset Identification: CPL Id vs the AssetMap asset Id it was loaded under.
-    validate_cpl_id_matches_assetmap(cpl, code, issues);
+    validate_cpl_id_matches_assetmap(cpl, spec_ed, issues);
 }
 
 /// Asset Identification (ST 2067-2:2013 §7.2 Table 18; 2016 and 2020 §7.3.1
@@ -782,7 +801,7 @@ fn validate_core_structure(
 /// https://github.com/Netflix/photon/issues/265
 fn validate_cpl_id_matches_assetmap(
     cpl: &CompositionPlaylist,
-    code: fn(CoreConstraintsCode) -> &'static str,
+    spec_ed: St2067_2Edition,
     issues: &mut Vec<ValidationIssue>,
 ) {
     let Some(asset_id) = cpl.assetmap_asset_id else {
@@ -790,10 +809,9 @@ fn validate_cpl_id_matches_assetmap(
     };
     if asset_id != cpl.id {
         issues.push(
-            ValidationIssue::new(
-                Severity::Error,
-                Category::Reference,
-                code(CoreConstraintsCode::CplIdAssetMapMismatch),
+            ValidationIssue::from_rule(
+                &st2067_2::CplIdAssetMapMismatch,
+                spec_ed,
                 format!(
                     "AssetMap asset {asset_id} points at a CPL file whose Id is {}",
                     cpl.id
@@ -813,7 +831,7 @@ fn validate_cpl_id_matches_assetmap(
 /// ST 2067-2 §6.1: "Each Id element shall be unique within the scope of the Composition."
 fn validate_uuid_uniqueness(
     cpl: &CompositionPlaylist,
-    code: fn(CoreConstraintsCode) -> &'static str,
+    spec_ed: St2067_2Edition,
     issues: &mut Vec<ValidationIssue>,
 ) {
     let cpl_loc = Location::new().with_cpl(cpl.id);
@@ -824,10 +842,9 @@ fn validate_uuid_uniqueness(
         let id_str = segment.id.to_string();
         if !segment_ids.insert(id_str.clone()) {
             issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Structure,
-                    code(CoreConstraintsCode::UniqueSegmentId),
+                ValidationIssue::from_rule(
+                    &st2067_2::UniqueSegmentId,
+                    spec_ed,
                     format!("Duplicate Segment Id '{}' at index {}", id_str, i),
                 )
                 .with_location(cpl_loc.clone().with_segment(i)),
@@ -843,10 +860,9 @@ fn validate_uuid_uniqueness(
             let id_str = ed.id.to_string();
             if !ed_ids.insert(id_str.clone()) {
                 issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Structure,
-                        code(CoreConstraintsCode::UniqueEssenceDescriptorId),
+                    ValidationIssue::from_rule(
+                        &st2067_2::UniqueEssenceDescriptorId,
+                        spec_ed,
                         format!("Duplicate EssenceDescriptor Id '{}'", id_str),
                     )
                     .with_location(cpl_loc.clone()),
@@ -863,10 +879,9 @@ fn validate_uuid_uniqueness(
                 let id_str = resource.id.to_string();
                 if !resource_ids.insert(id_str.clone()) {
                     issues.push(
-                        ValidationIssue::new(
-                            Severity::Error,
-                            Category::Structure,
-                            code(CoreConstraintsCode::UniqueResourceId),
+                        ValidationIssue::from_rule(
+                            &st2067_2::UniqueResourceId,
+                            spec_ed,
                             format!(
                                 "Duplicate Resource Id '{}' in {} segment {}",
                                 id_str,
@@ -921,7 +936,7 @@ fn validate_uuid_uniqueness(
 /// - Non-marker resources shall have TrackFileId and SourceEncoding.
 fn validate_resource_constraints(
     cpl: &CompositionPlaylist,
-    code: fn(CoreConstraintsCode) -> &'static str,
+    spec_ed: St2067_2Edition,
     issues: &mut Vec<ValidationIssue>,
 ) {
     use crate::cpl::SequenceAccess;
@@ -942,10 +957,9 @@ fn validate_resource_constraints(
                     // IntrinsicDuration > 0
                     if resource.intrinsic_duration == 0 {
                         issues.push(
-                            ValidationIssue::new(
-                                Severity::Error,
-                                Category::Timing,
-                                code(CoreConstraintsCode::IntrinsicDuration),
+                            ValidationIssue::from_rule(
+                                &st2067_2::IntrinsicDuration,
+                                spec_ed,
                                 format!(
                                     "{} resource {} IntrinsicDuration shall be greater than 0",
                                     track_type, resource.id,
@@ -962,10 +976,9 @@ fn validate_resource_constraints(
                         && entry_point >= resource.intrinsic_duration
                     {
                         issues.push(
-                            ValidationIssue::new(
-                                Severity::Error,
-                                Category::Timing,
-                                code(CoreConstraintsCode::EntryPoint),
+                            ValidationIssue::from_rule(
+                                &st2067_2::EntryPoint,
+                                spec_ed,
                                 format!(
                                     "{} resource {}: EntryPoint ({}) shall be less than \
                                  IntrinsicDuration ({})",
@@ -985,10 +998,9 @@ fn validate_resource_constraints(
                     if let Some(source_duration) = resource.source_duration {
                         if entry_point + source_duration > resource.intrinsic_duration {
                             issues.push(
-                                ValidationIssue::new(
-                                    Severity::Error,
-                                    Category::Timing,
-                                    code(CoreConstraintsCode::ResourceDuration),
+                                ValidationIssue::from_rule(
+                                    &st2067_2::ResourceDuration,
+                                    spec_ed,
                                     format!(
                                     "{} resource {}: EntryPoint ({}) + SourceDuration ({}) = {} \
                                      exceeds IntrinsicDuration ({})",
@@ -1007,10 +1019,9 @@ fn validate_resource_constraints(
                     if let Some(repeat_count) = resource.repeat_count {
                         if repeat_count == 0 {
                             issues.push(
-                                ValidationIssue::new(
-                                    Severity::Error,
-                                    Category::Timing,
-                                    code(CoreConstraintsCode::RepeatCount),
+                                ValidationIssue::from_rule(
+                                    &st2067_2::RepeatCount,
+                                    spec_ed,
                                     format!(
                                         "{} resource {} RepeatCount shall be greater than 0",
                                         track_type, resource.id,
@@ -1024,10 +1035,9 @@ fn validate_resource_constraints(
                     // Non-marker resources shall have TrackFileId
                     if !is_marker && resource.track_file_id.is_none() {
                         issues.push(
-                            ValidationIssue::new(
-                                Severity::Error,
-                                Category::Reference,
-                                code(CoreConstraintsCode::TrackFileId),
+                            ValidationIssue::from_rule(
+                                &st2067_2::TrackFileId,
+                                spec_ed,
                                 format!(
                                     "{} resource {} is missing TrackFileId",
                                     track_type, resource.id,
@@ -1108,7 +1118,7 @@ fn collect_track_ids(segment: &crate::cpl::Segment) -> HashMap<String, &'static 
 /// Composition Playlist."
 fn validate_virtual_track_continuity(
     cpl: &CompositionPlaylist,
-    code: fn(CoreConstraintsCode) -> &'static str,
+    spec_ed: St2067_2Edition,
     issues: &mut Vec<ValidationIssue>,
 ) {
     let segments = &cpl.segment_list.segments;
@@ -1134,10 +1144,9 @@ fn validate_virtual_track_continuity(
         for (seg_idx, seg_tracks) in per_segment_tracks.iter().enumerate() {
             if !seg_tracks.contains(track_id) {
                 issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Structure,
-                        code(CoreConstraintsCode::VirtualTrackContinuity),
+                    ValidationIssue::from_rule(
+                        &st2067_2::VirtualTrackContinuity,
+                        spec_ed,
                         format!(
                             "{} virtual track '{}' is missing from segment {} \
                              but is present in other segments; \
@@ -1164,7 +1173,7 @@ fn validate_virtual_track_continuity(
 /// tracks are excluded (ST 2067-2:2020 §6.3.3: any edit rate).
 fn validate_virtual_track_edit_rates(
     cpl: &CompositionPlaylist,
-    code: fn(CoreConstraintsCode) -> &'static str,
+    spec_ed: St2067_2Edition,
     issues: &mut Vec<ValidationIssue>,
 ) {
     use crate::cpl::SequenceAccess;
@@ -1197,10 +1206,7 @@ fn validate_virtual_track_edit_rates(
                             // Subsequent resource — compare resolved values
                             if resolved_er != first_er {
                                 issues.push(
-                                ValidationIssue::new(
-                                    Severity::Error,
-                                    Category::Timing,
-                                    code(CoreConstraintsCode::VirtualTrackEditRate),
+                                ValidationIssue::from_rule(&st2067_2::VirtualTrackEditRate, spec_ed,
                                     format!(
                                         "{} virtual track '{}': resource {} has EditRate {}/{} \
                                          but earlier resources have {}/{}; \
@@ -1256,7 +1262,7 @@ fn validate_virtual_track_edit_rates(
 /// Language tags in RFC5646LanguageTagList should be well-formed.
 fn validate_timed_text_extended(
     cpl: &CompositionPlaylist,
-    code: fn(CoreConstraintsCode) -> &'static str,
+    spec_ed: St2067_2Edition,
     issues: &mut Vec<ValidationIssue>,
 ) {
     let edl = match &cpl.essence_descriptor_list {
@@ -1277,10 +1283,9 @@ fn validate_timed_text_extended(
         // SampleRate should be present for timed text
         if tt.sample_rate.is_none() {
             issues.push(
-                ValidationIssue::new(
-                    Severity::Warning,
-                    Category::Subtitle,
-                    code(CoreConstraintsCode::TimedTextSampleRate),
+                ValidationIssue::from_rule(
+                    &st2067_2::TimedTextSampleRate,
+                    spec_ed,
                     format!(
                         "DCTimedTextDescriptor {}: SampleRate is missing; \
                          should be present for frame-accurate subtitle timing",
@@ -1296,10 +1301,7 @@ fn validate_timed_text_extended(
             let s = tag.as_str();
             if s.is_empty() {
                 issues.push(
-                    ValidationIssue::new(
-                        Severity::Warning,
-                        Category::Subtitle,
-                        code(CoreConstraintsCode::TimedTextEmptyLanguageTag),
+                    ValidationIssue::from_rule(&st2067_2::TimedTextEmptyLanguageTag, spec_ed,
                         format!(
                             "DCTimedTextDescriptor {}: empty language tag in RFC5646LanguageTagList",
                             ed.id,
@@ -1309,10 +1311,7 @@ fn validate_timed_text_extended(
                 );
             } else if !s.chars().next().unwrap_or(' ').is_ascii_alphabetic() {
                 issues.push(
-                    ValidationIssue::new(
-                        Severity::Warning,
-                        Category::Subtitle,
-                        code(CoreConstraintsCode::TimedTextMalformedLanguageTag),
+                    ValidationIssue::from_rule(&st2067_2::TimedTextMalformedLanguageTag, spec_ed,
                         format!(
                             "DCTimedTextDescriptor {}: language tag '{}' does not start with an ASCII letter (RFC 5646 primary subtag)",
                             ed.id, s,
@@ -1351,7 +1350,7 @@ fn expected_channel_count(tag: &crate::cpl::McaTagSymbol) -> Option<u32> {
 /// - Audio sample rate should be present
 fn validate_audio_mca_labels(
     cpl: &CompositionPlaylist,
-    code: fn(CoreConstraintsCode) -> &'static str,
+    spec_ed: St2067_2Edition,
     issues: &mut Vec<ValidationIssue>,
 ) {
     let edl = match &cpl.essence_descriptor_list {
@@ -1371,10 +1370,9 @@ fn validate_audio_mca_labels(
         // Audio sample rate should be present
         if wave.audio_sample_rate.is_none() && wave.sample_rate.is_none() {
             issues.push(
-                ValidationIssue::new(
-                    Severity::Warning,
-                    Category::Audio,
-                    code(CoreConstraintsCode::AudioSampleRate),
+                ValidationIssue::from_rule(
+                    &st2067_2::AudioSampleRate,
+                    spec_ed,
                     format!(
                         "WAVEPCMDescriptor {} has no AudioSampleRate or SampleRate",
                         ed.id,
@@ -1388,10 +1386,9 @@ fn validate_audio_mca_labels(
         let channel_count = match wave.channel_count {
             Some(0) => {
                 issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Audio,
-                        code(CoreConstraintsCode::ChannelCount),
+                    ValidationIssue::from_rule(
+                        &st2067_2::ChannelCountZero,
+                        spec_ed,
                         format!("WAVEPCMDescriptor {} has ChannelCount of 0", ed.id,),
                     )
                     .with_location(ed_loc.clone()),
@@ -1401,10 +1398,9 @@ fn validate_audio_mca_labels(
             Some(n) => n,
             None => {
                 issues.push(
-                    ValidationIssue::new(
-                        Severity::Warning,
-                        Category::Audio,
-                        code(CoreConstraintsCode::ChannelCount),
+                    ValidationIssue::from_rule(
+                        &st2067_2::ChannelCount,
+                        spec_ed,
                         format!("WAVEPCMDescriptor {} has no ChannelCount", ed.id,),
                     )
                     .with_location(ed_loc.clone()),
@@ -1418,10 +1414,9 @@ fn validate_audio_mca_labels(
             Some(sub) => sub,
             None => {
                 issues.push(
-                    ValidationIssue::new(
-                        Severity::Warning,
-                        Category::Audio,
-                        code(CoreConstraintsCode::MCASubDescriptors),
+                    ValidationIssue::from_rule(
+                        &st2067_2::MCASubDescriptors,
+                        spec_ed,
                         format!(
                             "WAVEPCMDescriptor {} ({} channels) has no SubDescriptors; \
                              MCA labels are recommended for audio channel identification",
@@ -1438,10 +1433,9 @@ fn validate_audio_mca_labels(
             Some(sf) => sf,
             None => {
                 issues.push(
-                    ValidationIssue::new(
-                        Severity::Warning,
-                        Category::Audio,
-                        code(CoreConstraintsCode::SoundfieldGroup),
+                    ValidationIssue::from_rule(
+                        &st2067_2::SoundfieldGroup,
+                        spec_ed,
                         format!(
                             "WAVEPCMDescriptor {} ({} channels) has SubDescriptors \
                              but no SoundfieldGroupLabelSubDescriptor",
@@ -1459,10 +1453,9 @@ fn validate_audio_mca_labels(
             Some(tag) => tag,
             None => {
                 issues.push(
-                    ValidationIssue::new(
-                        Severity::Warning,
-                        Category::Audio,
-                        code(CoreConstraintsCode::MCATagSymbol),
+                    ValidationIssue::from_rule(
+                        &st2067_2::MCATagSymbol,
+                        spec_ed,
                         format!(
                             "SoundfieldGroupLabelSubDescriptor for {} is missing MCATagSymbol",
                             ed.id,
@@ -1480,10 +1473,9 @@ fn validate_audio_mca_labels(
         if let Some(expected) = expected_channel_count(tag) {
             if channel_count > expected {
                 issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Audio,
-                        code(CoreConstraintsCode::SoundfieldChannelCount),
+                    ValidationIssue::from_rule(
+                        &st2067_2::SoundfieldChannelCount,
+                        spec_ed,
                         format!(
                             "WAVEPCMDescriptor {} has ChannelCount {} but MCATagSymbol '{}' \
                              defines only {} channels",
@@ -1598,14 +1590,7 @@ fn validate_segment_track_durations(cpl: &CompositionPlaylist, issues: &mut Vec<
     // genuine mismatches (which are always off by at least one full frame).
     const TOLERANCE_SECONDS: f64 = 0.001;
 
-    let seg_dur_code: &'static str = match &cpl.namespace {
-        CplNamespace::Dci429_7 | CplNamespace::Smpte2067_3_2013 => {
-            St2067_3_2013::for_code(St2067_3Code::SegmentDuration)
-        }
-        CplNamespace::Smpte2067_3_2016 | CplNamespace::Unknown(_) => {
-            St2067_3_2016::for_code(St2067_3Code::SegmentDuration)
-        }
-    };
+    let seg_dur_ed = crate::cpl::validate::st2067_3_edition(&cpl.namespace);
 
     for (seg_idx, segment) in cpl.segment_list.segments.iter().enumerate() {
         let sl = &segment.sequence_list;
@@ -1680,10 +1665,9 @@ fn validate_segment_track_durations(cpl: &CompositionPlaylist, issues: &mut Vec<
                     ),
                 };
                 issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Timing,
-                        seg_dur_code,
+                    ValidationIssue::from_rule(
+                        &st2067_3::SegmentDuration,
+                        seg_dur_ed,
                         format!(
                             "Segment {} ({}) {} track {}: duration {} differs from {} track {}: \
                              duration {}{} — all virtual tracks in a segment shall have equal duration",
@@ -1713,15 +1697,14 @@ fn validate_segment_track_durations(cpl: &CompositionPlaylist, issues: &mut Vec<
 /// package validator collapses the notices to one per package.
 fn validate_digital_signature_notice(
     cpl: &CompositionPlaylist,
-    code: fn(CoreConstraintsCode) -> &'static str,
+    spec_ed: St2067_2Edition,
     issues: &mut Vec<ValidationIssue>,
 ) {
     if cpl.has_signature {
         issues.push(
-            ValidationIssue::new(
-                Severity::Info,
-                Category::Security,
-                code(CoreConstraintsCode::DigitalSignature),
+            ValidationIssue::from_rule(
+                &st2067_2::DigitalSignature,
+                spec_ed,
                 "The CPL carries a Signature (ST 2067-2 §6.9); signature verification \
                  is not performed",
             )
@@ -1738,7 +1721,7 @@ fn validate_digital_signature_notice(
 /// corresponding essence in the composition. ST 2067-3 forbids it.
 fn validate_dangling_essence_descriptors(
     cpl: &CompositionPlaylist,
-    code: fn(CoreConstraintsCode) -> &'static str,
+    spec_ed: St2067_2Edition,
     issues: &mut Vec<ValidationIssue>,
 ) {
     let edl = match &cpl.essence_descriptor_list {
@@ -1807,10 +1790,9 @@ fn validate_dangling_essence_descriptors(
         let id = ed.id.to_string();
         if !referenced.contains(&id) {
             issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Reference,
-                    code(CoreConstraintsCode::DanglingEssenceDescriptor),
+                ValidationIssue::from_rule(
+                    &st2067_2::DanglingEssenceDescriptor,
+                    spec_ed,
                     format!(
                         "EssenceDescriptor {} is present in EssenceDescriptorList but not \
                          referenced by any Resource's SourceEncoding (ST 2067-3 §6.1.10.1)",
@@ -1842,21 +1824,14 @@ impl ConstraintsValidator for CoreConstraints2020 {
         let mut issues = Vec::new();
         let loc = Location::new().with_cpl(cpl.id);
 
-        validate_core_structure(
-            cpl,
-            crate::assetmap::codes::St2067_2_2020_Core::for_code,
-            &mut issues,
-        );
+        validate_core_structure(cpl, St2067_2Edition::V2020, &mut issues);
 
         // 2020-specific: EssenceDescriptorList is required
         if cpl.essence_descriptor_list.is_none() {
             issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Structure,
-                    crate::assetmap::codes::St2067_2_2020_Core::for_code(
-                        CoreConstraintsCode::EssenceDescriptorList,
-                    ),
+                ValidationIssue::from_rule(
+                    &st2067_2::EssenceDescriptorList,
+                    St2067_2Edition::V2020,
                     "EssenceDescriptorList is required per ST 2067-2:2020",
                 )
                 .with_location(loc),
@@ -1887,21 +1862,14 @@ impl ConstraintsValidator for CoreConstraints2016 {
     fn validate_cpl(&self, cpl: &CompositionPlaylist) -> Vec<ValidationIssue> {
         let mut issues = Vec::new();
 
-        validate_core_structure(
-            cpl,
-            crate::assetmap::codes::St2067_2_2016_Core::for_code,
-            &mut issues,
-        );
+        validate_core_structure(cpl, St2067_2Edition::V2016, &mut issues);
 
         // 2016: EssenceDescriptorList is required (same as 2020)
         if cpl.essence_descriptor_list.is_none() {
             issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Structure,
-                    crate::assetmap::codes::St2067_2_2016_Core::for_code(
-                        CoreConstraintsCode::EssenceDescriptorList,
-                    ),
+                ValidationIssue::from_rule(
+                    &st2067_2::EssenceDescriptorList,
+                    St2067_2Edition::V2016,
                     "EssenceDescriptorList is required per ST 2067-2:2016",
                 )
                 .with_location(Location::new().with_cpl(cpl.id)),
@@ -1932,11 +1900,7 @@ impl ConstraintsValidator for CoreConstraints2013 {
     fn validate_cpl(&self, cpl: &CompositionPlaylist) -> Vec<ValidationIssue> {
         let mut issues = Vec::new();
 
-        validate_core_structure(
-            cpl,
-            crate::assetmap::codes::St2067_2_2013_Core::for_code,
-            &mut issues,
-        );
+        validate_core_structure(cpl, St2067_2Edition::V2013, &mut issues);
 
         // 2013: EssenceDescriptorList is OPTIONAL — no check
         // 2013: ApplicationIdentification does not exist — no check
@@ -2124,6 +2088,7 @@ mod spec_target_tests {
 mod tests {
     use super::*;
     use crate::assetmap::ImfUuid;
+    use crate::catalogue::st2067_21::{self, App2EEdition};
     use crate::cpl::{
         CDCIDescriptor, CompositionTimecode, ContentKindElement, ContentMaturityRating,
         ContentMaturityRatingList, ContentVersion, ContentVersionList, DCTimedTextDescriptor,
@@ -2134,8 +2099,12 @@ mod tests {
         SubtitlesSequence, WAVEPCMDescriptor,
     };
     use crate::cpl::{ContentKind, EditRate, LanguageTag, MarkerLabel, VideoCodec};
-    use crate::diagnostics::codes::ValidationCode;
-    use crate::validation::codes::{St2067_21_2020, St2067_21_2023};
+    use crate::Severity;
+
+    /// The finding names `s` in its code or (XSD findings) its element path.
+    fn mentions(i: &ValidationIssue, s: &str) -> bool {
+        i.code.contains(s) || i.location.path.as_deref().is_some_and(|p| p.contains(s))
+    }
 
     /// ST 2067-21:2023 §7.1 Table 15 value.
     const APP2E_APPLICATION_IDENTIFICATION: &str = "http://www.smpte-ra.org/ns/2067-21/2021";
@@ -2907,7 +2876,7 @@ mod tests {
         let issues = v.validate_cpl(&cpl);
         let edl_issues: Vec<_> = issues
             .iter()
-            .filter(|i| i.code.contains("EssenceDescriptorList"))
+            .filter(|i| mentions(i, "EssenceDescriptorList"))
             .collect();
         assert!(
             !edl_issues.is_empty(),
@@ -2934,7 +2903,7 @@ mod tests {
         let issues = v.validate_cpl(&cpl);
         let edl_issues: Vec<_> = issues
             .iter()
-            .filter(|i| i.code.contains("EssenceDescriptorList"))
+            .filter(|i| mentions(i, "EssenceDescriptorList"))
             .collect();
         assert!(
             edl_issues.is_empty(),
@@ -2955,7 +2924,7 @@ mod tests {
         let v = CoreConstraints2020;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| i.code.contains("ContentTitle")),
+            issues.iter().any(|i| mentions(i, "ContentTitle")),
             "Should flag empty ContentTitle"
         );
     }
@@ -2975,7 +2944,7 @@ mod tests {
         let cpl = crate::cpl::parse_cpl(xml).expect("should parse despite empty SegmentList");
         let issues = CoreConstraints2013.validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| i.code.contains("Segment")),
+            issues.iter().any(|i| mentions(i, "Segment")),
             "Empty SegmentList should be flagged: {:#?}",
             issues,
         );
@@ -2993,7 +2962,7 @@ mod tests {
         let v = CoreConstraints2020;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| i.code.contains("Segment")),
+            issues.iter().any(|i| mentions(i, "Segment")),
             "Should flag segment with no sequences"
         );
     }
@@ -3015,7 +2984,7 @@ mod tests {
         let v = CoreConstraints2020;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| i.code.contains("SourceEncoding")),
+            issues.iter().any(|i| mentions(i, "SourceEncoding")),
             "Should flag unresolved SourceEncoding"
         );
     }
@@ -3067,7 +3036,7 @@ mod tests {
         let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| i.code.contains("6.2/ColorSystem")),
+            issues.iter().any(|i| mentions(i, "6.2/ColorSystem")),
             "Should flag invalid color system combination"
         );
     }
@@ -3091,7 +3060,7 @@ mod tests {
         let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| i.code.contains("6.2.5")),
+            issues.iter().any(|i| mentions(i, "6.2.5")),
             "Should flag non-JPEG-2000 codec"
         );
     }
@@ -3107,7 +3076,7 @@ mod tests {
         let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| i.code.contains("6.4/ComponentDepth")),
+            issues.iter().any(|i| mentions(i, "6.4/ComponentDepth")),
             "Should flag invalid bit depth"
         );
     }
@@ -3124,7 +3093,7 @@ mod tests {
         );
         let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
-        let hdr_issues: Vec<_> = issues.iter().filter(|i| i.code.contains("7.5")).collect();
+        let hdr_issues: Vec<_> = issues.iter().filter(|i| mentions(i, "7.5")).collect();
         assert!(
             !hdr_issues.is_empty(),
             "Should note absent MaxCLL/MaxFALL for PQ content"
@@ -3151,7 +3120,7 @@ mod tests {
         let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            !issues.iter().any(|i| i.code.contains("7.5")),
+            !issues.iter().any(|i| mentions(i, "7.5")),
             "Should not flag HDR metadata when MaxCLL/MaxFALL are present"
         );
     }
@@ -3168,7 +3137,7 @@ mod tests {
         let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            !issues.iter().any(|i| i.code.contains("8.3.3")),
+            !issues.iter().any(|i| mentions(i, "8.3.3")),
             "HLG should not require MaxCLL/MaxFALL"
         );
     }
@@ -3215,9 +3184,7 @@ mod tests {
         let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            issues
-                .iter()
-                .any(|i| i.code.contains("6.2.1/ColorPrimaries")),
+            issues.iter().any(|i| mentions(i, "6.2.1/ColorPrimaries")),
             "Should flag missing ColorPrimaries"
         );
     }
@@ -3342,7 +3309,7 @@ mod tests {
         assert!(
             issues
                 .iter()
-                .any(|i| i.code.contains("7.2/HomogeneousImageEssence")),
+                .any(|i| mentions(i, "7.2/HomogeneousImageEssence")),
             "Should flag heterogeneous color systems"
         );
     }
@@ -3595,7 +3562,7 @@ mod tests {
         let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| i.code.contains("6.5.2/CodingStyle")),
+            issues.iter().any(|i| mentions(i, "6.5.2/CodingStyle")),
             "Should flag missing CodingStyleDefault: {:#?}",
             issues
         );
@@ -3691,7 +3658,7 @@ mod tests {
         let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| i.code.contains("6.5.2/J2CLayout")),
+            issues.iter().any(|i| mentions(i, "6.5.2/J2CLayout")),
             "Should flag missing J2CLayout: {:#?}",
             issues
         );
@@ -3792,7 +3759,7 @@ mod tests {
         assert!(
             issues
                 .iter()
-                .any(|i| i.code.contains("6.5.2/J2KExtendedCapabilities")),
+                .any(|i| mentions(i, "6.5.2/J2KExtendedCapabilities")),
             "Should flag missing J2KExtendedCapabilities for HTJ2K: {:#?}",
             issues
         );
@@ -3807,7 +3774,7 @@ mod tests {
 
         assert!(
             issues.iter().any(|i| {
-                i.code.contains("6.5.2/JPEG2000SubDescriptor") && i.severity == Severity::Warning
+                i.code.contains("6.5.2/Jpeg2000SubDescriptor") && i.severity == Severity::Warning
             }),
             "Should warn when JPEG2000SubDescriptor is missing: {:#?}",
             issues
@@ -3832,9 +3799,7 @@ mod tests {
         let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            issues
-                .iter()
-                .any(|i| i.code.contains("6.2.1/SampledXOffset")),
+            issues.iter().any(|i| mentions(i, "6.2.1/SampledXOffset")),
             "Should flag SampledXOffset != 0: {:#?}",
             issues
         );
@@ -4031,7 +3996,7 @@ mod tests {
         let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| i.code.contains("7.4")),
+            issues.iter().any(|i| mentions(i, "7.4")),
             "Should flag segment duration not multiple of 5: {:#?}",
             issues
         );
@@ -4062,7 +4027,7 @@ mod tests {
         App2E2023
             .validate_cpl(&cpl)
             .iter()
-            .filter(|i| i.code.contains("SegmentDurationMultiple"))
+            .filter(|i| mentions(i, "SegmentDurationMultiple"))
             .count()
     }
 
@@ -4082,7 +4047,7 @@ mod tests {
             let issues: Vec<_> = App2E2023
                 .validate_cpl(&cpl)
                 .into_iter()
-                .filter(|i| i.code.contains("SegmentDurationMultiple"))
+                .filter(|i| mentions(i, "SegmentDurationMultiple"))
                 .collect();
             assert_eq!(
                 issues.len(),
@@ -4137,7 +4102,7 @@ mod tests {
         let n = App2E2023
             .validate_cpl(&cpl)
             .iter()
-            .filter(|i| i.code.contains("SegmentDurationMultiple"))
+            .filter(|i| mentions(i, "SegmentDurationMultiple"))
             .count();
         assert_eq!(n, 1);
     }
@@ -4153,7 +4118,7 @@ mod tests {
         let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            !issues.iter().any(|i| i.code.contains("7.4")),
+            !issues.iter().any(|i| mentions(i, "7.4")),
             "Should NOT flag segment duration that is a multiple of 5: {:#?}",
             issues
         );
@@ -4171,7 +4136,7 @@ mod tests {
         let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            !issues.iter().any(|i| i.code.contains("7.4")),
+            !issues.iter().any(|i| mentions(i, "7.4")),
             "Should NOT flag when audio samples per EU is integer: {:#?}",
             issues
         );
@@ -4187,7 +4152,7 @@ mod tests {
         );
         let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
-        let seg_issues: Vec<_> = issues.iter().filter(|i| i.code.contains("7.4")).collect();
+        let seg_issues: Vec<_> = issues.iter().filter(|i| mentions(i, "7.4")).collect();
         assert_eq!(
             seg_issues.len(),
             1,
@@ -4212,7 +4177,7 @@ mod tests {
         let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            !issues.iter().any(|i| i.code.contains("7.4")),
+            !issues.iter().any(|i| mentions(i, "7.4")),
             "Should NOT flag at 23.976 fps (integer samples/EU): {:#?}",
             issues
         );
@@ -4234,7 +4199,7 @@ mod tests {
         });
         let issues = CoreConstraints2020.validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| i.code.contains("UniqueSegmentId")),
+            issues.iter().any(|i| mentions(i, "UniqueSegmentId")),
             "Duplicate segment IDs should be flagged: {:#?}",
             issues,
         );
@@ -4269,7 +4234,7 @@ mod tests {
             });
         let issues = CoreConstraints2020.validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| i.code.contains("IntrinsicDuration")),
+            issues.iter().any(|i| mentions(i, "IntrinsicDuration")),
             "Zero IntrinsicDuration should be flagged: {:#?}",
             issues,
         );
@@ -4304,7 +4269,7 @@ mod tests {
             });
         let issues = CoreConstraints2020.validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| i.code.contains("ResourceDuration")),
+            issues.iter().any(|i| mentions(i, "ResourceDuration")),
             "EntryPoint + SourceDuration > IntrinsicDuration should be flagged: {:#?}",
             issues,
         );
@@ -4339,7 +4304,7 @@ mod tests {
             });
         let issues = CoreConstraints2020.validate_cpl(&cpl);
         assert!(
-            !issues.iter().any(|i| i.code.contains("ResourceDuration")),
+            !issues.iter().any(|i| mentions(i, "ResourceDuration")),
             "Valid EntryPoint + SourceDuration should not be flagged: {:#?}",
             issues,
         );
@@ -4374,7 +4339,7 @@ mod tests {
             });
         let issues = CoreConstraints2020.validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| i.code.contains("RepeatCount")),
+            issues.iter().any(|i| mentions(i, "RepeatCount")),
             "Zero RepeatCount should be flagged: {:#?}",
             issues,
         );
@@ -4423,8 +4388,7 @@ mod tests {
             assert!(
                 !issues
                     .iter()
-                    .any(|i| i.code.contains("SourceDuration")
-                        || i.code.contains("ResourceDuration")),
+                    .any(|i| mentions(i, "SourceDuration") || i.code.contains("ResourceDuration")),
                 "{}: SourceDuration 0 is allowed by ST 2067-3 6.11.6: {:#?}",
                 edition.spec_id(),
                 issues,
@@ -4559,7 +4523,7 @@ mod tests {
             });
         let issues = CoreConstraints2020.validate_cpl(&cpl);
         assert!(
-            !issues.iter().any(|i| i.code.contains("SourceDuration")),
+            !issues.iter().any(|i| mentions(i, "SourceDuration")),
             "Valid SourceDuration should not be flagged: {:#?}",
             issues,
         );
@@ -4596,7 +4560,7 @@ mod tests {
             });
         let issues = CoreConstraints2020.validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| i.code.contains("EntryPoint")),
+            issues.iter().any(|i| mentions(i, "EntryPoint")),
             "EntryPoint >= IntrinsicDuration should be flagged: {:#?}",
             issues,
         );
@@ -4631,7 +4595,7 @@ mod tests {
             });
         let issues = CoreConstraints2020.validate_cpl(&cpl);
         assert!(
-            !issues.iter().any(|i| i.code.contains("EntryPoint")),
+            !issues.iter().any(|i| mentions(i, "EntryPoint")),
             "Valid EntryPoint should not be flagged: {:#?}",
             issues,
         );
@@ -4674,7 +4638,7 @@ mod tests {
             .push(make_seq(5, 98));
         let issues = CoreConstraints2020.validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| i.code.contains("TrackIdNotUnique")),
+            issues.iter().any(|i| mentions(i, "TrackIdNotUnique")),
             "Duplicate TrackId in same segment should be flagged: {:#?}",
             issues,
         );
@@ -4727,7 +4691,7 @@ mod tests {
         ];
         let issues = CoreConstraints2020.validate_cpl(&cpl);
         assert!(
-            !issues.iter().any(|i| i.code.contains("TrackIdNotUnique")),
+            !issues.iter().any(|i| mentions(i, "TrackIdNotUnique")),
             "Same TrackId in different segments (virtual track) should not be flagged: {:#?}",
             issues,
         );
@@ -4751,7 +4715,7 @@ mod tests {
         assert!(
             issues
                 .iter()
-                .any(|i| i.code.contains("LocaleLanguageTagInvalid")),
+                .any(|i| mentions(i, "LocaleLanguageTagInvalid")),
             "Malformed language tag should be flagged at core level: {:#?}",
             issues,
         );
@@ -4776,7 +4740,7 @@ mod tests {
         });
         let issues = CoreConstraints2020.validate_cpl(&cpl);
         assert!(
-            !issues.iter().any(|i| i.code.contains("Locale")),
+            !issues.iter().any(|i| mentions(i, "Locale")),
             "Valid locale should not be flagged: {:#?}",
             issues,
         );
@@ -4791,9 +4755,7 @@ mod tests {
         cpl.essence_descriptor_list = None; // Missing — 2016 requires it
         let issues = CoreConstraints2016.validate_cpl(&cpl);
         assert!(
-            issues
-                .iter()
-                .any(|i| i.code.contains("EssenceDescriptorList")),
+            issues.iter().any(|i| mentions(i, "EssenceDescriptorList")),
             "ST 2067-2:2016 should require EssenceDescriptorList: {:#?}",
             issues,
         );
@@ -4817,9 +4779,7 @@ mod tests {
         });
         let issues = CoreConstraints2016.validate_cpl(&cpl);
         assert!(
-            !issues
-                .iter()
-                .any(|i| i.code.contains("EssenceDescriptorList")),
+            !issues.iter().any(|i| mentions(i, "EssenceDescriptorList")),
             "Present non-empty EDL should not be flagged: {:#?}",
             issues,
         );
@@ -4843,7 +4803,7 @@ mod tests {
         assert!(
             issues
                 .iter()
-                .any(|i| i.code.contains("ContentVersionIdInvalid")),
+                .any(|i| mentions(i, "ContentVersionIdInvalid")),
             "Empty ContentVersion Id should be flagged: {:#?}",
             issues,
         );
@@ -4865,7 +4825,7 @@ mod tests {
         assert!(
             !issues
                 .iter()
-                .any(|i| i.code.contains("ContentVersionIdInvalid")),
+                .any(|i| mentions(i, "ContentVersionIdInvalid")),
             "Non-empty ContentVersion Id should not be flagged: {:#?}",
             issues,
         );
@@ -4899,7 +4859,7 @@ mod tests {
             });
         let issues = CoreConstraints2020.validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| i.code.contains("TrackFileId")),
+            issues.iter().any(|i| mentions(i, "TrackFileId")),
             "Missing TrackFileId should be flagged: {:#?}",
             issues,
         );
@@ -4958,9 +4918,7 @@ mod tests {
 
         let issues = CoreConstraints2020.validate_cpl(&cpl);
         assert!(
-            issues
-                .iter()
-                .any(|i| i.code.contains("VirtualTrackContinuity")),
+            issues.iter().any(|i| mentions(i, "VirtualTrackContinuity")),
             "Missing virtual track in segment 2 should be flagged: {:#?}",
             issues,
         );
@@ -5007,9 +4965,7 @@ mod tests {
 
         let issues = CoreConstraints2020.validate_cpl(&cpl);
         assert!(
-            !issues
-                .iter()
-                .any(|i| i.code.contains("VirtualTrackContinuity")),
+            !issues.iter().any(|i| mentions(i, "VirtualTrackContinuity")),
             "Continuous virtual tracks should not be flagged: {:#?}",
             issues,
         );
@@ -5065,9 +5021,7 @@ mod tests {
 
         let issues = CoreConstraints2020.validate_cpl(&cpl);
         assert!(
-            issues
-                .iter()
-                .any(|i| i.code.contains("VirtualTrackEditRate")),
+            issues.iter().any(|i| mentions(i, "VirtualTrackEditRate")),
             "Edit rate mismatch in virtual track should be flagged: {:#?}",
             issues,
         );
@@ -5140,9 +5094,7 @@ mod tests {
             CoreConstraints2020.validate_cpl(&cpl),
         ] {
             assert!(
-                !issues
-                    .iter()
-                    .any(|i| i.code.contains("VirtualTrackEditRate")),
+                !issues.iter().any(|i| mentions(i, "VirtualTrackEditRate")),
                 "Timed text edit rates must not be flagged: {:#?}",
                 issues,
             );
@@ -5204,9 +5156,7 @@ mod tests {
 
         let issues = CoreConstraints2020.validate_cpl(&cpl);
         assert!(
-            !issues
-                .iter()
-                .any(|i| i.code.contains("VirtualTrackEditRate")),
+            !issues.iter().any(|i| mentions(i, "VirtualTrackEditRate")),
             "Absent EditRate matching CPL rate must not be flagged: {:#?}",
             issues,
         );
@@ -5275,7 +5225,7 @@ mod tests {
 
         let issues = CoreConstraints2020.validate_cpl(&cpl);
         assert!(
-            !issues.iter().any(|i| i.code.contains("SegmentDuration")),
+            !issues.iter().any(|i| mentions(i, "SegmentDuration")),
             "Equal real-time duration across different edit rates must not be flagged: {:#?}",
             issues,
         );
@@ -5319,7 +5269,7 @@ mod tests {
 
         let issues = CoreConstraints2020.validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| i.code.contains("MarkerOffset")),
+            issues.iter().any(|i| mentions(i, "MarkerOffset")),
             "Marker offset beyond resource duration should be flagged: {:#?}",
             issues,
         );
@@ -5361,7 +5311,7 @@ mod tests {
 
         let issues = CoreConstraints2020.validate_cpl(&cpl);
         assert!(
-            !issues.iter().any(|i| i.code.contains("MarkerOffset")),
+            !issues.iter().any(|i| mentions(i, "MarkerOffset")),
             "Marker at offset 0 should not be flagged: {:#?}",
             issues,
         );
@@ -5396,7 +5346,7 @@ mod tests {
         assert!(
             issues
                 .iter()
-                .any(|i| i.code.contains("UniqueEssenceDescriptorId")),
+                .any(|i| mentions(i, "UniqueEssenceDescriptorId")),
             "Duplicate EssenceDescriptor IDs should be flagged: {:#?}",
             issues,
         );
@@ -5456,7 +5406,7 @@ mod tests {
 
         let issues = CoreConstraints2020.validate_cpl(&cpl);
         assert!(
-            !issues.iter().any(|i| i.code.contains("SegmentDuration")),
+            !issues.iter().any(|i| mentions(i, "SegmentDuration")),
             "Equal durations should not produce duration mismatch: {:#?}",
             issues,
         );
@@ -5520,7 +5470,7 @@ mod tests {
 
         let issues = CoreConstraints2020.validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| i.code.contains("SegmentDuration")),
+            issues.iter().any(|i| mentions(i, "SegmentDuration")),
             "Mismatched durations should be flagged: {:#?}",
             issues,
         );
@@ -5576,7 +5526,7 @@ mod tests {
 
         let issues = CoreConstraints2020.validate_cpl(&cpl);
         assert!(
-            !issues.iter().any(|i| i.code.contains("SegmentDuration")),
+            !issues.iter().any(|i| mentions(i, "SegmentDuration")),
             "Entry point + source duration should compute correct effective duration: {:#?}",
             issues,
         );
@@ -5632,7 +5582,7 @@ mod tests {
 
         let issues = CoreConstraints2020.validate_cpl(&cpl);
         assert!(
-            !issues.iter().any(|i| i.code.contains("SegmentDuration")),
+            !issues.iter().any(|i| mentions(i, "SegmentDuration")),
             "RepeatCount should be factored into duration: {:#?}",
             issues,
         );
@@ -5671,7 +5621,7 @@ mod tests {
         });
         let issues = CoreConstraints2020.validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| i.code.contains("MCASubDescriptors")),
+            issues.iter().any(|i| mentions(i, "MCASubDescriptors")),
             "Missing MCA sub-descriptors should produce warning: {:#?}",
             issues,
         );
@@ -5694,7 +5644,7 @@ mod tests {
         });
         let issues = CoreConstraints2020.validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| i.code.contains("SoundfieldGroup")),
+            issues.iter().any(|i| mentions(i, "SoundfieldGroup")),
             "Missing soundfield group should produce warning: {:#?}",
             issues,
         );
@@ -5726,9 +5676,7 @@ mod tests {
         });
         let issues = CoreConstraints2020.validate_cpl(&cpl);
         assert!(
-            !issues
-                .iter()
-                .any(|i| i.code.contains("SoundfieldChannelCount")),
+            !issues.iter().any(|i| mentions(i, "SoundfieldChannelCount")),
             "Partial soundfield (fewer channels) should not be flagged: {:#?}",
             issues,
         );
@@ -5758,9 +5706,7 @@ mod tests {
         });
         let issues = CoreConstraints2020.validate_cpl(&cpl);
         assert!(
-            issues
-                .iter()
-                .any(|i| i.code.contains("SoundfieldChannelCount")),
+            issues.iter().any(|i| mentions(i, "SoundfieldChannelCount")),
             "8 channels under a 5.1 soundfield should be flagged: {:#?}",
             issues,
         );
@@ -5789,9 +5735,7 @@ mod tests {
         });
         let issues = CoreConstraints2020.validate_cpl(&cpl);
         assert!(
-            !issues
-                .iter()
-                .any(|i| i.code.contains("SoundfieldChannelCount")),
+            !issues.iter().any(|i| mentions(i, "SoundfieldChannelCount")),
             "Correct 5.1 channel count should not be flagged: {:#?}",
             issues,
         );
@@ -5812,7 +5756,7 @@ mod tests {
         assert!(
             issues
                 .iter()
-                .any(|i| i.code.contains("ChannelCount") && i.severity == Severity::Error),
+                .any(|i| mentions(i, "ChannelCount") && i.severity == Severity::Error),
             "Zero ChannelCount should be an error: {:#?}",
             issues,
         );
@@ -5841,9 +5785,7 @@ mod tests {
         });
         let issues = CoreConstraints2020.validate_cpl(&cpl);
         assert!(
-            !issues
-                .iter()
-                .any(|i| i.code.contains("SoundfieldChannelCount")),
+            !issues.iter().any(|i| mentions(i, "SoundfieldChannelCount")),
             "Correct Stereo channel count should not be flagged: {:#?}",
             issues,
         );
@@ -5870,13 +5812,13 @@ mod tests {
             .as_mut()
             .unwrap()
             .picture_compression = Some(VideoCodec::Jpeg2000Ht);
-        let ht = St2067_21_2020::J2KHtNotAllowed.code();
+        let ht = st2067_21::J2KHtNotAllowed
+            .code(App2EEdition::V2020)
+            .unwrap();
 
         let issues_2023 = App2E2023.validate_cpl(&cpl);
         assert!(
-            !issues_2023
-                .iter()
-                .any(|i| i.code.contains("J2K-HT-Not-Allowed")),
+            !issues_2023.iter().any(|i| mentions(i, "J2KHtNotAllowed")),
             "HT-J2K must be accepted by App2E 2023: {issues_2023:#?}",
         );
 
@@ -5903,31 +5845,31 @@ mod tests {
         };
         let mismatch =
             |issues: &[ValidationIssue], code: &str| issues.iter().any(|i| i.code == code);
-        let code_2023 = St2067_21_2023::AppIdMismatch.code();
-        let code_2020 = crate::validation::codes::St2067_21_2020::AppIdMismatch.code();
+        let code_2023 = st2067_21::AppIdMismatch.code(App2EEdition::V2023).unwrap();
+        let code_2020 = st2067_21::AppIdMismatch.code(App2EEdition::V2020).unwrap();
 
         let both = "http://example.com/other-app \
                     http://www.smpte-ra.org/ns/2067-21/2020\n\
                     http://www.smpte-ra.org/ns/2067-21/2021";
         assert!(!mismatch(
             &App2E2023.validate_cpl(&with_app_id(both)),
-            code_2023
+            &code_2023
         ));
         assert!(!mismatch(
             &App2E2020.validate_cpl(&with_app_id(both)),
-            code_2020
+            &code_2020
         ));
 
         // A list that does not include the Table 15 value is still flagged.
         let other = "http://example.com/other-app http://www.smpte-ra.org/ns/2067-21/2020";
         assert!(mismatch(
             &App2E2023.validate_cpl(&with_app_id(other)),
-            code_2023
+            &code_2023
         ));
         let other = "http://example.com/other-app http://www.smpte-ra.org/ns/2067-21/2021";
         assert!(mismatch(
             &App2E2020.validate_cpl(&with_app_id(other)),
-            code_2020
+            &code_2020
         ));
     }
 
@@ -6044,7 +5986,7 @@ mod tests {
             assert!(
                 !issues
                     .iter()
-                    .any(|i| i.code == St2067_21_2023::Resolution.code()),
+                    .any(|i| i.code == st2067_21::Resolution.code(App2EEdition::V2023).unwrap()),
                 "1080i (stored 1920x540) should pass the resolution rule: {issues:#?}",
             );
         }
@@ -6055,7 +5997,7 @@ mod tests {
         let cpl = cpl_with_image_resolution(1920, 1080, Some(EditRate::new(24, 1)));
         let issues = App2E2023.validate_cpl(&cpl);
         assert!(
-            !issues.iter().any(|i| i.code.contains("Resolution")),
+            !issues.iter().any(|i| mentions(i, "Resolution")),
             "1920x1080 should be accepted: {:#?}",
             issues,
         );
@@ -6066,7 +6008,7 @@ mod tests {
         let cpl = cpl_with_image_resolution(2048, 1080, Some(EditRate::new(25, 1)));
         let issues = App2E2023.validate_cpl(&cpl);
         assert!(
-            !issues.iter().any(|i| i.code.contains("Resolution")),
+            !issues.iter().any(|i| mentions(i, "Resolution")),
             "2048x1080 should be accepted: {:#?}",
             issues,
         );
@@ -6077,7 +6019,7 @@ mod tests {
         let cpl = cpl_with_image_resolution(3840, 2160, Some(EditRate::new(24, 1)));
         let issues = App2E2023.validate_cpl(&cpl);
         assert!(
-            !issues.iter().any(|i| i.code.contains("Resolution")),
+            !issues.iter().any(|i| mentions(i, "Resolution")),
             "3840x2160 should be accepted: {:#?}",
             issues,
         );
@@ -6089,7 +6031,7 @@ mod tests {
         let cpl = cpl_with_rgba_size(4096, 2160);
         let issues = App2E2023.validate_cpl(&cpl);
         assert!(
-            !issues.iter().any(|i| i.code.contains("Resolution")),
+            !issues.iter().any(|i| mentions(i, "Resolution")),
             "4096x2160 R'G'B' should be accepted: {:#?}",
             issues,
         );
@@ -6102,7 +6044,7 @@ mod tests {
         let cpl = cpl_with_image_resolution(7680, 4320, Some(EditRate::new(24, 1)));
         let issues = App2E2023.validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| i.code.contains("Resolution")),
+            issues.iter().any(|i| mentions(i, "Resolution")),
             "7680x4320 should be rejected: {:#?}",
             issues,
         );
@@ -6115,7 +6057,7 @@ mod tests {
         let cpl = cpl_with_image_resolution(1280, 720, Some(EditRate::new(24, 1)));
         let issues = App2E2023.validate_cpl(&cpl);
         assert!(
-            !issues.iter().any(|i| i.code.contains("Resolution")),
+            !issues.iter().any(|i| mentions(i, "Resolution")),
             "1280x720 should be accepted: {:#?}",
             issues,
         );
@@ -6127,7 +6069,7 @@ mod tests {
         let cpl = cpl_with_image_resolution(1920, 800, Some(EditRate::new(24, 1)));
         let issues = App2E2023.validate_cpl(&cpl);
         assert!(
-            !issues.iter().any(|i| i.code.contains("Resolution")),
+            !issues.iter().any(|i| mentions(i, "Resolution")),
             "1920x800 should be accepted: {:#?}",
             issues,
         );
@@ -6141,11 +6083,11 @@ mod tests {
             let a = App2E2023
                 .validate_cpl(&cpl)
                 .iter()
-                .any(|i| i.code == St2067_21_2023::Resolution.code());
+                .any(|i| i.code == st2067_21::Resolution.code(App2EEdition::V2023).unwrap());
             let b = App2E2020
                 .validate_cpl(&cpl)
                 .iter()
-                .any(|i| i.code == St2067_21_2020::Resolution.code());
+                .any(|i| i.code == st2067_21::Resolution.code(App2EEdition::V2020).unwrap());
             assert_eq!(a, b, "2020 and 2023 Table 3 are identical");
             a
         };
@@ -6193,7 +6135,7 @@ mod tests {
         let cpl = cpl_with_image_resolution(1920, 1080, Some(EditRate::new(24, 1)));
         let issues = App2E2023.validate_cpl(&cpl);
         assert!(
-            !issues.iter().any(|i| i.code.contains("FrameRate")),
+            !issues.iter().any(|i| mentions(i, "FrameRate")),
             "24 fps should be accepted: {:#?}",
             issues,
         );
@@ -6204,7 +6146,7 @@ mod tests {
         let cpl = cpl_with_image_resolution(1920, 1080, Some(EditRate::new(24000, 1001)));
         let issues = App2E2023.validate_cpl(&cpl);
         assert!(
-            !issues.iter().any(|i| i.code.contains("FrameRate")),
+            !issues.iter().any(|i| mentions(i, "FrameRate")),
             "23.976 fps should be accepted: {:#?}",
             issues,
         );
@@ -6215,7 +6157,7 @@ mod tests {
         let cpl = cpl_with_image_resolution(1920, 1080, Some(EditRate::new(25, 1)));
         let issues = App2E2023.validate_cpl(&cpl);
         assert!(
-            !issues.iter().any(|i| i.code.contains("FrameRate")),
+            !issues.iter().any(|i| mentions(i, "FrameRate")),
             "25 fps should be accepted: {:#?}",
             issues,
         );
@@ -6226,7 +6168,7 @@ mod tests {
         let cpl = cpl_with_image_resolution(3840, 2160, Some(EditRate::new(60, 1)));
         let issues = App2E2023.validate_cpl(&cpl);
         assert!(
-            !issues.iter().any(|i| i.code.contains("FrameRate")),
+            !issues.iter().any(|i| mentions(i, "FrameRate")),
             "60 fps should be accepted: {:#?}",
             issues,
         );
@@ -6237,7 +6179,7 @@ mod tests {
         let cpl = cpl_with_image_resolution(3840, 2160, Some(EditRate::new(60000, 1001)));
         let issues = App2E2023.validate_cpl(&cpl);
         assert!(
-            !issues.iter().any(|i| i.code.contains("FrameRate")),
+            !issues.iter().any(|i| mentions(i, "FrameRate")),
             "59.94 fps should be accepted: {:#?}",
             issues,
         );
@@ -6250,7 +6192,7 @@ mod tests {
         let cpl = cpl_with_image_resolution(1920, 1080, Some(EditRate::new(120, 1)));
         let issues = App2E2023.validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| i.code.contains("FrameRate")),
+            issues.iter().any(|i| mentions(i, "FrameRate")),
             "120 fps should be rejected: {:#?}",
             issues,
         );
@@ -6265,11 +6207,11 @@ mod tests {
             for (issues, code) in [
                 (
                     App2E2023.validate_cpl(&cpl),
-                    St2067_21_2023::FrameRate.code(),
+                    st2067_21::FrameRate.code(App2EEdition::V2023).unwrap(),
                 ),
                 (
                     App2E2020.validate_cpl(&cpl),
-                    St2067_21_2020::FrameRate.code(),
+                    st2067_21::FrameRate.code(App2EEdition::V2020).unwrap(),
                 ),
             ] {
                 assert!(
@@ -6298,7 +6240,7 @@ mod tests {
             assert!(
                 !issues
                     .iter()
-                    .any(|i| i.code == St2067_21_2023::FrameRate.code()),
+                    .any(|i| i.code == st2067_21::FrameRate.code(App2EEdition::V2023).unwrap()),
                 "120 fps R'G'B' should be accepted: {issues:#?}",
             );
         }
@@ -6309,7 +6251,7 @@ mod tests {
         let cpl = cpl_with_image_resolution(1920, 1080, Some(EditRate::new(15, 1)));
         let issues = App2E2023.validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| i.code.contains("FrameRate")),
+            issues.iter().any(|i| mentions(i, "FrameRate")),
             "15 fps should be rejected: {:#?}",
             issues,
         );
@@ -6377,9 +6319,10 @@ mod tests {
 
         let issues = App2E2023.validate_cpl(&cpl);
         assert!(
-            issues
-                .iter()
-                .any(|i| i.code == St2067_21_2023::RequiredSampleRate.code()),
+            issues.iter().any(|i| i.code
+                == st2067_21::RequiredSampleRate
+                    .code(App2EEdition::V2023)
+                    .unwrap()),
             "Missing SampleRate should be flagged: {:#?}",
             issues,
         );
@@ -6412,7 +6355,7 @@ mod tests {
         let cpl = crate::cpl::parse_cpl(xml).expect("should parse despite missing EditRate");
         let issues = CoreConstraints2013.validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| i.code.contains("EditRate")),
+            issues.iter().any(|i| mentions(i, "EditRate")),
             "Missing EditRate should be flagged: {:#?}",
             issues,
         );
@@ -6437,7 +6380,7 @@ mod tests {
         let v = CoreConstraints2020;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            !issues.iter().any(|i| i.code.contains("-EditRate")),
+            !issues.iter().any(|i| mentions(i, "-EditRate")),
             "Present EditRate should not be flagged: {:#?}",
             issues,
         );
@@ -6460,7 +6403,7 @@ mod tests {
         let cpl = crate::cpl::parse_cpl(xml).expect("should parse despite invalid IssueDate");
         let issues = CoreConstraints2013.validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| i.code.contains("IssueDate")),
+            issues.iter().any(|i| mentions(i, "IssueDate")),
             "Invalid IssueDate format should be flagged: {:#?}",
             issues,
         );
@@ -6482,7 +6425,7 @@ mod tests {
         let cpl = crate::cpl::parse_cpl(xml).expect("should parse despite empty IssueDate");
         let issues = CoreConstraints2013.validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| i.code.contains("IssueDate")),
+            issues.iter().any(|i| mentions(i, "IssueDate")),
             "Empty IssueDate should be flagged: {:#?}",
             issues,
         );
@@ -6512,10 +6455,9 @@ mod tests {
             .expect("should parse despite incomplete CompositionTimecode");
         let issues = CoreConstraints2013.validate_cpl(&cpl);
         assert!(
-            issues
-                .iter()
-                .any(|i| i.code.contains("TimecodeDropFrame")
-                    || i.code.contains("TimecodeStartAddress")),
+            issues.iter().any(
+                |i| mentions(i, "TimecodeDropFrame") || i.code.contains("TimecodeStartAddress")
+            ),
             "Missing TimecodeDropFrame/StartAddress should be flagged: {:#?}",
             issues,
         );
@@ -6547,7 +6489,7 @@ mod tests {
         let cpl = crate::cpl::parse_cpl(xml).expect("should parse despite empty ResourceList");
         let issues = CoreConstraints2013.validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| i.code.contains("Resource")),
+            issues.iter().any(|i| mentions(i, "Resource")),
             "Empty ResourceList should be flagged: {:#?}",
             issues,
         );
@@ -6573,7 +6515,7 @@ mod tests {
         assert!(
             !issues
                 .iter()
-                .any(|i| i.code.contains("ContentVersionLabelTextMissing")),
+                .any(|i| mentions(i, "ContentVersionLabelTextMissing")),
             "ContentVersion with LabelText should not be flagged: {:#?}",
             issues,
         );
@@ -6594,7 +6536,7 @@ mod tests {
         assert!(
             issues
                 .iter()
-                .any(|i| i.code.contains("ContentVersionLabelTextMissing")),
+                .any(|i| mentions(i, "ContentVersionLabelTextMissing")),
             "Missing LabelText should be flagged: {:#?}",
             issues,
         );
@@ -6643,7 +6585,7 @@ mod tests {
         let v = CoreConstraints2020;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            !issues.iter().any(|i| i.code.contains("MarkerLabelUnknown")),
+            !issues.iter().any(|i| mentions(i, "MarkerLabelUnknown")),
             "Recognized marker labels should not be flagged: {:#?}",
             issues,
         );
@@ -6685,7 +6627,7 @@ mod tests {
         let v = CoreConstraints2020;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| i.code.contains("MarkerLabelUnknown")),
+            issues.iter().any(|i| mentions(i, "MarkerLabelUnknown")),
             "Unrecognized marker label under SMPTE scope should be flagged: {:#?}",
             issues,
         );
@@ -6728,7 +6670,7 @@ mod tests {
         let v = CoreConstraints2020;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            !issues.iter().any(|i| i.code.contains("MarkerLabelUnknown")),
+            !issues.iter().any(|i| mentions(i, "MarkerLabelUnknown")),
             "Custom marker under custom scope should not be flagged: {:#?}",
             issues,
         );
@@ -6748,9 +6690,10 @@ mod tests {
         let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            !issues
-                .iter()
-                .any(|i| i.code == St2067_21_2023::FrameLayoutInterlaced.code()),
+            !issues.iter().any(|i| i.code
+                == st2067_21::FrameLayoutInterlaced
+                    .code(App2EEdition::V2023)
+                    .unwrap()),
             "FullFrame FrameLayout should not be flagged: {:#?}",
             issues,
         );
@@ -6793,7 +6736,7 @@ mod tests {
         assert!(
             issues
                 .iter()
-                .any(|i| i.code == St2067_21_2023::FrameLayout.code()),
+                .any(|i| i.code == st2067_21::FrameLayout.code(App2EEdition::V2023).unwrap()),
             "MixedFields FrameLayout should be flagged for App2E: {:#?}",
             issues,
         );
@@ -6919,7 +6862,7 @@ mod tests {
         let v = CoreConstraints2020;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            !issues.iter().any(|i| i.code.contains("Rate-Mismatch")),
+            !issues.iter().any(|i| mentions(i, "RateMismatch")),
             "Matching TimecodeRate and EditRate should not be flagged: {:#?}",
             issues,
         );
@@ -6938,7 +6881,7 @@ mod tests {
         let v = CoreConstraints2020;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| i.code.contains("Rate-Mismatch")),
+            issues.iter().any(|i| mentions(i, "RateMismatch")),
             "Mismatched TimecodeRate and EditRate should be flagged: {:#?}",
             issues,
         );
@@ -6957,7 +6900,7 @@ mod tests {
         let v = CoreConstraints2020;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            !issues.iter().any(|i| i.code.contains("Rate-Mismatch")),
+            !issues.iter().any(|i| mentions(i, "RateMismatch")),
             "TimecodeRate 24 should match EditRate 24000/1001 (23.976 fps): {:#?}",
             issues,
         );
@@ -7013,7 +6956,7 @@ mod tests {
         let v = CoreConstraints2020;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            !issues.iter().any(|i| i.code.contains("SourceEncoding")),
+            !issues.iter().any(|i| mentions(i, "SourceEncoding")),
             "Valid SourceEncoding ref should not be flagged: {:#?}",
             issues,
         );
@@ -7064,7 +7007,7 @@ mod tests {
         assert!(
             issues
                 .iter()
-                .any(|i| i.code.contains("SourceEncodingUnresolved")),
+                .any(|i| mentions(i, "SourceEncodingUnresolved")),
             "Unresolved SourceEncoding should be flagged: {:#?}",
             issues,
         );
@@ -7080,7 +7023,7 @@ mod tests {
         let v = CoreConstraints2020;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            !issues.iter().any(|i| i.code.contains("ContentKindUnknown")),
+            !issues.iter().any(|i| mentions(i, "ContentKindUnknown")),
             "Known ContentKind should not be flagged: {:#?}",
             issues,
         );
@@ -7095,7 +7038,7 @@ mod tests {
         let v = CoreConstraints2020;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| i.code.contains("ContentKindUnknown")),
+            issues.iter().any(|i| mentions(i, "ContentKindUnknown")),
             "Unknown ContentKind under SMPTE scope should be flagged: {:#?}",
             issues,
         );
@@ -7112,7 +7055,7 @@ mod tests {
         let v = CoreConstraints2020;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            !issues.iter().any(|i| i.code.contains("ContentKindUnknown")),
+            !issues.iter().any(|i| mentions(i, "ContentKindUnknown")),
             "Custom ContentKind under custom scope should not be flagged: {:#?}",
             issues,
         );
@@ -7171,7 +7114,7 @@ mod tests {
         let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            !issues.iter().any(|i| i.code.contains("AudioHomogeneity")),
+            !issues.iter().any(|i| mentions(i, "AudioHomogeneity")),
             "Homogeneous audio channels should not be flagged: {:#?}",
             issues,
         );
@@ -7229,7 +7172,7 @@ mod tests {
         let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            !issues.iter().any(|i| i.code.contains("AudioHomogeneity")),
+            !issues.iter().any(|i| mentions(i, "AudioHomogeneity")),
             "Mixed channel counts across separate audio tracks must not be flagged: {:#?}",
             issues,
         );
@@ -7291,7 +7234,7 @@ mod tests {
         let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            !issues.iter().any(|i| i.code.contains("5.6-HIC")),
+            !issues.iter().any(|i| mentions(i, "5.6-HIC")),
             "HIC with timed text should not be flagged: {:#?}",
             issues,
         );
@@ -7356,7 +7299,7 @@ mod tests {
         let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            !issues.iter().any(|i| i.code.contains("TimedText")),
+            !issues.iter().any(|i| mentions(i, "TimedText")),
             "not an ST 2067-21 rule: {:#?}",
             issues,
         );
@@ -7418,7 +7361,7 @@ mod tests {
         let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            !issues.iter().any(|i| i.code.contains("TimedText")),
+            !issues.iter().any(|i| mentions(i, "TimedText")),
             "not an ST 2067-21 rule: {:#?}",
             issues,
         );
@@ -7441,7 +7384,7 @@ mod tests {
         assert!(
             issues
                 .iter()
-                .any(|i| i.code.contains("7.1/ApplicationIdentification")),
+                .any(|i| mentions(i, "7.1/ApplicationIdentification")),
             "Missing ApplicationIdentification should be flagged: {:#?}",
             issues,
         );
@@ -7459,11 +7402,15 @@ mod tests {
         for (issues, code) in [
             (
                 App2E2023.validate_cpl(&cpl),
-                St2067_21_2023::ApplicationIdentification.code(),
+                st2067_21::ApplicationIdentification
+                    .code(App2EEdition::V2023)
+                    .unwrap(),
             ),
             (
                 App2E2020.validate_cpl(&cpl),
-                St2067_21_2020::ApplicationIdentification.code(),
+                st2067_21::ApplicationIdentification
+                    .code(App2EEdition::V2020)
+                    .unwrap(),
             ),
         ] {
             assert!(
@@ -7501,9 +7448,7 @@ mod tests {
         let v = CoreConstraints2020;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            issues
-                .iter()
-                .any(|i| i.code.contains("TimedText-SampleRate")),
+            issues.iter().any(|i| mentions(i, "TimedTextSampleRate")),
             "Missing timed text SampleRate should be warned: {:#?}",
             issues,
         );
@@ -7533,9 +7478,7 @@ mod tests {
         let v = CoreConstraints2020;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            !issues
-                .iter()
-                .any(|i| i.code.contains("TimedText-SampleRate")),
+            !issues.iter().any(|i| mentions(i, "TimedTextSampleRate")),
             "Valid timed text SampleRate should not be warned: {:#?}",
             issues,
         );
@@ -7567,7 +7510,7 @@ mod tests {
         assert!(
             issues
                 .iter()
-                .any(|i| i.code.contains("TimedText-EmptyLanguageTag")),
+                .any(|i| mentions(i, "TimedTextEmptyLanguageTag")),
             "Empty language tag should be warned: {:#?}",
             issues,
         );
@@ -7663,9 +7606,7 @@ mod tests {
         let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            issues
-                .iter()
-                .any(|i| i.code.contains("6.2.1/SampledHeight")),
+            issues.iter().any(|i| mentions(i, "6.2.1/SampledHeight")),
             "Should flag SampledHeight ≠ StoredHeight: {:#?}",
             issues,
         );
@@ -7690,9 +7631,7 @@ mod tests {
         let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            issues
-                .iter()
-                .any(|i| i.code.contains("6.2.1/SampledYOffset")),
+            issues.iter().any(|i| mentions(i, "6.2.1/SampledYOffset")),
             "Should flag SampledYOffset ≠ 0: {:#?}",
             issues,
         );
@@ -7717,9 +7656,7 @@ mod tests {
         let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            issues
-                .iter()
-                .any(|i| i.code.contains("6.2.1/SampledXOffset")),
+            issues.iter().any(|i| mentions(i, "6.2.1/SampledXOffset")),
             "Should flag SampledXOffset ≠ 0: {:#?}",
             issues,
         );
@@ -7744,9 +7681,7 @@ mod tests {
         let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            issues
-                .iter()
-                .any(|i| i.code.contains("6.2.1/CodingEquations")),
+            issues.iter().any(|i| mentions(i, "6.2.1/CodingEquations")),
             "Should flag missing CodingEquations: {:#?}",
             issues,
         );
@@ -7773,7 +7708,7 @@ mod tests {
         let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| i.code.contains("6.2.3")),
+            issues.iter().any(|i| mentions(i, "6.2.3")),
             "Should flag unknown CodingEquations UL: {:#?}",
             issues,
         );
@@ -7800,7 +7735,7 @@ mod tests {
         assert!(
             issues
                 .iter()
-                .any(|i| i.code.contains("6.2.1/TransferCharacteristic")),
+                .any(|i| mentions(i, "6.2.1/TransferCharacteristic")),
             "Should flag missing TransferCharacteristic: {:#?}",
             issues,
         );
@@ -7827,7 +7762,7 @@ mod tests {
         let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| i.code.contains("6.2.2")),
+            issues.iter().any(|i| mentions(i, "6.2.2")),
             "Should flag unknown TransferCharacteristic UL: {:#?}",
             issues,
         );
@@ -7852,9 +7787,7 @@ mod tests {
         let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            issues
-                .iter()
-                .any(|i| i.code.contains("6.2.1/ColorPrimaries")),
+            issues.iter().any(|i| mentions(i, "6.2.1/ColorPrimaries")),
             "Should flag missing ColorPrimaries: {:#?}",
             issues,
         );
@@ -7881,7 +7814,7 @@ mod tests {
         let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| i.code.contains("6.2.4")),
+            issues.iter().any(|i| mentions(i, "6.2.4")),
             "Should flag unknown ColorPrimaries UL: {:#?}",
             issues,
         );
@@ -7912,7 +7845,7 @@ mod tests {
         assert!(
             issues
                 .iter()
-                .any(|i| i.code.contains("6.4/HorizontalSubsampling")),
+                .any(|i| mentions(i, "6.4/HorizontalSubsampling")),
             "Should flag HorizontalSubsampling=3: {:#?}",
             issues,
         );
@@ -7939,7 +7872,7 @@ mod tests {
         assert!(
             issues
                 .iter()
-                .any(|i| i.code.contains("6.4/HorizontalSubsampling")),
+                .any(|i| mentions(i, "6.4/HorizontalSubsampling")),
             "Should flag missing HorizontalSubsampling: {:#?}",
             issues,
         );
@@ -7964,7 +7897,7 @@ mod tests {
         let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| i.code.contains("6.4/ColorSiting")),
+            issues.iter().any(|i| mentions(i, "6.4/ColorSiting")),
             "Should flag ColorSiting ≠ 0: {:#?}",
             issues,
         );
@@ -7989,7 +7922,7 @@ mod tests {
         let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| i.code.contains("6.4/ColorSiting")),
+            issues.iter().any(|i| mentions(i, "6.4/ColorSiting")),
             "Should flag missing ColorSiting: {:#?}",
             issues,
         );
@@ -8016,7 +7949,7 @@ mod tests {
         assert!(
             issues
                 .iter()
-                .any(|i| i.code.contains("6.4/VerticalSubsampling")),
+                .any(|i| mentions(i, "6.4/VerticalSubsampling")),
             "Should flag VerticalSubsampling ≠ 1: {:#?}",
             issues,
         );
@@ -8043,7 +7976,7 @@ mod tests {
         assert!(
             issues
                 .iter()
-                .any(|i| i.code.contains("6.4/VerticalSubsampling")),
+                .any(|i| mentions(i, "6.4/VerticalSubsampling")),
             "Should flag missing VerticalSubsampling: {:#?}",
             issues,
         );
@@ -8068,7 +8001,7 @@ mod tests {
         let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| i.code.contains("6.4/ComponentDepth")),
+            issues.iter().any(|i| mentions(i, "6.4/ComponentDepth")),
             "Should flag ComponentDepth=14: {:#?}",
             issues,
         );
@@ -8093,7 +8026,7 @@ mod tests {
         let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| i.code.contains("6.4/ComponentDepth")),
+            issues.iter().any(|i| mentions(i, "6.4/ComponentDepth")),
             "Should flag missing ComponentDepth: {:#?}",
             issues,
         );
@@ -8118,9 +8051,7 @@ mod tests {
         let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            issues
-                .iter()
-                .any(|i| i.code.contains("6.3/ComponentMaxRef")),
+            issues.iter().any(|i| mentions(i, "6.3/ComponentMaxRef")),
             "Should flag missing ComponentMaxRef: {:#?}",
             issues,
         );
@@ -8141,9 +8072,7 @@ mod tests {
         let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            issues
-                .iter()
-                .any(|i| i.code.contains("6.3/ComponentMinRef")),
+            issues.iter().any(|i| mentions(i, "6.3/ComponentMinRef")),
             "Should flag missing ComponentMinRef: {:#?}",
             issues,
         );
@@ -8164,9 +8093,7 @@ mod tests {
         let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            issues
-                .iter()
-                .any(|i| i.code.contains("6.3/ScanningDirection")),
+            issues.iter().any(|i| mentions(i, "6.3/ScanningDirection")),
             "Should flag missing ScanningDirection: {:#?}",
             issues,
         );
@@ -8188,9 +8115,7 @@ mod tests {
         let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            issues
-                .iter()
-                .any(|i| i.code.contains("6.3/ScanningDirection")),
+            issues.iter().any(|i| mentions(i, "6.3/ScanningDirection")),
             "Should flag wrong ScanningDirection: {:#?}",
             issues,
         );
@@ -8214,7 +8139,7 @@ mod tests {
         let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| i.code.contains("6.3.2/")),
+            issues.iter().any(|i| mentions(i, "6.3.2/")),
             "Should flag Table11 ref mismatch: {:#?}",
             issues,
         );
@@ -8274,7 +8199,7 @@ mod tests {
         let v = CoreConstraints2020;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| i.code.contains("UniqueResourceId")),
+            issues.iter().any(|i| mentions(i, "UniqueResourceId")),
             "Should flag duplicate resource ID: {:#?}",
             issues,
         );
@@ -8289,14 +8214,14 @@ mod tests {
 
         let core_issues = CoreConstraints2020.validate_cpl(&cpl);
         assert!(
-            !core_issues.iter().any(|i| i.code.contains(":General/")),
+            !core_issues.iter().any(|i| mentions(i, ":General/")),
             "Core validator emitted :General fallback codes: {:#?}",
             core_issues,
         );
 
         let app2e_issues = App2E2023.validate_cpl(&cpl);
         assert!(
-            !app2e_issues.iter().any(|i| i.code.contains(":General/")),
+            !app2e_issues.iter().any(|i| mentions(i, ":General/")),
             "App2E validator emitted :General fallback codes: {:#?}",
             app2e_issues,
         );
@@ -8329,7 +8254,7 @@ mod tests {
             crate::cpl::parse_cpl(xml).expect("should parse despite invalid TotalRunningTime");
         let issues = CoreConstraints2013.validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| i.code.contains("TotalRunningTime")),
+            issues.iter().any(|i| mentions(i, "TotalRunningTime")),
             "Invalid TotalRunningTime format should be flagged: {:#?}",
             issues,
         );
@@ -8341,7 +8266,7 @@ mod tests {
         cpl.total_running_time = Some("02:30:00".to_string());
         let issues = CoreConstraints2020.validate_cpl(&cpl);
         assert!(
-            !issues.iter().any(|i| i.code.contains("TotalRunningTime")),
+            !issues.iter().any(|i| mentions(i, "TotalRunningTime")),
             "Valid TotalRunningTime should be accepted: {:#?}",
             issues,
         );
@@ -8371,7 +8296,7 @@ mod tests {
         let cpl = crate::cpl::parse_cpl(xml).expect("should parse despite zero TimecodeRate");
         let issues = CoreConstraints2013.validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| i.code.contains("TimecodeRate")),
+            issues.iter().any(|i| mentions(i, "TimecodeRate")),
             "TimecodeRate of 0 should be flagged: {:#?}",
             issues,
         );
@@ -8389,7 +8314,7 @@ mod tests {
         assert!(
             !issues
                 .iter()
-                .any(|i| i.code.contains("CompositionTimecode/Rate-Zero")),
+                .any(|i| mentions(i, "CompositionTimecodeRateZero")),
             "Positive TimecodeRate should be accepted: {:#?}",
             issues,
         );
@@ -8421,9 +8346,7 @@ mod tests {
             crate::cpl::parse_cpl(xml).expect("should parse despite invalid TimecodeStartAddress");
         let issues = CoreConstraints2013.validate_cpl(&cpl);
         assert!(
-            issues
-                .iter()
-                .any(|i| i.code.contains("TimecodeStartAddress")),
+            issues.iter().any(|i| mentions(i, "TimecodeStartAddress")),
             "Invalid TimecodeStartAddress format should be flagged: {:#?}",
             issues,
         );
@@ -8441,7 +8364,7 @@ mod tests {
         assert!(
             !issues
                 .iter()
-                .any(|i| i.code.contains("CompositionTimecode/StartAddress-Format")),
+                .any(|i| mentions(i, "CompositionTimecodeStartAddressFormat")),
             "Valid TimecodeStartAddress should be accepted: {:#?}",
             issues,
         );
@@ -8459,7 +8382,7 @@ mod tests {
         assert!(
             issues
                 .iter()
-                .any(|i| i.code.contains("ContentVersionListEmpty")),
+                .any(|i| mentions(i, "ContentVersionListEmpty")),
             "Empty ContentVersionList should be flagged: {:#?}",
             issues,
         );
@@ -8481,7 +8404,7 @@ mod tests {
         assert!(
             !issues
                 .iter()
-                .any(|i| i.code.contains("ContentVersionListEmpty")),
+                .any(|i| mentions(i, "ContentVersionListEmpty")),
             "Non-empty ContentVersionList should be accepted: {:#?}",
             issues,
         );
@@ -8508,7 +8431,7 @@ mod tests {
         let cpl = crate::cpl::parse_cpl(xml).expect("should parse despite empty LocaleList");
         let issues = CoreConstraints2013.validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| i.code.contains("Locale")),
+            issues.iter().any(|i| mentions(i, "Locale")),
             "Empty LocaleList should be flagged: {:#?}",
             issues,
         );
@@ -8526,9 +8449,7 @@ mod tests {
         });
         let issues = CoreConstraints2020.validate_cpl(&cpl);
         assert!(
-            !issues
-                .iter()
-                .any(|i| i.code.contains("LocaleList-NonEmpty")),
+            !issues.iter().any(|i| mentions(i, "LocaleListNonEmpty")),
             "Non-empty LocaleList should be accepted: {:#?}",
             issues,
         );
@@ -8546,7 +8467,7 @@ mod tests {
         assert!(
             issues
                 .iter()
-                .any(|i| i.code.contains("EssenceDescriptorListEmpty")),
+                .any(|i| mentions(i, "EssenceDescriptorListEmpty")),
             "Empty EssenceDescriptorList should be flagged: {:#?}",
             issues,
         );
@@ -9060,7 +8981,7 @@ mod tests {
             let j2k = |issues: Vec<ValidationIssue>| {
                 issues
                     .into_iter()
-                    .filter(|i| i.code.contains("/J2K"))
+                    .filter(|i| mentions(i, "/J2K"))
                     .map(|i| i.code)
                     .collect::<Vec<_>>()
             };
@@ -9071,7 +8992,7 @@ mod tests {
             );
             assert_eq!(
                 j2k(App2E2023.validate_cpl(&cpl)),
-                vec!["ST2067-21:2023:6.2.5/J2K-Profile-Not-Allowed".to_string()],
+                vec!["ST2067-21:2023:6.2.5/J2KProfileNotAllowed".to_string()],
                 "{ul}: no 8K profile in 2023 Table 6"
             );
 
@@ -9080,7 +9001,7 @@ mod tests {
             cdci_mut(&mut small).picture_compression = Some(VideoCodec::from_ul(ul));
             assert_eq!(
                 j2k(App2E2026.validate_cpl(&small)),
-                vec!["ST2067-21:2026:7.2.5/J2K-8K-Resolution".to_string()],
+                vec!["ST2067-21:2026:7.2.5/J2K8KResolution".to_string()],
             );
         }
     }
@@ -9167,7 +9088,10 @@ mod tests {
         }
         for g in gone {
             assert!(
-                !St2067_21_2023::ALL.iter().any(|c| c.code().ends_with(g)),
+                !st2067_21::ALL
+                    .iter()
+                    .filter_map(|r| r.edition_rows().into_iter().nth(3).and_then(|e| e.code))
+                    .any(|c| c.ends_with(g)),
                 "{g} still in the 2023 code set"
             );
         }

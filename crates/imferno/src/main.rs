@@ -7,7 +7,7 @@ use imferno_core::package::{
     ValidationOptions, ValidationResult,
 };
 use imferno_core::validation::{AppSpecTarget, CoreSpecTarget};
-use imferno_core::{Category, Severity, ValidationIssue, ValidationProfile, ValidationReport};
+use imferno_core::{ValidationIssue, ValidationProfile, ValidationReport};
 use std::io::IsTerminal;
 use std::path::PathBuf;
 
@@ -145,6 +145,8 @@ enum OutputFormat {
     Csv,
     /// Full JSON (ValidationResult with package + validation)
     Json,
+    /// SARIF 2.1.0 log of the findings (rule ids, editions as taxonomies)
+    Sarif,
 }
 
 #[derive(Clone, Copy, Debug, clap::ValueEnum)]
@@ -215,6 +217,20 @@ fn parse_rule_severity(s: &str) -> Result<imferno_core::diagnostics::rules::Rule
             "Invalid severity '{}', expected: off|info|warn|error|critical",
             s
         )),
+    }
+}
+
+/// Why a rules-config key was flagged by `RulesConfig::validate`.
+fn describe_rule_warning(
+    reason: &imferno_core::diagnostics::rules::RuleValidationReason,
+) -> String {
+    use imferno_core::diagnostics::rules::RuleValidationReason as R;
+    match reason {
+        R::UnknownSource { variant } => format!(
+            "names unknown source `{variant}` (use XsdLayer, ProseRule or EngineInternal); ignored"
+        ),
+        R::MatchesNothing => "matches no rule, edition or spec; ignored".to_string(),
+        R::UnsupportedPattern { hint } => format!("is not supported ({hint}); ignored"),
     }
 }
 
@@ -292,27 +308,41 @@ async fn cmd_validate(
         "--hash-concurrency must be at least 1"
     );
     let rules = parse_rules(rules_config_path, inline_rules)?;
+    for w in rules.validate() {
+        eprintln!(
+            "warning: rules key `{}` {}",
+            w.key,
+            describe_rule_warning(&w.reason)
+        );
+    }
     let options = make_options(core_spec, app2e_spec, skip_disk_checks, rules);
-    let color = use_color() && !matches!(format, OutputFormat::Json);
+    let color = use_color() && !matches!(format, OutputFormat::Json | OutputFormat::Sarif);
 
     // Read files
     let files = match read_input(&path.to_string_lossy()).await {
         Ok(f) => f,
         Err(e) => {
-            if matches!(format, OutputFormat::Json) {
+            if matches!(format, OutputFormat::Json | OutputFormat::Sarif) {
                 let mut validation = ValidationReport::new(ValidationProfile::SMPTE);
                 validation.add(
-                    ValidationIssue::new(
-                        Severity::Critical,
-                        Category::Structure,
-                        "PARSE-PACKAGE-FAILED",
+                    ValidationIssue::from_rule(
+                        &imferno_core::catalogue::imferno::ParseError,
+                        imferno_core::catalogue::imferno::ImfernoEdition::Current,
                         format!("Failed to load IMF package: {}", e),
                     )
                     .with_suggestion(
                         "Ensure the directory contains VOLINDEX.xml and ASSETMAP.xml.",
                     ),
                 );
-                println!("{}", serde_json::to_string_pretty(&validation)?);
+                let out = if matches!(format, OutputFormat::Sarif) {
+                    serde_json::to_value(imferno_core::diagnostics::to_sarif_with_root(
+                        &validation,
+                        Some(path),
+                    ))?
+                } else {
+                    serde_json::to_value(&validation)?
+                };
+                println!("{}", serde_json::to_string_pretty(&out)?);
                 return Ok(());
             }
             return Err(e);
@@ -328,7 +358,7 @@ async fn cmd_validate(
         use std::sync::atomic::AtomicBool;
         use std::sync::Arc;
 
-        let show_progress = !matches!(format, OutputFormat::Json) && color;
+        let show_progress = !matches!(format, OutputFormat::Json | OutputFormat::Sarif) && color;
         let tracker = Arc::new(HashProgressTracker::new());
 
         // Spawn progress display ticker
@@ -527,7 +557,7 @@ async fn cmd_validate(
                 )
             })
             .collect();
-        if !matches!(format, OutputFormat::Json) {
+        if !matches!(format, OutputFormat::Json | OutputFormat::Sarif) {
             let snap = tracker.snapshot();
             let total = snap.len();
             let verified = snap
@@ -570,13 +600,9 @@ async fn cmd_validate(
                 println!("  FAIL  {}/{} verified, {} failed", verified, total, failed);
             }
         }
+        let spec_ed = result.package.package_edition(options.core_spec).edition;
         for err in &hash_errs {
-            result.validation.add(ValidationIssue::new(
-                Severity::Error,
-                Category::Asset,
-                "FILE-HASH-ERROR",
-                err.to_string(),
-            ));
+            result.validation.extend(err.to_issue(spec_ed));
         }
     }
 
@@ -584,6 +610,13 @@ async fn cmd_validate(
     match format {
         OutputFormat::Json => {
             println!("{}", serde_json::to_string_pretty(&result)?);
+        }
+        OutputFormat::Sarif => {
+            let log = imferno_core::diagnostics::to_sarif_with_root(
+                &result.validation,
+                Some(&result.package.root_path),
+            );
+            println!("{}", serde_json::to_string_pretty(&log)?);
         }
         OutputFormat::Summary | OutputFormat::Markdown | OutputFormat::Csv => {
             let report_format = match format {

@@ -19,21 +19,21 @@
 
 use std::collections::HashSet;
 
-use crate::diagnostics::{Category, Location, Severity, ValidationIssue};
+use crate::diagnostics::{Location, ValidationIssue};
 
-use crate::cpl::codes::St2067_3Code;
+use crate::catalogue::st2067_3::{self, St2067_3Edition};
 use crate::cpl::{CompositionPlaylist, ContentKind, CplNamespace, CONTENT_KIND_DEFAULT_SCOPE};
 
-// ─── Code dispatch helper ─────────────────────────────────────────────────────
+// ─── Edition dispatch ──────────────────────────────────────────────────────────
 
-fn code_fn(ns: &CplNamespace) -> fn(St2067_3Code) -> &'static str {
-    use crate::cpl::codes::{St2067_3_2013, St2067_3_2016};
+/// The ST 2067-3 edition whose rules are applied to a CPL of namespace `ns`.
+pub fn st2067_3_edition(ns: &CplNamespace) -> St2067_3Edition {
     match ns {
-        CplNamespace::Dci429_7 | CplNamespace::Smpte2067_3_2013 => St2067_3_2013::for_code,
+        CplNamespace::Dci429_7 | CplNamespace::Smpte2067_3_2013 => St2067_3Edition::V2013,
         // ST 2067-3:2020 reuses the 2016 namespace (canonical XSD is byte-identical
         // to 2016), so 2020-era CPLs land here too. Unknown namespaces default to
         // the latest real ruleset.
-        CplNamespace::Smpte2067_3_2016 | CplNamespace::Unknown(_) => St2067_3_2016::for_code,
+        CplNamespace::Smpte2067_3_2016 | CplNamespace::Unknown(_) => St2067_3Edition::V2016,
     }
 }
 
@@ -45,17 +45,17 @@ fn code_fn(ns: &CplNamespace) -> fn(St2067_3Code) -> &'static str {
 /// The spec year in issue codes is derived from the CPL's detected namespace.
 pub fn validate_cpl(cpl: &CompositionPlaylist) -> Vec<ValidationIssue> {
     let mut issues = Vec::new();
-    let code = code_fn(&cpl.namespace);
+    let spec_ed = st2067_3_edition(&cpl.namespace);
 
-    validate_content_kind_vocabulary(cpl, code, &mut issues);
-    validate_source_encoding_refs(cpl, code, &mut issues);
-    validate_content_versions(cpl, code, &mut issues);
-    validate_content_version_uniqueness(cpl, code, &mut issues);
-    validate_locale_language_tags(cpl, code, &mut issues);
-    validate_track_id_uniqueness(cpl, code, &mut issues);
-    validate_sequence_duration_integer_edit_units(cpl, code, &mut issues);
-    validate_marker_offsets(cpl, code, &mut issues);
-    validate_marker_labels(cpl, code, &mut issues);
+    validate_content_kind_vocabulary(cpl, spec_ed, &mut issues);
+    validate_source_encoding_refs(cpl, spec_ed, &mut issues);
+    validate_content_versions(cpl, spec_ed, &mut issues);
+    validate_content_version_uniqueness(cpl, spec_ed, &mut issues);
+    validate_locale_language_tags(cpl, spec_ed, &mut issues);
+    validate_track_id_uniqueness(cpl, spec_ed, &mut issues);
+    validate_sequence_duration_integer_edit_units(cpl, spec_ed, &mut issues);
+    validate_marker_offsets(cpl, spec_ed, &mut issues);
+    validate_marker_labels(cpl, spec_ed, &mut issues);
 
     issues
 }
@@ -150,7 +150,7 @@ fn raw_content_kind_text(xml: &str) -> Option<RawContentKind> {
 /// Any other scope is outside the specification.
 fn validate_content_kind_vocabulary(
     cpl: &CompositionPlaylist,
-    code: fn(St2067_3Code) -> &'static str,
+    spec_ed: St2067_3Edition,
     issues: &mut Vec<ValidationIssue>,
 ) {
     let scope = cpl.content_kind.effective_scope();
@@ -207,10 +207,9 @@ fn validate_content_kind_vocabulary(
 
     if !allowed.contains(&value.as_str()) {
         issues.push(
-            ValidationIssue::new(
-                Severity::Warning,
-                Category::Metadata,
-                code(St2067_3Code::ContentKindUnknown),
+            ValidationIssue::from_rule(
+                &st2067_3::ContentKindUnknown,
+                spec_ed,
                 format!(
                     "ContentKind {:?} is not a recognized value under scope {scope} \
                      (expected one of {table}: {})",
@@ -228,7 +227,7 @@ fn validate_content_kind_vocabulary(
 /// ST 2067-3 §6.4.2: `SourceEncoding` shall reference an `EssenceDescriptor/Id` in the CPL.
 fn validate_source_encoding_refs(
     cpl: &CompositionPlaylist,
-    code: fn(St2067_3Code) -> &'static str,
+    spec_ed: St2067_3Edition,
     issues: &mut Vec<ValidationIssue>,
 ) {
     let cpl_id = cpl.id;
@@ -263,10 +262,9 @@ fn validate_source_encoding_refs(
 
                     if !has_edl {
                         issues.push(
-                            ValidationIssue::new(
-                                Severity::Error,
-                                Category::Reference,
-                                code(St2067_3Code::SourceEncodingNoEssenceDescriptorList),
+                            ValidationIssue::from_rule(
+                                &st2067_3::SourceEncodingNoEssenceDescriptorList,
+                                spec_ed,
                                 format!(
                                     "{track_type} resource {res_idx}: SourceEncoding '{se_str}' \
                                      present but EssenceDescriptorList is absent",
@@ -276,10 +274,9 @@ fn validate_source_encoding_refs(
                         );
                     } else if !ed_ids.contains(&se_str) {
                         issues.push(
-                            ValidationIssue::new(
-                                Severity::Error,
-                                Category::Reference,
-                                code(St2067_3Code::SourceEncodingUnresolved),
+                            ValidationIssue::from_rule(
+                                &st2067_3::SourceEncodingUnresolved,
+                                spec_ed,
                                 format!(
                                     "{track_type} resource {res_idx}: SourceEncoding '{se_str}' \
                                      does not match any EssenceDescriptor Id",
@@ -297,10 +294,9 @@ fn validate_source_encoding_refs(
     if let Some(ref edl) = cpl.essence_descriptor_list {
         if edl.essence_descriptors.is_empty() {
             issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Structure,
-                    code(St2067_3Code::EssenceDescriptorListEmpty),
+                ValidationIssue::from_rule(
+                    &st2067_3::EssenceDescriptorListEmpty,
+                    spec_ed,
                     "EssenceDescriptorList is present but contains no EssenceDescriptors",
                 )
                 .with_location(loc),
@@ -314,7 +310,7 @@ fn validate_source_encoding_refs(
 /// ST 2067-3 §6.11: ContentVersionList, ContentVersion/Id and ContentVersion/LabelText constraints.
 fn validate_content_versions(
     cpl: &CompositionPlaylist,
-    code: fn(St2067_3Code) -> &'static str,
+    spec_ed: St2067_3Edition,
     issues: &mut Vec<ValidationIssue>,
 ) {
     let loc = Location::new().with_cpl(cpl.id);
@@ -326,10 +322,9 @@ fn validate_content_versions(
 
     if cvl.content_versions.is_empty() {
         issues.push(
-            ValidationIssue::new(
-                Severity::Error,
-                Category::Structure,
-                code(St2067_3Code::ContentVersionListEmpty),
+            ValidationIssue::from_rule(
+                &st2067_3::ContentVersionListEmpty,
+                spec_ed,
                 "ContentVersionList shall contain at least one ContentVersion",
             )
             .with_location(loc.clone()),
@@ -340,10 +335,9 @@ fn validate_content_versions(
     for (i, cv) in cvl.content_versions.iter().enumerate() {
         if cv.id.trim().is_empty() {
             issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Metadata,
-                    code(St2067_3Code::ContentVersionIdInvalid),
+                ValidationIssue::from_rule(
+                    &st2067_3::ContentVersionIdInvalid,
+                    spec_ed,
                     format!("ContentVersion[{i}] has an empty Id (shall be a URI)"),
                 )
                 .with_location(loc.clone()),
@@ -351,10 +345,9 @@ fn validate_content_versions(
         }
         if cv.label_text.is_none() {
             issues.push(
-                ValidationIssue::new(
-                    Severity::Warning,
-                    Category::Metadata,
-                    code(St2067_3Code::ContentVersionLabelTextMissing),
+                ValidationIssue::from_rule(
+                    &st2067_3::ContentVersionLabelTextMissing,
+                    spec_ed,
                     format!("ContentVersion[{i}] (Id: '{}') is missing LabelText", cv.id,),
                 )
                 .with_location(loc.clone()),
@@ -368,7 +361,7 @@ fn validate_content_versions(
 /// ST 2067-3 §6.12: Locale language tags shall conform to RFC 5646.
 fn validate_locale_language_tags(
     cpl: &CompositionPlaylist,
-    code: fn(St2067_3Code) -> &'static str,
+    spec_ed: St2067_3Edition,
     issues: &mut Vec<ValidationIssue>,
 ) {
     let loc = Location::new().with_cpl(cpl.id);
@@ -384,10 +377,9 @@ fn validate_locale_language_tags(
                 let s = tag.as_str();
                 if s.is_empty() || !s.chars().next().unwrap_or(' ').is_ascii_alphabetic() {
                     issues.push(
-                        ValidationIssue::new(
-                            Severity::Warning,
-                            Category::Metadata,
-                            code(St2067_3Code::LocaleLanguageTagInvalid),
+                        ValidationIssue::from_rule(
+                            &st2067_3::LocaleLanguageTagInvalid,
+                            spec_ed,
                             format!(
                                 "Locale[{i}]: language tag '{s}' does not conform to RFC 5646 \
                                  (must start with an ASCII letter)",
@@ -406,7 +398,7 @@ fn validate_locale_language_tags(
 /// ST 2067-3 §7.3: TrackId values shall be unique within each segment.
 fn validate_track_id_uniqueness(
     cpl: &CompositionPlaylist,
-    code: fn(St2067_3Code) -> &'static str,
+    spec_ed: St2067_3Edition,
     issues: &mut Vec<ValidationIssue>,
 ) {
     let cpl_id = cpl.id;
@@ -425,10 +417,9 @@ fn validate_track_id_uniqueness(
             let id = seq.track_id().to_string();
             if !seen.insert(id.clone()) {
                 issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Structure,
-                        code(St2067_3Code::TrackIdNotUnique),
+                    ValidationIssue::from_rule(
+                        &st2067_3::TrackIdNotUnique,
+                        spec_ed,
                         format!(
                             "Duplicate TrackId '{id}' in segment {seg} ({track_type})",
                             seg = seg_idx + 1,
@@ -446,7 +437,7 @@ fn validate_track_id_uniqueness(
 /// ST 2067-3 §6.13: a Marker Offset shall not exceed the IntrinsicDuration of its resource.
 fn validate_marker_offsets(
     cpl: &CompositionPlaylist,
-    code: fn(St2067_3Code) -> &'static str,
+    spec_ed: St2067_3Edition,
     issues: &mut Vec<ValidationIssue>,
 ) {
     let cpl_id = cpl.id;
@@ -462,10 +453,9 @@ fn validate_marker_offsets(
                 for marker in &resource.markers {
                     if marker.offset > intrinsic_duration {
                         issues.push(
-                            ValidationIssue::new(
-                                Severity::Error,
-                                Category::Timing,
-                                code(St2067_3Code::MarkerOffsetOutOfRange),
+                            ValidationIssue::from_rule(
+                                &st2067_3::MarkerOffsetOutOfRange,
+                                spec_ed,
                                 format!(
                                     "Marker '{}' offset {} exceeds resource IntrinsicDuration {}",
                                     marker.label, marker.offset, intrinsic_duration,
@@ -512,7 +502,7 @@ const STANDARD_MARKER_LABELS_2016: &[&str] = &["FFDC", "LFDC"];
 /// non-default scope and therefore out of scope.
 fn validate_marker_labels(
     cpl: &CompositionPlaylist,
-    code: fn(St2067_3Code) -> &'static str,
+    spec_ed: St2067_3Edition,
     issues: &mut Vec<ValidationIssue>,
 ) {
     let cpl_id = cpl.id;
@@ -536,10 +526,9 @@ fn validate_marker_labels(
                     let label = marker.label.label.to_string();
                     if !allowed.contains(&label.as_str()) {
                         issues.push(
-                            ValidationIssue::new(
-                                Severity::Warning,
-                                Category::Metadata,
-                                code(St2067_3Code::MarkerLabelUnknown),
+                            ValidationIssue::from_rule(
+                                &st2067_3::MarkerLabelUnknown,
+                                spec_ed,
                                 format!(
                                     "Marker label '{label}' is not a recognized {which} \
                                      (expected one of: {})",
@@ -565,7 +554,7 @@ fn validate_marker_labels(
 /// ST 2067-3 §6.1.9: No two ContentVersion elements shall have identical Id values.
 fn validate_content_version_uniqueness(
     cpl: &CompositionPlaylist,
-    code: fn(St2067_3Code) -> &'static str,
+    spec_ed: St2067_3Edition,
     issues: &mut Vec<ValidationIssue>,
 ) {
     let loc = Location::new().with_cpl(cpl.id);
@@ -581,10 +570,9 @@ fn validate_content_version_uniqueness(
         }
         if !seen.insert(id.clone()) {
             issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Structure,
-                    code(St2067_3Code::ContentVersionIdDuplicate),
+                ValidationIssue::from_rule(
+                    &st2067_3::ContentVersionIdDuplicate,
+                    spec_ed,
                     format!(
                         "ContentVersion[{i}] Id '{id}' is duplicated; \
                          no two ContentVersion elements shall have identical Id values",
@@ -614,7 +602,7 @@ fn validate_content_version_uniqueness(
 #[allow(clippy::manual_checked_ops)]
 fn validate_sequence_duration_integer_edit_units(
     cpl: &CompositionPlaylist,
-    code: fn(St2067_3Code) -> &'static str,
+    spec_ed: St2067_3Edition,
     issues: &mut Vec<ValidationIssue>,
 ) {
     let cpl_er = match &cpl.edit_rate {
@@ -668,10 +656,9 @@ fn validate_sequence_duration_integer_edit_units(
 
             if has_cross_rate && sum_den != 1 {
                 issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Timing,
-                        code(St2067_3Code::SegmentDurationIntegerEditUnits),
+                    ValidationIssue::from_rule(
+                        &st2067_3::SegmentDurationIntegerEditUnits,
+                        spec_ed,
                         format!(
                             "Segment {seg} {track_type} sequence duration is not an integer \
                              number of Composition Edit Units ({sum_num}/{sum_den})",

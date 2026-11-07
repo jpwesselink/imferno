@@ -14,7 +14,6 @@
 /// singleton. Native-only.
 #[cfg(not(target_arch = "wasm32"))]
 pub mod audio_mca;
-pub mod codes;
 /// MXF essence-header validation backed by `smpte-mxf`. Native-only —
 /// the wasm validator never sees MXF binaries (browser callers upload
 /// the XML side of an IMF package), so this module isn't compiled for

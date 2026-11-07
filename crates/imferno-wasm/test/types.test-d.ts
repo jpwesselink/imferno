@@ -2,7 +2,15 @@
 // Type-checked (never executed) by `tsc -p test/tsconfig.json`, which
 // types-contract.test.js runs. A failure here means the public signatures changed.
 import * as api from "../index.js";
-import type { ImfReport, Imferno, ValidateOptions, ValidationResult } from "../index.js";
+import type {
+  ImfReport,
+  Imferno,
+  RuleInfo,
+  SarifLog,
+  ValidateOptions,
+  ValidationReport,
+  ValidationResult,
+} from "../index.js";
 
 type IsAny<T> = 0 extends 1 & T ? true : false;
 type Equals<A, B> =
@@ -27,6 +35,9 @@ assert<Equals<ReturnType<typeof api.parsePackage>, Promise<Imferno>>>();
 assert<Equals<ReturnType<typeof api.buildReport>, Promise<ImfReport>>>();
 assert<Equals<ReturnType<typeof api.formatReport>, Promise<string>>>();
 assert<Equals<Parameters<typeof api.formatReport>, [report: ValidationResult | ImfReport]>>();
+assert<Equals<ReturnType<typeof api.toSarif>, Promise<SarifLog>>>();
+assert<Equals<Parameters<typeof api.toSarif>, [report: ValidationResult | ValidationReport]>>();
+assert<Equals<ReturnType<typeof api.listRules>, Promise<RuleInfo[]>>>();
 assert<Equals<ReturnType<typeof api.getVersion>, Promise<string>>>();
 assert<Equals<ReturnType<typeof api.init>, Promise<void>>>();
 
@@ -49,5 +60,5 @@ api.validate({}, { coreSpec: "v2019" });
 // @ts-expect-error — not a rule severity
 api.validate({}, { rules: { SegmentDuration: "fatal" } });
 
-const c: "ST2067-2:2020:8.3/FileNotFound" = api.codes.ST2067_2_2020.FileNotFound;
+const c: "ST2067-2/FileNotFound" = api.codes.ST2067_2.FileNotFound;
 void c;

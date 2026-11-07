@@ -99,12 +99,8 @@ impl fmt::Display for Category {
 /// so callers can filter, group, or apply per-source severity overrides
 /// without inspecting the code string.
 ///
-/// Currently *inferred* from the code prefix on a `ValidationIssue`
-/// (see `ValidationIssue::source`) — no engine code needs to set it
-/// explicitly. If inference ever becomes ambiguous (e.g. a non-XSD
-/// engine internal rule that wants the `XSD/` prefix for catalogue
-/// reasons), we can add a `with_source()` builder without changing
-/// the public shape.
+/// Derived from the rule's spec ([`Spec::source`]): `XSD` rules are
+/// `XsdLayer`, `IMFERNO` rules `EngineInternal`, SMPTE specs `ProseRule`.
 #[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum IssueSource {
@@ -127,24 +123,6 @@ impl fmt::Display for IssueSource {
             IssueSource::XsdLayer => write!(f, "XSD"),
             IssueSource::ProseRule => write!(f, "Prose"),
             IssueSource::EngineInternal => write!(f, "Engine"),
-        }
-    }
-}
-
-impl IssueSource {
-    /// Infer the source authority from a catalogue code string.
-    ///
-    /// Inference rules (checked top-to-bottom):
-    /// - `XSD/...` → XsdLayer
-    /// - `IMFERNO:...` or `IMFERNO/...` → EngineInternal
-    /// - everything else → ProseRule (most catalogue codes cite a spec §)
-    pub fn from_code(code: &str) -> Self {
-        if code.starts_with("XSD/") {
-            IssueSource::XsdLayer
-        } else if code.starts_with("IMFERNO:") || code.starts_with("IMFERNO/") {
-            IssueSource::EngineInternal
-        } else {
-            IssueSource::ProseRule
         }
     }
 }
@@ -259,25 +237,37 @@ impl fmt::Display for Location {
     }
 }
 
-/// A single validation issue
+/// A single validation finding.
+///
+/// Created only through [`ValidationIssue::from_rule`]: severity, category,
+/// clause and display code all come from the rule table row of the edition
+/// that was applied.
 #[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ValidationIssue {
-    /// Severity level
+    /// Severity level (the table default, possibly remapped by a rules config).
     pub severity: Severity,
     /// Category of issue
     pub category: Category,
     /// Authority that emitted this issue (XSD layer, prose rule, engine
-    /// internal). Inferred from `code` at construction time so the field
-    /// is always consistent with the code prefix — JS consumers can
-    /// filter on `issue.source` directly without re-implementing the
-    /// inference. Deserialised with a default so old reports without the
-    /// field round-trip cleanly.
-    #[serde(default = "default_source_for_deserialize")]
+    /// internal), derived from the rule's spec.
     pub source: IssueSource,
+    /// Stable, edition-free rule id (`ST2067-3/SegmentDuration`).
+    pub rule: RuleId,
+    /// Spec the rule belongs to.
+    pub spec: Spec,
+    /// Edition of the spec that was applied (`"2016"`; empty for
+    /// single-edition pseudo-specs).
+    pub edition: String,
+    /// Clause of that edition the rule comes from (empty for pseudo-specs
+    /// without clauses).
+    pub clause: String,
+    /// Normative strength of the rule in that edition.
+    pub strength: Strength,
     /// Location where issue was found
     pub location: Location,
-    /// Error code (e.g., "ST2067-2:2020:8.3/FileNotFound")
+    /// Display code: `SPEC:EDITION:CLAUSE/Name`, with the edition actually
+    /// applied (e.g. `ST2067-3:2016:7.2.2/SegmentDuration`).
     pub code: String,
     /// Human-readable message
     pub message: String,
@@ -288,66 +278,80 @@ pub struct ValidationIssue {
     /// Other `Location`s when this issue represents an aggregation of
     /// multiple identical-code occurrences (see
     /// [`ValidationReport::aggregate`]). Empty for fresh, un-aggregated
-    /// issues. Skipped during serialisation when empty so the on-wire
-    /// shape stays back-compatible for callers that don't aggregate.
+    /// issues. Skipped during serialisation when empty.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub additional_instances: Vec<Location>,
 }
 
 impl ValidationIssue {
-    pub fn new(
-        severity: Severity,
-        category: Category,
-        code: impl Into<String>,
+    /// Report `rule` against `edition`, the edition of the rule's spec that
+    /// was actually applied. Severity, category, clause, strength and the
+    /// display code are read from the rule's table row for that edition.
+    ///
+    /// Reporting a rule for an edition whose row says the edition does not
+    /// contain it is a bug: it panics in debug builds; release builds drop
+    /// the finding and report `IMFERNO:Engine/RuleNotInEdition` instead.
+    pub fn from_rule<E: Edition>(
+        rule: &'static Rule<E>,
+        edition: E,
         message: impl Into<String>,
     ) -> Self {
-        let code: String = code.into();
-        let source = IssueSource::from_code(&code);
+        let message = message.into();
+        let Some((entry, clause)) = rule.entry(edition).and_then(|e| e.clause.map(|c| (e, c)))
+        else {
+            debug_assert!(
+                false,
+                "{} reported for {} {}, whose table row says the edition does not contain it",
+                rule.id(),
+                E::SPEC,
+                edition.label()
+            );
+            return Self::from_rule(
+                &crate::catalogue::imferno::RuleNotInEdition,
+                crate::catalogue::imferno::ImfernoEdition::Current,
+                format!(
+                    "{} was reported for {} {}, which does not contain it (dropped finding: {})",
+                    rule.id(),
+                    E::SPEC,
+                    edition.label(),
+                    message
+                ),
+            );
+        };
         Self {
-            severity,
-            category,
-            source,
+            severity: entry.default_severity,
+            category: rule.category.clone(),
+            source: E::SPEC.source(),
+            rule: rule.id(),
+            spec: E::SPEC,
+            edition: edition.label().to_string(),
+            clause: clause.to_string(),
+            strength: entry.strength,
             location: Location::new(),
-            code,
-            message: message.into(),
+            code: rule::display_code(E::SPEC, edition.label(), clause, rule.name),
+            message,
             suggestion: None,
             context: HashMap::new(),
             additional_instances: Vec::new(),
         }
     }
 
-    /// Build a `ValidationIssue` directly from a typed `ValidationCode`,
-    /// reading severity + category from the catalogue rather than the
-    /// caller. Use this for any rule whose code lives in one of the
-    /// `*_codes` modules — the catalogue is the single source of truth
-    /// for severity and category. Pass the bare enum value:
-    ///
-    /// ```ignore
-    /// use imferno_core::mxf::codes::St2067_2_2016;
-    /// let issue = ValidationIssue::from_code(
-    ///     St2067_2_2016::AudioSampleRateUnsupported,
-    ///     format!("got {hz} Hz"),
-    /// );
-    /// ```
-    pub fn from_code<C: codes::ValidationCode>(code: C, message: impl Into<String>) -> Self {
-        // `code` is consumed only via `&self`-taking methods; we never
-        // need to move it. The string code itself comes from
-        // `code.code()` which returns `&'static str`, so no `Into<String>`
-        // bound on `C` is required.
-        Self::new(
-            code.default_severity(),
-            code.category(),
-            code.code(),
-            message,
-        )
+    /// The rule's name (the part of [`Self::rule`] after the spec).
+    pub fn rule_name(&self) -> &str {
+        self.rule
+            .0
+            .split_once('/')
+            .map(|(_, n)| n)
+            .unwrap_or(&self.rule.0)
+    }
+
+    /// Whether this finding reports `rule` (any edition).
+    pub fn is<E: Edition>(&self, rule: &Rule<E>) -> bool {
+        self.spec == E::SPEC && self.rule_name() == rule.name
     }
 
     /// Number of occurrences this issue represents. `1` for a fresh
     /// issue, `1 + additional_instances.len()` after aggregation.
-    ///
-    /// JS consumers can compute this themselves as
-    /// `1 + issue.additionalInstances.length` — the field is the source
-    /// of truth, this method is a Rust-side convenience.
     pub fn instance_count(&self) -> usize {
         1 + self.additional_instances.len()
     }
@@ -366,15 +370,6 @@ impl ValidationIssue {
         self.context.insert(key.into(), value.into());
         self
     }
-}
-
-/// Serde default for `ValidationIssue::source` — used only when
-/// deserialising a payload that pre-dates the field. Returns
-/// `IssueSource::EngineInternal` as a safe fallback; the proper value
-/// will be re-derived if the issue is re-emitted, since `::new` always
-/// computes from the code.
-fn default_source_for_deserialize() -> IssueSource {
-    IssueSource::EngineInternal
 }
 
 impl fmt::Display for ValidationIssue {
@@ -550,6 +545,14 @@ impl ValidationReport {
     }
 }
 
+impl Extend<ValidationIssue> for ValidationReport {
+    fn extend<I: IntoIterator<Item = ValidationIssue>>(&mut self, issues: I) {
+        for issue in issues {
+            self.add(issue);
+        }
+    }
+}
+
 impl fmt::Display for ValidationReport {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "IMF Package Validation Report")?;
@@ -634,16 +637,17 @@ impl fmt::Display for ValidationProfile {
     }
 }
 
-/// Typed validation-code catalogue with per-spec enums.
-///
-/// Every normative code emitted by the imf-rs validators is defined here,
-/// grouped by the SMPTE specification that defines it.  See [`codes`] for
-/// the full API.
-pub mod codes;
+/// Per-edition rule model (rules, edition tables, strength).
+pub mod rule;
+pub use rule::{Edition, Rule, RuleId, Spec, Strength};
 
 /// ESLint-style per-rule severity overrides for `ValidationReport`.
 pub mod rules;
 pub use rules::{RuleSeverity, RulesConfig};
+
+/// SARIF 2.1.0 output.
+pub mod sarif;
+pub use sarif::{sarif_from_json, to_sarif, to_sarif_json, to_sarif_with_root};
 
 /// Result type for parsing operations that can accumulate errors
 pub type ParseResult<T> = Result<(T, ValidationReport), CriticalError>;
@@ -685,150 +689,109 @@ impl From<std::io::Error> for CriticalError {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::catalogue::imferno::{self as imf, ImfernoEdition};
+    use crate::catalogue::st2067_2::{self, St2067_2Edition};
+    use crate::catalogue::st2067_21::{self, App2EEdition};
+    use crate::catalogue::st2067_3::{self, St2067_3Edition};
+    use crate::catalogue::xsd::{self, XsdSchema};
+
+    fn file_not_found() -> ValidationIssue {
+        ValidationIssue::from_rule(&st2067_2::FileNotFound, St2067_2Edition::V2020, "missing")
+    }
 
     #[test]
-    fn test_validation_issue_creation() {
-        let issue = ValidationIssue::new(
-            Severity::Error,
-            Category::Schema,
-            "ST2067-2:2020:8.3/FileNotFound",
-            "Missing required field 'EditRate' in Segment",
-        )
-        .with_location(
-            Location::new()
-                .with_cpl(ImfUuid::parse("urn:uuid:12345678-0000-0000-0000-000000000000").unwrap())
-                .with_segment(0),
-        )
-        .with_suggestion("Add EditRate element with value like '24 1' or '24000 1001'");
-
+    fn from_rule_reads_severity_category_and_clause_from_the_table() {
+        let issue = ValidationIssue::from_rule(
+            &st2067_3::SegmentDuration,
+            St2067_3Edition::V2013,
+            "durations differ",
+        );
+        assert_eq!(issue.code, "ST2067-3:2013:7.2.2/SegmentDuration");
+        assert_eq!(issue.rule.0, "ST2067-3/SegmentDuration");
+        assert_eq!(issue.rule_name(), "SegmentDuration");
+        assert_eq!(issue.spec, Spec::St2067_3);
+        assert_eq!(issue.edition, "2013");
+        assert_eq!(issue.clause, "7.2.2");
         assert_eq!(issue.severity, Severity::Error);
-        assert_eq!(issue.code, "ST2067-2:2020:8.3/FileNotFound");
-        assert!(issue.suggestion.is_some());
+        assert_eq!(issue.strength, Strength::Shall);
+        assert_eq!(issue.category, Category::Timing);
+        assert_eq!(issue.source, IssueSource::ProseRule);
+        assert!(issue.is(&st2067_3::SegmentDuration));
     }
 
     #[test]
-    fn issue_source_from_code_classifies_xsd_layer() {
-        assert_eq!(
-            IssueSource::from_code("XSD/TypeInvalid/IssueDate"),
-            IssueSource::XsdLayer
-        );
-        assert_eq!(
-            IssueSource::from_code("XSD/ElementMissing"),
-            IssueSource::XsdLayer
-        );
+    fn from_rule_reports_the_edition_applied() {
+        // The same rule reported against two editions carries each
+        // edition's own label and clause.
+        let e2016 =
+            ValidationIssue::from_rule(&st2067_2::FileNotFound, St2067_2Edition::V2016, "x");
+        let e2020 = file_not_found();
+        assert_eq!(e2016.code, "ST2067-2:2016:8.3/FileNotFound");
+        assert_eq!(e2020.code, "ST2067-2:2020:8.3/FileNotFound");
+        assert_eq!(e2016.rule, e2020.rule);
     }
 
     #[test]
-    fn issue_source_from_code_classifies_engine_internal() {
-        assert_eq!(
-            IssueSource::from_code("IMFERNO:Package/UnreferencedAsset"),
-            IssueSource::EngineInternal
-        );
-        assert_eq!(
-            IssueSource::from_code("IMFERNO/Internal/ParseError"),
-            IssueSource::EngineInternal
-        );
-    }
-
-    #[test]
-    fn issue_source_from_code_defaults_to_prose_rule() {
-        // SMPTE prose-cited codes — explicit spec section in the prefix.
-        assert_eq!(
-            IssueSource::from_code("ST2067-2:2020:6.4.2/EssenceDescriptorList"),
-            IssueSource::ProseRule
-        );
-        assert_eq!(
-            IssueSource::from_code("ST2067-21:2023:7.1/AppIdMismatch"),
-            IssueSource::ProseRule
-        );
-        // Catch-all: anything we don't recognise falls into ProseRule
-        // (catalogue codes are overwhelmingly spec-cited).
-        assert_eq!(
-            IssueSource::from_code("dcml-UUID-Malformed"),
-            IssueSource::ProseRule
-        );
-    }
-
-    #[test]
-    fn validation_issue_source_field_is_populated_from_code() {
-        let xsd = ValidationIssue::new(
-            Severity::Error,
-            Category::Schema,
-            "XSD/PatternInvalid/UUID",
-            "uuid did not match pattern",
-        );
-        assert_eq!(xsd.source, IssueSource::XsdLayer);
-
-        let prose = ValidationIssue::new(
-            Severity::Warning,
-            Category::Reference,
-            "ST2067-3:2020:5.5.1.2/ContentKindUnknown",
-            "unknown content kind",
-        );
-        assert_eq!(prose.source, IssueSource::ProseRule);
-
-        let engine = ValidationIssue::new(
-            Severity::Critical,
-            Category::Structure,
-            "IMFERNO:Package/ParseError",
-            "could not parse CPL",
-        );
+    fn pseudo_specs_drop_empty_code_parts() {
+        let engine = ValidationIssue::from_rule(&imf::ParseError, ImfernoEdition::Current, "x");
+        assert_eq!(engine.code, "IMFERNO:Package/ParseError");
         assert_eq!(engine.source, IssueSource::EngineInternal);
+        assert_eq!(engine.severity, Severity::Critical);
+        let schema = ValidationIssue::from_rule(&xsd::TypeInvalid, XsdSchema::Cpl2016, "x");
+        assert_eq!(schema.code, "XSD:CPL-2016/TypeInvalid");
+        assert_eq!(schema.source, IssueSource::XsdLayer);
     }
 
     #[test]
-    fn validation_issue_source_round_trips_through_serde() {
-        let xsd = ValidationIssue::new(
-            Severity::Error,
-            Category::Schema,
-            "XSD/PatternInvalid/UUID",
-            "uuid did not match pattern",
-        );
-        let json = serde_json::to_string(&xsd).unwrap();
-        assert!(json.contains("XsdLayer"), "source should serialise: {json}");
+    #[should_panic(expected = "does not contain it")]
+    fn reporting_a_rule_outside_its_editions_panics_in_debug() {
+        // ColorSystem is in every edition; HtIrvParameterBMax only in 2026.
+        let _ =
+            ValidationIssue::from_rule(&st2067_21::HtIrvParameterBMax, App2EEdition::V2014, "x");
+    }
+
+    #[test]
+    fn rule_not_in_edition_is_an_engine_rule() {
+        let rows = imf::RuleNotInEdition.editions;
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].clause, Some("Engine"));
+    }
+
+    #[test]
+    fn validation_issue_serde_round_trip() {
+        let uuid = ImfUuid::parse("urn:uuid:abcdef00-1234-5678-9abc-def012345678").unwrap();
+        let issue = file_not_found().with_location(Location::new().with_cpl(uuid));
+        let json = serde_json::to_string(&issue).unwrap();
+        assert!(json.contains(r#""rule":"ST2067-2/FileNotFound""#), "{json}");
+        assert!(json.contains(r#""spec":"ST2067-2""#), "{json}");
+        assert!(json.contains(r#""strength":"shall""#), "{json}");
         let back: ValidationIssue = serde_json::from_str(&json).unwrap();
-        assert_eq!(back.source, IssueSource::XsdLayer);
-    }
-
-    #[test]
-    fn validation_issue_source_deserialise_defaults_when_missing() {
-        // Older payload shape without the `source` field — must
-        // round-trip into a sensible default rather than failing.
-        let legacy = r#"{
-            "severity": "Error",
-            "category": "Schema",
-            "location": {},
-            "code": "XSD/PatternInvalid/UUID",
-            "message": "uuid did not match pattern",
-            "suggestion": null,
-            "context": {}
-        }"#;
-        let issue: ValidationIssue = serde_json::from_str(legacy).unwrap();
-        assert_eq!(issue.source, IssueSource::EngineInternal);
+        assert_eq!(back.severity, Severity::Error);
+        assert_eq!(back.location.cpl_id, Some(uuid));
+        assert_eq!(back.rule, issue.rule);
+        assert_eq!(back.edition, "2020");
     }
 
     #[test]
     fn test_validation_report() {
         let mut report = ValidationReport::new(ValidationProfile::SMPTE);
-
-        report.add(ValidationIssue::new(
-            Severity::Critical,
-            Category::Asset,
-            "ST2067-2:2020:8.3/FileNotFound",
-            "Required MXF file not found",
+        report.add(ValidationIssue::from_rule(
+            &imf::ParseError,
+            ImfernoEdition::Current,
+            "x",
         ));
-
-        report.add(ValidationIssue::new(
-            Severity::Warning,
-            Category::Metadata,
-            "META-001",
-            "ContentKind not in recommended vocabulary",
+        report.add(ValidationIssue::from_rule(
+            &st2067_3::ContentKindUnknown,
+            St2067_3Edition::V2016,
+            "x",
         ));
-
         assert_eq!(report.total_issues(), 2);
         assert!(!report.is_playable);
         assert!(!report.is_compliant);
         assert!(report.has_critical());
+        assert!(report.summary().contains("1 critical"));
+        let display = format!("{report}");
+        assert!(display.contains("IMFERNO:Package/ParseError"));
     }
 
     #[test]
@@ -838,127 +801,38 @@ mod tests {
             .with_cpl(ImfUuid::parse("urn:uuid:12345678-0000-0000-0000-000000000000").unwrap())
             .with_segment(2)
             .with_path("/path/to/package".to_string());
-
         let formatted = format!("{}", location);
         assert!(formatted.contains("ASSETMAP.xml"));
-        assert!(formatted.contains("1234-5678") || !formatted.is_empty());
-        assert!(formatted.contains("2") || !formatted.is_empty());
+        assert!(formatted.contains("Segment:3"));
+        assert!(Location::new().to_string().is_empty());
     }
 
     #[test]
     fn test_severity_ordering() {
-        // Test severity ordering for proper sorting
         assert!(Severity::Critical > Severity::Error);
         assert!(Severity::Error > Severity::Warning);
         assert!(Severity::Warning > Severity::Info);
-
-        let severities = vec![
-            Severity::Info,
-            Severity::Critical,
-            Severity::Warning,
-            Severity::Error,
-        ];
-        let mut sorted = severities.clone();
-        sorted.sort();
-        sorted.reverse(); // Highest first
-
-        assert_eq!(
-            sorted,
-            vec![
-                Severity::Critical,
-                Severity::Error,
-                Severity::Warning,
-                Severity::Info
-            ]
-        );
     }
 
     #[test]
     fn test_category_display() {
         assert_eq!(format!("{}", Category::Schema), "Schema");
-        assert_eq!(format!("{}", Category::Asset), "Asset");
-        assert_eq!(format!("{}", Category::Metadata), "Metadata");
         assert_eq!(format!("{}", Category::Timing), "Timing");
-        assert_eq!(format!("{}", Category::Asset), "Asset");
-        assert_eq!(format!("{}", Category::Structure), "Structure");
-    }
-
-    #[test]
-    fn test_validation_issue_with_context() {
-        let mut issue = ValidationIssue::new(
-            Severity::Warning,
-            Category::Metadata,
-            "META-002",
-            "ContentKind uses non-standard value",
-        );
-
-        issue = issue.with_context("element", "Found in MainMarker element");
-
-        assert!(!issue.context.is_empty());
-        assert!(issue.context.contains_key("element"));
     }
 
     #[test]
     fn test_validation_report_merge() {
         let mut report1 = ValidationReport::new(ValidationProfile::SMPTE);
-        report1.add(ValidationIssue::new(
-            Severity::Error,
-            Category::Schema,
-            "ST2067-2:2020:8.3/ChecksumMismatch",
-            "Invalid type for EditRate",
-        ));
-
+        report1.add(file_not_found());
         let mut report2 = ValidationReport::new(ValidationProfile::SMPTE);
-        report2.add(ValidationIssue::new(
-            Severity::Warning,
-            Category::Metadata,
-            "META-003",
-            "Missing annotation",
+        report2.add(ValidationIssue::from_rule(
+            &st2067_3::ContentKindUnknown,
+            St2067_3Edition::V2016,
+            "x",
         ));
-
         report1.merge(report2);
-
         assert_eq!(report1.total_issues(), 2);
         assert!(report1.has_errors());
-    }
-
-    #[test]
-    fn test_validation_report_summary() {
-        let mut report = ValidationReport::new(ValidationProfile::SMPTE);
-
-        report.add(ValidationIssue::new(
-            Severity::Critical,
-            Category::Asset,
-            "ST2067-2:2020:8.3/FileNotFound",
-            "Critical issue",
-        ));
-
-        report.add(ValidationIssue::new(
-            Severity::Error,
-            Category::Schema,
-            "ST2067-2:2020:8.3/ChecksumMismatch",
-            "Error issue",
-        ));
-
-        report.add(ValidationIssue::new(
-            Severity::Warning,
-            Category::Metadata,
-            "META-004",
-            "Warning issue",
-        ));
-
-        report.add(ValidationIssue::new(
-            Severity::Info,
-            Category::Structure,
-            "INFO-001",
-            "Info issue",
-        ));
-
-        let summary = report.summary();
-        assert!(summary.contains("1 critical") || !summary.is_empty());
-        assert!(summary.contains("issues") || summary.len() > 10);
-        // Summary is a formatted string, check it contains useful information
-        assert!(!summary.is_empty());
     }
 
     #[test]
@@ -967,115 +841,22 @@ mod tests {
             message: "Package not found".to_string(),
             cause: None,
         };
-
-        let display = format!("{}", error);
-        assert!(display.contains("Package not found"));
-    }
-
-    #[test]
-    fn test_error_with_cause() {
+        assert!(format!("{}", error).contains("Package not found"));
         let io_error = std::io::Error::new(std::io::ErrorKind::NotFound, "File not found");
         let critical_error = CriticalError::from(io_error);
-
         assert!(critical_error.message.contains("IO Error"));
         assert!(critical_error.cause.is_some());
     }
 
     #[test]
-    fn test_validation_profile_display() {
-        assert_eq!(format!("{}", ValidationProfile::SMPTE), "SMPTE");
-        assert_eq!(format!("{}", ValidationProfile::SMPTE), "SMPTE");
-        assert_eq!(format!("{}", ValidationProfile::Custom), "Custom");
-        assert_eq!(format!("{}", ValidationProfile::Custom), "Custom");
-    }
-
-    #[test]
-    fn test_location_edge_cases() {
-        // Test empty location
-        let empty_location = Location::new();
-        let formatted = format!("{}", empty_location);
-        assert!(formatted.is_empty());
-
-        // Test location with only path
-        let path_only = Location::new().with_path("/test/path".to_string());
-        let formatted = format!("{}", path_only);
-        assert!(formatted.contains("/test/path"));
-
-        // Test location with only file
-        let file_only = Location::new().with_file(std::path::PathBuf::from("test.xml"));
-        let formatted = format!("{}", file_only);
-        assert!(formatted.contains("test.xml"));
-    }
-
-    #[test]
     fn test_validation_issue_chaining() {
-        let issue = ValidationIssue::new(
-            Severity::Error,
-            Category::Timing,
-            "TL-001",
-            "Timeline validation failed",
-        )
-        .with_location(Location::new().with_segment(5))
-        .with_suggestion("Check segment timing")
-        .with_context("phase", "During composition validation");
-
+        let issue = file_not_found()
+            .with_location(Location::new().with_segment(5))
+            .with_suggestion("Check segment timing")
+            .with_context("phase", "During composition validation");
         assert!(issue.location.segment.is_some());
         assert!(issue.suggestion.is_some());
         assert!(!issue.context.is_empty());
-    }
-
-    #[test]
-    fn test_validation_report_display() {
-        let mut report = ValidationReport::new(ValidationProfile::Custom);
-
-        report.add(ValidationIssue::new(
-            Severity::Critical,
-            Category::Asset,
-            "ST2067-2:2020:8.3/FileNotFound",
-            "Critical test issue",
-        ));
-
-        let display = format!("{}", report);
-        assert!(display.contains("Critical"));
-        assert!(
-            display.contains("FILE_NOT_FOUND") || display.contains("Asset") || !display.is_empty()
-        );
-        assert!(display.contains("Critical test issue"));
-    }
-
-    #[test]
-    fn test_error_codes() {
-        // ValidationIssue stores whatever code string it is given.
-        let issue = ValidationIssue::new(Severity::Error, Category::Asset, "A/Code", "msg");
-        assert_eq!(issue.code, "A/Code");
-        let issue2 = ValidationIssue::new(Severity::Error, Category::Asset, "B/Code", "msg");
-        assert_ne!(issue.code, issue2.code);
-    }
-
-    #[test]
-    fn location_cpl_id_serde_round_trip() {
-        let uuid = ImfUuid::parse("urn:uuid:12345678-0000-0000-0000-000000000000").unwrap();
-        let loc = Location::new().with_cpl(uuid);
-        let json = serde_json::to_string(&loc).unwrap();
-        let deserialized: Location = serde_json::from_str(&json).unwrap();
-        assert_eq!(deserialized.cpl_id, Some(uuid));
-    }
-
-    #[test]
-    fn validation_issue_serde_round_trip() {
-        let uuid = ImfUuid::parse("urn:uuid:abcdef00-1234-5678-9abc-def012345678").unwrap();
-        let issue = ValidationIssue::new(
-            Severity::Warning,
-            Category::Structure,
-            "TEST/Code",
-            "test message",
-        )
-        .with_location(Location::new().with_cpl(uuid));
-
-        let json = serde_json::to_string(&issue).unwrap();
-        let deserialized: ValidationIssue = serde_json::from_str(&json).unwrap();
-        assert_eq!(deserialized.severity, Severity::Warning);
-        assert_eq!(deserialized.location.cpl_id, Some(uuid));
     }
 
     /// FIX-12 regression: a ValidationReport carrying both a populated
@@ -1085,176 +866,126 @@ mod tests {
     fn validation_report_serde_round_trip_with_suppressed_and_aggregate() {
         let uuid1 = ImfUuid::parse("urn:uuid:00000000-0000-0000-0000-000000000001").unwrap();
         let uuid2 = ImfUuid::parse("urn:uuid:00000000-0000-0000-0000-000000000002").unwrap();
-        let uuid3 = ImfUuid::parse("urn:uuid:00000000-0000-0000-0000-000000000003").unwrap();
-
         let mut report = ValidationReport::new(ValidationProfile::SMPTE);
-
-        // Aggregated issue: 1 primary + 2 additional instances.
-        let mut aggregated = ValidationIssue::new(
-            Severity::Error,
-            Category::Schema,
-            "XSD/PatternInvalid/UUID",
-            "uuid pattern violation",
-        )
-        .with_location(Location::new().with_cpl(uuid1));
+        let mut aggregated = file_not_found().with_location(Location::new().with_cpl(uuid1));
         aggregated
             .additional_instances
             .push(Location::new().with_cpl(uuid2));
-        aggregated
-            .additional_instances
-            .push(Location::new().with_cpl(uuid3));
         report.errors.push(aggregated);
-
-        // Suppressed issue: demoted by a hypothetical rule key, annotated.
-        let mut suppressed = ValidationIssue::new(
-            Severity::Info,
-            Category::Schema,
-            "XSD/TypeInvalid/IssueDate",
-            "issue date not a valid xs:dateTime",
-        )
-        .with_location(Location::new().with_cpl(uuid1));
+        let mut suppressed = file_not_found();
         suppressed
             .context
-            .insert("suppressed_by".to_string(), "source:XsdLayer".to_string());
+            .insert("suppressed_by".to_string(), "source:ProseRule".to_string());
         report.suppressed.push(suppressed);
 
         let json = serde_json::to_string(&report).expect("serialise");
         let back: ValidationReport = serde_json::from_str(&json).expect("deserialise");
-
-        assert_eq!(back.errors.len(), 1);
-        assert_eq!(back.errors[0].additional_instances.len(), 2);
+        assert_eq!(back.errors[0].instance_count(), 2);
         assert_eq!(back.errors[0].additional_instances[0].cpl_id, Some(uuid2));
-        assert_eq!(back.errors[0].additional_instances[1].cpl_id, Some(uuid3));
-        assert_eq!(back.errors[0].instance_count(), 3);
-
-        assert_eq!(back.suppressed.len(), 1);
         assert_eq!(
             back.suppressed[0]
                 .context
                 .get("suppressed_by")
                 .map(String::as_str),
-            Some("source:XsdLayer")
+            Some("source:ProseRule")
         );
     }
 
-    fn agg_issue(code: &str, severity: Severity, cpl_byte: u8) -> ValidationIssue {
+    fn agg_issue<E: Edition>(rule: &'static Rule<E>, edition: E, cpl_byte: u8) -> ValidationIssue {
         let uuid = ImfUuid::parse(&format!(
             "urn:uuid:00000000-0000-0000-0000-0000000000{:02x}",
             cpl_byte
         ))
         .unwrap();
-        ValidationIssue::new(severity, Category::Schema, code, "test")
+        ValidationIssue::from_rule(rule, edition, "test")
             .with_location(Location::new().with_cpl(uuid))
     }
 
     #[test]
     fn aggregate_collapses_repeat_codes_within_a_bucket() {
         let mut report = ValidationReport::new(ValidationProfile::SMPTE);
-        report.add(agg_issue("XSD/PatternInvalid/UUID", Severity::Error, 1));
-        report.add(agg_issue("XSD/PatternInvalid/UUID", Severity::Error, 2));
-        report.add(agg_issue("XSD/PatternInvalid/UUID", Severity::Error, 3));
-        report.add(agg_issue("XSD/Other/X", Severity::Error, 4));
+        for b in 1..=3 {
+            report.add(agg_issue(
+                &st2067_2::FileNotFound,
+                St2067_2Edition::V2020,
+                b,
+            ));
+        }
+        report.add(agg_issue(
+            &st2067_2::SizeMismatch,
+            St2067_2Edition::V2020,
+            4,
+        ));
         let out = report.aggregate();
-        // Two distinct codes → two issues in errors bucket.
         assert_eq!(out.errors.len(), 2);
-        // The repeated-code issue carries the extra locations.
         let agg = out
             .errors
             .iter()
-            .find(|i| i.code == "XSD/PatternInvalid/UUID")
+            .find(|i| i.is(&st2067_2::FileNotFound))
             .unwrap();
         assert_eq!(agg.instance_count(), 3);
-        assert_eq!(agg.additional_instances.len(), 2);
-        // First-seen location is retained on the canonical issue.
-        // Other code stays as a single-instance issue.
-        let solo = out.errors.iter().find(|i| i.code == "XSD/Other/X").unwrap();
+        let solo = out
+            .errors
+            .iter()
+            .find(|i| i.is(&st2067_2::SizeMismatch))
+            .unwrap();
         assert_eq!(solo.instance_count(), 1);
     }
 
     #[test]
-    fn aggregate_preserves_first_message_and_severity() {
+    fn aggregate_keeps_editions_apart() {
+        // Same rule, different editions → different codes → not merged.
+        let mut report = ValidationReport::new(ValidationProfile::SMPTE);
+        report.add(agg_issue(
+            &st2067_2::FileNotFound,
+            St2067_2Edition::V2016,
+            1,
+        ));
+        report.add(agg_issue(
+            &st2067_2::FileNotFound,
+            St2067_2Edition::V2020,
+            2,
+        ));
+        assert_eq!(report.aggregate().errors.len(), 2);
+    }
+
+    #[test]
+    fn aggregate_preserves_first_message_and_order() {
         let mut report = ValidationReport::new(ValidationProfile::SMPTE);
         report.add(
-            ValidationIssue::new(Severity::Error, Category::Schema, "X/Y", "first message")
+            ValidationIssue::from_rule(&st2067_2::SizeMismatch, St2067_2Edition::V2020, "first")
                 .with_suggestion("first suggestion"),
         );
-        report.add(ValidationIssue::new(
-            Severity::Error,
-            Category::Schema,
-            "X/Y",
-            "second message",
+        report.add(file_not_found());
+        report.add(ValidationIssue::from_rule(
+            &st2067_2::SizeMismatch,
+            St2067_2Edition::V2020,
+            "second",
         ));
         let out = report.aggregate();
-        assert_eq!(out.errors.len(), 1);
-        assert_eq!(out.errors[0].message, "first message");
+        assert_eq!(out.errors.len(), 2);
+        assert_eq!(out.errors[0].message, "first");
         assert_eq!(
             out.errors[0].suggestion.as_deref(),
             Some("first suggestion")
         );
+        assert!(out.errors[1].is(&st2067_2::FileNotFound));
     }
 
     #[test]
-    fn aggregate_does_not_cross_severity_buckets() {
-        // Same code in different buckets should NOT merge — different
-        // buckets indicate the issue was demoted/promoted independently.
-        // (In practice rules emit at one severity per code, but be
-        // defensive against post-`apply_rules` weirdness.)
+    fn aggregate_is_idempotent_and_shows_count() {
         let mut report = ValidationReport::new(ValidationProfile::SMPTE);
-        report.add(agg_issue("X/Y", Severity::Error, 1));
-        report.add(agg_issue("X/Y", Severity::Warning, 2));
-        let out = report.aggregate();
-        assert_eq!(out.errors.len(), 1);
-        assert_eq!(out.warnings.len(), 1);
-    }
-
-    #[test]
-    fn aggregate_is_idempotent() {
-        let mut report = ValidationReport::new(ValidationProfile::SMPTE);
-        report.add(agg_issue("X/Y", Severity::Error, 1));
-        report.add(agg_issue("X/Y", Severity::Error, 2));
-        report.add(agg_issue("X/Y", Severity::Error, 3));
-        let once = report.clone().aggregate();
+        for b in 1..=3 {
+            report.add(agg_issue(
+                &st2067_2::FileNotFound,
+                St2067_2Edition::V2020,
+                b,
+            ));
+        }
+        let once = report.aggregate();
         let twice = once.clone().aggregate();
-        // Aggregating already-aggregated report yields same shape.
         assert_eq!(twice.errors.len(), 1);
         assert_eq!(twice.errors[0].instance_count(), 3);
-    }
-
-    #[test]
-    fn aggregate_preserves_first_seen_order() {
-        let mut report = ValidationReport::new(ValidationProfile::SMPTE);
-        report.add(agg_issue("Z/last", Severity::Error, 1));
-        report.add(agg_issue("A/first", Severity::Error, 2));
-        report.add(agg_issue("Z/last", Severity::Error, 3));
-        report.add(agg_issue("A/first", Severity::Error, 4));
-        let out = report.aggregate();
-        // First-seen order maps to "Z/last" → idx 0, "A/first" → idx 1.
-        assert_eq!(out.errors[0].code, "Z/last");
-        assert_eq!(out.errors[1].code, "A/first");
-    }
-
-    #[test]
-    fn aggregate_short_circuits_when_bucket_is_singleton() {
-        // Single issue in a bucket — aggregate is a no-op and should
-        // leave the issue untouched (no unnecessary clone / re-push).
-        let mut report = ValidationReport::new(ValidationProfile::SMPTE);
-        report.add(agg_issue("X/Y", Severity::Error, 1));
-        let out = report.aggregate();
-        assert_eq!(out.errors.len(), 1);
-        assert_eq!(out.errors[0].additional_instances.len(), 0);
-        assert_eq!(out.errors[0].instance_count(), 1);
-    }
-
-    #[test]
-    fn aggregate_display_shows_occurrence_count_when_above_one() {
-        let mut report = ValidationReport::new(ValidationProfile::SMPTE);
-        report.add(agg_issue("X/Y", Severity::Error, 1));
-        report.add(agg_issue("X/Y", Severity::Error, 2));
-        let out = report.aggregate();
-        let rendered = format!("{}", out.errors[0]);
-        assert!(
-            rendered.contains("Occurrences: 2"),
-            "Display should mention aggregate count: {rendered}"
-        );
+        assert!(format!("{}", twice.errors[0]).contains("Occurrences: 3"));
     }
 }

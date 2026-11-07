@@ -60,8 +60,8 @@ const report = await buildReport(
         coreSpec: 'v2020',
         app2eSpec: 'v2023',
         rules: {
-            [codes.ST2067_2_2020.FileNotFound]: 'critical',
-            [codes.ST2067_2_2020.ChecksumMismatch]: 'off',
+            [codes.ST2067_2.FileNotFound]: 'critical',
+            [codes.ST2067_2.ChecksumMismatch]: 'off',
         },
     },
 );

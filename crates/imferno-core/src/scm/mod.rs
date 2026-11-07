@@ -6,8 +6,6 @@
 //!
 //! Normative namespace: `http://www.smpte-ra.org/ns/2067-9/2018`
 
-pub mod codes;
-
 use crate::assetmap::ImfUuid;
 use thiserror::Error;
 

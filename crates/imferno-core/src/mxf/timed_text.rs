@@ -18,14 +18,19 @@
 
 use std::path::Path;
 
+use crate::catalogue::st2067_2::{self, St2067_2Edition};
 use crate::diagnostics::{Location, ValidationIssue};
-use crate::mxf::codes::St2067_2_2016;
 
 /// Walk a RegXML document for the TimedTextDescriptor and apply the
 /// timed-text rules. Returns an empty Vec when no timed-text descriptor
 /// is present (the file is audio/video) — these checks only fire on
 /// timed-text essence.
-pub fn check_timed_text(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
+/// `spec_ed` is the ST 2067-2 edition applied to the track file.
+pub fn check_timed_text(
+    regxml: &str,
+    path: &Path,
+    spec_ed: St2067_2Edition,
+) -> Vec<ValidationIssue> {
     let mut issues = Vec::new();
 
     // Sniff for timed-text essence shape. ST 2067-2 timed text uses
@@ -47,8 +52,9 @@ pub fn check_timed_text(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
         if let Some(bytes) = crate::mxf::audio_mca::parse_ul_bytes(&cf) {
             if bytes[13] != 0x13 {
                 issues.push(
-                    ValidationIssue::from_code(
-                        St2067_2_2016::TimedTextMappingKindNot0x13,
+                    ValidationIssue::from_rule(
+                        &st2067_2::TimedTextMappingKindNot0x13,
+                        spec_ed,
                         format!(
                             "MXF {} timed-text ContainerFormat UL byte 14 = 0x{:02x} \
                              — ST 429-5 §7 requires Mapping Kind = 0x13 for IMSC. \
@@ -69,7 +75,7 @@ pub fn check_timed_text(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
         let enc = enc.trim();
         if !enc.eq_ignore_ascii_case("UTF-8") && !enc.eq_ignore_ascii_case("UTF8") {
             issues.push(
-                ValidationIssue::from_code(St2067_2_2016::TimedTextUCSEncodingNotUTF8,
+                ValidationIssue::from_rule(&st2067_2::TimedTextUCSEncodingNotUTF8, spec_ed,
                     format!(
                         "MXF {} TimedTextDescriptor UCSEncoding = '{}' — ST 2067-2 §5.4 requires UTF-8.",
                         path.display(),
@@ -84,7 +90,9 @@ pub fn check_timed_text(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
     // §5.4 — TimedText NamespaceURI must be one of the IMSC1 profiles.
     // The exact set: IMSC1 text profile + IMSC1 image profile, plus
     // their TTML-superset namespaces.
-    if let Some(ns) = extract_field(regxml, "NamespaceURI") {
+    // ST 2067-2:2013 carries SMPTE-TT, not IMSC1: no namespace rule there.
+    let ns_rule = st2067_2::TimedTextNamespaceNotIMSC.in_edition(spec_ed);
+    if let Some(ns) = extract_field(regxml, "NamespaceURI").filter(|_| ns_rule) {
         let ns = ns.trim();
         const ACCEPTABLE: &[&str] = &[
             "http://www.w3.org/ns/ttml/profile/imsc1/text",
@@ -94,8 +102,9 @@ pub fn check_timed_text(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
         ];
         if !ACCEPTABLE.contains(&ns) {
             issues.push(
-                ValidationIssue::from_code(
-                    St2067_2_2016::TimedTextNamespaceNotIMSC,
+                ValidationIssue::from_rule(
+                    &st2067_2::TimedTextNamespaceNotIMSC,
+                    spec_ed,
                     format!(
                         "MXF {} TimedTextDescriptor NamespaceURI = '{}' — ST 2067-2 §5.4 \
                          requires one of the IMSC1 profile namespaces (text or image, 1.0 or 1.1).",
@@ -124,8 +133,9 @@ pub fn check_timed_text(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
         const ACCEPTABLE: &[&str] = &["image/png", "application/x-font-opentype", "font/otf"];
         if !ACCEPTABLE.contains(&mime) {
             issues.push(
-                ValidationIssue::from_code(
-                    St2067_2_2016::TimedTextResourceMIMETypeUnsupported,
+                ValidationIssue::from_rule(
+                    &st2067_2::TimedTextResourceMIMETypeUnsupported,
+                    spec_ed,
                     format!(
                         "MXF {} TimeTextResourceSubDescriptor MIMEType = '{}' — ST 2067-2 \
                          §5.4.5/6 requires image/png, font/otf (2020) or \
@@ -153,7 +163,11 @@ mod tests {
     #[test]
     fn skips_non_timed_text_mxf() {
         let xml = r#"<ns1:Preface><ns1:WAVEPCMDescriptor/></ns1:Preface>"#;
-        let issues = check_timed_text(xml, std::path::Path::new("/synth.mxf"));
+        let issues = check_timed_text(
+            xml,
+            std::path::Path::new("/synth.mxf"),
+            St2067_2Edition::V2016,
+        );
         assert!(
             issues.is_empty(),
             "timed text pipeline must be silent on non-timed-text MXF, got: {:#?}",
@@ -170,7 +184,11 @@ mod tests {
             <ns2:UCSEncoding>UTF-8</ns2:UCSEncoding>
             <ns2:NamespaceURI>http://www.w3.org/ns/ttml/profile/imsc1/text</ns2:NamespaceURI>
         </ns1:TimedTextDescriptor>"#;
-        let issues = check_timed_text(xml, std::path::Path::new("/synth.mxf"));
+        let issues = check_timed_text(
+            xml,
+            std::path::Path::new("/synth.mxf"),
+            St2067_2Edition::V2016,
+        );
         assert!(
             issues
                 .iter()
@@ -192,7 +210,11 @@ mod tests {
             <ns2:UCSEncoding>UTF-8</ns2:UCSEncoding>
             <ns2:NamespaceURI>http://www.w3.org/ns/ttml/profile/imsc1/text</ns2:NamespaceURI>
         </ns1:TimedTextDescriptor>"#;
-        let issues = check_timed_text(xml, std::path::Path::new("/synth.mxf"));
+        let issues = check_timed_text(
+            xml,
+            std::path::Path::new("/synth.mxf"),
+            St2067_2Edition::V2016,
+        );
         assert!(
             !issues
                 .iter()
@@ -208,7 +230,11 @@ mod tests {
             <ns2:UCSEncoding>ISO-8859-1</ns2:UCSEncoding>
             <ns2:NamespaceURI>http://www.w3.org/ns/ttml/profile/imsc1/text</ns2:NamespaceURI>
         </ns1:TimedTextDescriptor>"#;
-        let issues = check_timed_text(xml, std::path::Path::new("/synth.mxf"));
+        let issues = check_timed_text(
+            xml,
+            std::path::Path::new("/synth.mxf"),
+            St2067_2Edition::V2016,
+        );
         assert!(
             issues
                 .iter()
@@ -224,7 +250,11 @@ mod tests {
             <ns2:UCSEncoding>UTF-8</ns2:UCSEncoding>
             <ns2:NamespaceURI>http://example.org/not-imsc</ns2:NamespaceURI>
         </ns1:TimedTextDescriptor>"#;
-        let issues = check_timed_text(xml, std::path::Path::new("/synth.mxf"));
+        let issues = check_timed_text(
+            xml,
+            std::path::Path::new("/synth.mxf"),
+            St2067_2Edition::V2016,
+        );
         assert!(
             issues
                 .iter()
@@ -243,7 +273,11 @@ mod tests {
                 <ns2:MIMEType>application/json</ns2:MIMEType>
             </ns1:TimeTextResourceSubDescriptor>
         </ns1:TimedTextDescriptor>"#;
-        let issues = check_timed_text(xml, std::path::Path::new("/synth.mxf"));
+        let issues = check_timed_text(
+            xml,
+            std::path::Path::new("/synth.mxf"),
+            St2067_2Edition::V2016,
+        );
         assert!(
             issues
                 .iter()
@@ -265,7 +299,11 @@ mod tests {
                 <ns2:MIMEType>application/x-font-opentype</ns2:MIMEType>
             </ns1:TimeTextResourceSubDescriptor>
         </ns1:TimedTextDescriptor>"#;
-        let issues = check_timed_text(xml, std::path::Path::new("/synth.mxf"));
+        let issues = check_timed_text(
+            xml,
+            std::path::Path::new("/synth.mxf"),
+            St2067_2Edition::V2016,
+        );
         assert!(
             issues.is_empty(),
             "clean IMSC1.1 + acceptable MIME types should produce zero diagnostics, got: {:#?}",
@@ -285,7 +323,11 @@ mod tests {
                 <ns2:MIMEType>font/otf</ns2:MIMEType>
             </ns1:TimeTextResourceSubDescriptor>
         </ns1:TimedTextDescriptor>"#;
-        let issues = check_timed_text(xml, std::path::Path::new("/synth.mxf"));
+        let issues = check_timed_text(
+            xml,
+            std::path::Path::new("/synth.mxf"),
+            St2067_2Edition::V2016,
+        );
         assert!(
             !issues
                 .iter()

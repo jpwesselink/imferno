@@ -11,16 +11,13 @@
 //! reference ST 2067-21; App #2E rules come from the App #2E validator the
 //! CPL's ApplicationIdentification selects, in that edition.
 
-// codes live in isxd_codes.rs (declared from validation/mod.rs)
-
 use std::collections::{HashMap, HashSet};
 
 use crate::assetmap::SmpteUl;
+use crate::catalogue::st2067_202::{self, St2067_202Edition};
 use crate::cpl::CompositionPlaylist;
-use crate::diagnostics::{Category, Severity, ValidationIssue};
+use crate::diagnostics::ValidationIssue;
 use crate::validation::ConstraintsValidator;
-
-use crate::validation::isxd_codes::{self as isxd_codes, IsxdCode};
 
 // ── Public API ───────────────────────────────────────────────────────────────
 
@@ -36,8 +33,8 @@ impl ConstraintsValidator for AppIsxdPlugin2023 {
 
     fn validate_cpl(&self, cpl: &CompositionPlaylist) -> Vec<ValidationIssue> {
         let mut issues = Vec::new();
-        validate_isxd_descriptors(cpl, isxd_codes::St2067_202_2023::for_code, &mut issues);
-        validate_isxd_sequences(cpl, isxd_codes::St2067_202_2023::for_code, &mut issues);
+        validate_isxd_descriptors(cpl, St2067_202Edition::V2023, &mut issues);
+        validate_isxd_sequences(cpl, St2067_202Edition::V2023, &mut issues);
         issues
     }
 }
@@ -94,7 +91,7 @@ fn is_utf8_text_data_essence_coding(ul: &str) -> bool {
 /// (ST 2067-203), not to -202.
 fn validate_isxd_descriptors(
     cpl: &CompositionPlaylist,
-    code: fn(IsxdCode) -> &'static str,
+    spec_ed: St2067_202Edition,
     issues: &mut Vec<ValidationIssue>,
 ) {
     let eds = match cpl.essence_descriptor_list.as_ref() {
@@ -109,12 +106,11 @@ fn validate_isxd_descriptors(
         };
 
         if isxd.namespace_uri.is_none() {
-            issues.push(ValidationIssue::new(
+            issues.push(ValidationIssue::from_rule(
                 // §9.2 Table 5 marks NamespaceURI "Req" — SHALL, so Error
                 // (AUDIT-20; previously mis-emitted as Warning).
-                Severity::Error,
-                Category::Data,
-                code(IsxdCode::NamespaceUriMissing),
+                &st2067_202::NamespaceUriMissing,
+                spec_ed,
                 format!(
                     "ISXDDataEssenceDescriptor (EssenceDescriptor Id={}) is missing NamespaceURI \
                      (ST 2067-202 §9.2 Table 5, Req).",
@@ -129,10 +125,9 @@ fn validate_isxd_descriptors(
         // (UTF-8 Text Data Essence Coding).
         match isxd.data_essence_coding.as_deref().map(str::trim) {
             None | Some("") => {
-                issues.push(ValidationIssue::new(
-                    Severity::Error,
-                    Category::Data,
-                    code(IsxdCode::DataEssenceCodingMissing),
+                issues.push(ValidationIssue::from_rule(
+                    &st2067_202::DataEssenceCodingMissing,
+                    spec_ed,
                     format!(
                         "ISXDDataEssenceDescriptor (EssenceDescriptor Id={}) is missing \
                          DataEssenceCoding (ST 2067-202 §9.3).",
@@ -141,10 +136,9 @@ fn validate_isxd_descriptors(
                 ));
             }
             Some(ul) if !is_utf8_text_data_essence_coding(ul) => {
-                issues.push(ValidationIssue::new(
-                    Severity::Error,
-                    Category::Data,
-                    code(IsxdCode::DataEssenceCodingInvalid),
+                issues.push(ValidationIssue::from_rule(
+                    &st2067_202::DataEssenceCodingInvalid,
+                    spec_ed,
                     format!(
                         "ISXDDataEssenceDescriptor (EssenceDescriptor Id={}) DataEssenceCoding \
                          `{ul}` is not the UTF-8 Text Data Essence Coding UL \
@@ -173,7 +167,7 @@ fn validate_isxd_descriptors(
 ///   one or more ISXD Virtual Tracks" → `ISXDVirtualTrackMissing` (AUDIT-21).
 fn validate_isxd_sequences(
     cpl: &CompositionPlaylist,
-    code: fn(IsxdCode) -> &'static str,
+    spec_ed: St2067_202Edition,
     issues: &mut Vec<ValidationIssue>,
 ) {
     // Build lookup: EssenceDescriptor UUID string → namespace_uri Option<String>
@@ -215,10 +209,9 @@ fn validate_isxd_sequences(
             let resources = &isxd_seq.resource_list.resources;
 
             if resources.is_empty() {
-                issues.push(ValidationIssue::new(
-                    Severity::Error,
-                    Category::Data,
-                    code(IsxdCode::ISXDSequenceNoResources),
+                issues.push(ValidationIssue::from_rule(
+                    &st2067_202::ISXDSequenceNoResources,
+                    spec_ed,
                     format!("ISXDSequence (Id={}) contains no Resources.", isxd_seq.id),
                 ));
                 continue;
@@ -229,10 +222,9 @@ fn validate_isxd_sequences(
                     (main_image_edit_rate, resource.edit_rate.or(cpl.edit_rate))
                 {
                     if isxd_er != main_er {
-                        issues.push(ValidationIssue::new(
-                            Severity::Error,
-                            Category::Data,
-                            code(IsxdCode::EditRateMismatch),
+                        issues.push(ValidationIssue::from_rule(
+                            &st2067_202::EditRateMismatch,
+                            spec_ed,
                             format!(
                                 "ISXDSequence (Id={}) Resource (Id={}) EditRate {}/{} does not \
                                  equal the Main Image Virtual Track Edit Rate {}/{} — \
@@ -263,10 +255,9 @@ fn validate_isxd_sequences(
                         }
                     }
                     None => {
-                        issues.push(ValidationIssue::new(
-                            Severity::Error,
-                            Category::Data,
-                            code(IsxdCode::ISXDSequenceSourceEncodingInvalid),
+                        issues.push(ValidationIssue::from_rule(
+                            &st2067_202::ISXDSequenceSourceEncodingInvalid,
+                            spec_ed,
                             format!(
                                 "ISXDSequence (Id={}) Resource (Id={}) SourceEncoding={} does not \
                                  reference an ISXDDataEssenceDescriptor.",
@@ -300,10 +291,9 @@ fn validate_isxd_sequences(
             })
         });
         if references_isxd {
-            issues.push(ValidationIssue::new(
-                Severity::Error,
-                Category::Data,
-                code(IsxdCode::ISXDVirtualTrackMissing),
+            issues.push(ValidationIssue::from_rule(
+                &st2067_202::ISXDVirtualTrackMissing,
+                spec_ed,
                 "Composition references an ISXD Track File but contains no ISXD Virtual \
                  Track — ST 2067-202 §6 requires one or more ISXD Virtual Tracks."
                     .to_string(),
@@ -318,10 +308,9 @@ fn validate_isxd_sequences(
         if uris_set.len() > 1 {
             let mut uris: Vec<_> = uris_set.iter().cloned().collect();
             uris.sort();
-            issues.push(ValidationIssue::new(
-                Severity::Error,
-                Category::Data,
-                code(IsxdCode::NamespaceUriMismatch),
+            issues.push(ValidationIssue::from_rule(
+                &st2067_202::NamespaceUriMismatch,
+                spec_ed,
                 format!(
                     "ISXD Virtual Track (TrackId={track_id}) references Track Files with \
                      inconsistent NamespaceURI values: {uris:?} — ST 2067-202 §6 requires an \

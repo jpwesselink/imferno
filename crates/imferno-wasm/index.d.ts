@@ -7,7 +7,14 @@
  * by `cargo xtask generate-types-ts` and shared verbatim with @imferno/node.
  */
 
-import type { ImfReport, Imferno, ValidateOptions, ValidationResult } from './types.js';
+import type {
+    ImfReport,
+    Imferno,
+    RuleInfo,
+    ValidateOptions,
+    ValidationReport,
+    ValidationResult,
+} from './types.js';
 
 export * from './types.js';
 
@@ -48,6 +55,24 @@ export function buildReport(
  */
 export function formatReport(report: ValidationResult | ImfReport): Promise<string>;
 
+/** A SARIF 2.1.0 log (https://docs.oasis-open.org/sarif/sarif/v2.1.0/). */
+export interface SarifLog {
+    $schema?: string;
+    version: "2.1.0";
+    runs: Array<Record<string, unknown>>;
+}
+
+/**
+ * Convert a validation result to a SARIF 2.1.0 log: rules by rule id
+ * (`ST2067-3/SegmentDuration`), each finding pointing at the applied
+ * edition's clause in that edition's taxonomy (`ST2067-3:2016`).
+ * @param report The object `validate()` returned, or its `validation`.
+ */
+export function toSarif(report: ValidationResult | ValidationReport): Promise<SarifLog>;
+
+/** The rule catalogue: one entry per rule, with its per-edition table. */
+export function listRules(): Promise<RuleInfo[]>;
+
 /** Get the library version */
 export function getVersion(): Promise<string>;
 
@@ -57,5 +82,5 @@ export function getVersion(): Promise<string>;
  */
 export function init(wasmBytes?: ArrayBuffer | ArrayBufferView): Promise<void>;
 
-/** Typed validation code constants for use in rules config */
+/** Rule ids (`SPEC/Name`) per spec, for use as rules-config keys */
 export { codes } from './codes.js';

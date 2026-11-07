@@ -2,10 +2,11 @@
 /* eslint-disable */
 
 import type {
-  Category,
   ImfReport,
   Imferno,
+  RuleInfo,
   ValidateOptions,
+  ValidationReport,
   ValidationResult,
 } from "./types";
 
@@ -33,27 +34,10 @@ export interface UriValidateOptions extends PathValidateOptions {
   credentials?: S3Credentials | null;
 }
 
-/** Which rule catalogue a code belongs to. */
-export type RuleSpec =
-  | "core"
-  | "cpl"
-  | "app2e"
-  | "volindex"
-  | "mxf"
-  | "scm"
-  | "isxd"
-  | "iab"
-  | "imferno";
-
-/** One entry of the `listRules()` catalogue. */
-export interface RuleInfo {
-  /** Normalised rule code, usable as a `rules` key. */
-  code: string;
-  spec: RuleSpec;
-  description: string;
-  defaultSeverity: "info" | "warning" | "error" | "critical";
-  category: Extract<Category, string>;
-  /** Present when this edition's code set is identical to an earlier edition's (that edition's prefix). */
-  sameAsPreviousEdition?: string;
+/** A SARIF 2.1.0 log (https://docs.oasis-open.org/sarif/sarif/v2.1.0/). */
+export interface SarifLog {
+  $schema?: string;
+  version: "2.1.0";
+  runs: Array<Record<string, unknown>>;
 }
 

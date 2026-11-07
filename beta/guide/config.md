@@ -22,7 +22,7 @@ Create a `rules.json`:
 
 ```json
 {
-  "ST2067-2:2016:8/DigitalSignature": "off",
+  "ST2067-2:2016:6.9/DigitalSignature": "off",
   "ST2067-2:2020:8.3/FileNotFound": "critical"
 }
 ```

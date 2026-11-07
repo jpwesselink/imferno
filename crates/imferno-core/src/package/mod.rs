@@ -31,6 +31,7 @@ pub use crate::diagnostics::{
 ///
 /// This is the primary return type — contains the full parsed package
 /// and all validation findings.
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, serde::Serialize)]
 pub struct ValidationResult {
     /// The fully parsed IMF package.
@@ -394,11 +395,13 @@ impl From<&FileValidationError> for ValidationIssue {
 ///
 /// This is the full parsed package — all CPLs, PKLs, AssetMap, SCMs, and
 /// cross-references. Serializable to JSON for WASM/NAPI consumers.
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Imferno {
     /// Package root directory
     #[serde(serialize_with = "serialize_path")]
+    #[cfg_attr(feature = "jsonschema", schemars(with = "String"))]
     pub root_path: PathBuf,
 
     /// Volume index (VOLINDEX.xml)
@@ -434,6 +437,7 @@ pub struct Imferno {
 
     /// Asset UUID to file path mapping
     #[serde(serialize_with = "serialize_path_map")]
+    #[cfg_attr(feature = "jsonschema", schemars(with = "HashMap<ImfUuid, String>"))]
     pub asset_paths: HashMap<ImfUuid, PathBuf>,
 }
 

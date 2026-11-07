@@ -91,6 +91,7 @@ mod raw {
 /// top-level struct; on the wire the document still carries
 /// `<Properties>{Annotation,IssueDate,Issuer}</Properties>` per
 /// ST 2067-9:2018 §7.2 Table 2.
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SidecarCompositionMap {
@@ -108,6 +109,7 @@ pub struct SidecarCompositionMap {
 }
 
 /// A single sidecar asset association within an SCM document.
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SidecarAsset {

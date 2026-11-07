@@ -78,3 +78,8 @@ path = "examples/xsd_validate_spike.rs"
 [[example]]
 name = "xsd_validate_spike_uppsala"
 path = "examples/xsd_validate_spike_uppsala.rs"
+
+[[example]]
+name = "bindings_schema"
+path = "examples/bindings_schema.rs"
+required-features = ["jsonschema"]

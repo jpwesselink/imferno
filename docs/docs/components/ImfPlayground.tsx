@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 
 // ─── configurable rules ───────────────────────────────────────────────────────
 
-import { AdvancedRules, SeverityControl, type RuleSeverity } from './RuleSettings';
+import { AdvancedRules, SeverityControl, rulesNamed, useCatalogue, type RuleSeverity } from './RuleSettings';
 
 // Playground defaults: the bundled samples (and most drops) have no MXF
 // essence, so a missing asset file is informational here.
@@ -10,9 +10,11 @@ const DEFAULT_RULES: Record<string, RuleSeverity> = {
     'ST2067-2:2020:8.3/FileNotFound': 'info',
 };
 
-const CONFIGURABLE_RULES: Array<{ code: string; label: string; hint: string }> = [
-    { code: 'ST2067-2:2020:8.3/FileNotFound',        label: 'FileNotFound',      hint: 'Asset file not found on disk' },
-    { code: 'ST2067-3:*:7.2.2/SegmentDuration',      label: 'SegmentDuration',   hint: 'Unequal segment durations across tracks (all ST 2067-3 editions)' },
+// Rules surfaced above "Advanced", by stable name. Each one is listed per
+// spec edition straight from the catalogue — never as a cross-edition wildcard.
+const QUICK_RULES: Array<{ name: string; hint: string }> = [
+    { name: 'FileNotFound', hint: 'Asset file not found on disk' },
+    { name: 'SegmentDuration', hint: 'Unequal segment durations across tracks' },
 ];
 import IMFPackageViewer from './IMFPackageViewer';
 import PackageFileBrowser, { type BrowserFile } from './PackageFileBrowser';
@@ -332,6 +334,7 @@ export default function ImfPlayground() {
     const [parseError, setParseError] = useState<string | null>(null);
     const [skippedCount, setSkippedCount] = useState<number>(0);
     const [rulesConfig, setRulesConfig] = useState<Record<string, RuleSeverity>>(DEFAULT_RULES);
+    const { sections: catalogue, error: catalogueError } = useCatalogue();
     const [showAdvanced, setShowAdvanced] = useState(false);
     const setRule = useCallback((code: string, severity: RuleSeverity | null) => {
         setRulesConfig(prev => {
@@ -627,19 +630,25 @@ export default function ImfPlayground() {
 
                     {showRules && (
                         <div className="mt-2 border border-zinc-200 dark:border-zinc-700 rounded-xl bg-white dark:bg-zinc-900 divide-y divide-zinc-100 dark:divide-zinc-800">
-                            {CONFIGURABLE_RULES.map(rule => {
-                                const current = rulesConfig[rule.code] ?? 'error';
+                            {QUICK_RULES.map(quick => {
+                                const editions = catalogue ? rulesNamed(catalogue, quick.name) : [];
                                 return (
-                                    <div key={rule.code} className="flex items-center gap-3 flex-wrap px-4 py-3">
-                                        <div className="flex-1 min-w-[200px]">
-                                            <code className="block text-[11px] font-mono text-zinc-700 dark:text-zinc-300">{rule.code}</code>
-                                            <span className="block text-[11px] text-zinc-400 dark:text-zinc-500 mt-0.5">{rule.hint}</span>
-                                        </div>
-                                        <SeverityControl
-                                            label={`Severity for ${rule.label}`}
-                                            value={current}
-                                            onChange={v => setRule(rule.code, v)}
-                                        />
+                                    <div key={quick.name} className="px-4 py-3">
+                                        <span className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">{quick.name}</span>
+                                        <span className="block text-[11px] text-zinc-400 dark:text-zinc-500 mt-0.5">{quick.hint}</span>
+                                        {!catalogue && (
+                                            <span className="block text-[11px] text-zinc-400 dark:text-zinc-500 mt-2">{catalogueError ? `Could not load rules: ${catalogueError}` : 'Loading…'}</span>
+                                        )}
+                                        {editions.map(rule => (
+                                            <div key={rule.code} className="flex items-center gap-3 flex-wrap mt-2">
+                                                <code className="flex-1 min-w-[200px] text-[11px] font-mono text-zinc-600 dark:text-zinc-400">{rule.code}</code>
+                                                <SeverityControl
+                                                    label={`Severity for ${rule.code}`}
+                                                    value={rulesConfig[rule.code] ?? rule.defaultSeverity}
+                                                    onChange={v => setRule(rule.code, v)}
+                                                />
+                                            </div>
+                                        ))}
                                     </div>
                                 );
                             })}

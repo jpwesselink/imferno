@@ -66,19 +66,49 @@ export function SeverityControl({
 
 // ─── advanced: full catalogue from docs/public/rules.json ───────────────────
 
-interface CatalogueRule {
+export interface CatalogueRule {
     code: string;
     description: string;
     defaultSeverity: RuleSeverity;
     category: string;
 }
-interface CatalogueGroup {
+export interface CatalogueGroup {
     title: string | null;
     rules: CatalogueRule[];
 }
-interface CatalogueSection {
+export interface CatalogueSection {
     title: string;
     groups: CatalogueGroup[];
+}
+
+
+/** The rule catalogue (docs/public/rules.json), fetched once per page. */
+let cataloguePromise: Promise<CatalogueSection[]> | null = null;
+export function useCatalogue(): { sections: CatalogueSection[] | null; error: string | null } {
+    const [sections, setSections] = useState<CatalogueSection[] | null>(null);
+    const [error, setError] = useState<string | null>(null);
+    useEffect(() => {
+        let cancelled = false;
+        cataloguePromise ??= fetch(`${base}rules.json`).then((r) => {
+            if (!r.ok) throw new Error(`HTTP ${r.status}`);
+            return r.json().then((d) => d.sections as CatalogueSection[]);
+        });
+        cataloguePromise
+            .then((d) => !cancelled && setSections(d))
+            .catch((e) => {
+                cataloguePromise = null;
+                if (!cancelled) setError(String(e));
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, []);
+    return { sections, error };
+}
+
+/** Every catalogue rule with this stable name, one per spec edition. */
+export function rulesNamed(sections: CatalogueSection[], name: string): CatalogueRule[] {
+    return sections.flatMap((s) => s.groups.flatMap((g) => g.rules)).filter((r) => r.code.endsWith(`/${name}`));
 }
 
 const Chevron = ({ open }: { open: boolean }) => (
@@ -107,24 +137,9 @@ export function AdvancedRules({
     /** True when the config equals the playground defaults. */
     isPristine: boolean;
 }) {
-    const [sections, setSections] = useState<CatalogueSection[] | null>(null);
-    const [error, setError] = useState<string | null>(null);
+    const { sections, error } = useCatalogue();
     const [query, setQuery] = useState('');
     const [open, setOpen] = useState<Set<string>>(new Set());
-
-    useEffect(() => {
-        let cancelled = false;
-        fetch(`${base}rules.json`)
-            .then((r) => {
-                if (!r.ok) throw new Error(`HTTP ${r.status}`);
-                return r.json();
-            })
-            .then((d) => !cancelled && setSections(d.sections))
-            .catch((e) => !cancelled && setError(String(e)));
-        return () => {
-            cancelled = true;
-        };
-    }, []);
 
     const q = query.trim().toLowerCase();
     const filtered = useMemo(() => {

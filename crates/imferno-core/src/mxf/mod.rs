@@ -34,6 +34,10 @@ pub mod metadata;
 /// ST 2067-2 §5.4 timed-text essence rules applied against RegXML.
 /// UCSEncoding=UTF-8, NamespaceURI ∈ IMSC1, MIMEType whitelist.
 /// Native-only.
+/// ST 377-1 Annex B structural-metadata rules applied against RegXML
+/// (Duration on Timeline Track components). Native-only.
+#[cfg(not(target_arch = "wasm32"))]
+pub mod structural;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod timed_text;
 

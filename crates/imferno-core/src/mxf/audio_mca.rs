@@ -285,6 +285,10 @@ pub fn check_audio_mca(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
     // channel 1 is exempt (AUDIT-9 fixed the channel-1 false
     // positive). ADM (ST 2067-204) tracks skip — §5.4.1 prohibits
     // per-channel AudioChannelLabelSubDescriptors.
+    // MCAChannelID is read by its decoded value (UInt32); its encoded
+    // size is not checked because ST 377-4 Table 3 and the register
+    // disagree on it. Open SMPTE issue:
+    // https://github.com/SMPTE/ST377-4-Revision-and-ST377-41/issues/8
     if !is_adm_audio {
         if let Some(cc) = channel_count {
             let channel_ids: std::collections::HashSet<u32> =

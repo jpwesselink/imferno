@@ -464,13 +464,29 @@ fn sanitize_asset_path(root: &Path, chunk_path: &str) -> Option<PathBuf> {
     if rel.is_absolute() {
         return None;
     }
-    // Check lexical components for parent-dir traversal
+    // ST 429-9:2014 A.2: "." and ".." segments are allowed (Note 3), but
+    // every location traversed while resolving the path shall stay inside
+    // the tree rooted at the Asset Map's directory (Example 2:
+    // `bar/../../foo/bar/Image.mxf` is forbidden). Normalise lexically
+    // and reject as soon as a ".." would leave the root.
+    let mut normalised = PathBuf::new();
+    let mut depth: usize = 0;
     for component in rel.components() {
-        if component == std::path::Component::ParentDir {
-            return None;
+        match component {
+            std::path::Component::CurDir => {}
+            std::path::Component::ParentDir => {
+                depth = depth.checked_sub(1)?;
+                normalised.pop();
+            }
+            std::path::Component::Normal(part) => {
+                depth += 1;
+                normalised.push(part);
+            }
+            // Prefix / RootDir: not a relative path.
+            _ => return None,
         }
     }
-    let joined = root.join(rel);
+    let joined = root.join(normalised);
     // If the file exists, verify the canonical path is still under root
     if let Ok(canonical) = joined.canonicalize() {
         if canonical.starts_with(root) {
@@ -1578,6 +1594,26 @@ impl Imferno {
     /// Build a map from asset UUID to sanitized relative file path.
     ///
     /// Paths that would escape the package root (path traversal) are excluded.
+    /// PKL assets whose Id is not an AssetMap asset (XML only, no disk).
+    fn pkl_assets_not_in_assetmap(&self) -> Vec<FileValidationError> {
+        let assetmap_ids: std::collections::HashSet<ImfUuid> = self
+            .asset_map
+            .asset_list
+            .assets
+            .iter()
+            .map(|a| a.id)
+            .collect();
+        self.packing_lists
+            .values()
+            .flat_map(|pkl| pkl.asset_list.assets.iter())
+            .filter(|a| !assetmap_ids.contains(&a.id))
+            .map(|a| FileValidationError::NotInAssetMap {
+                uuid: a.id.to_string(),
+                original_file_name: a.original_file_name.clone(),
+            })
+            .collect()
+    }
+
     fn build_asset_path_map(&self) -> HashMap<ImfUuid, PathBuf> {
         let mut map = HashMap::new();
         let has_root = !self.root_path.as_os_str().is_empty();
@@ -1641,6 +1677,21 @@ impl Imferno {
             report.add(issue.clone());
         }
 
+        // ST 429-9:2014 Annex A.2 Path rules, from the AssetMap <Path>
+        // values alone, so they run for every input (filesystem,
+        // in-memory, WASM).
+        {
+            let paths = self
+                .asset_map
+                .asset_list
+                .assets
+                .iter()
+                .flat_map(|a| a.chunk_list.chunks.iter().map(|c| c.path.as_str()));
+            for issue in crate::assetmap::map_profile::basic_map_profile_v2_issues(paths) {
+                report.add(issue);
+            }
+        }
+
         // PKL structural constraints (ST 2067-2 §7/9)
         for issue in self
             .validate_pkl_constraints()
@@ -1654,9 +1705,26 @@ impl Imferno {
         // (skipped on WASM — no real filesystem available, skipped when no root_path is set,
         //  and skipped when skip_disk_checks is true)
         #[cfg(not(target_arch = "wasm32"))]
-        if !skip_disk_checks && !self.root_path.as_os_str().is_empty() {
+        let manifest_checked = !skip_disk_checks && !self.root_path.as_os_str().is_empty();
+        #[cfg(target_arch = "wasm32")]
+        let manifest_checked = false;
+        #[cfg(not(target_arch = "wasm32"))]
+        if manifest_checked {
             for issue in self
                 .validate_file_manifest()
+                .iter()
+                .map(ValidationIssue::from)
+            {
+                report.add(issue);
+            }
+        }
+        // Without the disk pass, still report PKL assets missing from the
+        // AssetMap (UnresolvedUuid): it needs only the XML, and
+        // validate_cpl_asset_references_accumulating relies on it for
+        // CPL track files that are in a PKL but not in the AssetMap.
+        if !manifest_checked {
+            for issue in self
+                .pkl_assets_not_in_assetmap()
                 .iter()
                 .map(ValidationIssue::from)
             {
@@ -2050,6 +2118,14 @@ impl Imferno {
                                 let issue = issue.with_context("asset_uuid", asset.id.to_string());
                                 report.add(issue);
                             }
+                            // ST 377-1 Annex B.8: Duration on Timeline
+                            // Track components (ST377-1 issue 18).
+                            for issue in
+                                crate::mxf::structural::check_structural_components(&regxml, path)
+                            {
+                                let issue = issue.with_context("asset_uuid", asset.id.to_string());
+                                report.add(issue);
+                            }
                             // ST 2067-201 §5.10.2 / Annex C.2 IAB labeling
                             // rules (AUDIT-18) — no-op unless the file
                             // carries an IABEssenceDescriptor.
@@ -2230,9 +2306,9 @@ impl Imferno {
 
     /// Accumulating version of CPL asset reference validation.
     ///
-    /// Per SMPTE ST 2067-2 §7, every TrackFileId in a CPL Resource must correspond
-    /// to an asset UUID in the AssetMap. Reports each missing reference as a separate
-    /// `ValidationIssue` rather than failing on the first one.
+    /// Reports each CPL TrackFileId that is not an asset of this package as
+    /// info. ST 2067-2:2020 §7.1: an IMP need not contain complete
+    /// compositions, so this is not an error.
     fn validate_cpl_asset_references_accumulating(
         &self,
         cpl: &crate::cpl::CompositionPlaylist,
@@ -2259,20 +2335,33 @@ impl Imferno {
             .map(|a| a.id)
             .collect();
 
+        // An Id listed in a PKL of this package is part of the package even
+        // when the AssetMap lacks it; that gap is reported as UnresolvedUuid
+        // (ERROR) by the PKL check, so no INFO is added here.
+        let pkl_ids: std::collections::HashSet<ImfUuid> = self
+            .packing_lists
+            .values()
+            .flat_map(|pkl| pkl.asset_list.assets.iter().map(|a| a.id))
+            .collect();
+
         let cpl_id = cpl.id;
 
         for (seg_idx, segment) in cpl.segment_list.segments.iter().enumerate() {
             for (seq, track_type) in segment.sequence_list.all_sequences_typed() {
                 for (res_idx, resource) in seq.resource_list().resources.iter().enumerate() {
                     if let Some(ref track_file_id) = resource.track_file_id {
-                        if !assetmap_ids.contains(track_file_id) {
+                        if !assetmap_ids.contains(track_file_id) && !pkl_ids.contains(track_file_id)
+                        {
+                            // ST 2067-2:2020 §7.1: an IMP need not contain
+                            // complete compositions, so this is legal (e.g. a
+                            // supplemental package referring to the OV).
+                            // https://github.com/Netflix/photon/issues/337
                             report.add(
-                                ValidationIssue::new(
-                                    Severity::Error,
-                                    Category::Reference,
-                                    codes::St2067_2_2020::UnresolvedUuid,
+                                ValidationIssue::from_code(
+                                    codes::St2067_2_2020::TrackFileNotInPackage,
                                     format!(
-                                        "{} TrackFileId {} not found in AssetMap",
+                                        "{} TrackFileId {} is not in this package \
+                                         (supplemental package?); it was not validated",
                                         track_type, track_file_id
                                     ),
                                 )
@@ -3651,6 +3740,163 @@ mod tests {
         );
     }
 
+    /// ST 2067-2:2020 §7.1: an IMP need not contain complete compositions,
+    /// so a CPL track file that is not in this package (e.g. a supplemental
+    /// package referring to the OV) is reported as info, not an error.
+    /// https://github.com/Netflix/photon/issues/337
+    #[test]
+    fn cpl_track_file_outside_package_is_info_not_error() {
+        let test_path = test_data("MERIDIAN_Netflix_Photon_161006");
+        let package = Imferno::parse(read_dir(test_path).unwrap()).expect("parse");
+        let cpl_xml = std::fs::read_to_string(
+            test_data("MERIDIAN_Netflix_Photon_161006")
+                .join("CPL_0eb3d1b9-b77b-4d3f-bbe5-7c69b15dca85.xml"),
+        )
+        .unwrap();
+        let mut cpl = crate::cpl::parse_cpl(&cpl_xml).expect("CPL");
+        let outside = ImfUuid::parse("urn:uuid:0f0f0f0f-1111-2222-3333-444444444444").unwrap();
+        let seq = &mut cpl.segment_list.segments[0].sequence_list;
+        let resource = &mut seq.main_image_sequences[0].resource_list.resources[0];
+        resource.track_file_id = Some(outside);
+
+        let mut report = ValidationReport::default();
+        package.validate_cpl_asset_references_accumulating(&cpl, &mut report);
+
+        assert!(report.errors.is_empty(), "{:#?}", report.errors);
+        let info: Vec<_> = report
+            .info
+            .iter()
+            .filter(|i| i.code == codes::St2067_2_2020::TrackFileNotInPackage.code())
+            .collect();
+        assert_eq!(info.len(), 1, "{:#?}", report.info);
+        assert!(info[0].message.contains("not in this package"));
+        assert!(info[0].message.contains(&outside.to_string()));
+    }
+
+    /// A track file listed in a PKL of this package but missing from the
+    /// AssetMap is part of the package; that gap is UnresolvedUuid (ERROR,
+    /// from the PKL check), so no TrackFileNotInPackage INFO is added.
+    #[test]
+    fn cpl_track_file_in_pkl_but_not_assetmap_gets_no_info() {
+        let test_path = test_data("MERIDIAN_Netflix_Photon_161006");
+        let mut package = Imferno::parse(read_dir(test_path).unwrap()).expect("parse");
+        let cpl_xml = std::fs::read_to_string(
+            test_data("MERIDIAN_Netflix_Photon_161006")
+                .join("CPL_0eb3d1b9-b77b-4d3f-bbe5-7c69b15dca85.xml"),
+        )
+        .unwrap();
+        let cpl = crate::cpl::parse_cpl(&cpl_xml).expect("CPL");
+        let track_file = cpl.segment_list.segments[0]
+            .sequence_list
+            .main_image_sequences[0]
+            .resource_list
+            .resources[0]
+            .track_file_id
+            .expect("TrackFileId");
+        assert!(package.packing_lists.values().any(|pkl| pkl
+            .asset_list
+            .assets
+            .iter()
+            .any(|a| a.id == track_file)));
+        package
+            .asset_map
+            .asset_list
+            .assets
+            .retain(|a| a.id != track_file);
+
+        // Without disk checks the PKL→AssetMap gap is still an ERROR.
+        let full = package.validate_package_structure_with_cpl_validator(|_| Vec::new(), true);
+        let unresolved = codes::St2067_2_2020::UnresolvedUuid.code();
+        assert!(
+            full.errors
+                .iter()
+                .any(|i| i.code == unresolved && i.message.contains(&track_file.to_string())),
+            "{:#?}",
+            full.errors
+        );
+
+        let mut report = ValidationReport::default();
+        package.validate_cpl_asset_references_accumulating(&cpl, &mut report);
+        assert!(
+            !report
+                .info
+                .iter()
+                .any(|i| i.code == codes::St2067_2_2020::TrackFileNotInPackage.code()),
+            "{:#?}",
+            report.info
+        );
+    }
+
+    /// ST 429-9:2014 Annex A.2 path rules run for a package on disk.
+    #[test]
+    fn basic_map_profile_v2_paths_checked_for_filesystem_package() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let root = dir.path();
+        let assetmap_xml = r#"<?xml version="1.0"?>
+<AssetMap xmlns="http://www.smpte-ra.org/schemas/429-9/2007/AM">
+<Id>urn:uuid:dddddddd-0000-0000-0000-000000000004</Id>
+<Creator>test</Creator>
+<VolumeCount>1</VolumeCount>
+<IssueDate>2024-01-01T00:00:00Z</IssueDate>
+<Issuer>test</Issuer>
+<AssetList>
+  <Asset>
+    <Id>urn:uuid:aaaaaaaa-0000-0000-0000-000000000001</Id>
+    <PackingList>true</PackingList>
+    <ChunkList><Chunk><Path>my pkl.xml</Path></Chunk></ChunkList>
+  </Asset>
+</AssetList>
+</AssetMap>"#;
+        std::fs::write(root.join("ASSETMAP.xml"), assetmap_xml).unwrap();
+        let package = Imferno::parse(read_dir(root).unwrap()).expect("parse");
+        let report = package.validate(&ValidationOptions::default());
+        assert!(
+            report
+                .errors
+                .iter()
+                .any(|i| i.code == "ST429-9:2014:A.2/PathCharacters"),
+            "{:#?}",
+            report.errors
+        );
+    }
+
+    /// ST 429-9:2014 Annex A.2 path rules also run for in-memory input
+    /// (the WASM entry point: relative keys, no root_path, no disk), with
+    /// one finding per path naming every offending character (#79).
+    #[test]
+    fn basic_map_profile_v2_paths_checked_for_in_memory_package() {
+        let assetmap_xml = r#"<?xml version="1.0"?>
+<AssetMap xmlns="http://www.smpte-ra.org/schemas/429-9/2007/AM">
+<Id>urn:uuid:dddddddd-0000-0000-0000-000000000004</Id>
+<Creator>test</Creator>
+<VolumeCount>1</VolumeCount>
+<IssueDate>2024-01-01T00:00:00Z</IssueDate>
+<Issuer>test</Issuer>
+<AssetList>
+  <Asset>
+    <Id>urn:uuid:aaaaaaaa-0000-0000-0000-000000000001</Id>
+    <PackingList>true</PackingList>
+    <ChunkList><Chunk><Path>FR Dubcard (v2)+.xml</Path></Chunk></ChunkList>
+  </Asset>
+</AssetList>
+</AssetMap>"#;
+        let mut files = HashMap::new();
+        files.insert("ASSETMAP.xml".to_string(), assetmap_xml.to_string());
+        let package = Imferno::parse(files).expect("parse");
+        assert!(package.root_path.as_os_str().is_empty());
+        // Same call the WASM `validate` / `buildReport` entry points make.
+        let report = package.validate(&ValidationOptions::default());
+        let found: Vec<_> = report
+            .errors
+            .iter()
+            .filter(|i| i.code == "ST429-9:2014:A.2/PathCharacters")
+            .collect();
+        assert_eq!(found.len(), 1, "{:#?}", report.errors);
+        for c in ["' '", "'('", "')'", "'+'"] {
+            assert!(found[0].message.contains(c), "{c}: {}", found[0].message);
+        }
+    }
+
     /// FileValidationError::NotInAssetMap converts to REF_UNRESOLVED_UUID.
     #[test]
     fn test_file_validation_error_to_issue_not_in_assetmap() {
@@ -4346,6 +4592,28 @@ mod tests {
     fn sanitize_rejects_double_dot_prefix() {
         let root = std::env::temp_dir();
         assert!(sanitize_asset_path(&root, "../../etc/shadow").is_none());
+    }
+
+    /// ST 429-9:2014 A.2 Note 3 allows "." and ".." segments; only a
+    /// location outside the package root is forbidden, at any step of the
+    /// resolution (A.2 Example 2).
+    #[test]
+    fn sanitize_allows_dot_dot_that_stays_inside_root() {
+        let root = std::env::temp_dir();
+        let p = sanitize_asset_path(&root, "a/../video.mxf").expect("inside root");
+        assert_eq!(p, root.join("video.mxf"));
+        let p = sanitize_asset_path(&root, "./a/b/../c.mxf").expect("inside root");
+        assert_eq!(p, root.join("a/c.mxf"));
+    }
+
+    #[test]
+    fn sanitize_rejects_dot_dot_that_leaves_root_at_any_step() {
+        let root = std::env::temp_dir();
+        // A.2 Example 2: bar/../.. is outside the tree even though the
+        // final path would come back in.
+        assert!(sanitize_asset_path(&root, "bar/../../foo/bar/Image.mxf").is_none());
+        assert!(sanitize_asset_path(&root, "a/../../a/video.mxf").is_none());
+        assert!(sanitize_asset_path(&root, "../").is_none());
     }
 
     // ── parse_issues tests ────────────────────────────────────────────────

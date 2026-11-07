@@ -158,10 +158,23 @@ pub enum App2ERule {
     CodingStyle,
     /// JPEG 2000 codestream layout (J2C) does not meet App2E requirements.
     J2CLayout,
-    /// JPEG 2000 extended capabilities are declared but not permitted.
+    /// `J2KExtendedCapabilities` is missing although ISO/IEC 15444-15
+    /// (HTJ2K) coding is used.
     J2KExtendedCapabilities,
     /// JPEG2000SubDescriptor is absent or incomplete.
     Jpeg2000SubDescriptor,
+    /// APP2.HT.IRV: the MAGB_P signalled in Ccap15 allows a parameter B
+    /// above 31.
+    ///
+    /// Interpretation: APP2.HT.REV is not checked. The 2026 Table H.1 REV
+    /// row gives MAGB_P "per parameter B calculated according to Table
+    /// H.2": a calculated value, not a limit. Whether it should become a
+    /// maximum, as asked for both tables in
+    /// https://github.com/SMPTE/st2067-21/issues/7, is open for REV.
+    HtIrvParameterBMax,
+    /// APP2.HT.IRV: the MAGB_P signalled in Ccap15 allows a parameter B
+    /// above the recommended value of the edition's table.
+    HtIrvParameterBRecommended,
 
     // ── JPEG 2000 resolution profiles ────────────────────────────────
     /// JPEG 2000 HT (ISO 15444-15) is not permitted by the App2E 2020 edition.
@@ -251,8 +264,15 @@ impl App2ERule {
             Self::WhiteRefLevel => "WhiteRefLevel value is inconsistent with ComponentDepth.",
             Self::CodingStyle => "JPEG 2000 codestream coding style is not compliant.",
             Self::J2CLayout => "JPEG 2000 codestream layout does not meet App2E requirements.",
-            Self::J2KExtendedCapabilities => "JPEG 2000 extended capabilities are declared but not permitted.",
+            // Table 14 requires the item when ISO/IEC 15444-15 coding is used:
+            // https://github.com/SMPTE/st2067-21/issues/2
+            Self::J2KExtendedCapabilities => "J2KExtendedCapabilities shall be present when ISO/IEC 15444-15 (HTJ2K) coding is used, but it is missing.",
             Self::Jpeg2000SubDescriptor => "JPEG2000SubDescriptor is absent or incomplete.",
+            // https://github.com/SMPTE/st2067-21/issues/7: resolved in the
+            // 2026 edition for HTIRV; open for HTREV, whose Table H.1 row
+            // gives a calculated value, not a limit, so it is not checked.
+            Self::HtIrvParameterBMax => "HTJ2K irreversible (APP2.HT.IRV) codestream: the MAGB_P set signalled in Ccap15 allows parameter B above 31. APP2.HT.REV is not checked: Table H.1 gives its B as a value calculated per Table H.2, not a limit (SMPTE st2067-21 issue 7, open for REV).",
+            Self::HtIrvParameterBRecommended => "HTJ2K irreversible (APP2.HT.IRV) codestream: the MAGB_P set signalled in Ccap15 allows parameter B above the recommended value for its bit depth and multiple component transform.",
             Self::J2KHtNotAllowed                => "JPEG 2000 HT (ISO 15444-15) is not permitted by App2E 2020.",
             Self::J2K4KResolution                => "JPEG 2000 IMF 4K Profile: stored resolution is outside the permitted range.",
             Self::J2K2KResolution                => "JPEG 2000 IMF 2K Profile: stored resolution is outside the permitted range.",
@@ -270,7 +290,9 @@ impl App2ERule {
     pub fn default_severity(&self) -> Severity {
         match self {
             Self::MaxCLLMaxFALL => Severity::Info,
-            Self::AppIdMismatch | Self::Jpeg2000SubDescriptor => Severity::Warning,
+            Self::AppIdMismatch
+            | Self::Jpeg2000SubDescriptor
+            | Self::HtIrvParameterBRecommended => Severity::Warning,
             _ => Severity::Error,
         }
     }
@@ -284,6 +306,8 @@ impl App2ERule {
             | Self::J2CLayout
             | Self::J2KExtendedCapabilities
             | Self::Jpeg2000SubDescriptor
+            | Self::HtIrvParameterBMax
+            | Self::HtIrvParameterBRecommended
             | Self::J2KHtNotAllowed
             | Self::J2K4KResolution
             | Self::J2K2KResolution
@@ -407,9 +431,13 @@ impl App2ERule {
             Self::J2CLayout =>
                 "JPEG2000SubDescriptor declares >1 layer or unsupported precinct sizes",
             Self::J2KExtendedCapabilities =>
-                "JPEG2000SubDescriptor <Capabilities><Bit set=\"15\"/></Capabilities>  <!-- HT not permitted -->",
+                "<JPEG2000SubDescriptor><Rsiz>16384</Rsiz>…</JPEG2000SubDescriptor>  <!-- HTJ2K (Rsiz bit 14) but no <J2KExtendedCapabilities> -->",
             Self::Jpeg2000SubDescriptor =>
                 "<PictureDescriptor>…</PictureDescriptor>  <!-- no JPEG2000SubDescriptor child -->",
+            Self::HtIrvParameterBMax =>
+                "<J2KExtendedCapabilities><Pcap>131072</Pcap><Ccapi><UInt16>53</UInt16></Ccapi></J2KExtendedCapabilities>  <!-- HTIRV, MAGB_P 21: B = 35 -->",
+            Self::HtIrvParameterBRecommended =>
+                "<Ssiz>9</Ssiz> … <Ccapi><UInt16>36</UInt16></Ccapi>  <!-- 10-bit HTIRV, MAGB_P 4: B = 12, table value 11 -->",
             Self::J2KHtNotAllowed =>
                 "JPEG2000SubDescriptor Profile field declares HTJ2K (ISO 15444-15)",
             Self::J2K4KResolution =>
@@ -686,7 +714,10 @@ define_app2e_edition! {
     ///
     /// Clauses shift by one against 2023 (Image Essence is §6, Image Track
     /// Files §7, Composition §8). Not in this edition: AlphaTransparency
-    /// (Table 7 says "Shall be ignored") and HT-J2K exclusion.
+    /// (Table 7 says "Shall be ignored") and HT-J2K exclusion. Only in this
+    /// edition: the APP2.HT.IRV parameter B limits of Annex H Table H.1 /
+    /// Table H.3 (the 2023 Annex I gives B as a calculated value, not a
+    /// limit; https://github.com/SMPTE/st2067-21/issues/7).
     St2067_21_2026 {
         FrameRate => "ST2067-21:2026:6.2.1/FrameRate",
         Resolution => "ST2067-21:2026:6.2.1/Resolution",
@@ -739,6 +770,8 @@ define_app2e_edition! {
         J2CLayout => "ST2067-21:2026:7.5.2/J2CLayout",
         J2KExtendedCapabilities => "ST2067-21:2026:7.5.1/J2KExtendedCapabilities",
         Jpeg2000SubDescriptor => "ST2067-21:2026:7.5.1/JPEG2000SubDescriptor",
+        HtIrvParameterBMax => "ST2067-21:2026:H/HT-IRV-ParameterB-Max",
+        HtIrvParameterBRecommended => "ST2067-21:2026:H/HT-IRV-ParameterB-Recommended",
         J2K4KResolution => "ST2067-21:2026:7.2.5/J2K-4K-Resolution",
         J2K2KResolution => "ST2067-21:2026:7.2.5/J2K-2K-Resolution",
         J2KBcpResolution => "ST2067-21:2026:7.2.5/J2K-BCP-Resolution",
@@ -748,5 +781,26 @@ define_app2e_edition! {
         HomogeneousImageEssence => "ST2067-21:2026:8.2/HomogeneousImageEssence",
         SegmentDurationMultiple => "ST2067-21:2026:8.3.2/SegmentDurationMultiple",
         MaxCLLMaxFALL => "ST2067-21:2026:8.3.3/MaxCLLMaxFALL",
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// https://github.com/SMPTE/st2067-21/issues/2: the item is required
+    /// when HTJ2K is used, so the catalogue must not describe it as
+    /// "not permitted".
+    #[test]
+    fn j2k_extended_capabilities_catalogue_text_matches_rule() {
+        for desc in [
+            St2067_21_2023::J2KExtendedCapabilities.description(),
+            St2067_21_2026::J2KExtendedCapabilities.description(),
+        ] {
+            assert!(desc.contains("shall be present"), "{desc}");
+            assert!(!desc.contains("not permitted"), "{desc}");
+        }
+        let example = App2ERule::J2KExtendedCapabilities.example().unwrap();
+        assert!(!example.contains("not permitted"), "{example}");
     }
 }

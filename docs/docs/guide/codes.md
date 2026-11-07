@@ -32,6 +32,11 @@ Each spec edition has its own codes, even when a rule is unchanged between editi
 |------|-------------|-----------------|----------|
 | `ST429-9:2014:7/VolindexMissing` | No volume-index document found in the package root. | INFO | Structure |
 | `ST429-9:2014:7/MalformedXml` | The VOLINDEX.xml document is not well-formed XML. | ERROR | Structure |
+| `ST429-9:2014:A.2/PathNotRelative` | Asset Map Path is not a relative-path reference without query or fragment (Basic Map Profile v2). | ERROR | Structure |
+| `ST429-9:2014:A.2/PathCharacters` | Asset Map Path segment uses characters other than a-z, A-Z, 0-9, dash, underscore and period (Basic Map Profile v2). | ERROR | Structure |
+| `ST429-9:2014:A.2/PathTooLong` | Asset Map Path or one of its segments is longer than 100 characters (Basic Map Profile v2). | ERROR | Structure |
+| `ST429-9:2014:A.2/PathTooManySegments` | Asset Map Path has more than 10 segments (Basic Map Profile v2). | ERROR | Structure |
+| `ST429-9:2014:A.2/PathDuplicate` | Two Asset Map Paths are identical regardless of case (Basic Map Profile v2). | ERROR | Structure |
 
 ## ST 377-1 — MXF File Format
 
@@ -44,6 +49,7 @@ Each spec edition has its own codes, even when a rule is unchanged between editi
 | `ST377-1:2011:6.4/NonHeaderFirstPartition` | The first partition in an MXF file must be the Header partition. | ERROR | Container |
 | `ST377-1:2011:8.3.3/HeaderPartitionOpen` | The header partition is Open and no Closed footer partition carries header metadata, so the MXF file is Open. | WARNING | Container |
 | `ST377-1:2011:8.3.3/MissingHeaderMetadata` | The header partition must carry header metadata (HeaderByteCount > 0). | ERROR | Container |
+| `ST377-1:2011:B.8/StructuralComponentDurationMissing` | A Structural Component on a Timeline Track has no Duration; it is a Best Effort property there and shall be encoded (-1 when unknown). | ERROR | Container |
 
 ## ST 377-4 — MCA Sub-Descriptor Linkage
 
@@ -65,7 +71,8 @@ Each spec edition has its own codes, even when a rule is unchanged between editi
 | `ST2067-2:2020:8.3/SizeMismatch` | Declared file size does not match the on-disk size. | ERROR | Asset |
 | `ST2067-2:2020:8.3/FileNotFound` | A referenced asset file is not present at the declared path. | ERROR | Asset |
 | `ST2067-2:2020:8.3/ChecksumMismatch` | File hash does not match the declared SHA-1/SHA-256 checksum. | ERROR | Asset |
-| `ST2067-2:2020:7/UnresolvedUuid` | UUID referenced in the CPL does not resolve to a known asset. | ERROR | Reference |
+| `ST2067-2:2020:7/UnresolvedUuid` | An asset listed in the Packing List is not in the AssetMap. | ERROR | Reference |
+| `ST2067-2:2020:7.1/TrackFileNotInPackage` | A CPL track file is not in this package; an IMP need not contain complete compositions (e.g. a supplemental package referring to the original version). | INFO | Reference |
 | `ST2067-2:2020:7/DuplicateUuid` | Two or more assets within the package share the same UUID. | ERROR | Reference |
 | `IMF:General/IoError` | An I/O error prevented the asset from being read. | ERROR | Asset |
 | `ST2067-2:2020:6.4.2/EssenceDescriptorList` | EssenceDescriptorList element is required per ST 2067-2:2020 §6.4.2. | ERROR | Structure |
@@ -426,7 +433,7 @@ Each spec edition has its own codes, even when a rule is unchanged between editi
 | `ST2067-21:2023:6.4.3/WhiteRefLevel` | WhiteRefLevel value is inconsistent with ComponentDepth. | ERROR | Video |
 | `ST2067-21:2023:6.5.2/CodingStyle` | JPEG 2000 codestream coding style is not compliant. | ERROR | Encoding |
 | `ST2067-21:2023:6.5.2/J2CLayout` | JPEG 2000 codestream layout does not meet App2E requirements. | ERROR | Encoding |
-| `ST2067-21:2023:6.5.2/J2KExtendedCapabilities` | JPEG 2000 extended capabilities are declared but not permitted. | ERROR | Encoding |
+| `ST2067-21:2023:6.5.2/J2KExtendedCapabilities` | J2KExtendedCapabilities shall be present when ISO/IEC 15444-15 (HTJ2K) coding is used, but it is missing. | ERROR | Encoding |
 | `ST2067-21:2023:6.5.2/JPEG2000SubDescriptor` | JPEG2000SubDescriptor is absent or incomplete. | WARNING | Encoding |
 | `ST2067-21:2023:6.2.5/J2K-4K-Resolution` | JPEG 2000 IMF 4K Profile: stored resolution is outside the permitted range. | ERROR | Encoding |
 | `ST2067-21:2023:6.2.5/J2K-2K-Resolution` | JPEG 2000 IMF 2K Profile: stored resolution is outside the permitted range. | ERROR | Encoding |
@@ -491,8 +498,10 @@ Each spec edition has its own codes, even when a rule is unchanged between editi
 | `ST2067-21:2026:7.4.3/WhiteRefLevel` | WhiteRefLevel value is inconsistent with ComponentDepth. | ERROR | Video |
 | `ST2067-21:2026:7.5.1/CodingStyle` | JPEG 2000 codestream coding style is not compliant. | ERROR | Encoding |
 | `ST2067-21:2026:7.5.2/J2CLayout` | JPEG 2000 codestream layout does not meet App2E requirements. | ERROR | Encoding |
-| `ST2067-21:2026:7.5.1/J2KExtendedCapabilities` | JPEG 2000 extended capabilities are declared but not permitted. | ERROR | Encoding |
+| `ST2067-21:2026:7.5.1/J2KExtendedCapabilities` | J2KExtendedCapabilities shall be present when ISO/IEC 15444-15 (HTJ2K) coding is used, but it is missing. | ERROR | Encoding |
 | `ST2067-21:2026:7.5.1/JPEG2000SubDescriptor` | JPEG2000SubDescriptor is absent or incomplete. | WARNING | Encoding |
+| `ST2067-21:2026:H/HT-IRV-ParameterB-Max` | HTJ2K irreversible (APP2.HT.IRV) codestream: the MAGB_P set signalled in Ccap15 allows parameter B above 31. APP2.HT.REV is not checked: Table H.1 gives its B as a value calculated per Table H.2, not a limit (SMPTE st2067-21 issue 7, open for REV). | ERROR | Encoding |
+| `ST2067-21:2026:H/HT-IRV-ParameterB-Recommended` | HTJ2K irreversible (APP2.HT.IRV) codestream: the MAGB_P set signalled in Ccap15 allows parameter B above the recommended value for its bit depth and multiple component transform. | WARNING | Encoding |
 | `ST2067-21:2026:7.2.5/J2K-4K-Resolution` | JPEG 2000 IMF 4K Profile: stored resolution is outside the permitted range. | ERROR | Encoding |
 | `ST2067-21:2026:7.2.5/J2K-2K-Resolution` | JPEG 2000 IMF 2K Profile: stored resolution is outside the permitted range. | ERROR | Encoding |
 | `ST2067-21:2026:7.2.5/J2K-BCP-Resolution` | JPEG 2000 Broadcast Contribution Profile: stored resolution is outside the permitted range. | ERROR | Encoding |
@@ -611,6 +620,7 @@ Codes emitted by imferno's package-level logic for conditions that don't map to 
 | `IMFERNO:Package/ReadDirError` | Could not scan the package directory. | INFO | Structure |
 | `IMFERNO:Package/DirEntryError` | Could not read a directory entry while scanning for unlisted essences. | INFO | Structure |
 | `IMFERNO:Package/PathTraversal` | An asset chunk path attempts to escape the package root directory (path traversal). | ERROR | Structure |
+| `IMFERNO:Package/ApplicationProfileNotValidated` | Application-profile validation was not performed for the CPL: ApplicationIdentification is absent or lists URIs imferno has no validator for. | WARNING | Structure |
 
 | Code | Description | Default Severity | Category |
 |------|-------------|-----------------|----------|

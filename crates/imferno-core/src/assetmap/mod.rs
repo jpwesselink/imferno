@@ -8,6 +8,7 @@
 //! - Re-exports from [`volindex`]: [`VolumeIndex`], [`parse_volindex`]
 
 pub mod codes;
+pub mod map_profile;
 pub mod volindex;
 pub mod volindex_codes;
 

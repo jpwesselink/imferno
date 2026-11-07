@@ -213,3 +213,23 @@ fn iab_edition_follows_the_core_edition_unless_pinned() {
     assert_eq!(iab.spec_id(), "ST 2067-201:2021 (IAB Level 0 Plug-in)");
     assert!(!iab.validate_cpl(&cpl).iter().any(|i| i.is(&EditionAssumed)));
 }
+
+/// Resolving the IAB namespace without a CPL (`get_validator`) still
+/// chooses the edition per CPL when it validates, and announces it.
+#[test]
+fn iab_uri_validator_resolves_the_edition_per_cpl() {
+    use imferno_core::catalogue::imferno::EditionAssumed;
+    let xml =
+        read_fixture("test-data/IAB/CompleteIMP/CPL_e0265fda-cb35-4e35-a4e4-4f44d82d2a52.xml");
+    let mut cpl = parse_cpl(&xml).expect("IAB CompleteIMP CPL should parse");
+    let v = get_validator(URI_2019).expect("IAB validator");
+    // Core ST 2067-2:2016 is determined: ST 2067-201:2019, nothing announced.
+    assert!(!v.validate_cpl(&cpl).iter().any(|i| i.is(&EditionAssumed)));
+    // Without that evidence the edition is assumed and announced.
+    cpl.source_xml = None;
+    cpl.extension_properties = None;
+    assert!(v
+        .validate_cpl(&cpl)
+        .iter()
+        .any(|i| i.is(&EditionAssumed) && i.message.starts_with("ST 2067-201 edition of CPL")));
+}

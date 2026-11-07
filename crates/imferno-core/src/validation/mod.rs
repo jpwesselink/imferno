@@ -386,6 +386,20 @@ pub fn iab_validator(edition: St2067_201Edition) -> Box<dyn ConstraintsValidator
 
 /// The IAB plug-in validator for `cpl`, in the edition
 /// [`cpl_iab_edition`] chooses, announcing it when assumed.
+/// The IAB plug-in for a URI resolved without a CPL: it chooses the
+/// ST 2067-201 edition per CPL when it validates (no pins).
+struct IabPerCpl;
+
+impl ConstraintsValidator for IabPerCpl {
+    fn spec_id(&self) -> &str {
+        "ST 2067-201 (IAB Level 0 Plug-in, edition per CPL)"
+    }
+
+    fn validate_cpl(&self, cpl: &CompositionPlaylist) -> Vec<ValidationIssue> {
+        iab_for_cpl(cpl, Pins::default()).validate_cpl(cpl)
+    }
+}
+
 /// The editions a caller pinned that bear on the IAB edition of a CPL.
 #[derive(Debug, Clone, Copy, Default)]
 struct Pins {
@@ -434,11 +448,10 @@ impl ValidatorRegistry for BuiltinValidatorRegistry {
             "http://www.smpte-ra.org/schemas/2067-2/2016" => Some(Box::new(CoreConstraints2016)),
             "http://www.smpte-ra.org/ns/2067-2/2020" => Some(Box::new(CoreConstraints2020)),
             // ST 2067-201 IAB Level 0 plug-in. Every published edition
-            // (2019/2021/2026) reuses the 2019 namespace URI — see the
-            // note above `iab::URI_2019` — so the URI resolves to the
-            // 2021 rules (the current unconditional edition; 2026 adds
-            // only an opt-in Annex E recommendation).
-            iab::URI_2019 | iab::URI_2019_SCHEMAS => Some(iab_validator(St2067_201Edition::V2026)),
+            // (2019/2021/2026) reuses the 2019 namespace URI, so the URI
+            // alone names no edition: the validator chooses it per CPL
+            // ([`cpl_iab_edition`]) and announces an assumed one.
+            iab::URI_2019 | iab::URI_2019_SCHEMAS => Some(Box::new(IabPerCpl)),
             // ST 2067-202 ISXD plug-in.
             isxd::URI_2022 => Some(Box::new(AppIsxdPlugin2023)),
             _ => None,

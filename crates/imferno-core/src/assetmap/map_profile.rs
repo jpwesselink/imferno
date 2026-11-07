@@ -1,9 +1,12 @@
 //! ST 429-9:2014 Annex A (Basic Map Profile v2, normative) Path rules.
 //!
 //! Annex A is the Map Profile for a package on a hierarchical filesystem
-//! (direct attached storage). The 128-character limit of the ST 2067-2
-//! Annex L HTTP profile applies to HTTP retrieval only; on a filesystem the
-//! Annex A limits apply (https://github.com/Netflix/photon/issues/192).
+//! (direct attached storage). The IMF HTTP Map Profile (ST 2067-2:2016
+//! Annex L, ST 2067-2:2020 Annex K: segments up to 128 characters, Path up
+//! to 1024) applies to HTTP retrieval only; on a filesystem the Annex A
+//! limits apply (https://github.com/Netflix/photon/issues/192).
+//! The delivery method is not known from the package, so the 429-9
+//! Annex A limits are always used.
 //!
 //! Every rule here reads only the `<Path>` values of the Asset Map XML, so
 //! it runs for every input (filesystem, in-memory, WASM). Two A.2 rules

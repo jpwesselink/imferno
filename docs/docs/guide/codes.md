@@ -44,8 +44,8 @@ Unmarked rows are carried over from earlier catalogues and not yet checked.
 
 | Rule | Description | Category | 2012 |
 |------|-------------|----------|------|
-| `ST377-4/MCALinkIDMissing` | Every MCA sub-descriptor shall carry an MCALinkID (§6.3 Table 3, Req). | Audio | 6.3 error |
-| `ST377-4/SoundfieldGroupLinkIDMismatch` | AudioChannelLabelSubDescriptor SoundfieldGroupLinkID shall equal the SoundfieldGroup's MCALinkID (§6.4.1). | Audio | 6.4.1 error |
+| `ST377-4/MCALinkIDMissing` | Every MCA sub-descriptor shall carry an MCALinkID (§6.3 Table 3, Req). | Audio | 6.3✓ error |
+| `ST377-4/SoundfieldGroupLinkIDMismatch` | AudioChannelLabelSubDescriptor SoundfieldGroupLinkID shall equal the SoundfieldGroup's MCALinkID (§6.4.1). | Audio | 6.4.1✓ error |
 
 ## SMPTE ST 429-8 — Packing List
 

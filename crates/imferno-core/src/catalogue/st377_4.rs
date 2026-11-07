@@ -1,11 +1,12 @@
 //! Rule table: SMPTE ST 377-4 (MXF Multichannel Audio Labeling).
 //!
-//! Generated from the pre-C0 per-edition code enums; edit by hand from now on.
+//! Every row checked against the text of its edition (C1/C4).
 
 #![allow(non_upper_case_globals)]
 
-use crate::diagnostics::rule::{row, AnyRule, Rule, Spec};
-use crate::diagnostics::{Category, Severity};
+use crate::diagnostics::rule::Strength::Shall;
+use crate::diagnostics::rule::{checked, AnyRule, Rule, Spec};
+use crate::diagnostics::Category;
 
 crate::diagnostics::rule::editions! {
     /// Editions of SMPTE ST 377-4 (MXF Multichannel Audio Labeling) imferno knows.
@@ -23,7 +24,7 @@ pub static MCALinkIDMissing: Rule<E> = Rule {
     description: "Every MCA sub-descriptor shall carry an MCALinkID (§6.3 Table 3, Req).",
     example: Some("<AudioChannelLabelSubDescriptor>…</AudioChannelLabelSubDescriptor>  <!-- no <MCALinkID> child -->"),
     editions: &[
-        row(E::V2012, "6.3", Severity::Error),
+        checked(E::V2012, "6.3", Shall),
     ],
 };
 
@@ -34,7 +35,7 @@ pub static SoundfieldGroupLinkIDMismatch: Rule<E> = Rule {
     description: "AudioChannelLabelSubDescriptor SoundfieldGroupLinkID shall equal the SoundfieldGroup's MCALinkID (§6.4.1).",
     example: Some("<AudioChannelLabelSubDescriptor><SoundfieldGroupLinkID>urn:uuid:abc…</SoundfieldGroupLinkID></AudioChannelLabelSubDescriptor>  <!-- but the parent SoundfieldGroupLabelSubDescriptor MCALinkID = urn:uuid:def… -->"),
     editions: &[
-        row(E::V2012, "6.4.1", Severity::Error),
+        checked(E::V2012, "6.4.1", Shall),
     ],
 };
 

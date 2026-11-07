@@ -426,7 +426,7 @@ Each spec edition has its own codes, even when a rule is unchanged between editi
 | `ST2067-21:2023:6.4.3/WhiteRefLevel` | WhiteRefLevel value is inconsistent with ComponentDepth. | ERROR | Video |
 | `ST2067-21:2023:6.5.2/CodingStyle` | JPEG 2000 codestream coding style is not compliant. | ERROR | Encoding |
 | `ST2067-21:2023:6.5.2/J2CLayout` | JPEG 2000 codestream layout does not meet App2E requirements. | ERROR | Encoding |
-| `ST2067-21:2023:6.5.2/J2KExtendedCapabilities` | JPEG 2000 extended capabilities are declared but not permitted. | ERROR | Encoding |
+| `ST2067-21:2023:6.5.2/J2KExtendedCapabilities` | J2KExtendedCapabilities shall be present when ISO/IEC 15444-15 (HTJ2K) coding is used, but it is missing. | ERROR | Encoding |
 | `ST2067-21:2023:6.5.2/JPEG2000SubDescriptor` | JPEG2000SubDescriptor is absent or incomplete. | WARNING | Encoding |
 | `ST2067-21:2023:6.2.5/J2K-4K-Resolution` | JPEG 2000 IMF 4K Profile: stored resolution is outside the permitted range. | ERROR | Encoding |
 | `ST2067-21:2023:6.2.5/J2K-2K-Resolution` | JPEG 2000 IMF 2K Profile: stored resolution is outside the permitted range. | ERROR | Encoding |
@@ -491,7 +491,7 @@ Each spec edition has its own codes, even when a rule is unchanged between editi
 | `ST2067-21:2026:7.4.3/WhiteRefLevel` | WhiteRefLevel value is inconsistent with ComponentDepth. | ERROR | Video |
 | `ST2067-21:2026:7.5.1/CodingStyle` | JPEG 2000 codestream coding style is not compliant. | ERROR | Encoding |
 | `ST2067-21:2026:7.5.2/J2CLayout` | JPEG 2000 codestream layout does not meet App2E requirements. | ERROR | Encoding |
-| `ST2067-21:2026:7.5.1/J2KExtendedCapabilities` | JPEG 2000 extended capabilities are declared but not permitted. | ERROR | Encoding |
+| `ST2067-21:2026:7.5.1/J2KExtendedCapabilities` | J2KExtendedCapabilities shall be present when ISO/IEC 15444-15 (HTJ2K) coding is used, but it is missing. | ERROR | Encoding |
 | `ST2067-21:2026:7.5.1/JPEG2000SubDescriptor` | JPEG2000SubDescriptor is absent or incomplete. | WARNING | Encoding |
 | `ST2067-21:2026:7.2.5/J2K-4K-Resolution` | JPEG 2000 IMF 4K Profile: stored resolution is outside the permitted range. | ERROR | Encoding |
 | `ST2067-21:2026:7.2.5/J2K-2K-Resolution` | JPEG 2000 IMF 2K Profile: stored resolution is outside the permitted range. | ERROR | Encoding |

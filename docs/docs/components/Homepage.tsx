@@ -63,29 +63,29 @@ export default function Homepage() {
         <h1 className="hero-title">imferno</h1>
         <p className="hero-subtitle"><a href="https://www.smpte.org/standards/st2067" className="hero-link">SMPTE ST-2067</a><br />for Rust and JavaScript.</p>
         <p className="hero-desc">
-          Parse, validate, and inspect IMF packages with native Node.js bindings
-          and a WebAssembly target for the browser.
+          A fast, modern IMF parser and validator. Runs on the command line, in Node.js,
+          and entirely in your browser — your packages never leave your machine.
         </p>
       </section>
 
       {/* Feature cards */}
       <section className="section">
         <div className="card-grid four">
-          <a className="feat-card" href={`${base}reference/standards`}>
-            <h3>IMF core + applications</h3>
-            <p>Parse AssetMaps, PKLs, CPLs, and Sidecar Composition Maps across the IMF core (ST 2067-2/-3/-9, ST 429-9) plus application profiles: App #2E (ST 2067-21), IAB Level 0 through the 2026 Annex E revision (ST 2067-201), ISXD (ST 2067-202), and S-ADM/ADM audio essence detection (ST 2067-203/-204). MXF header metadata via RegXML (ST 377-1/-4).</p>
+          <a className="feat-card" href={`${base}reference/wasm`}>
+            <h3>Validates locally</h3>
+            <p>The WebAssembly build validates entirely in the browser. Nothing is uploaded, there is no server, and no log of anyone's titles — so you stay inside your confidentiality agreements with studios.</p>
           </a>
           <a className="feat-card" href={`${base}guide/config`}>
-            <h3>Flexible strictness</h3>
-            <p>180+ typed validation rules across 10 SMPTE standards, plus XSD pre-pass and imferno-native structural checks. Tune each rule individually: set any code to <code className="icode">off</code>, <code className="icode">info</code>, <code className="icode">warn</code>, <code className="icode">error</code>, or <code className="icode">critical</code> to match your workflow.</p>
+            <h3>Strict, and yours to tune</h3>
+            <p>Strict to the SMPTE text by default. Requirements differ per company, so every rule can be set per spec edition to <code className="icode">off</code>, <code className="icode">info</code>, <code className="icode">warn</code>, <code className="icode">error</code> or <code className="icode">critical</code>.</p>
           </a>
-          <a className="feat-card" href={`${base}guide/quick-start`}>
-            <h3>Rust, Node.js &amp; WASM</h3>
-            <p>Use the native Rust library or CLI directly, <code className="icode">@imferno/node</code> bindings for server-side pipelines, or the WebAssembly build for the browser.</p>
+          <a className="feat-card" href={`${base}reference/node`}>
+            <h3>Typed output</h3>
+            <p>Every result is typed — Rust, TypeScript, JSON Schema and SARIF. Build your own checks on top without needing imferno, and let agents read the results directly.</p>
           </a>
           <a className="feat-card" href={`${base}guide/validation`}>
-            <h3>IMF reference corpus</h3>
-            <p>Tested against the Netflix Photon MERIDIAN corpus, the Fraunhofer SMPTE working-group ST 2067-203/-204 corpus, and vendored fixtures for App #2E, App5 (IMAX HDR), IAB, ISXD, HT (JPEG 2000 High Throughput), S-ADM, and Netflix–Sony Plugfest.</p>
+            <h3>Findings you can act on</h3>
+            <p>Each finding names the rule, the spec edition and the clause it was checked against — <code className="icode">ST2067-3:2016:7.2/SegmentDuration</code> — so people and agents know exactly what to fix.</p>
           </a>
         </div>
       </section>

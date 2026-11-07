@@ -1227,25 +1227,33 @@ impl Imferno {
             };
         }
 
-        let mut candidates: Vec<St2067_2Edition> = vec![V2013, V2016, V2020];
+        // Only Packing List namespaces name editions: ST 429-8 (2013 §7.1)
+        // and `.../2067-2/2016/PKL` (2016 Annex K, 2020 Annex J). A Core
+        // Constraints or unknown namespace on a PKL root names none.
+        let mut candidates: Option<Vec<St2067_2Edition>> = None;
         let mut namespaces: Vec<String> = Vec::new();
         for pkl in self.packing_lists.values() {
-            let allowed: &[St2067_2Edition] = match pkl.namespace {
-                PklNamespace::Dci429_8 | PklNamespace::Smpte2067_2_2013 => &[V2013],
-                PklNamespace::Smpte2067_2_2016
-                | PklNamespace::Smpte2067_2_2016Pkl
-                | PklNamespace::Smpte2067_2_2020 => &[V2016, V2020],
-                PklNamespace::Unknown(_) => &[V2013, V2016, V2020],
-            };
-            candidates.retain(|e| allowed.contains(e));
             namespaces.push(pkl.namespace.to_string());
+            let allowed: &[St2067_2Edition] = match pkl.namespace {
+                PklNamespace::Dci429_8 => &[V2013],
+                PklNamespace::Smpte2067_2_2016Pkl => &[V2016, V2020],
+                PklNamespace::Smpte2067_2_2013
+                | PklNamespace::Smpte2067_2_2016
+                | PklNamespace::Smpte2067_2_2020
+                | PklNamespace::Unknown(_) => continue,
+            };
+            let c = candidates.get_or_insert_with(|| allowed.to_vec());
+            c.retain(|e| allowed.contains(e));
         }
         namespaces.sort();
         namespaces.dedup();
-        if candidates.is_empty() {
+        let candidates = match candidates {
+            // No Packing List namespace: it names no edition.
+            None => Vec::new(),
             // Packing Lists of different editions: every edition remains.
-            candidates = vec![V2013, V2016, V2020];
-        }
+            Some(c) if c.is_empty() => vec![V2013, V2016, V2020],
+            Some(c) => c,
+        };
 
         // The CPLs whose own Core Constraints edition is determined (the
         // same resolution the CPL validators use) are the evidence.

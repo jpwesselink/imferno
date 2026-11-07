@@ -190,6 +190,27 @@ fn package_and_cpl_core_editions_agree() {
     assert!(notices.iter().any(|n| n.location.cpl_id.is_some()));
 }
 
+/// Only real Packing List namespaces (ST 429-8 → 2013; `.../2067-2/2016/PKL`
+/// → 2016 or 2020, Annex K / Annex J) say anything about the edition. A
+/// Core Constraints namespace on a PKL root is not a PKL namespace and
+/// names no edition; the CPLs decide.
+#[test]
+fn core_constraints_namespace_on_a_pkl_names_no_edition() {
+    use imferno_core::assetmap::PklNamespace;
+    let mut pkg = package("IAB/CompleteIMP");
+    for pkl in pkg.packing_lists.values_mut() {
+        pkl.namespace = PklNamespace::Smpte2067_2_2013;
+    }
+    let e = pkg.package_edition(None);
+    assert_eq!(e.edition, St2067_2Edition::V2016, "{:?}", e.assumed);
+    assert_eq!(e.assumed, None);
+    for pkl in pkg.packing_lists.values_mut() {
+        pkl.namespace = PklNamespace::Smpte2067_2_2020;
+    }
+    let e = pkg.package_edition(None);
+    assert_eq!((e.edition, e.assumed), (St2067_2Edition::V2016, None));
+}
+
 /// Rules-config keys that select nothing come back with the result.
 #[test]
 fn unknown_rules_keys_are_reported_with_the_result() {

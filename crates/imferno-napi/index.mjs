@@ -56,6 +56,7 @@ export const {
   validatePath,
   validateUri,
   listRules,
+  toSarif,
 } = nativeModule;
 
 export { codes } from "./codes.mjs";

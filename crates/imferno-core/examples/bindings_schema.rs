@@ -37,6 +37,10 @@ fn main() {
             "RulesConfig",
             gen.subschema_for::<imferno_core::diagnostics::rules::RulesConfig>(),
         ),
+        (
+            "RuleInfo",
+            gen.subschema_for::<imferno_core::diagnostics::rule::RuleInfo>(),
+        ),
     ];
 
     let definitions: Map<String, Value> = gen

@@ -154,6 +154,28 @@ pub fn format_report_js(report: serde_json::Value) -> napi::Result<String> {
 }
 
 // =============================================================================
+// SARIF — validation findings as a SARIF 2.1.0 log
+// =============================================================================
+
+/// Convert a validation result to a SARIF 2.1.0 log.
+///
+/// Rules are reported by rule id (`ST2067-3/SegmentDuration`); each finding
+/// points at the applied edition's clause in that edition's taxonomy
+/// (`ST2067-3:2016`).
+///
+/// @param report - The object returned by `validate*` (or its `validation`)
+/// @returns A SARIF 2.1.0 log object.
+/// @throws If `report` is not a validation result or report.
+#[napi(
+    js_name = "toSarif",
+    ts_args_type = "report: ValidationResult | ValidationReport",
+    ts_return_type = "SarifLog"
+)]
+pub fn to_sarif_js(report: serde_json::Value) -> napi::Result<serde_json::Value> {
+    imferno_core::diagnostics::sarif_from_json(report).map_err(napi::Error::from_reason)
+}
+
+// =============================================================================
 // Parse package — full serialized Imferno struct
 // =============================================================================
 

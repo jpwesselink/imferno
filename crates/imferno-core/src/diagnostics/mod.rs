@@ -637,6 +637,10 @@ pub use rule::{Edition, Rule, RuleId, Spec, Strength};
 pub mod rules;
 pub use rules::{RuleSeverity, RulesConfig};
 
+/// SARIF 2.1.0 output.
+pub mod sarif;
+pub use sarif::{sarif_from_json, to_sarif, to_sarif_json};
+
 /// Result type for parsing operations that can accumulate errors
 pub type ParseResult<T> = Result<(T, ValidationReport), CriticalError>;
 

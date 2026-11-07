@@ -145,6 +145,8 @@ enum OutputFormat {
     Csv,
     /// Full JSON (ValidationResult with package + validation)
     Json,
+    /// SARIF 2.1.0 log of the findings (rule ids, editions as taxonomies)
+    Sarif,
 }
 
 #[derive(Clone, Copy, Debug, clap::ValueEnum)]
@@ -293,13 +295,13 @@ async fn cmd_validate(
     );
     let rules = parse_rules(rules_config_path, inline_rules)?;
     let options = make_options(core_spec, app2e_spec, skip_disk_checks, rules);
-    let color = use_color() && !matches!(format, OutputFormat::Json);
+    let color = use_color() && !matches!(format, OutputFormat::Json | OutputFormat::Sarif);
 
     // Read files
     let files = match read_input(&path.to_string_lossy()).await {
         Ok(f) => f,
         Err(e) => {
-            if matches!(format, OutputFormat::Json) {
+            if matches!(format, OutputFormat::Json | OutputFormat::Sarif) {
                 let mut validation = ValidationReport::new(ValidationProfile::SMPTE);
                 validation.add(
                     ValidationIssue::from_rule(
@@ -311,7 +313,12 @@ async fn cmd_validate(
                         "Ensure the directory contains VOLINDEX.xml and ASSETMAP.xml.",
                     ),
                 );
-                println!("{}", serde_json::to_string_pretty(&validation)?);
+                let out = if matches!(format, OutputFormat::Sarif) {
+                    imferno_core::diagnostics::to_sarif_json(&validation)
+                } else {
+                    serde_json::to_value(&validation)?
+                };
+                println!("{}", serde_json::to_string_pretty(&out)?);
                 return Ok(());
             }
             return Err(e);
@@ -327,7 +334,7 @@ async fn cmd_validate(
         use std::sync::atomic::AtomicBool;
         use std::sync::Arc;
 
-        let show_progress = !matches!(format, OutputFormat::Json) && color;
+        let show_progress = !matches!(format, OutputFormat::Json | OutputFormat::Sarif) && color;
         let tracker = Arc::new(HashProgressTracker::new());
 
         // Spawn progress display ticker
@@ -526,7 +533,7 @@ async fn cmd_validate(
                 )
             })
             .collect();
-        if !matches!(format, OutputFormat::Json) {
+        if !matches!(format, OutputFormat::Json | OutputFormat::Sarif) {
             let snap = tracker.snapshot();
             let total = snap.len();
             let verified = snap
@@ -579,6 +586,10 @@ async fn cmd_validate(
     match format {
         OutputFormat::Json => {
             println!("{}", serde_json::to_string_pretty(&result)?);
+        }
+        OutputFormat::Sarif => {
+            let log = imferno_core::diagnostics::to_sarif_json(&result.validation);
+            println!("{}", serde_json::to_string_pretty(&log)?);
         }
         OutputFormat::Summary | OutputFormat::Markdown | OutputFormat::Csv => {
             let report_format = match format {

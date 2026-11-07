@@ -54,6 +54,18 @@ export async function validate(files, options) {
     return wasm.validate(files, options);
 }
 
+// Validation findings as a SARIF 2.1.0 log
+export async function toSarif(report) {
+    await ensureInit();
+    return wasm.toSarif(report);
+}
+
+// The rule catalogue (one entry per rule, with its per-edition table)
+export async function listRules() {
+    await ensureInit();
+    return wasm.listRules();
+}
+
 // Utility
 export async function getVersion() {
     await ensureInit();

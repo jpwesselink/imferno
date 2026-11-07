@@ -2145,6 +2145,8 @@ impl Imferno {
     /// 2. Check that the Operational Pattern is OP1a (required for IMF per ST 2067-2)
     /// 3. Report parse failures as warnings (file may be unavailable or corrupt)
     fn validate_mxf_headers(&self, report: &mut ValidationReport) {
+        // MXF essence checks are native-only.
+        #[cfg_attr(target_arch = "wasm32", allow(unused_variables))]
         let spec_ed = self.package_edition();
         // OP1a UL prefix: 060e2b34.04010102.0d010201.0101__00
         // Bytes 13-14 identify the OP variant: 01 01 = OP1a, 01 02 = OP1b, etc.

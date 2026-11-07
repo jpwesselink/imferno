@@ -47,6 +47,7 @@ tokio = { workspace = true, features = ["rt-multi-thread", "sync", "time", "macr
 aws-sdk-s3 = { workspace = true, optional = true }
 aws-config = { workspace = true, optional = true }
 uppsala    = { version = "0.12" }
+serde-sarif = "0.8"
 # MXF essence-header parsing — pure-Rust port of the SMPTE-reference
 # regxmllib, verified semantically identical to the Java implementation
 # across 75 real-world IMF MXFs. Drives the SMPTE essence-rule checks
@@ -66,6 +67,7 @@ regxml = { version = "0.1" }
 regxml-dict = { version = "0.1" }
 
 [dev-dependencies]
+jsonschema = { version = "0.60", default-features = false }
 pretty_assertions = { workspace = true }
 tempfile          = { workspace = true }
 xmloxide          = "0.4"

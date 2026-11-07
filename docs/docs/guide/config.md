@@ -230,8 +230,12 @@ edition used (one per package, and per CPL).
   it gets `ST2067-2/NotImfCompositionPlaylist` (Error) naming the namespace,
   and no ST 2067-3, Core Constraints or application rules.
 - **ST 2067-201, CPL with IAB** (`--iab-spec` / `iabSpec`): every edition
-  (2019, 2021, 2026) uses the 2019 namespace and nothing in a CPL tells them
-  apart, so the newest is applied and announced. The track files its IAB
+  (2019, 2021, 2026) uses the 2019 namespace. ST 2067-201:2019 cites
+  ST 2067-2:2016, 2021 and 2026 cite ST 2067-2:2020, so a determined or pinned
+  Core Constraints edition names 2019, or leaves 2021 and 2026; an
+  `IABMaxObjectCount` item or `IABChannelSubDescriptor` in the IAB essence
+  descriptor (2026 only) names 2026. Otherwise the newest is applied and
+  announced. The track files its IAB
   Virtual Tracks reference get the same edition.
 - **ST 377-1 / ST 377-4, MXF track file**: MXF has no namespace; the dated
   normative references of the specs that apply to the file decide. Every

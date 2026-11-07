@@ -208,7 +208,7 @@ pub fn cpl_evidence(
         .iter()
         .any(|s| !s.sequence_list.iab_sequences.is_empty());
     if has_iab {
-        let iab = cpl_iab_edition(cpl, iab_pin);
+        let iab = cpl_iab_edition(cpl, core_pin, iab_pin);
         if iab.assumed.is_none() {
             let e = st2067_3_of_iab(iab.edition);
             out.push(Evidence::one(
@@ -221,16 +221,7 @@ pub fn cpl_evidence(
             ));
         }
     }
-    let uses_2020_scope = cpl.segment_list.segments.iter().any(|s| {
-        s.sequence_list.marker_sequences.iter().any(|seq| {
-            seq.resource_list
-                .resources
-                .iter()
-                .flat_map(|r| r.markers.iter())
-                .any(|m| m.label.effective_scope() == MARKER_SCOPE_2020)
-        })
-    });
-    if uses_2020_scope {
+    if uses_marker_scope_2020(cpl) {
         out.push(Evidence::one(
             St2067_3Edition::V2020,
             format!("it uses the Marker Label scope {MARKER_SCOPE_2020}, which only ST 2067-3:2020 defines"),
@@ -356,25 +347,103 @@ pub fn mxf_editions(
 
 /// The ST 2067-201 edition of the IAB rules applied to a CPL (and to the
 /// track files its IAB Virtual Tracks reference): `pin` when the caller
-/// gives one. Every edition (2019, 2021, 2026) uses the 2019 namespace, and
-/// no App #2E or ST 2067-2 edition references a dated ST 2067-201, so
-/// nothing in a CPL tells them apart: the newest is applied, announced.
+/// gives one. Every edition (2019, 2021, 2026) uses the 2019 namespace; the
+/// evidence is:
+/// - the ST 2067-2 edition (`core_pin`, else the CPL's when determined):
+///   ST 2067-201:2019 §3 cites ST 2067-2:2016, :2021 and :2026 cite :2020;
+/// - the ST 2067-3 edition when the `2020#standard-markers` scope names it
+///   (2021 and 2026 cite ST 2067-3:2020). The IAB-derived ST 2067-3 edition
+///   is never fed back;
+/// - an `IABMaxObjectCount` item or an `IABChannelSubDescriptor` in the CPL's
+///   IAB essence descriptor, which only ST 2067-201:2026 defines (absence
+///   says nothing).
 pub fn cpl_iab_edition(
     cpl: &CompositionPlaylist,
+    core_pin: Option<St2067_2Edition>,
     pin: Option<St2067_201Edition>,
 ) -> EditionChoice<St2067_201Edition> {
+    use St2067_201Edition::{V2019, V2021, V2026};
     if let Some(edition) = pin {
         return EditionChoice {
             edition,
             assumed: None,
         };
     }
+    let mut evidence = Vec::new();
+    let core = core_pin.map(|e| (e, "the pinned")).or_else(|| {
+        cpl_core_edition(cpl)
+            .filter(|c| c.assumed.is_none())
+            .map(|c| (c.edition, "its"))
+    });
+    match core {
+        Some((St2067_2Edition::V2016, whose)) => evidence.push(Evidence::one(
+            V2019,
+            format!("{whose} ST 2067-2 edition is ST 2067-2:2016, which ST 2067-201:2019 cites"),
+        )),
+        Some((St2067_2Edition::V2020, whose)) => evidence.push(Evidence {
+            editions: vec![V2021, V2026],
+            what: format!(
+                "{whose} ST 2067-2 edition is ST 2067-2:2020, which ST 2067-201:2021 and :2026 cite"
+            ),
+        }),
+        _ => {}
+    }
+    if uses_marker_scope_2020(cpl) {
+        evidence.push(Evidence {
+            editions: vec![V2021, V2026],
+            what: format!(
+                "it uses the Marker Label scope {MARKER_SCOPE_2020} (ST 2067-3:2020), which \
+                 ST 2067-201:2021 and :2026 cite"
+            ),
+        });
+    }
+    if let Some(item) = cpl.source_xml.as_deref().and_then(iab_2026_item) {
+        evidence.push(Evidence::one(
+            V2026,
+            format!(
+                "its IAB essence descriptor carries {item}, which only ST 2067-201:2026 defines"
+            ),
+        ));
+    }
     resolve(
         &format!("CPL {}", cpl.id),
         "its IAB namespace http://www.smpte-ra.org/ns/2067-201/2019",
         St2067_201Edition::ALL,
-        &[],
+        &evidence,
     )
+}
+
+/// Whether a CPL uses the Marker Label scope only ST 2067-3:2020 defines.
+fn uses_marker_scope_2020(cpl: &CompositionPlaylist) -> bool {
+    cpl.segment_list.segments.iter().any(|s| {
+        s.sequence_list.marker_sequences.iter().any(|seq| {
+            seq.resource_list
+                .resources
+                .iter()
+                .flat_map(|r| r.markers.iter())
+                .any(|m| m.label.effective_scope() == MARKER_SCOPE_2020)
+        })
+    })
+}
+
+/// The first ST 2067-201:2026-only IAB descriptor element in `xml`
+/// (`IABMaxObjectCount`, `IABChannelSubDescriptor`), by local name.
+fn iab_2026_item(xml: &str) -> Option<&'static str> {
+    use quick_xml::events::Event;
+    let mut reader = quick_xml::Reader::from_str(xml);
+    loop {
+        match reader.read_event().ok()? {
+            Event::Start(e) | Event::Empty(e) => {
+                for item in ["IABMaxObjectCount", "IABChannelSubDescriptor"] {
+                    if e.local_name().as_ref() == item {
+                        return Some(item);
+                    }
+                }
+            }
+            Event::Eof => return None,
+            _ => {}
+        }
+    }
 }
 
 /// The ST 2067-2 editions a CPL namespace allows: ST 2067-2:2013 uses

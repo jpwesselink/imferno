@@ -98,14 +98,14 @@ pub trait ValidatorRegistry {
             validators.push(EditionNotices::wrap(v, notices));
         }
 
-        let iab_pin = None;
+        let pins = Pins::default();
         push_application_validators(
             cpl,
-            |uri| resolve_in_cpl(cpl, uri, iab_pin, |u| self.resolve_namespace(u)),
+            |uri| resolve_in_cpl(cpl, uri, pins, |u| self.resolve_namespace(u)),
             &mut validators,
         );
 
-        push_sequence_presence_plugins(cpl, iab_pin, &mut validators);
+        push_sequence_presence_plugins(cpl, pins, &mut validators);
 
         validators
     }
@@ -340,7 +340,7 @@ impl ConstraintsValidator for ApplicationProfileNotValidated {
 /// sequences doesn't get validated twice.
 fn push_sequence_presence_plugins(
     cpl: &CompositionPlaylist,
-    iab_pin: Option<St2067_201Edition>,
+    pins: Pins,
     validators: &mut Vec<Box<dyn ConstraintsValidator>>,
 ) {
     let has_iab = cpl
@@ -367,7 +367,7 @@ fn push_sequence_presence_plugins(
     // shouldn't be warned about by default. Pin a different edition via
     // `ValidatorSelection::app_specs`.
     if has_iab && !already("2067-201", validators) {
-        validators.push(iab_for_cpl(cpl, iab_pin));
+        validators.push(iab_for_cpl(cpl, pins));
     }
     if has_isxd && !already("2067-202", validators) {
         validators.push(Box::new(AppIsxdPlugin2023));
@@ -385,11 +385,15 @@ pub fn iab_validator(edition: St2067_201Edition) -> Box<dyn ConstraintsValidator
 
 /// The IAB plug-in validator for `cpl`, in the edition
 /// [`cpl_iab_edition`] chooses, announcing it when assumed.
-fn iab_for_cpl(
-    cpl: &CompositionPlaylist,
-    pin: Option<St2067_201Edition>,
-) -> Box<dyn ConstraintsValidator> {
-    let choice = cpl_iab_edition(cpl, pin);
+/// The editions a caller pinned that bear on the IAB edition of a CPL.
+#[derive(Debug, Clone, Copy, Default)]
+struct Pins {
+    core: Option<St2067_2Edition>,
+    iab: Option<St2067_201Edition>,
+}
+
+fn iab_for_cpl(cpl: &CompositionPlaylist, pins: Pins) -> Box<dyn ConstraintsValidator> {
+    let choice = cpl_iab_edition(cpl, pins.core, pins.iab);
     EditionNotices::wrap(
         iab_validator(choice.edition),
         choice.assumed.into_iter().collect(),
@@ -401,11 +405,11 @@ fn iab_for_cpl(
 fn resolve_in_cpl(
     cpl: &CompositionPlaylist,
     uri: &str,
-    iab_pin: Option<St2067_201Edition>,
+    pins: Pins,
     resolve: impl Fn(&str) -> Option<Box<dyn ConstraintsValidator>>,
 ) -> Option<Box<dyn ConstraintsValidator>> {
     if uri == iab::URI_2019 || uri == iab::URI_2019_SCHEMAS {
-        Some(iab_for_cpl(cpl, iab_pin))
+        Some(iab_for_cpl(cpl, pins))
     } else {
         resolve(uri)
     }
@@ -737,6 +741,10 @@ impl ValidatorRegistry for ConfigurableValidatorRegistry {
                 .and_then(CoreSpecTarget::from_namespace_uri)
                 .map(|t| t.edition())
         });
+        let pins = Pins {
+            core: core_pin,
+            iab: iab_pin,
+        };
         if is_not_imf_cpl(cpl) {
             return vec![Box::new(NotImfCpl { core_pin })];
         }
@@ -780,7 +788,7 @@ impl ValidatorRegistry for ConfigurableValidatorRegistry {
             }
         } else if let Some(ref app_uris) = self.selection.application_identification_uris {
             for uri in app_uris {
-                if let Some(v) = resolve_in_cpl(cpl, uri, iab_pin, |u| self.resolve_namespace(u)) {
+                if let Some(v) = resolve_in_cpl(cpl, uri, pins, |u| self.resolve_namespace(u)) {
                     validators.push(v);
                 }
             }
@@ -808,10 +816,10 @@ impl ValidatorRegistry for ConfigurableValidatorRegistry {
             // NOT auto-add plug-ins.
             push_application_validators(
                 cpl,
-                |uri| resolve_in_cpl(cpl, uri, iab_pin, |u| self.resolve_namespace(u)),
+                |uri| resolve_in_cpl(cpl, uri, pins, |u| self.resolve_namespace(u)),
                 &mut validators,
             );
-            push_sequence_presence_plugins(cpl, iab_pin, &mut validators);
+            push_sequence_presence_plugins(cpl, pins, &mut validators);
         }
 
         validators

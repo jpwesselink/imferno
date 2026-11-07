@@ -2388,10 +2388,13 @@ impl Imferno {
                 // announces it when assumed); only a determined (pinned) edition
                 // is evidence for the ST 377 editions.
                 let iab_pin = selection.iab_spec.map(|t| t.edition());
-                let iab_choice = self
-                    .iab_referencing_cpls(&asset.id)
-                    .first()
-                    .map(|cpl| crate::validation::cpl_iab_edition(cpl, iab_pin));
+                let iab_choice = self.iab_referencing_cpls(&asset.id).first().map(|cpl| {
+                    crate::validation::cpl_iab_edition(
+                        cpl,
+                        selection.core_spec.map(|t| t.edition()),
+                        iab_pin,
+                    )
+                });
                 let iab_ref = iab_choice
                     .as_ref()
                     .filter(|c| c.assumed.is_none())

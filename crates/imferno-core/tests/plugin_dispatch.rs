@@ -155,11 +155,12 @@ fn pinned_app_uris_suppress_sequence_presence_auto_add() {
 
 // ── IAB edition resolution ───────────────────────────────────────────────────
 
-/// Every ST 2067-201 edition (2019, 2021, 2026) uses the 2019 namespace and
-/// nothing in a CPL tells them apart: the newest is applied and announced,
-/// unless the caller pins one.
+/// Every ST 2067-201 edition (2019, 2021, 2026) uses the 2019 namespace. The
+/// dated references decide: 2019 cites ST 2067-2:2016, 2021 and 2026 cite
+/// ST 2067-2:2020. A determined 2016 core gives 2019; a 2020 core leaves
+/// 2021 and 2026, so the newest is applied and announced; a pin wins.
 #[test]
-fn iab_edition_is_the_newest_announced_unless_pinned() {
+fn iab_edition_follows_the_core_edition_unless_pinned() {
     use imferno_core::catalogue::imferno::EditionAssumed;
     use imferno_core::validation::IabSpecTarget;
     let xml =
@@ -167,6 +168,23 @@ fn iab_edition_is_the_newest_announced_unless_pinned() {
     let cpl = parse_cpl(&xml).expect("IAB CompleteIMP CPL should parse");
 
     let validators = get_validators_for_cpl(&cpl);
+    let iab = validators
+        .iter()
+        .find(|v| v.spec_id().contains("2067-201"))
+        .expect("IAB plug-in");
+    // The CPL is ST 2067-2:2016 (App #2E 2016, 2016 cc namespace).
+    assert_eq!(iab.spec_id(), "ST 2067-201:2019 (IAB Level 0 Plug-in)");
+    let issues = iab.validate_cpl(&cpl);
+    assert!(!issues.iter().any(|i| i.is(&EditionAssumed)), "{issues:#?}");
+    assert!(!issues
+        .iter()
+        .any(|i| i.rule.0 == "ST2067-201/IabChannelSubDescriptorRecommended"));
+
+    let registry = ConfigurableValidatorRegistry::new(ValidatorSelection {
+        core_spec: Some(imferno_core::validation::CoreSpecTarget::St2067_2_2020),
+        ..Default::default()
+    });
+    let validators = registry.resolve_for_cpl(&cpl);
     let iab = validators
         .iter()
         .find(|v| v.spec_id().contains("2067-201"))
@@ -179,6 +197,9 @@ fn iab_edition_is_the_newest_announced_unless_pinned() {
         .collect();
     assert_eq!(notices.len(), 1, "{notices:#?}");
     assert!(notices[0].message.starts_with("ST 2067-201 edition of CPL"));
+    assert!(notices[0]
+        .message
+        .contains("ST 2067-201:2021 and ST 2067-201:2026"));
 
     let registry = ConfigurableValidatorRegistry::new(ValidatorSelection {
         iab_spec: Some(IabSpecTarget::St2067_201_2021),

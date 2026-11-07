@@ -611,7 +611,7 @@ Codes emitted by imferno's package-level logic for conditions that don't map to 
 | Code | Description | Default Severity | Category |
 |------|-------------|-----------------|----------|
 | `IMFERNO:Package/UnreferencedAsset` | Asset is present in the AssetMap but not referenced by any CPL Virtual Track and has no SCM declaration. Likely a sidecar essence without an SCM. | INFO | Structure |
-| `IMFERNO:Package/UnlistedEssence` | File is present in the package directory but not listed in the AssetMap. The file is invisible to any conforming IMF reader. | WARNING | Structure |
+| `IMFERNO:Package/UnlistedEssence` | File is present in the package directory but not listed in the AssetMap. The file is invisible to any conforming IMF reader. | INFO | Structure |
 | `IMFERNO:Package/ParseError` | IMF package failed to parse due to a structural error. | CRITICAL | Structure |
 | `IMFERNO:Package/PklParseError` | A Packing List referenced by the AssetMap could not be parsed. | ERROR | Structure |
 | `IMFERNO:Package/XmlAssetParseError` | An XML asset could not be parsed as CPL, OPL, or SCM. | WARNING | Structure |

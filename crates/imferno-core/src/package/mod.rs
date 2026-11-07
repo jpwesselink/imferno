@@ -1131,15 +1131,16 @@ impl Imferno {
         }
     }
 
-    /// Emit `ImfernoCode::UnlistedEssence` warnings for any file in the
-    /// package directory that is not accounted for by the AssetMap, PKL,
-    /// VOLINDEX, or ASSETMAP itself.
+    /// Emit `ImfernoCode::UnlistedEssence` for any file in the package
+    /// directory that is not accounted for by the AssetMap, PKL, VOLINDEX,
+    /// or ASSETMAP itself. Severity comes from the catalogue (Info: ST
+    /// 2067-2:2020 §8.3 Note 3 lets the medium hold files that are not
+    /// ingested).
     ///
     /// Scans the root directory non-recursively.  Skipped on WASM and when
     /// `root_path` is unset (in-memory / WASM packages).
     #[cfg(not(target_arch = "wasm32"))]
     fn emit_unlisted_essence(&self, report: &mut ValidationReport) {
-        use crate::diagnostics::codes::ValidationCode as _;
         if self.root_path.as_os_str().is_empty() {
             return;
         }
@@ -1206,10 +1207,8 @@ impl Imferno {
             if known.iter().any(|k| k.eq_ignore_ascii_case(&filename)) {
                 continue;
             }
-            report.add(ValidationIssue::new(
-                Severity::Warning,
-                Category::Structure,
-                codes::ImfernoCode::UnlistedEssence.code(),
+            report.add(ValidationIssue::from_code(
+                codes::ImfernoCode::UnlistedEssence,
                 format!(
                     "File '{}' is present in the package directory but not listed in the AssetMap",
                     filename,
@@ -1787,8 +1786,12 @@ impl Imferno {
         #[cfg(not(target_arch = "wasm32"))]
         if !skip_disk_checks && !self.root_path.as_os_str().is_empty() {
             self.validate_mxf_headers(&mut report);
-            self.emit_unlisted_essence(&mut report);
         }
+
+        // Files the AssetMap does not list. A directory listing reads no
+        // asset, so this also runs with skip_disk_checks.
+        #[cfg(not(target_arch = "wasm32"))]
+        self.emit_unlisted_essence(&mut report);
 
         report
     }
@@ -4891,6 +4894,32 @@ mod tests {
         let found: Vec<_> = report.errors.iter().filter(|i| i.code == code).collect();
         assert_eq!(found.len(), 1, "{:#?}", report.errors);
         assert!(found[0].message.contains("'assetmap.xml'"));
+    }
+
+    /// Files in the package directory that the AssetMap does not list are
+    /// reported once each as UnlistedEssence, also with `skip_disk_checks`
+    /// (a directory listing reads no asset). It is Info: ST 2067-2:2020 §8.3
+    /// Note 3 allows the delivery medium to hold other files that are not
+    /// ingested, so a stray file is not a violation.
+    /// https://github.com/jpwesselink/imferno/issues/84
+    #[test]
+    fn unlisted_file_reported_as_info_with_skip_disk_checks() {
+        let code = codes::ImfernoCode::UnlistedEssence.code();
+        let dir = copy_xml_package("MERIDIAN_Netflix_Photon_161006");
+        std::fs::write(dir.path().join("CPL_copy.xml"), "<x/>").unwrap();
+        let package = Imferno::parse(read_dir(dir.path()).unwrap()).unwrap();
+        let report = package.validate(&skip_disk_options());
+        let found: Vec<_> = report.info.iter().filter(|i| i.code == code).collect();
+        assert_eq!(found.len(), 1, "{:#?}", report.info);
+        assert!(found[0].message.contains("'CPL_copy.xml'"));
+        assert!(
+            !report
+                .errors
+                .iter()
+                .chain(&report.warnings)
+                .any(|i| i.code == code),
+            "UnlistedEssence is Info only"
+        );
     }
 
     /// ST 2067-2:2020 §7.3.1 Table 19: a CPL asset is identified by the Id

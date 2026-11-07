@@ -1641,6 +1641,21 @@ impl Imferno {
             report.add(issue.clone());
         }
 
+        // ST 429-9:2014 Annex A.2 Path rules. Annex A is the Map Profile
+        // for a filesystem, so it applies only when the package was read
+        // from one (root_path set); not for in-memory / object-store input.
+        if !self.root_path.as_os_str().is_empty() {
+            let paths = self
+                .asset_map
+                .asset_list
+                .assets
+                .iter()
+                .flat_map(|a| a.chunk_list.chunks.iter().map(|c| c.path.as_str()));
+            for issue in crate::assetmap::map_profile::basic_map_profile_v2_issues(paths) {
+                report.add(issue);
+            }
+        }
+
         // PKL structural constraints (ST 2067-2 §7/9)
         for issue in self
             .validate_pkl_constraints()
@@ -3693,6 +3708,39 @@ mod tests {
         assert_eq!(info.len(), 1, "{:#?}", report.info);
         assert!(info[0].message.contains("not in this package"));
         assert!(info[0].message.contains(&outside.to_string()));
+    }
+
+    /// ST 429-9:2014 Annex A.2 path rules run for a package on disk.
+    #[test]
+    fn basic_map_profile_v2_paths_checked_for_filesystem_package() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let root = dir.path();
+        let assetmap_xml = r#"<?xml version="1.0"?>
+<AssetMap xmlns="http://www.smpte-ra.org/schemas/429-9/2007/AM">
+<Id>urn:uuid:dddddddd-0000-0000-0000-000000000004</Id>
+<Creator>test</Creator>
+<VolumeCount>1</VolumeCount>
+<IssueDate>2024-01-01T00:00:00Z</IssueDate>
+<Issuer>test</Issuer>
+<AssetList>
+  <Asset>
+    <Id>urn:uuid:aaaaaaaa-0000-0000-0000-000000000001</Id>
+    <PackingList>true</PackingList>
+    <ChunkList><Chunk><Path>my pkl.xml</Path></Chunk></ChunkList>
+  </Asset>
+</AssetList>
+</AssetMap>"#;
+        std::fs::write(root.join("ASSETMAP.xml"), assetmap_xml).unwrap();
+        let package = Imferno::parse(read_dir(root).unwrap()).expect("parse");
+        let report = package.validate(&ValidationOptions::default());
+        assert!(
+            report
+                .errors
+                .iter()
+                .any(|i| i.code == "ST429-9:2014:A.2/PathCharacters"),
+            "{:#?}",
+            report.errors
+        );
     }
 
     /// FileValidationError::NotInAssetMap converts to REF_UNRESOLVED_UUID.

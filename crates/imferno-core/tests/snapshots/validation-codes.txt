@@ -436,3 +436,8 @@ ST429-9:2014:6.3/AssetMapHasNoPackingList
 ST429-9:2014:6.3/PklIdNotInAssetMap
 ST429-9:2014:7/MalformedXml
 ST429-9:2014:7/VolindexMissing
+ST429-9:2014:A.2/PathCharacters
+ST429-9:2014:A.2/PathDuplicate
+ST429-9:2014:A.2/PathNotRelative
+ST429-9:2014:A.2/PathTooLong
+ST429-9:2014:A.2/PathTooManySegments

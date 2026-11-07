@@ -3,6 +3,11 @@ export declare const codes: {
   readonly ST429_9_2014: {
     readonly VolindexMissing: "ST429-9:2014:7/VolindexMissing";
     readonly MalformedXml: "ST429-9:2014:7/MalformedXml";
+    readonly PathNotRelative: "ST429-9:2014:A.2/PathNotRelative";
+    readonly PathCharacters: "ST429-9:2014:A.2/PathCharacters";
+    readonly PathTooLong: "ST429-9:2014:A.2/PathTooLong";
+    readonly PathTooManySegments: "ST429-9:2014:A.2/PathTooManySegments";
+    readonly PathDuplicate: "ST429-9:2014:A.2/PathDuplicate";
   };
   readonly ST377_1_2011: {
     readonly NotMxf: "ST377-1:2011:5/NotMxf";

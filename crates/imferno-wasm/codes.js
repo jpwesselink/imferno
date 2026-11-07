@@ -3,6 +3,11 @@ export const codes = {
   ST429_9_2014: {
     VolindexMissing: "ST429-9:2014:7/VolindexMissing",
     MalformedXml: "ST429-9:2014:7/MalformedXml",
+    PathNotRelative: "ST429-9:2014:A.2/PathNotRelative",
+    PathCharacters: "ST429-9:2014:A.2/PathCharacters",
+    PathTooLong: "ST429-9:2014:A.2/PathTooLong",
+    PathTooManySegments: "ST429-9:2014:A.2/PathTooManySegments",
+    PathDuplicate: "ST429-9:2014:A.2/PathDuplicate",
   },
   ST377_1_2011: {
     NotMxf: "ST377-1:2011:5/NotMxf",

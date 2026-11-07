@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<AssetMap xmlns="http://www.smpte-ra.org/schemas/429-9/2007/AM">
+  <Id>urn:uuid:a0000000-0000-4000-8000-000000000001</Id>
+  <Creator>imferno test-data</Creator>
+  <VolumeCount>1</VolumeCount>
+  <IssueDate>2026-01-01T00:00:00Z</IssueDate>
+  <Issuer>imferno test-data</Issuer>
+  <AssetList>
+    <Asset>
+      <Id>urn:uuid:a0000000-0000-4000-8000-000000000003</Id>
+      <ChunkList>
+        <Chunk>
+          <Path>CPL_a0000000-0000-4000-8000-000000000003.xml</Path>
+          <VolumeIndex>1</VolumeIndex>
+        </Chunk>
+      </ChunkList>
+    </Asset>
+    <Asset>
+      <Id>urn:uuid:a0000000-0000-4000-8000-000000000004</Id>
+      <ChunkList>
+        <Chunk>
+          <Path>SCM_a0000000-0000-4000-8000-000000000004.xml</Path>
+          <VolumeIndex>1</VolumeIndex>
+        </Chunk>
+      </ChunkList>
+    </Asset>
+    <Asset>
+      <Id>urn:uuid:a0000000-0000-4000-8000-000000000005</Id>
+      <ChunkList>
+        <Chunk>
+          <Path>sidecar_notes.txt</Path>
+          <VolumeIndex>1</VolumeIndex>
+        </Chunk>
+      </ChunkList>
+    </Asset>
+    <Asset>
+      <Id>urn:uuid:a0000000-0000-4000-8000-000000000002</Id>
+      <PackingList>true</PackingList>
+      <ChunkList>
+        <Chunk>
+          <Path>PKL_a0000000-0000-4000-8000-000000000002.xml</Path>
+          <VolumeIndex>1</VolumeIndex>
+        </Chunk>
+      </ChunkList>
+    </Asset>
+  </AssetList>
+</AssetMap>

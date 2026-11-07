@@ -19,7 +19,8 @@ pub mod report;
 
 #[allow(deprecated)]
 pub use self::report::{
-    build_report, format_report, format_validation_result, FormatOptions, ImfReport, ReportFormat,
+    build_report, format_json_report, format_report, format_validation_result, FormatOptions,
+    ImfReport, ReportFormat,
 };
 pub use crate::assetmap::{Asset, AssetMap, PackingList, PklAsset, VolumeIndex};
 pub use crate::cpl::{CompositionPlaylist, Resource as CplResource};
@@ -31,12 +32,24 @@ pub use crate::diagnostics::{
 ///
 /// This is the primary return type — contains the full parsed package
 /// and all validation findings.
-#[derive(Debug, serde::Serialize)]
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct ValidationResult {
     /// The fully parsed IMF package.
     pub package: Imferno,
     /// Validation findings (spec violations, warnings, info).
     pub validation: ValidationReport,
+}
+
+impl ValidationResult {
+    /// Rebuild a `ValidationResult` from its own JSON serialisation (e.g. the
+    /// object a JS binding's `validate()` returned).
+    ///
+    /// Use this rather than `serde_json::from_value` directly: some CPL fields
+    /// deserialise from their XML form by default.
+    pub fn from_json(value: serde_json::Value) -> serde_json::Result<Self> {
+        crate::cpl::de_helpers::json_mode(|| serde_json::from_value(value))
+    }
 }
 
 /// Parse and validate an IMF package in one call.
@@ -394,11 +407,13 @@ impl From<&FileValidationError> for ValidationIssue {
 ///
 /// This is the full parsed package — all CPLs, PKLs, AssetMap, SCMs, and
 /// cross-references. Serializable to JSON for WASM/NAPI consumers.
-#[derive(Debug, serde::Serialize)]
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Imferno {
     /// Package root directory
     #[serde(serialize_with = "serialize_path")]
+    #[cfg_attr(feature = "jsonschema", schemars(with = "String"))]
     pub root_path: PathBuf,
 
     /// Volume index (VOLINDEX.xml)
@@ -434,6 +449,7 @@ pub struct Imferno {
 
     /// Asset UUID to file path mapping
     #[serde(serialize_with = "serialize_path_map")]
+    #[cfg_attr(feature = "jsonschema", schemars(with = "HashMap<ImfUuid, String>"))]
     pub asset_paths: HashMap<ImfUuid, PathBuf>,
 }
 

@@ -5,11 +5,11 @@
 //! The WASM module exposes two main functions:
 //!
 //! - [`build_report`] — parse and validate an IMF package from in-memory files.
-//! - [`format_report`] — render an [`ImfReport`] as a human-readable string.
+//! - [`format_report_js`] — render a `ValidationResult` (or legacy `ImfReport`) as text.
 
 #[allow(deprecated)]
 use imferno_core::package::{
-    build_report, format_report, validate as validate_package, ImfReport, Imferno, RulesConfig,
+    build_report, format_json_report, validate as validate_package, Imferno, RulesConfig,
     ValidationOptions,
 };
 use imferno_core::validation::{
@@ -87,19 +87,16 @@ pub fn build_report_js(
 // FORMAT REPORT — pretty-print an ImfReport as a human-readable string
 // =============================================================================
 
-/// Format a previously built `ImfReport` as a human-readable string.
+/// Format a validation result as a human-readable string.
 ///
-/// Pass the object returned by `buildReport()` (or any valid `ImfReport` JSON).
-/// Returns the same output as `imferno report` on the CLI.
-#[allow(deprecated)]
+/// Pass the object returned by `validate()`, or (legacy) by `buildReport()`.
 #[wasm_bindgen(js_name = "formatReport")]
 pub fn format_report_js(
     #[wasm_bindgen(js_name = "report")] report_js: JsValue,
 ) -> Result<String, JsValue> {
-    let imf_report: ImfReport = serde_wasm_bindgen::from_value(report_js)
-        .map_err(|e| JsValue::from_str(&format!("Invalid ImfReport: {}", e)))?;
-
-    Ok(format_report(&imf_report, false))
+    let value: serde_json::Value = serde_wasm_bindgen::from_value(report_js)
+        .map_err(|e| JsValue::from_str(&format!("Invalid report: {}", e)))?;
+    format_json_report(value).map_err(|e| JsValue::from_str(&e))
 }
 
 // =============================================================================

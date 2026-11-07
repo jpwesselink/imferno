@@ -17,7 +17,9 @@ crate-type = ["cdylib"]
 [dependencies]
 imferno-core = { path = "../imferno-core", version = "3.0.1", features = ["uppsala-patched"] }
 napi = { version = "3", default-features = false, features = ["napi9", "serde-json"] }
-napi-derive = "3"
+# Exact: napi-derive emits the type definitions that become index.d.ts, and
+# CI fails if the committed index.d.ts is stale (Cargo.lock is not committed).
+napi-derive = "=3.7.0"
 serde = { workspace = true }
 serde_json = { workspace = true }
 strum = { workspace = true }

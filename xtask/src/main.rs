@@ -2,6 +2,7 @@ mod build_wasm;
 mod generate_codes_ts;
 mod generate_docs;
 mod generate_schema;
+mod generate_types_ts;
 
 fn main() {
     let mut args = std::env::args().skip(1);
@@ -10,6 +11,7 @@ fn main() {
         Some("generate-docs") => generate_docs::run(),
         Some("generate-schema") => generate_schema::run(),
         Some("generate-codes-ts") => generate_codes_ts::run(),
+        Some("generate-types-ts") => generate_types_ts::run(),
         Some("build-docs") => {
             build_wasm::run();
             generate_docs::run();
@@ -37,5 +39,8 @@ fn usage() {
     eprintln!("  generate-docs      generate reference/codes/*.md from spec crate enums");
     eprintln!("  generate-schema    generate JSON Schema files into crates/imferno-core/npm/schema/schemas/");
     eprintln!("  generate-codes-ts  generate codes.js + codes.d.ts from validation-code enums");
+    eprintln!(
+        "  generate-types-ts  generate types.d.ts (NAPI + WASM) from the Rust types' JSON Schema"
+    );
     eprintln!("  build-docs         run build-wasm, generate-docs, and generate-codes-ts");
 }

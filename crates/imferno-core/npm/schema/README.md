@@ -29,6 +29,8 @@ if (validate(data)) {
 
 | Export | Description |
 |--------|-------------|
+| `validationResult` | `{ package, validation }` as returned by `validate()` in `@imferno/node` |
+| `imfernoPackage` | Full parsed package as returned by `parsePackage()` in `@imferno/node` |
 | `imfReport` | Full IMF package report (metadata + validation + CPL analysis) |
 | `validationReport` | Validation issues and diagnostics |
 | `compositionPlaylist` | SMPTE ST 2067-3 Composition Playlist |

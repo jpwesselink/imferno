@@ -100,3 +100,43 @@ jobs:
       - name: Run WASM tests
         working-directory: crates/imferno-wasm
         run: npx vitest run
+
+  test-napi:
+    name: Test NAPI (types contract)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@v2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        working-directory: crates/imferno-napi
+        run: npm install
+
+      - name: Build native module (regenerates index.d.ts)
+        working-directory: crates/imferno-napi
+        run: npx napi build
+
+      - name: Regenerate types.d.ts from the Rust types
+        run: cargo xtask generate-types-ts
+
+      - name: Committed declarations are up to date
+        run: |
+          git diff --exit-code -- \
+            crates/imferno-napi/index.d.ts \
+            crates/imferno-napi/types.d.ts \
+            crates/imferno-wasm/types.d.ts \
+            || { echo "::error::Generated .d.ts files are stale. Run 'npx napi build' in crates/imferno-napi and 'cargo xtask generate-types-ts', then commit."; exit 1; }
+
+      - name: Run NAPI tests
+        working-directory: crates/imferno-napi
+        run: npx vitest run

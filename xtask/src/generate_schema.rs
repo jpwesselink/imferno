@@ -17,6 +17,14 @@ pub fn run() {
             schema_for!(imferno_core::package::report::ImfReport),
         ),
         (
+            "validation-result",
+            schema_for!(imferno_core::package::ValidationResult),
+        ),
+        (
+            "imferno-package",
+            schema_for!(imferno_core::package::Imferno),
+        ),
+        (
             "validation-report",
             schema_for!(imferno_core::ValidationReport),
         ),

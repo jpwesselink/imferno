@@ -63,8 +63,8 @@ export default function Homepage() {
         <h1 className="hero-title">imferno</h1>
         <p className="hero-subtitle"><a href="https://www.smpte.org/standards/st2067" className="hero-link">SMPTE ST-2067</a><br />for Rust and JavaScript.</p>
         <p className="hero-desc">
-          A fast, modern IMF parser and validator. Runs on the command line, in Node.js,
-          and entirely in your browser — your packages never leave your machine.
+          Parse, validate, and inspect IMF packages.
+          CLI, Rust, Node.js, and WebAssembly for the browser.
         </p>
       </section>
 

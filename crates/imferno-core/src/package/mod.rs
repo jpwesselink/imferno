@@ -1641,10 +1641,10 @@ impl Imferno {
             report.add(issue.clone());
         }
 
-        // ST 429-9:2014 Annex A.2 Path rules. Annex A is the Map Profile
-        // for a filesystem, so it applies only when the package was read
-        // from one (root_path set); not for in-memory / object-store input.
-        if !self.root_path.as_os_str().is_empty() {
+        // ST 429-9:2014 Annex A.2 Path rules, from the AssetMap <Path>
+        // values alone, so they run for every input (filesystem,
+        // in-memory, WASM).
+        {
             let paths = self
                 .asset_map
                 .asset_list
@@ -3741,6 +3741,43 @@ mod tests {
             "{:#?}",
             report.errors
         );
+    }
+
+    /// ST 429-9:2014 Annex A.2 path rules also run for in-memory input
+    /// (the WASM entry point: relative keys, no root_path, no disk), with
+    /// one finding per path naming every offending character (#79).
+    #[test]
+    fn basic_map_profile_v2_paths_checked_for_in_memory_package() {
+        let assetmap_xml = r#"<?xml version="1.0"?>
+<AssetMap xmlns="http://www.smpte-ra.org/schemas/429-9/2007/AM">
+<Id>urn:uuid:dddddddd-0000-0000-0000-000000000004</Id>
+<Creator>test</Creator>
+<VolumeCount>1</VolumeCount>
+<IssueDate>2024-01-01T00:00:00Z</IssueDate>
+<Issuer>test</Issuer>
+<AssetList>
+  <Asset>
+    <Id>urn:uuid:aaaaaaaa-0000-0000-0000-000000000001</Id>
+    <PackingList>true</PackingList>
+    <ChunkList><Chunk><Path>FR Dubcard (v2)+.xml</Path></Chunk></ChunkList>
+  </Asset>
+</AssetList>
+</AssetMap>"#;
+        let mut files = HashMap::new();
+        files.insert("ASSETMAP.xml".to_string(), assetmap_xml.to_string());
+        let package = Imferno::parse(files).expect("parse");
+        assert!(package.root_path.as_os_str().is_empty());
+        // Same call the WASM `validate` / `buildReport` entry points make.
+        let report = package.validate(&ValidationOptions::default());
+        let found: Vec<_> = report
+            .errors
+            .iter()
+            .filter(|i| i.code == "ST429-9:2014:A.2/PathCharacters")
+            .collect();
+        assert_eq!(found.len(), 1, "{:#?}", report.errors);
+        for c in ["' '", "'('", "')'", "'+'"] {
+            assert!(found[0].message.contains(c), "{c}: {}", found[0].message);
+        }
     }
 
     /// FileValidationError::NotInAssetMap converts to REF_UNRESOLVED_UUID.

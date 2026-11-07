@@ -4,11 +4,13 @@
 //! (direct attached storage). The 128-character limit of the ST 2067-2
 //! Annex L HTTP profile applies to HTTP retrieval only; on a filesystem the
 //! Annex A limits apply (https://github.com/Netflix/photon/issues/192).
-//! Callers therefore run these checks only for packages read from a
-//! filesystem.
 //!
-//! Not checked here: A.2 "within the Mapped File Set" (enforced when paths
-//! are resolved) and case preservation against the filesystem.
+//! Every rule here reads only the `<Path>` values of the Asset Map XML, so
+//! it runs for every input (filesystem, in-memory, WASM). Two A.2 rules
+//! need the filesystem and are not checked here: "within the Mapped File
+//! Set" (resolved paths are confined to the package root when assets are
+//! located on disk) and case preservation (the Path and the file name on
+//! disk shall have identical case), which is not checked.
 
 use std::collections::HashMap;
 

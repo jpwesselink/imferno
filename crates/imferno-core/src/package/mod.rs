@@ -14,6 +14,7 @@ use crate::catalogue::st2067_2::{self, St2067_2Edition};
 use crate::catalogue::st2067_3;
 use crate::catalogue::st2067_9::{self, St2067_9Edition};
 use crate::catalogue::st377_1::{self, St377_1Edition};
+use crate::catalogue::st429_8::{self, St429_8Edition};
 use crate::catalogue::st429_9::{self, St429_9Edition};
 use crate::cpl::EditRate;
 use crate::diagnostics::Rule;
@@ -292,8 +293,8 @@ impl std::fmt::Display for FileValidationError {
 
 /// Report an ST 2067-2 package-level rule for a package of ST 2067-2
 /// edition `spec_ed`, or `None` when that edition does not contain the rule
-/// (ST 2067-2:2013 has no delivery requirements: Asset Map ingest, asset
-/// size and hash at ingest). The package then reports
+/// (ST 2067-2:2013 has no delivery requirements: Asset Map ingest
+/// of PKL assets). The package then reports
 /// `IMFERNO:Package/DeliveryNotChecked` once instead.
 fn pkg_issue(
     rule: &'static Rule<St2067_2Edition>,
@@ -302,6 +303,27 @@ fn pkg_issue(
 ) -> Option<ValidationIssue> {
     rule.in_edition(spec_ed)
         .then(|| ValidationIssue::from_rule(rule, spec_ed, message))
+}
+
+/// A Packing List Size/Hash rule: under ST 2067-2 (§8.3 ingest) for the
+/// editions that have it, and for an ST 2067-2:2013 IMP under ST 429-8:2007,
+/// the spec of its Packing List (2013 §7.1), which declares Size and Hash.
+fn pkg_or_pkl_issue(
+    rule: &'static Rule<St2067_2Edition>,
+    pkl_rule: &'static Rule<St429_8Edition>,
+    spec_ed: St2067_2Edition,
+    message: impl Into<String>,
+) -> Option<ValidationIssue> {
+    let message = message.into();
+    if rule.in_edition(spec_ed) {
+        Some(ValidationIssue::from_rule(rule, spec_ed, message))
+    } else {
+        Some(ValidationIssue::from_rule(
+            pkl_rule,
+            St429_8Edition::V2007,
+            message,
+        ))
+    }
 }
 
 /// The ST 2067-2 edition applied to a package's package-level rules (see
@@ -363,8 +385,9 @@ impl FileValidationError {
                 path,
                 expected,
                 actual,
-            } => pkg_issue(
+            } => pkg_or_pkl_issue(
                 &st2067_2::SizeMismatch,
+                &st429_8::SizeMismatch,
                 spec_ed,
                 format!(
                     "Size mismatch for asset {} ({}): PKL declares {} bytes, file is {} bytes",
@@ -383,8 +406,9 @@ impl FileValidationError {
                 path,
                 expected,
                 actual,
-            } => pkg_issue(
+            } => pkg_or_pkl_issue(
                 &st2067_2::ChecksumMismatch,
+                &st429_8::ChecksumMismatch,
                 spec_ed,
                 format!(
                     "Hash mismatch for asset {} ({}): expected {}, computed {}",
@@ -1266,6 +1290,28 @@ impl Imferno {
         }
     }
 
+    /// One notice naming the ST 429-9 edition assumed when the report holds
+    /// ST 429-9 findings: the 2007 and 2014 editions share the Asset Map
+    /// namespace, so the newest is applied.
+    fn st429_9_edition_notice(report: &mut ValidationReport) {
+        let any = report
+            .critical
+            .iter()
+            .chain(&report.errors)
+            .chain(&report.warnings)
+            .chain(&report.info)
+            .any(|i| i.spec == crate::diagnostics::Spec::St429_9);
+        if any {
+            report.add(ValidationIssue::from_rule(
+                &imferno::EditionAssumed,
+                ImfernoEdition::Current,
+                "ST 429-9 edition of the Asset Map could not be determined (ST 429-9:2007 and \
+                 ST 429-9:2014 share the namespace http://www.smpte-ra.org/schemas/429-9/2007/AM); \
+                 ST 429-9 rules were checked against ST 429-9:2014",
+            ));
+        }
+    }
+
     /// The edition-dependent notices of a package: the assumed edition, and
     /// for an ST 2067-2:2013 package the delivery rules not checked.
     fn edition_notices(&self, edition: &PackageEdition, report: &mut ValidationReport) {
@@ -1282,8 +1328,8 @@ impl Imferno {
                 ImfernoEdition::Current,
                 "ST 2067-2:2013 defines no delivery requirements (an IMP is a Packing List \
                  and the assets it references, §7); delivery rules of later editions \
-                 (Asset Map ingest, ASSETMAP.xml name, ST 429-9 Annex A paths, VOLINDEX, \
-                 asset size and hash at ingest) were not checked",
+                 (Asset Map ingest, ASSETMAP.xml name, ST 429-9 Annex A paths, VOLINDEX) \
+                 were not checked; Packing List Size and Hash are checked under ST 429-8",
             ));
         }
     }
@@ -1999,6 +2045,7 @@ impl Imferno {
         #[cfg(not(target_arch = "wasm32"))]
         self.emit_unlisted_essence(&mut report);
 
+        Self::st429_9_edition_notice(&mut report);
         report
     }
 
@@ -2091,6 +2138,7 @@ impl Imferno {
         // MXF header cross-validation (ST 377-1)
         self.validate_mxf_headers(&mut report, spec_ed);
 
+        Self::st429_9_edition_notice(&mut report);
         report
     }
 
@@ -2275,8 +2323,9 @@ impl Imferno {
             for (pkl_id, hash, size) in &records[1..] {
                 if hash != first_hash {
                     report.extend(
-                        pkg_issue(
+                        pkg_or_pkl_issue(
                             &st2067_2::ChecksumMismatch,
+                            &st429_8::ChecksumMismatch,
                             spec_ed,
                             format!(
                                 "Asset {} has different hashes in PKL {} ({}) vs PKL {} ({})",
@@ -2292,7 +2341,7 @@ impl Imferno {
                 }
                 if *size != first_size {
                     report.extend(
-                        pkg_issue(&st2067_2::SizeMismatch, spec_ed,
+                        pkg_or_pkl_issue(&st2067_2::SizeMismatch, &st429_8::SizeMismatch, spec_ed,
                             format!(
                                 "Asset {} has different sizes in PKL {} ({} bytes) vs PKL {} ({} bytes)",
                                 asset_id,

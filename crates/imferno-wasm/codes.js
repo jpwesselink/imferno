@@ -15,6 +15,10 @@ export const codes = {
     MCALinkIDMissing: "ST377-4/MCALinkIDMissing",
     SoundfieldGroupLinkIDMismatch: "ST377-4/SoundfieldGroupLinkIDMismatch",
   },
+  ST429_8: {
+    SizeMismatch: "ST429-8/SizeMismatch",
+    ChecksumMismatch: "ST429-8/ChecksumMismatch",
+  },
   ST429_9: {
     AssetListEmpty: "ST429-9/AssetListEmpty",
     VolindexMissing: "ST429-9/VolindexMissing",

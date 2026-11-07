@@ -208,7 +208,7 @@ pub static EditionAssumed: Rule<E> = Rule {
 pub static DeliveryNotChecked: Rule<E> = Rule {
     name: "DeliveryNotChecked",
     category: Category::Structure,
-    description: "ST 2067-2:2013 defines no delivery requirements (an IMP is a Packing List and its assets, §7); the delivery rules of later editions (Asset Map ingest, ASSETMAP.xml name, Annex A paths, VOLINDEX, asset size and hash at ingest) were not checked.",
+    description: "ST 2067-2:2013 defines no delivery requirements (an IMP is a Packing List and its assets, §7); the delivery rules of later editions (Asset Map ingest, ASSETMAP.xml name, Annex A paths, VOLINDEX) were not checked; Packing List Size and Hash are checked under ST 429-8.",
     example: Some("ST 429-8 Packing List with CPLs in the ST 2067-3:2013 namespace"),
     editions: &[row(E::Current, "Package", Severity::Info)],
 };

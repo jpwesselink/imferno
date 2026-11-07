@@ -8,6 +8,8 @@ ST377-1/MissingHeaderMetadata | 2011 | ST377-1:2011:8.3.3/MissingHeaderMetadata 
 ST377-1/StructuralComponentDurationMissing | 2011 | ST377-1:2011:B.8/StructuralComponentDurationMissing | Error | shall | suspect
 ST377-4/MCALinkIDMissing | 2012 | ST377-4:2012:6.3/MCALinkIDMissing | Error | shall | unverified
 ST377-4/SoundfieldGroupLinkIDMismatch | 2012 | ST377-4:2012:6.4.1/SoundfieldGroupLinkIDMismatch | Error | shall | unverified
+ST429-8/SizeMismatch | 2007 | ST429-8:2007:6.4/SizeMismatch | Error | shall | verified
+ST429-8/ChecksumMismatch | 2007 | ST429-8:2007:6.3/ChecksumMismatch | Error | shall | verified
 ST429-9/AssetListEmpty | 2014 | ST429-9:2014:11/AssetListEmpty | Critical | shall | verified
 ST429-9/VolindexMissing | 2014 | ST429-9:2014:7/VolindexMissing | Info | may | suspect
 ST429-9/MalformedXml | 2014 | ST429-9:2014:7/MalformedXml | Error | shall | unverified

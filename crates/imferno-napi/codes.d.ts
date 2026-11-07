@@ -15,6 +15,10 @@ export declare const codes: {
     readonly MCALinkIDMissing: "ST377-4/MCALinkIDMissing";
     readonly SoundfieldGroupLinkIDMismatch: "ST377-4/SoundfieldGroupLinkIDMismatch";
   };
+  readonly ST429_8: {
+    readonly SizeMismatch: "ST429-8/SizeMismatch";
+    readonly ChecksumMismatch: "ST429-8/ChecksumMismatch";
+  };
   readonly ST429_9: {
     readonly AssetListEmpty: "ST429-9/AssetListEmpty";
     readonly VolindexMissing: "ST429-9/VolindexMissing";

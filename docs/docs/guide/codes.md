@@ -49,6 +49,13 @@ Unmarked rows are carried over from earlier catalogues and not yet checked.
 | `ST377-4/MCALinkIDMissing` | Every MCA sub-descriptor shall carry an MCALinkID (§6.3 Table 3, Req). | Audio | 6.3 error |
 | `ST377-4/SoundfieldGroupLinkIDMismatch` | AudioChannelLabelSubDescriptor SoundfieldGroupLinkID shall equal the SoundfieldGroup's MCALinkID (§6.4.1). | Audio | 6.4.1 error |
 
+## SMPTE ST 429-8 — Packing List
+
+| Rule | Description | Category | 2007 |
+|------|-------------|----------|------|
+| `ST429-8/SizeMismatch` | The asset's size differs from the Size element the Packing List declares for it. | Asset | 6.4✓ error |
+| `ST429-8/ChecksumMismatch` | The asset's SHA-1 message digest differs from the Hash element the Packing List declares for it. | Asset | 6.3✓ error |
+
 ## SMPTE ST 429-9 — Asset Mapping and File Segmentation
 
 | Rule | Description | Category | 2014 |
@@ -301,7 +308,7 @@ Unmarked rows are carried over from earlier catalogues and not yet checked.
 | Rule | Description | Category | Clause |
 |------|-------------|----------|------|
 | `IMFERNO/EditionAssumed` | The package's ST 2067-2 edition could not be determined from its Packing List and CPL namespaces; package-level rules were checked against the edition named in the message (the newest candidate). | Structure | Package info |
-| `IMFERNO/DeliveryNotChecked` | ST 2067-2:2013 defines no delivery requirements (an IMP is a Packing List and its assets, §7); the delivery rules of later editions (Asset Map ingest, ASSETMAP.xml name, Annex A paths, VOLINDEX, asset size and hash at ingest) were not checked. | Structure | Package info |
+| `IMFERNO/DeliveryNotChecked` | ST 2067-2:2013 defines no delivery requirements (an IMP is a Packing List and its assets, §7); the delivery rules of later editions (Asset Map ingest, ASSETMAP.xml name, Annex A paths, VOLINDEX) were not checked; Packing List Size and Hash are checked under ST 429-8. | Structure | Package info |
 | `IMFERNO/OpenFailed` | MXF file could not be opened for reading. | Container | Mxf critical |
 | `IMFERNO/PartitionPackParseFailed` | MXF header partition pack failed to parse. | Container | Mxf critical |
 | `IMFERNO/RegXmlConversionFailed` | MXF header metadata could not be converted to RegXML. | Container | Mxf warning |

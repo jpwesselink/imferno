@@ -33,6 +33,9 @@ pub enum Spec {
     /// SMPTE ST 377-4 — MXF Multichannel Audio Labeling.
     #[serde(rename = "ST377-4")]
     St377_4,
+    /// SMPTE ST 429-8 — Packing List.
+    #[serde(rename = "ST429-8")]
+    St429_8,
     /// SMPTE ST 429-9 — Asset Mapping and File Segmentation.
     #[serde(rename = "ST429-9")]
     St429_9,
@@ -69,6 +72,7 @@ impl Spec {
     pub const ALL: &'static [Spec] = &[
         Spec::St377_1,
         Spec::St377_4,
+        Spec::St429_8,
         Spec::St429_9,
         Spec::St2067_2,
         Spec::St2067_3,
@@ -85,6 +89,7 @@ impl Spec {
         match self {
             Spec::St377_1 => "ST377-1",
             Spec::St377_4 => "ST377-4",
+            Spec::St429_8 => "ST429-8",
             Spec::St429_9 => "ST429-9",
             Spec::St2067_2 => "ST2067-2",
             Spec::St2067_3 => "ST2067-3",
@@ -102,6 +107,7 @@ impl Spec {
         match self {
             Spec::St377_1 => "SMPTE ST 377-1 — MXF File Format",
             Spec::St377_4 => "SMPTE ST 377-4 — MXF Multichannel Audio Labeling",
+            Spec::St429_8 => "SMPTE ST 429-8 — Packing List",
             Spec::St429_9 => "SMPTE ST 429-9 — Asset Mapping and File Segmentation",
             Spec::St2067_2 => "SMPTE ST 2067-2 — Core Constraints",
             Spec::St2067_3 => "SMPTE ST 2067-3 — Composition Playlist",

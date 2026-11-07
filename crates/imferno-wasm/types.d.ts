@@ -48,6 +48,7 @@ export type IssueSource = "XsdLayer" | "ProseRule" | "EngineInternal";
 export type Spec =
   | "ST377-1"
   | "ST377-4"
+  | "ST429-8"
   | "ST429-9"
   | "ST2067-2"
   | "ST2067-3"

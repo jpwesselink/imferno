@@ -99,10 +99,12 @@ pub trait ValidatorRegistry {
 }
 
 /// Resolve the CPL's ApplicationIdentification URIs (an `xs:list`) to
-/// validators. When the element is absent or a URI does not resolve, a
-/// validator emitting `IMFERNO:Package/ApplicationProfileNotValidated` is
-/// added, so a CPL whose application profile was not checked is not
+/// validators. When the element is absent, a URI does not resolve, or no
+/// URI is an application profile (plug-in URIs such as IAB or ISXD only),
+/// a validator emitting `IMFERNO:Package/ApplicationProfileNotValidated`
+/// is added, so a CPL whose application profile was not checked is not
 /// reported as if it passed (https://github.com/Netflix/photon/issues/407).
+/// Plug-in validators still run.
 fn push_application_validators(
     cpl: &CompositionPlaylist,
     resolve: impl Fn(&str) -> Option<Box<dyn ConstraintsValidator>>,
@@ -115,16 +117,28 @@ fn push_application_validators(
         .map(|ids| ids.split_whitespace().collect())
         .unwrap_or_default();
     let mut unrecognised = Vec::new();
+    // URIs that resolve to a plug-in or core-constraints validator: those
+    // run, but they are not an application profile.
+    let mut not_app_profile = Vec::new();
+    let mut any_app_profile = false;
     for uri in &uris {
         match resolve(uri) {
-            Some(v) => validators.push(v),
+            Some(v) => {
+                if App2EEdition::from_application_identification(uri).is_some() {
+                    any_app_profile = true;
+                } else {
+                    not_app_profile.push(uri.to_string());
+                }
+                validators.push(v);
+            }
             None => unrecognised.push(uri.to_string()),
         }
     }
-    if uris.is_empty() || !unrecognised.is_empty() {
+    if uris.is_empty() || !any_app_profile || !unrecognised.is_empty() {
         validators.push(Box::new(ApplicationProfileNotValidated {
-            any_validated: uris.len() > unrecognised.len(),
+            any_validated: any_app_profile,
             unrecognised,
+            not_app_profile,
         }));
     }
 }
@@ -132,8 +146,13 @@ fn push_application_validators(
 /// Emits `IMFERNO:Package/ApplicationProfileNotValidated` (see
 /// [`push_application_validators`]).
 struct ApplicationProfileNotValidated {
+    /// An application-profile validator ran for some URI.
     any_validated: bool,
+    /// URIs with no validator.
     unrecognised: Vec<String>,
+    /// URIs whose (plug-in or core) validator ran but which are not an
+    /// application profile.
+    not_app_profile: Vec<String>,
 }
 
 impl ConstraintsValidator for ApplicationProfileNotValidated {
@@ -143,10 +162,17 @@ impl ConstraintsValidator for ApplicationProfileNotValidated {
 
     fn validate_cpl(&self, cpl: &CompositionPlaylist) -> Vec<ValidationIssue> {
         use crate::package::codes::ImfernoCode;
-        let message = if self.unrecognised.is_empty() {
+        let message = if self.unrecognised.is_empty() && self.not_app_profile.is_empty() {
             "CPL has no ApplicationIdentification, so no application-profile \
              validation was performed"
                 .to_string()
+        } else if !self.any_validated && self.unrecognised.is_empty() {
+            format!(
+                "CPL ApplicationIdentification lists only plug-in or core-constraints \
+                 URI(s) ({}), which were validated; no application-profile validation \
+                 was performed",
+                self.not_app_profile.join(" ")
+            )
         } else if self.any_validated {
             format!(
                 "CPL ApplicationIdentification lists URI(s) imferno has no validator for: {}; \
@@ -155,9 +181,15 @@ impl ConstraintsValidator for ApplicationProfileNotValidated {
             )
         } else {
             format!(
-                "CPL ApplicationIdentification lists no URI imferno has a validator for ({}), \
-                 so no application-profile validation was performed",
-                self.unrecognised.join(" ")
+                "CPL ApplicationIdentification lists no application profile imferno has a \
+                 validator for (no validator: {}{}), so no application-profile validation \
+                 was performed",
+                self.unrecognised.join(" "),
+                if self.not_app_profile.is_empty() {
+                    String::new()
+                } else {
+                    format!("; plug-in/core only: {}", self.not_app_profile.join(" "))
+                }
             )
         };
         vec![
@@ -2401,6 +2433,33 @@ mod tests {
     #[test]
     fn recognised_application_identification_is_not_reported() {
         let cpl = with_app_id(Some("http://www.smpte-ra.org/ns/2067-21/2021"));
+        assert!(not_validated_issues(&cpl).is_empty());
+    }
+
+    /// Plug-in URIs (IAB, ISXD) are not application profiles: the plug-in
+    /// validator runs, but the CPL still gets the notice.
+    #[test]
+    fn plugin_only_application_identification_is_reported() {
+        for uri in [isxd::URI_2022, iab::URI_2019] {
+            let cpl = with_app_id(Some(uri));
+            let issues = not_validated_issues(&cpl);
+            assert_eq!(issues.len(), 1, "{uri}: {issues:#?}");
+            assert!(issues[0].message.contains(uri), "{}", issues[0].message);
+            let ids: Vec<_> = get_validators_for_cpl(&cpl)
+                .iter()
+                .map(|v| v.spec_id().to_string())
+                .collect();
+            assert!(
+                ids.iter()
+                    .any(|id| id.contains("Plug-in") || id.contains("IAB")),
+                "plug-in validator still runs: {ids:?}"
+            );
+        }
+        // App profile plus plug-in: nothing to report.
+        let cpl = with_app_id(Some(&format!(
+            "http://www.smpte-ra.org/ns/2067-21/2021 {}",
+            isxd::URI_2022
+        )));
         assert!(not_validated_issues(&cpl).is_empty());
     }
 

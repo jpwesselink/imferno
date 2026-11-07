@@ -196,6 +196,18 @@ mod tests {
         }
     }
 
+    /// "The scope attribute ... shall determine the permissible values"
+    /// (2016/2020 §6.14.1.2; 2013 §6.14.2 shall match Table 19): a label
+    /// outside the table of its standard-marker scope is an Error in every
+    /// edition (JP, strictest reading).
+    #[test]
+    fn marker_label_unknown_is_shall_error_in_every_edition() {
+        for e in st2067_3::MarkerLabelUnknown.editions {
+            assert_eq!(e.strength, crate::diagnostics::rule::Strength::Shall);
+            assert_eq!(e.default_severity, crate::diagnostics::Severity::Error);
+        }
+    }
+
     #[test]
     fn display_codes_carry_their_own_edition() {
         for r in all() {

@@ -1,0 +1,114 @@
+name: Fuzz
+
+# Two modes:
+# - Pull requests touching imferno-core or the fuzz crate: a short smoke run
+#   (60 s per target) so a change that makes a parser panic is caught before
+#   merge, not weeks later.
+# - Nightly: 10 minutes per target against a cached corpus that grows run
+#   over run. A crash opens (or updates) a GitHub issue, so a red nightly
+#   can't go unnoticed.
+#
+# Release builds use `panic = "abort"`: a parser panic kills the host
+# process (CLI, Node via NAPI, browser WASM), which is why these targets
+# exist.
+
+on:
+  pull_request:
+    paths:
+      - 'crates/imferno-core/**'
+      - 'fuzz/**'
+      - '.github/workflows/fuzz.yml'
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fuzz-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fuzz:
+    name: ${{ matrix.target }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [parse_xml, validate_package, mxf_header]
+    env:
+      FUZZ_SECONDS: ${{ github.event_name == 'pull_request' && '60' || '600' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # cargo-fuzz needs nightly (libfuzzer-sys uses sanitizer flags).
+      - uses: dtolnay/rust-toolchain@nightly
+
+      - name: Cache fuzz build and corpus
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            fuzz/target
+            fuzz/corpus/${{ matrix.target }}
+          key: ${{ runner.os }}-fuzz-${{ matrix.target }}-${{ github.run_id }}
+          restore-keys: |
+            ${{ runner.os }}-fuzz-${{ matrix.target }}-
+
+      - name: Install cargo-fuzz
+        run: cargo install cargo-fuzz --locked
+
+      # Seeds (incl. minimised crash reproducers added later) always reach the
+      # corpus; accumulated entries are kept.
+      - name: Merge seeds into corpus
+        working-directory: fuzz
+        run: |
+          mkdir -p corpus/${{ matrix.target }}
+          cp --update=none seeds/${{ matrix.target }}/* corpus/${{ matrix.target }}/
+
+      - name: Run fuzz target
+        working-directory: fuzz
+        run: |
+          cargo +nightly fuzz run ${{ matrix.target }} corpus/${{ matrix.target }} -- \
+            -max_total_time=$FUZZ_SECONDS \
+            -timeout=10 \
+            -rss_limit_mb=1024 \
+            -print_final_stats=1
+
+      - name: Upload crash artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-crash-${{ matrix.target }}
+          path: fuzz/artifacts/${{ matrix.target }}/
+          if-no-files-found: ignore
+          retention-days: 30
+
+  report:
+    name: Report nightly crash
+    needs: fuzz
+    if: failure() && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Open or update fuzz issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          title="Nightly fuzzing found a crash"
+          existing=$(gh issue list -R "$GITHUB_REPOSITORY" --state open --search "\"$title\" in:title" --json number --jq '.[0].number')
+          body="A fuzz target crashed, hung or ran out of memory: $RUN_URL
+
+          Download the \`fuzz-crash-*\` artifact, reproduce with
+          \`cargo +nightly fuzz run <target> <artifact>\`, fix, and add the
+          minimised input to \`fuzz/seeds/<target>/\` as a regression seed."
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" -R "$GITHUB_REPOSITORY" --body "Still crashing: $RUN_URL"
+          else
+            gh issue create -R "$GITHUB_REPOSITORY" --title "$title" --body "$body"
+          fi

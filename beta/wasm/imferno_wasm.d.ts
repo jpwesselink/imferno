@@ -237,6 +237,10 @@ export interface J2CLayout {
     RGBAComponent?: RGBALayoutComponent[];
 }
 
+export interface J2KCcapi {
+    UInt16?: number[];
+}
+
 export interface J2KComponentSizing {
     Ssiz?: number | null;
     XRSiz?: number | null;
@@ -245,6 +249,7 @@ export interface J2KComponentSizing {
 
 export interface J2KExtendedCapabilities {
     Pcap?: number | null;
+    Ccapi?: J2KCcapi | null;
 }
 
 export interface JPEG2000SubDescriptor {

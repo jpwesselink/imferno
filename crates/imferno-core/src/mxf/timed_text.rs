@@ -3,8 +3,8 @@
 //!
 //! Four rules:
 //!
-//! - **§5.4 / ST 429-5** — Mapping Kind byte in the essence container
-//!   UL must be `0x13` (IMSC mapping).
+//! - **§5.4.2 / ST 429-5 Annex A Table A.1** — Mapping Kind byte in the
+//!   essence container UL must be `0x13` (Timed Text).
 //! - **§5.4** — `UCSEncoding` must be UTF-8.
 //! - **§5.4** — Timed-text `NamespaceURI` must be one of the IMSC1
 //!   profiles.
@@ -42,8 +42,8 @@ pub fn check_timed_text(
         return issues;
     }
 
-    // §5.4 / ST 429-5 §7 — timed-text essence container UL byte 14
-    // (Mapping Kind, 1-indexed; index 13) must be 0x13 for IMSC text.
+    // §5.4.2 / ST 429-5 Annex A Table A.1 — timed-text essence container
+    // UL byte 14 (Mapping Kind, 1-indexed; index 13) must be 0x13 (Timed Text).
     // The canonical ST 429-5 container UL is
     // 060e2b34.0401010a.0d010301.02130101: 0x13 sits at index 13 and
     // index 14 is 0x01 (AUDIT-7 — checking index 14 false-positived on
@@ -100,7 +100,17 @@ pub fn check_timed_text(
             "http://www.w3.org/ns/ttml/profile/imsc1.1/text",
             "http://www.w3.org/ns/ttml/profile/imsc1.1/image",
         ];
-        if !ACCEPTABLE.contains(&ns) {
+        // 2020 §5.4.2: NamespaceURI shall be a profile designator of a
+        // profile the Document Instance conforms to, and its Note allows
+        // designators of superset profiles beyond IMSC 1.1. imferno cannot
+        // test conformance to an arbitrary profile, so for 2020 only an
+        // empty value is reported.
+        let violates = if spec_ed == St2067_2Edition::V2020 {
+            ns.is_empty()
+        } else {
+            !ACCEPTABLE.contains(&ns)
+        };
+        if violates {
             issues.push(
                 ValidationIssue::from_rule(
                     &st2067_2::TimedTextNamespaceNotIMSC,
@@ -262,6 +272,31 @@ mod tests {
             "expected TimedTextNamespaceNotIMSC, got: {:#?}",
             issues
         );
+    }
+
+    /// 2020 §5.4.2 Note: designators of superset profiles are allowed, so a
+    /// non-IMSC designator is not reported for 2020; an empty one is.
+    #[test]
+    fn namespace_2020_accepts_superset_designators() {
+        let xml = |ns: &str| {
+            format!(
+                r#"<ns1:TimedTextDescriptor>
+            <ns2:UCSEncoding>UTF-8</ns2:UCSEncoding>
+            <ns2:NamespaceURI>{ns}</ns2:NamespaceURI>
+        </ns1:TimedTextDescriptor>"#
+            )
+        };
+        let flagged = |ns: &str| {
+            check_timed_text(
+                &xml(ns),
+                std::path::Path::new("/synth.mxf"),
+                St2067_2Edition::V2020,
+            )
+            .iter()
+            .any(|i| i.is(&st2067_2::TimedTextNamespaceNotIMSC))
+        };
+        assert!(!flagged("http://example.org/superset-profile"));
+        assert!(flagged(""));
     }
 
     #[test]

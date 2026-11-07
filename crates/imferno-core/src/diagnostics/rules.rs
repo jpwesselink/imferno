@@ -4,7 +4,7 @@
 //! keys match a finding, the most specific one wins:
 //!
 //! 1. `ST2067-3:2016/SegmentDuration` — the rule in one edition. The full
-//!    display code of a finding (`ST2067-3:2016:7.2.2/SegmentDuration`) is
+//!    display code of a finding (`ST2067-3:2016:7.2/SegmentDuration`) is
 //!    accepted too, so a code copied from a report works as a key.
 //! 2. `ST2067-3/SegmentDuration` — the rule in every edition (the rule id).
 //! 3. `SegmentDuration` — every rule with that name, in any spec.
@@ -307,7 +307,6 @@ impl ValidationReport {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::catalogue::imferno::{self, ImfernoEdition};
     use crate::catalogue::st2067_2::{self, St2067_2Edition};
     use crate::catalogue::st2067_3::{self, St2067_3Edition};
     use crate::catalogue::xsd::{self, XsdSchema};
@@ -362,7 +361,7 @@ mod tests {
 
     #[test]
     fn level1_accepts_the_full_display_code() {
-        let r = rules(&[("ST2067-3:2016:7.2.2/SegmentDuration", RuleSeverity::Warn)]);
+        let r = rules(&[("ST2067-3:2016:7.2/SegmentDuration", RuleSeverity::Warn)]);
         assert_eq!(
             severity(seg(St2067_3Edition::V2016), &r),
             Some(Severity::Warning)
@@ -388,16 +387,20 @@ mod tests {
 
     #[test]
     fn level3_name_in_any_spec() {
-        // `ParseError` exists in ST 377-1 and IMFERNO.
-        let r = rules(&[("ParseError", RuleSeverity::Info)]);
-        let engine = ValidationIssue::from_rule(&imferno::ParseError, ImfernoEdition::Current, "x");
-        assert_eq!(severity(engine, &r), Some(Severity::Info));
-        let mxf = ValidationIssue::from_rule(
-            &crate::catalogue::st377_1::ParseError,
-            crate::catalogue::st377_1::St377_1Edition::V2011,
+        // `SizeMismatch` exists in ST 429-8 and ST 2067-2.
+        let r = rules(&[("SizeMismatch", RuleSeverity::Info)]);
+        let pkl = ValidationIssue::from_rule(
+            &crate::catalogue::st429_8::SizeMismatch,
+            crate::catalogue::st429_8::St429_8Edition::V2007,
             "x",
         );
-        assert_eq!(severity(mxf, &r), Some(Severity::Info));
+        assert_eq!(severity(pkl, &r), Some(Severity::Info));
+        let core = ValidationIssue::from_rule(
+            &crate::catalogue::st2067_2::SizeMismatch,
+            crate::catalogue::st2067_2::St2067_2Edition::V2016,
+            "x",
+        );
+        assert_eq!(severity(core, &r), Some(Severity::Info));
     }
 
     #[test]
@@ -513,7 +516,7 @@ mod tests {
     fn validate_accepts_every_key_form() {
         let r = rules(&[
             ("ST2067-3:2016/SegmentDuration", RuleSeverity::Warn),
-            ("ST2067-3:2016:7.2.2/SegmentDuration", RuleSeverity::Warn),
+            ("ST2067-3:2016:7.2/SegmentDuration", RuleSeverity::Warn),
             ("ST2067-3/SegmentDuration", RuleSeverity::Warn),
             ("SegmentDuration", RuleSeverity::Warn),
             ("ST2067-3:2016:*", RuleSeverity::Warn),

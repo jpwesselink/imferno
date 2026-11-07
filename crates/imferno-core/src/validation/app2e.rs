@@ -633,7 +633,7 @@ app2e_validator!(
 /// ST 2067-2 §6.1 Table 10: ApplicationIdentification is an `xs:list` of
 /// URIs (whitespace-separated). ST 2067-21 requires it to include the
 /// edition's value, so test membership rather than equality.
-fn application_identification_includes(app_id: &str, uri: &str) -> bool {
+pub(crate) fn application_identification_includes(app_id: &str, uri: &str) -> bool {
     app_id.split_whitespace().any(|item| item == uri)
 }
 

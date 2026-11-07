@@ -27,7 +27,7 @@ description: Every validation rule imferno checks, per spec and per edition.
 ---
 
 Every finding names the rule it reports and the edition of the spec that was
-applied, as a code like `ST2067-3:2016:7.2.2/SegmentDuration`. Use the rule
+applied, as a code like `ST2067-3:2016:7.2/SegmentDuration`. Use the rule
 ids and codes to [configure rule severity](/guide/config/).
 
 ## Code format

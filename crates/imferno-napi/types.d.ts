@@ -52,6 +52,7 @@ export type Spec =
   | "ST429-9"
   | "ST2067-2"
   | "ST2067-3"
+  | "ST2067-5"
   | "ST2067-9"
   | "ST2067-21"
   | "ST2067-201"
@@ -373,7 +374,7 @@ export interface ValidationIssue {
    */
   clause: string;
   /**
-   * Display code: `SPEC:EDITION:CLAUSE/Name`, with the edition actually applied (e.g. `ST2067-3:2016:7.2.2/SegmentDuration`).
+   * Display code: `SPEC:EDITION:CLAUSE/Name`, with the edition actually applied (e.g. `ST2067-3:2016:7.2/SegmentDuration`).
    */
   code: string;
   /**

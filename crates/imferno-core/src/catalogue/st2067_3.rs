@@ -1,11 +1,12 @@
 //! Rule table: SMPTE ST 2067-3 (Composition Playlist).
 //!
-//! Generated from the pre-C0 per-edition code enums; edit by hand from now on.
+//! Every row checked against the text of its edition (C1/C4).
 
 #![allow(non_upper_case_globals)]
 
-use crate::diagnostics::rule::{row, AnyRule, Rule, Spec};
-use crate::diagnostics::{Category, Severity};
+use crate::diagnostics::rule::Strength::{May, Shall};
+use crate::diagnostics::rule::{checked, AnyRule, Rule, Spec};
+use crate::diagnostics::Category;
 
 crate::diagnostics::rule::editions! {
     /// Editions of SMPTE ST 2067-3 (Composition Playlist) imferno knows.
@@ -22,10 +23,10 @@ pub static ContentKindUnknown: Rule<E> = Rule {
     name: "ContentKindUnknown",
     category: Category::Metadata,
     description: "ContentKind uses an unrecognized value under the SMPTE scope.",
-    example: Some("<ContentKind scope=\"http://www.smpte-ra.org/schemas/2067-3/2013/content-kind\">Banana</ContentKind>"),
+    example: Some("<ContentKind>Banana</ContentKind>  <!-- default scope: Table 3 values only -->"),
     editions: &[
-        row(E::V2013, "5.5.1.2", Severity::Warning).suspect(),
-        row(E::V2016, "5.5.1.2", Severity::Warning).suspect(),
+        checked(E::V2013, "6.1.8", Shall).interpret("'match' read as exact, case-sensitive comparison against the Table 3/4 tokens (the text does not define case-insensitive matching). Netflix Photon (d5fe149) does not check ContentKind values at all.", None),
+        checked(E::V2016, "6.1.8", Shall).interpret("'match' read as exact, case-sensitive comparison against the Table 3/4 tokens (the text does not define case-insensitive matching). Netflix Photon (d5fe149) does not check ContentKind values at all.", None),
     ],
 };
 
@@ -36,8 +37,8 @@ pub static SourceEncodingNoEssenceDescriptorList: Rule<E> = Rule {
     description: "SourceEncoding present but EssenceDescriptorList absent.",
     example: Some("<Resource><SourceEncoding>urn:uuid:…</SourceEncoding></Resource>  <!-- but the CPL has no <EssenceDescriptorList> -->"),
     editions: &[
-        row(E::V2013, "6.4.2", Severity::Error),
-        row(E::V2016, "6.4.2", Severity::Error),
+        checked(E::V2013, "6.12.1", Shall),
+        checked(E::V2016, "6.12.1", Shall),
     ],
 };
 
@@ -48,8 +49,8 @@ pub static SourceEncodingUnresolved: Rule<E> = Rule {
     description: "SourceEncoding does not match any EssenceDescriptor Id.",
     example: Some("<SourceEncoding>urn:uuid:aaaa…</SourceEncoding>  <!-- no EssenceDescriptor with that Id -->"),
     editions: &[
-        row(E::V2013, "6.4.2", Severity::Error),
-        row(E::V2016, "6.4.2", Severity::Error),
+        checked(E::V2013, "6.12.1", Shall),
+        checked(E::V2016, "6.12.1", Shall),
     ],
 };
 
@@ -60,8 +61,8 @@ pub static EssenceDescriptorListEmpty: Rule<E> = Rule {
     description: "EssenceDescriptorList present but contains no descriptors.",
     example: Some("<EssenceDescriptorList></EssenceDescriptorList>"),
     editions: &[
-        row(E::V2013, "6.4.2", Severity::Error),
-        row(E::V2016, "6.4.2", Severity::Error),
+        checked(E::V2013, "6.1", Shall),
+        checked(E::V2016, "6.1", Shall),
     ],
 };
 
@@ -72,8 +73,8 @@ pub static ContentVersionListEmpty: Rule<E> = Rule {
     description: "ContentVersionList present but empty.",
     example: Some("<ContentVersionList></ContentVersionList>"),
     editions: &[
-        row(E::V2013, "6.11", Severity::Error),
-        row(E::V2016, "6.11", Severity::Error),
+        checked(E::V2013, "6.1", Shall),
+        checked(E::V2016, "6.1", Shall),
     ],
 };
 
@@ -84,8 +85,8 @@ pub static ContentVersionIdInvalid: Rule<E> = Rule {
     description: "ContentVersion/Id is empty (shall be a URI).",
     example: Some("<ContentVersion><Id></Id>…</ContentVersion>"),
     editions: &[
-        row(E::V2013, "6.11", Severity::Error),
-        row(E::V2016, "6.11", Severity::Error),
+        checked(E::V2013, "6.8.1", Shall),
+        checked(E::V2016, "6.8.1", Shall),
     ],
 };
 
@@ -96,8 +97,8 @@ pub static ContentVersionLabelTextMissing: Rule<E> = Rule {
     description: "ContentVersion/LabelText is absent.",
     example: Some("<ContentVersion><Id>urn:uuid:…</Id></ContentVersion>  <!-- no <LabelText> -->"),
     editions: &[
-        row(E::V2013, "6.11", Severity::Warning),
-        row(E::V2016, "6.11", Severity::Warning),
+        checked(E::V2013, "6.8", Shall),
+        checked(E::V2016, "6.8", Shall),
     ],
 };
 
@@ -108,8 +109,8 @@ pub static LocaleLanguageTagInvalid: Rule<E> = Rule {
     description: "Locale language tag does not conform to RFC 5646.",
     example: Some("<Locale><LanguageList><Language>english</Language></LanguageList></Locale>  <!-- not RFC 5646 -->"),
     editions: &[
-        row(E::V2013, "6.12", Severity::Warning),
-        row(E::V2016, "6.12", Severity::Warning),
+        checked(E::V2013, "6.5.2", Shall),
+        checked(E::V2016, "6.5.2", Shall),
     ],
 };
 
@@ -120,8 +121,8 @@ pub static TrackIdNotUnique: Rule<E> = Rule {
     description: "TrackId is not unique within a segment.",
     example: Some("<Sequence><TrackId>urn:uuid:abc…</TrackId>…</Sequence><Sequence><TrackId>urn:uuid:abc…</TrackId>…</Sequence>  <!-- same TrackId in two sequences of one segment -->"),
     editions: &[
-        row(E::V2013, "7.3", Severity::Error),
-        row(E::V2016, "7.3", Severity::Error),
+        checked(E::V2013, "6.9.3", Shall),
+        checked(E::V2016, "6.9.3", Shall),
     ],
 };
 
@@ -132,8 +133,8 @@ pub static MarkerOffsetOutOfRange: Rule<E> = Rule {
     description: "Marker offset exceeds the resource IntrinsicDuration.",
     example: Some("<Marker><Offset>120</Offset></Marker>  <!-- resource IntrinsicDuration=100 -->"),
     editions: &[
-        row(E::V2013, "7.4", Severity::Error).suspect(),
-        row(E::V2016, "7.4", Severity::Error).suspect(),
+        checked(E::V2013, "6.13", Shall).interpret("The bound is IntrinsicDuration, inclusive (Offset == IntrinsicDuration passes); EntryPoint/SourceDuration do not constrain Offset.", Some("https://github.com/Netflix/photon/issues/273")),
+        checked(E::V2016, "6.13", Shall).interpret("The bound is IntrinsicDuration, inclusive (Offset == IntrinsicDuration passes); EntryPoint/SourceDuration do not constrain Offset.", Some("https://github.com/Netflix/photon/issues/273")),
     ],
 };
 
@@ -144,8 +145,8 @@ pub static MarkerLabelUnknown: Rule<E> = Rule {
     description: "Marker label is not a recognized SMPTE standard value.",
     example: Some("<Marker><Label>NotARealMarker</Label></Marker>"),
     editions: &[
-        row(E::V2013, "7.4", Severity::Warning).suspect(),
-        row(E::V2016, "7.4", Severity::Warning).suspect(),
+        checked(E::V2013, "6.14.2", Shall).interpret("Labels under the default scope must be in Table 19; other scopes are out of scope.", Some("https://github.com/Netflix/photon/issues/394")),
+        checked(E::V2016, "6.14.1.2", May).interpret("2016 says Table 21 lists values that may be used (the 2013 shall-match sentence is gone); a label outside Table 21 under a standard-marker scope is reported as Info.", Some("https://github.com/Netflix/photon/issues/394")),
     ],
 };
 
@@ -158,8 +159,8 @@ pub static SegmentDuration: Rule<E> = Rule {
         "Segment with MainImageSequence duration = 24f and MainAudioSequence duration = 25f",
     ),
     editions: &[
-        row(E::V2013, "7.2.2", Severity::Error),
-        row(E::V2016, "7.2.2", Severity::Error).suspect(),
+        checked(E::V2013, "7.2", Shall),
+        checked(E::V2016, "7.2", Shall),
     ],
 };
 
@@ -170,8 +171,8 @@ pub static ContentVersionIdDuplicate: Rule<E> = Rule {
     description: "No two ContentVersion elements shall have identical Id values.",
     example: Some("<ContentVersion><Id>urn:uuid:a…</Id></ContentVersion><ContentVersion><Id>urn:uuid:a…</Id></ContentVersion>"),
     editions: &[
-        row(E::V2013, "6.1.9", Severity::Error),
-        row(E::V2016, "6.1.9", Severity::Error),
+        checked(E::V2013, "6.1.9", Shall),
+        checked(E::V2016, "6.1.9", Shall),
     ],
 };
 
@@ -182,13 +183,151 @@ pub static SegmentDurationIntegerEditUnits: Rule<E> = Rule {
     description: "Sequence duration shall be an integer number of Composition Edit Units.",
     example: Some("Sequence duration = 12.5 edit units (must be an integer multiple of the Composition Edit Unit)"),
     editions: &[
-        row(E::V2013, "7.3", Severity::Error),
-        row(E::V2016, "7.3", Severity::Error),
+        checked(E::V2013, "7.3", Shall),
+        checked(E::V2016, "7.3", Shall),
+    ],
+};
+
+/// Duplicate Segment Id within the CPL.
+pub static UniqueSegmentId: Rule<E> = Rule {
+    name: "UniqueSegmentId",
+    category: Category::Structure,
+    description: "Duplicate Segment Id within the CPL.",
+    example: Some("Two <Segment><Id>urn:uuid:abc…</Id></Segment> with the same Id"),
+    editions: &[
+        checked(E::V2013, "6.9.1", Shall),
+        checked(E::V2016, "6.9.1", Shall),
+    ],
+};
+
+/// Duplicate EssenceDescriptor Id within the CPL.
+pub static UniqueEssenceDescriptorId: Rule<E> = Rule {
+    name: "UniqueEssenceDescriptorId",
+    category: Category::Structure,
+    description: "Duplicate EssenceDescriptor Id within the CPL.",
+    example: Some(
+        "Two <EssenceDescriptor><Id>urn:uuid:abc…</Id></EssenceDescriptor> with the same Id",
+    ),
+    editions: &[
+        checked(E::V2013, "6.7.1", Shall),
+        checked(E::V2016, "6.7.1", Shall),
+    ],
+};
+
+/// Duplicate Resource Id within the CPL.
+pub static UniqueResourceId: Rule<E> = Rule {
+    name: "UniqueResourceId",
+    category: Category::Structure,
+    description: "Duplicate Resource Id within the CPL.",
+    example: Some("Two <Resource><Id>urn:uuid:abc…</Id></Resource> with the same Id"),
+    editions: &[
+        checked(E::V2013, "6.11.1", Shall),
+        checked(E::V2016, "6.11.1", Shall),
+    ],
+};
+
+/// EntryPoint shall be less than IntrinsicDuration.
+pub static EntryPoint: Rule<E> = Rule {
+    name: "EntryPoint",
+    category: Category::Timing,
+    description: "EntryPoint exceeds IntrinsicDuration, leaving no valid SourceDuration.",
+    example: Some("<IntrinsicDuration>100</IntrinsicDuration><EntryPoint>150</EntryPoint>"),
+    editions: &[
+        checked(E::V2013, "6.11.6", Shall).interpret("Flags EntryPoint > IntrinsicDuration. EntryPoint == IntrinsicDuration is allowed: SourceDuration is then 0, which 6.11.6 permits.", None),
+        checked(E::V2016, "6.11.6", Shall).interpret("Flags EntryPoint > IntrinsicDuration. EntryPoint == IntrinsicDuration is allowed: SourceDuration is then 0, which 6.11.6 permits.", None),
+    ],
+};
+
+/// EntryPoint + SourceDuration exceeds IntrinsicDuration.
+pub static ResourceDuration: Rule<E> = Rule {
+    name: "ResourceDuration",
+    category: Category::Timing,
+    description: "EntryPoint + SourceDuration exceeds IntrinsicDuration.",
+    example: Some("<IntrinsicDuration>100</IntrinsicDuration><EntryPoint>50</EntryPoint><SourceDuration>80</SourceDuration>  <!-- 50+80 > 100 -->"),
+    editions: &[
+        checked(E::V2013, "6.11.6", Shall),
+        checked(E::V2016, "6.11.6", Shall),
+    ],
+};
+
+/// RepeatCount shall be a positive integer.
+pub static RepeatCount: Rule<E> = Rule {
+    name: "RepeatCount",
+    category: Category::Timing,
+    description: "RepeatCount shall be a positive integer.",
+    example: Some("<RepeatCount>0</RepeatCount>"),
+    editions: &[
+        checked(E::V2013, "6.11", Shall),
+        checked(E::V2016, "6.11", Shall),
+    ],
+};
+
+/// A non-marker resource is missing a TrackFileId.
+pub static TrackFileId: Rule<E> = Rule {
+    name: "TrackFileId",
+    category: Category::Reference,
+    description: "A non-marker resource is missing a TrackFileId.",
+    example: Some("<Resource xsi:type=\"TrackFileResourceType\">…</Resource>  <!-- no <TrackFileId> child -->"),
+    editions: &[
+        checked(E::V2013, "6.12", Shall),
+        checked(E::V2016, "6.12", Shall),
+    ],
+};
+
+/// A virtual track is missing from one or more segments.
+pub static VirtualTrackContinuity: Rule<E> = Rule {
+    name: "VirtualTrackContinuity",
+    category: Category::Structure,
+    description: "A virtual track is missing from one or more segments.",
+    example: Some(
+        "Two <Segment> entries, MainAudio track present in segment 0 but absent from segment 1",
+    ),
+    editions: &[
+        checked(E::V2013, "6.9.3", Shall),
+        checked(E::V2016, "6.9.3", Shall),
+    ],
+};
+
+/// EssenceDescriptor present in EssenceDescriptorList but not referenced by any Resource.
+pub static DanglingEssenceDescriptor: Rule<E> = Rule {
+    name: "DanglingEssenceDescriptor",
+    category: Category::Reference,
+    description: "EssenceDescriptor present in EssenceDescriptorList but not referenced by any Resource.",
+    example: Some("<EssenceDescriptor><Id>urn:uuid:abc…</Id></EssenceDescriptor>  <!-- no Resource references this Id -->"),
+    editions: &[
+        checked(E::V2013, "6.1.10.1", Shall),
+        checked(E::V2016, "6.1.10.1", Shall),
+    ],
+};
+
+/// ContentTitle is empty.
+pub static ContentTitleEmpty: Rule<E> = Rule {
+    name: "ContentTitleEmpty",
+    category: Category::Metadata,
+    description: "ContentTitle is empty; it shall contain a human-readable title.",
+    example: Some("<ContentTitle></ContentTitle>"),
+    editions: &[
+        checked(E::V2013, "6.1.7", Shall),
+        checked(E::V2016, "6.1.7", Shall),
+    ],
+};
+
+/// A Sequence has an empty ResourceList.
+pub static ResourceListEmpty: Rule<E> = Rule {
+    name: "ResourceListEmpty",
+    category: Category::Structure,
+    description: "A Sequence has an empty ResourceList; the SequenceType schema requires one or more Resource elements.",
+    example: Some("<MainAudioSequence>…<ResourceList></ResourceList></MainAudioSequence>"),
+    editions: &[
+        checked(E::V2013, "6.10", Shall).interpret("Sequences sit in an xs:any lax slot, so the runtime XSD layer does not check Resource minOccurs; imferno does.", None),
+        checked(E::V2016, "6.10", Shall).interpret("Sequences sit in an xs:any lax slot, so the runtime XSD layer does not check Resource minOccurs; imferno does.", None),
     ],
 };
 
 /// Every rule of this spec.
 pub static ALL: &[&dyn AnyRule] = &[
+    &ContentTitleEmpty,
+    &ResourceListEmpty,
     &ContentKindUnknown,
     &SourceEncodingNoEssenceDescriptorList,
     &SourceEncodingUnresolved,
@@ -203,4 +342,13 @@ pub static ALL: &[&dyn AnyRule] = &[
     &SegmentDuration,
     &ContentVersionIdDuplicate,
     &SegmentDurationIntegerEditUnits,
+    &UniqueSegmentId,
+    &UniqueEssenceDescriptorId,
+    &UniqueResourceId,
+    &EntryPoint,
+    &ResourceDuration,
+    &RepeatCount,
+    &TrackFileId,
+    &VirtualTrackContinuity,
+    &DanglingEssenceDescriptor,
 ];

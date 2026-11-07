@@ -1,20 +1,23 @@
 //! ST 2067-3 normative constraint validation.
 //!
-//! Implements all "shall" rules from SMPTE ST 2067-3 (all editions: 2013, 2016, 2020).
+//! Implements "shall" rules from SMPTE ST 2067-3 (editions 2013 and 2016;
+//! clauses are the same in both unless noted).
 //! Issue codes follow the canonical shape: `ST2067-3:{year}:{clause}/{cause}`
 //!
-//! Covered clauses (per normative test matrices):
-//! - §5.5.1.2  ContentKind vocabulary under SMPTE scope
+//! Covered clauses:
+//! - §6.1      CompositionPlaylistType schema (non-empty lists)
+//! - §6.1.8    ContentKind vocabulary under the SMPTE scopes
 //! - §6.1.9    ContentVersion/Id uniqueness within ContentVersionList
-//! - §6.4.2    SourceEncoding → EssenceDescriptor cross-reference
-//! - §6.11     ContentVersionList / ContentVersion constraints
-//! - §6.12     Locale language tags (RFC 5646)
-//! - §6.14.1.2 Marker label vocabulary (2013 and 2016 scopes)
-//! - §7.3      TrackId uniqueness within segment; sequence duration integer edit-units
+//! - §6.5.2    Locale language tags (RFC 5646)
+//! - §6.8      ContentVersion Id / LabelText
+//! - §6.9.3    TrackId uniqueness within a segment
+//! - §6.12.1   SourceEncoding → EssenceDescriptor cross-reference
 //! - §6.13     Marker offset bounds
+//! - §6.14.2 (2013) / §6.14.1.2 (2016) Marker label vocabulary
+//! - §7.3      Sequence duration integer edit units
 //!
-//! Note: §7.2.2 (segment duration homogeneity) is enforced by the st2067-21
-//! core structure validator which handles edit-rate normalisation across all
+//! Note: §7.2 (segment duration homogeneity) is enforced by the core
+//! structure validator, which handles edit-rate normalisation across all
 //! track types and runs on every CPL regardless of application profile.
 
 use std::collections::HashSet;
@@ -41,7 +44,7 @@ pub fn st2067_3_edition(ns: &CplNamespace) -> St2067_3Edition {
 
 /// Validate a `CompositionPlaylist` against the normative constraints of ST 2067-3.
 ///
-/// Runs normative rules across §5.5.1.2, §6.4.2, §6.11, §6.12, §7.3, §7.4.
+/// Runs the normative rules listed in the module documentation.
 /// The spec year in issue codes is derived from the CPL's detected namespace.
 pub fn validate_cpl(cpl: &CompositionPlaylist) -> Vec<ValidationIssue> {
     let mut issues = Vec::new();
@@ -56,11 +59,13 @@ pub fn validate_cpl(cpl: &CompositionPlaylist) -> Vec<ValidationIssue> {
     validate_sequence_duration_integer_edit_units(cpl, spec_ed, &mut issues);
     validate_marker_offsets(cpl, spec_ed, &mut issues);
     validate_marker_labels(cpl, spec_ed, &mut issues);
+    validate_content_title(cpl, spec_ed, &mut issues);
+    validate_resource_lists_non_empty(cpl, spec_ed, &mut issues);
 
     issues
 }
 
-// ─── §5.5.1.2 ContentKind vocabulary ────────────────────────────────────────
+// ─── §6.1.8 ContentKind vocabulary ────────────────────────────────────────
 
 /// ST 2067-3:2013 / 2016 §6.1.8 Table 3: ContentKind values under the
 /// default scope (identical in both editions).
@@ -222,9 +227,9 @@ fn validate_content_kind_vocabulary(
     }
 }
 
-// ─── §6.4.2 SourceEncoding cross-reference ───────────────────────────────────
+// ─── §6.12.1 SourceEncoding cross-reference ───────────────────────────────────
 
-/// ST 2067-3 §6.4.2: `SourceEncoding` shall reference an `EssenceDescriptor/Id` in the CPL.
+/// ST 2067-3 §6.12.1: `SourceEncoding` shall reference an `EssenceDescriptor/Id` in the CPL.
 fn validate_source_encoding_refs(
     cpl: &CompositionPlaylist,
     spec_ed: St2067_3Edition,
@@ -305,9 +310,9 @@ fn validate_source_encoding_refs(
     }
 }
 
-// ─── §6.11 ContentVersionList ─────────────────────────────────────────────────
+// ─── §6.1 / §6.8 ContentVersionList ─────────────────────────────────────────────────
 
-/// ST 2067-3 §6.11: ContentVersionList, ContentVersion/Id and ContentVersion/LabelText constraints.
+/// ST 2067-3 §6.1 (schema) / §6.8: ContentVersionList, ContentVersion/Id and ContentVersion/LabelText constraints.
 fn validate_content_versions(
     cpl: &CompositionPlaylist,
     spec_ed: St2067_3Edition,
@@ -356,9 +361,9 @@ fn validate_content_versions(
     }
 }
 
-// ─── §6.12 Locale language tags ──────────────────────────────────────────────
+// ─── §6.5.2 Locale language tags ──────────────────────────────────────────────
 
-/// ST 2067-3 §6.12: Locale language tags shall conform to RFC 5646.
+/// ST 2067-3 §6.5.2: Locale language tags shall conform to RFC 5646.
 fn validate_locale_language_tags(
     cpl: &CompositionPlaylist,
     spec_ed: St2067_3Edition,
@@ -393,9 +398,64 @@ fn validate_locale_language_tags(
     }
 }
 
-// ─── §7.3 TrackId uniqueness ──────────────────────────────────────────────────
+// ─── §6.1.7 ContentTitle ─────────────────────────────────────────────────────
 
-/// ST 2067-3 §7.3: TrackId values shall be unique within each segment.
+/// ST 2067-3 §6.1.7: ContentTitle shall contain a human-readable title; an
+/// empty (or whitespace-only) value contains none.
+fn validate_content_title(
+    cpl: &CompositionPlaylist,
+    spec_ed: St2067_3Edition,
+    issues: &mut Vec<ValidationIssue>,
+) {
+    if cpl.content_title.text.trim().is_empty() {
+        issues.push(
+            ValidationIssue::from_rule(
+                &st2067_3::ContentTitleEmpty,
+                spec_ed,
+                "ContentTitle is empty; it shall contain a human-readable title",
+            )
+            .with_location(Location::new().with_cpl(cpl.id)),
+        );
+    }
+}
+
+// ─── §6.10 ResourceList ──────────────────────────────────────────────────────
+
+/// ST 2067-3 §6.10 (SequenceType schema): ResourceList holds one or more
+/// Resource elements. The runtime XSD layer does not see this: sequences sit
+/// in an `xs:any namespace="##other" processContents="lax"` slot.
+fn validate_resource_lists_non_empty(
+    cpl: &CompositionPlaylist,
+    spec_ed: St2067_3Edition,
+    issues: &mut Vec<ValidationIssue>,
+) {
+    for (seg_idx, segment) in cpl.segment_list.segments.iter().enumerate() {
+        let sl = &segment.sequence_list;
+        let mut all_seqs = sl.all_sequences_typed();
+        for s in &sl.marker_sequences {
+            all_seqs.push((s, "MarkerSequence"));
+        }
+        for (seq, track_type) in all_seqs {
+            if seq.resource_list().resources.is_empty() {
+                issues.push(
+                    ValidationIssue::from_rule(
+                        &st2067_3::ResourceListEmpty,
+                        spec_ed,
+                        format!(
+                            "Segment {} {track_type} has an empty ResourceList",
+                            seg_idx + 1
+                        ),
+                    )
+                    .with_location(Location::new().with_cpl(cpl.id).with_segment(seg_idx)),
+                );
+            }
+        }
+    }
+}
+
+// ─── §6.9.3 TrackId uniqueness ──────────────────────────────────────────────────
+
+/// ST 2067-3 §6.9.3: TrackId values shall be unique within each segment.
 fn validate_track_id_uniqueness(
     cpl: &CompositionPlaylist,
     spec_ed: St2067_3Edition,
@@ -1142,6 +1202,27 @@ mod tests {
             " documentary",
         );
         assert!(has_content_kind_unknown(&cpl));
+    }
+
+    /// ST 2067-3 §6.1.8: a case-only difference is not a match. MERIDIAN's
+    /// "Test" is not Table 3's "test"; it is an Error in both editions.
+    #[test]
+    fn content_kind_case_only_difference_is_an_error() {
+        for ns in [
+            CplNamespace::Smpte2067_3_2013,
+            CplNamespace::Smpte2067_3_2016,
+        ] {
+            let cpl = cpl_with_content_kind(ns.clone(), None, "Test");
+            let issues = validate_cpl(&cpl);
+            let ck: Vec<_> = issues
+                .iter()
+                .filter(|i| i.code.contains("ContentKindUnknown"))
+                .collect();
+            assert_eq!(ck.len(), 1, "'Test' ({ns:?}) must be flagged: {issues:#?}");
+            assert_eq!(ck[0].severity, crate::diagnostics::Severity::Error);
+            let ok = cpl_with_content_kind(ns.clone(), None, "test");
+            assert!(!has_content_kind_unknown(&ok), "'test' is a Table 3 value");
+        }
     }
 
     /// ST 2067-3 §6.1.8: the value "shall match" a Table 3 value (2013 p11,

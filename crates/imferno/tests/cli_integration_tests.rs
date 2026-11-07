@@ -109,12 +109,16 @@ fn test_cli_validate_success() {
     // injected) audio metadata defect we model since the photon-parity
     // pass. Suppress that one rule via `--rule` so the test continues to
     // verify the end-to-end CLI flow rather than re-litigating the
-    // MERIDIAN sample's known bug.
+    // MERIDIAN sample's known bug. Its ContentKind "Test" is not a Table 3
+    // value (Table 3 lists lowercase "test"; ST 2067-3 §6.1.8 match is
+    // exact), so ContentKindUnknown is suppressed for the same reason.
     let (success, stdout, stderr) = run_cli_command(&[
         "validate",
         TEST_PACKAGE,
         "--rule",
         "SoundfieldGroupLinkIDMismatch=off",
+        "--rule",
+        "ContentKindUnknown=off",
     ]);
 
     assert!(success, "CLI validate failed: {}", stderr);
@@ -199,7 +203,12 @@ fn test_cli_performance() {
         let start = Instant::now();
         let mut args: Vec<&str> = vec![cmd, TEST_PACKAGE];
         if *cmd == "validate" {
-            args.extend_from_slice(&["--rule", "SoundfieldGroupLinkIDMismatch=off"]);
+            args.extend_from_slice(&[
+                "--rule",
+                "SoundfieldGroupLinkIDMismatch=off",
+                "--rule",
+                "ContentKindUnknown=off",
+            ]);
         }
         let (success, _stdout, _stderr) = run_cli_command(&args);
         let duration = start.elapsed();

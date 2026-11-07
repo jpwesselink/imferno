@@ -1,10 +1,12 @@
 //! Rule table: SMPTE ST 2067-21 (Application #2E).
 //!
-//! Generated from the pre-C0 per-edition code enums; edit by hand from now on.
+//! Every row checked against the text of its edition (C1/C4); rows left
+//! unverified are listed in the C1 report.
 
 #![allow(non_upper_case_globals)]
 
-use crate::diagnostics::rule::{absent, row, AnyRule, Rule};
+use crate::diagnostics::rule::Strength::{May, Shall, Should};
+use crate::diagnostics::rule::{absent, checked, AnyRule, Rule};
 use crate::diagnostics::{Category, Severity};
 
 pub use crate::validation::App2EEdition;
@@ -18,11 +20,11 @@ pub static ColorSystem: Rule<E> = Rule {
     description: "Color system designator is not in the permitted set.",
     example: Some("ColorPrimaries + TransferCharacteristic + CodingEquations triple doesn't map to a permitted App2E ColorN system"),
     editions: &[
-        row(E::V2014, "6.1", Severity::Error),
-        row(E::V2016, "6.1", Severity::Error),
-        row(E::V2020, "6.2", Severity::Error),
-        row(E::V2023, "6.2", Severity::Error),
-        row(E::V2026, "7.2", Severity::Error),
+        checked(E::V2014, "6.1", Shall),
+        checked(E::V2016, "6.1", Shall),
+        checked(E::V2020, "6.2", Shall),
+        checked(E::V2023, "6.2", Shall),
+        checked(E::V2026, "7.2", Shall),
     ],
 };
 
@@ -33,11 +35,11 @@ pub static BlackRefLevel: Rule<E> = Rule {
     description: "BlackRefLevel value is inconsistent with ComponentDepth.",
     example: Some("<ComponentDepth>10</ComponentDepth><BlackRefLevel>16</BlackRefLevel>  <!-- expected 64 for 10-bit -->"),
     editions: &[
-        row(E::V2014, "6.1.4", Severity::Error),
-        row(E::V2016, "6.3", Severity::Error),
-        row(E::V2020, "6.4.3", Severity::Error),
-        row(E::V2023, "6.4.3", Severity::Error),
-        row(E::V2026, "7.4.3", Severity::Error),
+        checked(E::V2014, "6.1.4", Shall),
+        checked(E::V2016, "6.3", Shall),
+        checked(E::V2020, "6.4.3", Shall),
+        checked(E::V2023, "6.4.3", Shall),
+        checked(E::V2026, "7.4.3", Shall),
     ],
 };
 
@@ -48,11 +50,11 @@ pub static WhiteRefLevel: Rule<E> = Rule {
     description: "WhiteRefLevel value is inconsistent with ComponentDepth.",
     example: Some("<ComponentDepth>10</ComponentDepth><WhiteRefLevel>235</WhiteRefLevel>  <!-- expected 940 for 10-bit -->"),
     editions: &[
-        row(E::V2014, "6.1.4", Severity::Error),
-        row(E::V2016, "6.3", Severity::Error),
-        row(E::V2020, "6.4.3", Severity::Error),
-        row(E::V2023, "6.4.3", Severity::Error),
-        row(E::V2026, "7.4.3", Severity::Error),
+        checked(E::V2014, "6.1.4", Shall),
+        checked(E::V2016, "6.3", Shall),
+        checked(E::V2020, "6.4.3", Shall),
+        checked(E::V2023, "6.4.3", Shall),
+        checked(E::V2026, "7.4.3", Shall),
     ],
 };
 
@@ -63,11 +65,11 @@ pub static ColorRange: Rule<E> = Rule {
     description: "ColorRange value is not in the permitted set.",
     example: Some("<ComponentDepth>10</ComponentDepth><ColorRange>1019</ColorRange>  <!-- not in permitted set -->"),
     editions: &[
-        row(E::V2014, "6.1.4", Severity::Error),
-        row(E::V2016, "6.3", Severity::Error),
-        row(E::V2020, "6.4.3", Severity::Error),
-        row(E::V2023, "6.4.3", Severity::Error),
-        row(E::V2026, "7.4.3", Severity::Error),
+        checked(E::V2014, "6.1.4", Shall),
+        checked(E::V2016, "6.3", Shall),
+        checked(E::V2020, "6.4.3", Shall),
+        checked(E::V2023, "6.4.3", Shall),
+        checked(E::V2026, "7.4.3", Shall),
     ],
 };
 
@@ -78,11 +80,11 @@ pub static ApplicationIdentification: Rule<E> = Rule {
     description: "ApplicationIdentification is required for App2E compositions.",
     example: Some("<CompositionPlaylist>…</CompositionPlaylist>  <!-- ExtensionProperties has no <ApplicationIdentification> -->"),
     editions: &[
-        row(E::V2014, "7", Severity::Error),
-        row(E::V2016, "7.1", Severity::Error),
-        row(E::V2020, "7.1", Severity::Error),
-        row(E::V2023, "7.1", Severity::Error),
-        row(E::V2026, "8.1", Severity::Error),
+        checked(E::V2014, "7", Shall),
+        checked(E::V2016, "7.1", Shall),
+        checked(E::V2020, "7.1", Shall),
+        checked(E::V2023, "7.1", Shall),
+        checked(E::V2026, "8.1", Shall),
     ],
 };
 
@@ -93,11 +95,11 @@ pub static AppIdMismatch: Rule<E> = Rule {
     description: "ApplicationIdentification in CPL ExtensionProperties does not include the expected App2E URI.",
     example: Some("<ApplicationIdentification>http://example.org/not-app2e</ApplicationIdentification>"),
     editions: &[
-        row(E::V2014, "7", Severity::Warning),
-        row(E::V2016, "7.1", Severity::Warning),
-        row(E::V2020, "7.1", Severity::Warning),
-        row(E::V2023, "7.1", Severity::Warning),
-        row(E::V2026, "8.1", Severity::Warning),
+        checked(E::V2014, "7", Shall).severity(Severity::Warning).reason("Reported when an edition is validated that the CPL does not declare; the CPL is then simply not an App #2E CPL of that edition.").interpret("ApplicationIdentification is a list; the edition value only has to be among its items.", Some("https://github.com/Netflix/photon/issues/218")),
+        checked(E::V2016, "7.1", Shall).severity(Severity::Warning).reason("Reported when an edition is validated that the CPL does not declare; the CPL is then simply not an App #2E CPL of that edition.").interpret("ApplicationIdentification is a list; the edition value only has to be among its items.", Some("https://github.com/Netflix/photon/issues/218")),
+        checked(E::V2020, "7.1", Shall).severity(Severity::Warning).reason("Reported when an edition is validated that the CPL does not declare; the CPL is then simply not an App #2E CPL of that edition.").interpret("ApplicationIdentification is a list; the edition value only has to be among its items.", Some("https://github.com/Netflix/photon/issues/218")),
+        checked(E::V2023, "7.1", Shall).severity(Severity::Warning).reason("Reported when an edition is validated that the CPL does not declare; the CPL is then simply not an App #2E CPL of that edition.").interpret("ApplicationIdentification is a list; the edition value only has to be among its items.", Some("https://github.com/Netflix/photon/issues/218")),
+        checked(E::V2026, "8.1", Shall).severity(Severity::Warning).reason("Reported when an edition is validated that the CPL does not declare; the CPL is then simply not an App #2E CPL of that edition.").interpret("ApplicationIdentification is a list; the edition value only has to be among its items.", Some("https://github.com/Netflix/photon/issues/218")),
     ],
 };
 
@@ -108,11 +110,11 @@ pub static ComponentRefValues: Rule<E> = Rule {
     description: "Component max/min reference values are inconsistent with bit depth.",
     example: Some("<ComponentDepth>10</ComponentDepth><ComponentMaxRef>4096</ComponentMaxRef>  <!-- 4096 > (2^10)-1 -->"),
     editions: &[
-        absent(E::V2014),
-        row(E::V2016, "6.2", Severity::Error),
-        row(E::V2020, "6.3.2", Severity::Error),
-        row(E::V2023, "6.3.2", Severity::Error),
-        row(E::V2026, "7.3.2", Severity::Error),
+        absent(E::V2014).verified(),
+        checked(E::V2016, "6.2", Shall),
+        checked(E::V2020, "6.3.2", Shall),
+        checked(E::V2023, "6.3.2", Shall),
+        checked(E::V2026, "7.3.2", Shall),
     ],
 };
 
@@ -123,11 +125,11 @@ pub static MaxCLLMaxFALL: Rule<E> = Rule {
     description: "MaxCLL / MaxFALL HDR metadata is absent; recommended for HDR content.",
     example: Some("HDR content (PQ TransferCharacteristic) with no <MaxCLL> / <MaxFALL> in ExtensionProperties"),
     editions: &[
-        absent(E::V2014),
-        row(E::V2016, "7.2", Severity::Info),
-        row(E::V2020, "7.5", Severity::Info),
-        row(E::V2023, "7.5", Severity::Info),
-        row(E::V2026, "8.3.3", Severity::Info),
+        absent(E::V2014).verified(),
+        checked(E::V2016, "7.2", May).interpret("Absence of MaxCLL/MaxFALL is allowed (zero or one); the Info notes it for PQ. Presence with non-PQ systems is open in the working group.", Some("https://github.com/SMPTE/st2067-21/issues/4")),
+        checked(E::V2020, "7.5", May).interpret("Absence of MaxCLL/MaxFALL is allowed (zero or one); the Info notes it for PQ. Presence with non-PQ systems is open in the working group.", Some("https://github.com/SMPTE/st2067-21/issues/4")),
+        checked(E::V2023, "7.5", May).interpret("Absence of MaxCLL/MaxFALL is allowed (zero or one); the Info notes it for PQ. Presence with non-PQ systems is open in the working group.", Some("https://github.com/SMPTE/st2067-21/issues/4")),
+        checked(E::V2026, "8.3.3", May).interpret("Absence of MaxCLL/MaxFALL is allowed (zero or one); the Info notes it for PQ. Presence with non-PQ systems is open in the working group.", Some("https://github.com/SMPTE/st2067-21/issues/4")),
     ],
 };
 
@@ -138,11 +140,11 @@ pub static FrameRate: Rule<E> = Rule {
     description: "Frame rate is not in the permitted set for App2E.",
     example: Some("<SampleRate>48/1</SampleRate>  <!-- 48 fps is not in Table 3 -->"),
     editions: &[
-        absent(E::V2014),
-        absent(E::V2016),
-        row(E::V2020, "5.2", Severity::Error),
-        row(E::V2023, "5.2", Severity::Error),
-        row(E::V2026, "6.2.1", Severity::Error),
+        absent(E::V2014).verified(),
+        absent(E::V2016).verified(),
+        checked(E::V2020, "5.2", Shall),
+        checked(E::V2023, "5.2", Shall),
+        checked(E::V2026, "6.2.1", Shall),
     ],
 };
 
@@ -153,11 +155,11 @@ pub static Resolution: Rule<E> = Rule {
     description: "Image resolution is not in the permitted set for App2E.",
     example: Some("<StoredWidth>9000</StoredWidth><StoredHeight>7000</StoredHeight>  <!-- larger than every image-characteristics column -->"),
     editions: &[
-        absent(E::V2014),
-        absent(E::V2016),
-        row(E::V2020, "5.2", Severity::Error),
-        row(E::V2023, "5.2", Severity::Error),
-        row(E::V2026, "6.2.1", Severity::Error),
+        absent(E::V2014).verified(),
+        absent(E::V2016).verified(),
+        checked(E::V2020, "5.2", Shall),
+        checked(E::V2023, "5.2", Shall),
+        checked(E::V2026, "6.2.1", Shall),
     ],
 };
 
@@ -168,11 +170,11 @@ pub static RequiredStoredWidth: Rule<E> = Rule {
     description: "RGBA/CDCI descriptor is missing the required StoredWidth field.",
     example: Some("<RGBADescriptor>…</RGBADescriptor>  <!-- no <StoredWidth> child -->"),
     editions: &[
-        absent(E::V2014),
-        absent(E::V2016),
-        row(E::V2020, "6.2", Severity::Error),
-        row(E::V2023, "6.2", Severity::Error),
-        row(E::V2026, "7.2.1.1", Severity::Error),
+        absent(E::V2014).verified(),
+        absent(E::V2016).verified(),
+        checked(E::V2020, "6.2.1.1", Shall),
+        checked(E::V2023, "6.2.1.1", Shall),
+        checked(E::V2026, "7.2.1.2", Shall),
     ],
 };
 
@@ -183,11 +185,11 @@ pub static RequiredStoredHeight: Rule<E> = Rule {
     description: "RGBA/CDCI descriptor is missing the required StoredHeight field.",
     example: Some("<RGBADescriptor>…</RGBADescriptor>  <!-- no <StoredHeight> child -->"),
     editions: &[
-        absent(E::V2014),
-        absent(E::V2016),
-        row(E::V2020, "6.2", Severity::Error),
-        row(E::V2023, "6.2", Severity::Error),
-        row(E::V2026, "7.2.1.1", Severity::Error),
+        absent(E::V2014).verified(),
+        absent(E::V2016).verified(),
+        checked(E::V2020, "6.2.1.1", Shall),
+        checked(E::V2023, "6.2.1.1", Shall),
+        checked(E::V2026, "7.2.1.2", Shall),
     ],
 };
 
@@ -198,11 +200,11 @@ pub static RequiredSampleRate: Rule<E> = Rule {
     description: "RGBA/CDCI descriptor is missing the required SampleRate field.",
     example: Some("<RGBADescriptor>…</RGBADescriptor>  <!-- no <SampleRate> child -->"),
     editions: &[
-        absent(E::V2014),
-        absent(E::V2016),
-        row(E::V2020, "6.2", Severity::Error),
-        row(E::V2023, "6.2", Severity::Error),
-        row(E::V2026, "7.2.1.1", Severity::Error),
+        absent(E::V2014).verified(),
+        absent(E::V2016).verified(),
+        checked(E::V2020, "6.2.1", Shall),
+        checked(E::V2023, "6.2.1", Shall),
+        checked(E::V2026, "7.2.1.1", Shall),
     ],
 };
 
@@ -213,11 +215,11 @@ pub static RequiredFrameLayout: Rule<E> = Rule {
     description: "RGBA/CDCI descriptor is missing the required FrameLayout field.",
     example: Some("<RGBADescriptor>…</RGBADescriptor>  <!-- no <FrameLayout> child -->"),
     editions: &[
-        absent(E::V2014),
-        absent(E::V2016),
-        row(E::V2020, "6.2", Severity::Error),
-        row(E::V2023, "6.2", Severity::Error),
-        row(E::V2026, "7.2.1.1", Severity::Error),
+        absent(E::V2014).verified(),
+        absent(E::V2016).verified(),
+        checked(E::V2020, "6.2.1.3", Shall),
+        checked(E::V2023, "6.2.1.3", Shall),
+        checked(E::V2026, "7.2.1.4", Shall),
     ],
 };
 
@@ -228,11 +230,11 @@ pub static RequiredColorPrimaries: Rule<E> = Rule {
     description: "RGBA/CDCI descriptor is missing the required ColorPrimaries field.",
     example: Some("<RGBADescriptor>…</RGBADescriptor>  <!-- no <ColorPrimaries> UL child -->"),
     editions: &[
-        absent(E::V2014),
-        absent(E::V2016),
-        row(E::V2020, "6.2", Severity::Error),
-        row(E::V2023, "6.2", Severity::Error),
-        row(E::V2026, "7.2.1.1", Severity::Error),
+        absent(E::V2014).verified(),
+        absent(E::V2016).verified(),
+        checked(E::V2020, "6.2.1", Shall),
+        checked(E::V2023, "6.2.1", Shall),
+        checked(E::V2026, "7.2.1.1", Shall),
     ],
 };
 
@@ -245,11 +247,11 @@ pub static RequiredTransferCharacteristic: Rule<E> = Rule {
         "<RGBADescriptor>…</RGBADescriptor>  <!-- no <TransferCharacteristic> UL child -->",
     ),
     editions: &[
-        absent(E::V2014),
-        absent(E::V2016),
-        row(E::V2020, "6.2", Severity::Error),
-        row(E::V2023, "6.2", Severity::Error),
-        row(E::V2026, "7.2.1.1", Severity::Error),
+        absent(E::V2014).verified(),
+        absent(E::V2016).verified(),
+        checked(E::V2020, "6.2.1", Shall),
+        checked(E::V2023, "6.2.1", Shall),
+        checked(E::V2026, "7.2.1.1", Shall),
     ],
 };
 
@@ -260,11 +262,11 @@ pub static RequiredPictureCompression: Rule<E> = Rule {
     description: "RGBA/CDCI descriptor is missing the required PictureCompression field.",
     example: Some("<RGBADescriptor>…</RGBADescriptor>  <!-- no <PictureCompression> UL child -->"),
     editions: &[
-        absent(E::V2014),
-        absent(E::V2016),
-        row(E::V2020, "6.2", Severity::Error),
-        row(E::V2023, "6.2", Severity::Error),
-        row(E::V2026, "7.2.1.1", Severity::Error),
+        absent(E::V2014).verified(),
+        absent(E::V2016).verified(),
+        checked(E::V2020, "6.2.1", Shall),
+        checked(E::V2023, "6.2.1", Shall),
+        checked(E::V2026, "7.2.1.1", Shall),
     ],
 };
 
@@ -275,11 +277,11 @@ pub static RequiredComponentDepth: Rule<E> = Rule {
     description: "CDCI descriptor is missing the required ComponentDepth field.",
     example: Some("<CDCIDescriptor>…</CDCIDescriptor>  <!-- no <ComponentDepth> child -->"),
     editions: &[
-        absent(E::V2014),
-        absent(E::V2016),
-        row(E::V2020, "6.2", Severity::Error).suspect(),
-        row(E::V2023, "6.2", Severity::Error).suspect(),
-        row(E::V2026, "7.4.1", Severity::Error),
+        absent(E::V2014).verified(),
+        absent(E::V2016).verified(),
+        checked(E::V2020, "6.4.1", Shall),
+        checked(E::V2023, "6.4.1", Shall),
+        checked(E::V2026, "7.4.1", Shall),
     ],
 };
 
@@ -290,11 +292,11 @@ pub static AlphaTransparency: Rule<E> = Rule {
     description: "Alpha transparency mode is not permitted in App2E.",
     example: Some("<AlphaTransparency>true</AlphaTransparency>  <!-- App2E disallows alpha -->"),
     editions: &[
-        absent(E::V2014),
-        absent(E::V2016),
-        row(E::V2020, "6.2.1", Severity::Error),
-        row(E::V2023, "6.2.1", Severity::Error),
-        absent(E::V2026),
+        absent(E::V2014).verified(),
+        absent(E::V2016).verified(),
+        checked(E::V2020, "6.2.1", Shall),
+        checked(E::V2023, "6.2.1", Shall),
+        absent(E::V2026).verified(),
     ],
 };
 
@@ -305,11 +307,11 @@ pub static CodingEquationsMissing: Rule<E> = Rule {
     description: "CodingEquations field is absent from the picture descriptor.",
     example: Some("<CDCIDescriptor>…</CDCIDescriptor>  <!-- no <CodingEquations> UL child -->"),
     editions: &[
-        absent(E::V2014),
-        absent(E::V2016),
-        row(E::V2020, "6.2.1", Severity::Error),
-        row(E::V2023, "6.2.1", Severity::Error),
-        row(E::V2026, "7.2.1.1", Severity::Error),
+        absent(E::V2014).verified(),
+        absent(E::V2016).verified(),
+        checked(E::V2020, "6.2.1", Shall),
+        checked(E::V2023, "6.2.1", Shall),
+        checked(E::V2026, "7.2.1.1", Shall),
     ],
 };
 
@@ -320,11 +322,11 @@ pub static ColorPrimariesMissing: Rule<E> = Rule {
     description: "ColorPrimaries field is absent from the picture descriptor.",
     example: Some("<CDCIDescriptor>…</CDCIDescriptor>  <!-- no <ColorPrimaries> UL child -->"),
     editions: &[
-        absent(E::V2014),
-        absent(E::V2016),
-        row(E::V2020, "6.2.1", Severity::Error),
-        row(E::V2023, "6.2.1", Severity::Error),
-        row(E::V2026, "7.2.1.1", Severity::Error),
+        absent(E::V2014).verified(),
+        absent(E::V2016).verified(),
+        checked(E::V2020, "6.2.1", Shall),
+        checked(E::V2023, "6.2.1", Shall),
+        checked(E::V2026, "7.2.1.1", Shall),
     ],
 };
 
@@ -335,11 +337,11 @@ pub static FieldDominance: Rule<E> = Rule {
     description: "FieldDominance value is not permitted for the declared FrameLayout.",
     example: Some("<FieldDominance>2</FieldDominance> on <FrameLayout>FullFrame</FrameLayout>"),
     editions: &[
-        absent(E::V2014),
-        absent(E::V2016),
-        row(E::V2020, "6.2.1", Severity::Error),
-        row(E::V2023, "6.2.1", Severity::Error),
-        row(E::V2026, "7.2.1.1", Severity::Error),
+        absent(E::V2014).verified(),
+        absent(E::V2016).verified(),
+        checked(E::V2020, "6.2.1", Shall),
+        checked(E::V2023, "6.2.1", Shall),
+        checked(E::V2026, "7.2.1.1", Shall),
     ],
 };
 
@@ -350,11 +352,11 @@ pub static FrameLayout: Rule<E> = Rule {
     description: "FrameLayout value is not in the permitted set for App2E.",
     example: Some("<FrameLayout>MixedFields</FrameLayout>  <!-- not in {FullFrame,SeparateFields,SingleField} -->"),
     editions: &[
-        absent(E::V2014),
-        absent(E::V2016),
-        row(E::V2020, "6.2.1", Severity::Error),
-        row(E::V2023, "6.2.1", Severity::Error),
-        row(E::V2026, "7.2.1.4", Severity::Error),
+        absent(E::V2014).verified(),
+        absent(E::V2016).verified(),
+        checked(E::V2020, "6.2.1.3", Shall),
+        checked(E::V2023, "6.2.1.3", Shall),
+        checked(E::V2026, "7.2.1.4", Shall),
     ],
 };
 
@@ -365,11 +367,11 @@ pub static FrameLayoutInterlaced: Rule<E> = Rule {
     description: "Image frame structure (progressive or interlaced) does not fit the closest permitted column of the edition's image-characteristics table.",
     example: Some("<FrameLayout>SeparateFields</FrameLayout> with <SampleRate>24/1</SampleRate>  <!-- interlaced only at 25, 30 or 30000/1001 -->"),
     editions: &[
-        absent(E::V2014),
-        absent(E::V2016),
-        row(E::V2020, "6.2.1", Severity::Error).suspect(),
-        row(E::V2023, "6.2.1", Severity::Error).suspect(),
-        row(E::V2026, "6.2.1", Severity::Error),
+        absent(E::V2014).verified(),
+        absent(E::V2016).verified(),
+        checked(E::V2020, "5.2", Shall),
+        checked(E::V2023, "5.2", Shall),
+        checked(E::V2026, "6.2.1", Shall),
     ],
 };
 
@@ -380,11 +382,11 @@ pub static ImageAlignmentOffset: Rule<E> = Rule {
     description: "ImageAlignmentOffset must be zero.",
     example: Some("<ImageAlignmentOffset>16</ImageAlignmentOffset>  <!-- must be 0 -->"),
     editions: &[
-        absent(E::V2014),
-        absent(E::V2016),
-        row(E::V2020, "6.2.1", Severity::Error),
-        row(E::V2023, "6.2.1", Severity::Error),
-        row(E::V2026, "7.2.1.1", Severity::Error),
+        absent(E::V2014).verified(),
+        absent(E::V2016).verified(),
+        checked(E::V2020, "6.2.1", Shall),
+        checked(E::V2023, "6.2.1", Shall),
+        checked(E::V2026, "7.2.1.1", Shall),
     ],
 };
 
@@ -395,11 +397,11 @@ pub static ImageEndOffset: Rule<E> = Rule {
     description: "ImageEndOffset must be zero.",
     example: Some("<ImageEndOffset>32</ImageEndOffset>  <!-- must be 0 -->"),
     editions: &[
-        absent(E::V2014),
-        absent(E::V2016),
-        row(E::V2020, "6.2.1", Severity::Error),
-        row(E::V2023, "6.2.1", Severity::Error),
-        row(E::V2026, "7.2.1.1", Severity::Error),
+        absent(E::V2014).verified(),
+        absent(E::V2016).verified(),
+        checked(E::V2020, "6.2.1", Shall),
+        checked(E::V2023, "6.2.1", Shall),
+        checked(E::V2026, "7.2.1.1", Shall),
     ],
 };
 
@@ -410,11 +412,11 @@ pub static ImageStartOffset: Rule<E> = Rule {
     description: "ImageStartOffset must be zero.",
     example: Some("<ImageStartOffset>16</ImageStartOffset>  <!-- must be 0 -->"),
     editions: &[
-        absent(E::V2014),
-        absent(E::V2016),
-        row(E::V2020, "6.2.1", Severity::Error),
-        row(E::V2023, "6.2.1", Severity::Error),
-        row(E::V2026, "7.2.1.1", Severity::Error),
+        absent(E::V2014).verified(),
+        absent(E::V2016).verified(),
+        checked(E::V2020, "6.2.1", Shall),
+        checked(E::V2023, "6.2.1", Shall),
+        checked(E::V2026, "7.2.1.1", Shall),
     ],
 };
 
@@ -425,11 +427,11 @@ pub static SampledHeight: Rule<E> = Rule {
     description: "SampledHeight must equal StoredHeight.",
     example: Some("<StoredHeight>1080</StoredHeight><SampledHeight>1056</SampledHeight>"),
     editions: &[
-        absent(E::V2014),
-        absent(E::V2016),
-        row(E::V2020, "6.2.1", Severity::Error),
-        row(E::V2023, "6.2.1", Severity::Error),
-        row(E::V2026, "7.2.1.1", Severity::Error),
+        absent(E::V2014).verified(),
+        absent(E::V2016).verified(),
+        checked(E::V2020, "6.2.1", Shall),
+        checked(E::V2023, "6.2.1", Shall),
+        checked(E::V2026, "7.2.1.1", Shall),
     ],
 };
 
@@ -440,11 +442,11 @@ pub static SampledWidth: Rule<E> = Rule {
     description: "SampledWidth must equal StoredWidth.",
     example: Some("<StoredWidth>1920</StoredWidth><SampledWidth>1872</SampledWidth>"),
     editions: &[
-        absent(E::V2014),
-        absent(E::V2016),
-        row(E::V2020, "6.2.1", Severity::Error),
-        row(E::V2023, "6.2.1", Severity::Error),
-        row(E::V2026, "7.2.1.1", Severity::Error),
+        absent(E::V2014).verified(),
+        absent(E::V2016).verified(),
+        checked(E::V2020, "6.2.1", Shall),
+        checked(E::V2023, "6.2.1", Shall),
+        checked(E::V2026, "7.2.1.1", Shall),
     ],
 };
 
@@ -455,11 +457,11 @@ pub static SampledXOffset: Rule<E> = Rule {
     description: "SampledXOffset must be zero.",
     example: Some("<SampledXOffset>4</SampledXOffset>  <!-- must be 0 -->"),
     editions: &[
-        absent(E::V2014),
-        absent(E::V2016),
-        row(E::V2020, "6.2.1", Severity::Error),
-        row(E::V2023, "6.2.1", Severity::Error),
-        row(E::V2026, "7.2.1.1", Severity::Error),
+        absent(E::V2014).verified(),
+        absent(E::V2016).verified(),
+        checked(E::V2020, "6.2.1", Shall),
+        checked(E::V2023, "6.2.1", Shall),
+        checked(E::V2026, "7.2.1.1", Shall),
     ],
 };
 
@@ -470,11 +472,11 @@ pub static SampledYOffset: Rule<E> = Rule {
     description: "SampledYOffset must be zero.",
     example: Some("<SampledYOffset>4</SampledYOffset>  <!-- must be 0 -->"),
     editions: &[
-        absent(E::V2014),
-        absent(E::V2016),
-        row(E::V2020, "6.2.1", Severity::Error),
-        row(E::V2023, "6.2.1", Severity::Error),
-        row(E::V2026, "7.2.1.1", Severity::Error),
+        absent(E::V2014).verified(),
+        absent(E::V2016).verified(),
+        checked(E::V2020, "6.2.1", Shall),
+        checked(E::V2023, "6.2.1", Shall),
+        checked(E::V2026, "7.2.1.1", Shall),
     ],
 };
 
@@ -485,11 +487,11 @@ pub static StoredF2Offset: Rule<E> = Rule {
     description: "StoredF2Offset must be zero.",
     example: Some("<StoredF2Offset>1</StoredF2Offset>  <!-- must be 0 -->"),
     editions: &[
-        absent(E::V2014),
-        absent(E::V2016),
-        row(E::V2020, "6.2.1", Severity::Error),
-        row(E::V2023, "6.2.1", Severity::Error),
-        row(E::V2026, "7.2.1.1", Severity::Error),
+        absent(E::V2014).verified(),
+        absent(E::V2016).verified(),
+        checked(E::V2020, "6.2.1", Shall),
+        checked(E::V2023, "6.2.1", Shall),
+        checked(E::V2026, "7.2.1.1", Shall),
     ],
 };
 
@@ -502,11 +504,11 @@ pub static TransferCharacteristicMissing: Rule<E> = Rule {
         "<CDCIDescriptor>…</CDCIDescriptor>  <!-- no <TransferCharacteristic> UL child -->",
     ),
     editions: &[
-        absent(E::V2014),
-        absent(E::V2016),
-        row(E::V2020, "6.2.1", Severity::Error),
-        row(E::V2023, "6.2.1", Severity::Error),
-        row(E::V2026, "7.2.1.1", Severity::Error),
+        absent(E::V2014).verified(),
+        absent(E::V2016).verified(),
+        checked(E::V2020, "6.2.1", Shall),
+        checked(E::V2023, "6.2.1", Shall),
+        checked(E::V2026, "7.2.1.1", Shall),
     ],
 };
 
@@ -519,9 +521,9 @@ pub static TransferCharacteristicUnknown: Rule<E> = Rule {
     editions: &[
         absent(E::V2014),
         absent(E::V2016),
-        row(E::V2020, "6.2.2", Severity::Error),
-        row(E::V2023, "6.2.2", Severity::Error),
-        row(E::V2026, "7.2.2", Severity::Error),
+        checked(E::V2020, "6.2.2", Shall),
+        checked(E::V2023, "6.2.2", Shall),
+        checked(E::V2026, "7.2.2", Shall),
     ],
 };
 
@@ -534,9 +536,9 @@ pub static CodingEquationsUnknown: Rule<E> = Rule {
     editions: &[
         absent(E::V2014),
         absent(E::V2016),
-        row(E::V2020, "6.2.3", Severity::Error),
-        row(E::V2023, "6.2.3", Severity::Error),
-        row(E::V2026, "7.2.3", Severity::Error),
+        checked(E::V2020, "6.2.3", Shall),
+        checked(E::V2023, "6.2.3", Shall),
+        checked(E::V2026, "7.2.3", Shall),
     ],
 };
 
@@ -549,9 +551,9 @@ pub static ColorPrimariesUnknown: Rule<E> = Rule {
     editions: &[
         absent(E::V2014),
         absent(E::V2016),
-        row(E::V2020, "6.2.4", Severity::Error),
-        row(E::V2023, "6.2.4", Severity::Error),
-        row(E::V2026, "7.2.4", Severity::Error),
+        checked(E::V2020, "6.2.4", Shall),
+        checked(E::V2023, "6.2.4", Shall),
+        checked(E::V2026, "7.2.4", Shall),
     ],
 };
 
@@ -562,11 +564,11 @@ pub static J2KRequired: Rule<E> = Rule {
     description: "Video essence is not JPEG 2000 encoded as required by App2E.",
     example: Some("<PictureCompression>urn:smpte:ul:060e2b34.04010101.04010202.01020500</PictureCompression>  <!-- not a JPEG-2000 UL -->"),
     editions: &[
-        absent(E::V2014),
+        absent(E::V2014).verified(),
         absent(E::V2016),
-        row(E::V2020, "6.2.5", Severity::Error),
-        row(E::V2023, "6.2.5", Severity::Error),
-        row(E::V2026, "7.2.5", Severity::Error),
+        checked(E::V2020, "6.2.5", Shall),
+        checked(E::V2023, "6.2.5", Shall),
+        checked(E::V2026, "7.2.5", Shall),
     ],
 };
 
@@ -579,11 +581,11 @@ pub static AlphaMaxRef: Rule<E> = Rule {
         "<AlphaMaxRef>1024</AlphaMaxRef>  <!-- outside permitted depth-derived range -->",
     ),
     editions: &[
-        absent(E::V2014),
-        absent(E::V2016),
-        row(E::V2020, "6.3", Severity::Error),
-        row(E::V2023, "6.3", Severity::Error),
-        row(E::V2026, "7.3.1", Severity::Error),
+        absent(E::V2014).verified(),
+        absent(E::V2016).verified(),
+        checked(E::V2020, "6.3.1", Shall),
+        checked(E::V2023, "6.3.1", Shall),
+        checked(E::V2026, "7.3.1", Shall),
     ],
 };
 
@@ -594,11 +596,11 @@ pub static AlphaMinRef: Rule<E> = Rule {
     description: "AlphaMinRef value is not permitted.",
     example: Some("<AlphaMinRef>-1</AlphaMinRef>  <!-- outside permitted depth-derived range -->"),
     editions: &[
-        absent(E::V2014),
-        absent(E::V2016),
-        row(E::V2020, "6.3", Severity::Error),
-        row(E::V2023, "6.3", Severity::Error),
-        row(E::V2026, "7.3.1", Severity::Error),
+        absent(E::V2014).verified(),
+        absent(E::V2016).verified(),
+        checked(E::V2020, "6.3.1", Shall),
+        checked(E::V2023, "6.3.1", Shall),
+        checked(E::V2026, "7.3.1", Shall),
     ],
 };
 
@@ -609,11 +611,11 @@ pub static ComponentMaxRef: Rule<E> = Rule {
     description: "ComponentMaxRef value is not in the permitted range.",
     example: Some("<ComponentMaxRef>9999</ComponentMaxRef>  <!-- beyond (2^ComponentDepth)-1 -->"),
     editions: &[
-        absent(E::V2014),
-        absent(E::V2016),
-        row(E::V2020, "6.3", Severity::Error),
-        row(E::V2023, "6.3", Severity::Error),
-        row(E::V2026, "7.3.1", Severity::Error),
+        absent(E::V2014).verified(),
+        absent(E::V2016).verified(),
+        checked(E::V2020, "6.3.1", Shall),
+        checked(E::V2023, "6.3.1", Shall),
+        checked(E::V2026, "7.3.1", Shall),
     ],
 };
 
@@ -624,11 +626,11 @@ pub static ComponentMinRef: Rule<E> = Rule {
     description: "ComponentMinRef value is not in the permitted range.",
     example: Some("<ComponentMinRef>-5</ComponentMinRef>  <!-- must be ≥ 0 -->"),
     editions: &[
-        absent(E::V2014),
-        absent(E::V2016),
-        row(E::V2020, "6.3", Severity::Error),
-        row(E::V2023, "6.3", Severity::Error),
-        row(E::V2026, "7.3.1", Severity::Error),
+        absent(E::V2014).verified(),
+        absent(E::V2016).verified(),
+        checked(E::V2020, "6.3.1", Shall),
+        checked(E::V2023, "6.3.1", Shall),
+        checked(E::V2026, "7.3.1", Shall),
     ],
 };
 
@@ -639,11 +641,11 @@ pub static Palette: Rule<E> = Rule {
     description: "Palette is present; palette images are not permitted in App2E.",
     example: Some("<Palette>…</Palette>  <!-- palette images forbidden in App2E -->"),
     editions: &[
-        absent(E::V2014),
-        absent(E::V2016),
-        row(E::V2020, "6.3", Severity::Error),
-        row(E::V2023, "6.3", Severity::Error),
-        row(E::V2026, "7.3.1", Severity::Error),
+        absent(E::V2014).verified(),
+        absent(E::V2016).verified(),
+        checked(E::V2020, "6.3.1", Shall),
+        checked(E::V2023, "6.3.1", Shall),
+        checked(E::V2026, "7.3.1", Shall),
     ],
 };
 
@@ -654,11 +656,11 @@ pub static PaletteLayout: Rule<E> = Rule {
     description: "PaletteLayout is present; palette layout is not permitted in App2E.",
     example: Some("<PaletteLayout>…</PaletteLayout>  <!-- forbidden in App2E -->"),
     editions: &[
-        absent(E::V2014),
-        absent(E::V2016),
-        row(E::V2020, "6.3", Severity::Error),
-        row(E::V2023, "6.3", Severity::Error),
-        row(E::V2026, "7.3.1", Severity::Error),
+        absent(E::V2014).verified(),
+        absent(E::V2016).verified(),
+        checked(E::V2020, "6.3.1", Shall),
+        checked(E::V2023, "6.3.1", Shall),
+        checked(E::V2026, "7.3.1", Shall),
     ],
 };
 
@@ -669,11 +671,11 @@ pub static ScanningDirection: Rule<E> = Rule {
     description: "ScanningDirection value is not in the permitted set.",
     example: Some("<ScanningDirection>5</ScanningDirection>  <!-- not in permitted set -->"),
     editions: &[
-        absent(E::V2014),
-        absent(E::V2016),
-        row(E::V2020, "6.3", Severity::Error),
-        row(E::V2023, "6.3", Severity::Error),
-        row(E::V2026, "7.3.1", Severity::Error),
+        absent(E::V2014).verified(),
+        absent(E::V2016).verified(),
+        checked(E::V2020, "6.3.1", Shall),
+        checked(E::V2023, "6.3.1", Shall),
+        checked(E::V2026, "7.3.1", Shall),
     ],
 };
 
@@ -684,11 +686,11 @@ pub static AlphaSampleDepth: Rule<E> = Rule {
     description: "AlphaSampleDepth value is not permitted.",
     example: Some("<AlphaSampleDepth>7</AlphaSampleDepth>  <!-- not in {8,10,12,16} -->"),
     editions: &[
-        absent(E::V2014),
-        absent(E::V2016),
-        row(E::V2020, "6.4", Severity::Error),
-        row(E::V2023, "6.4", Severity::Error),
-        row(E::V2026, "7.4.1", Severity::Error),
+        absent(E::V2014).verified(),
+        absent(E::V2016).verified(),
+        checked(E::V2020, "6.4.1", Shall),
+        checked(E::V2023, "6.4.1", Shall),
+        checked(E::V2026, "7.4.1", Shall),
     ],
 };
 
@@ -699,11 +701,11 @@ pub static ColorSiting: Rule<E> = Rule {
     description: "ColorSiting value is not in the permitted set.",
     example: Some("<ColorSiting>9</ColorSiting>  <!-- not in permitted set -->"),
     editions: &[
-        absent(E::V2014),
-        absent(E::V2016),
-        row(E::V2020, "6.4", Severity::Error),
-        row(E::V2023, "6.4", Severity::Error),
-        row(E::V2026, "7.4.1", Severity::Error),
+        absent(E::V2014).verified(),
+        absent(E::V2016).verified(),
+        checked(E::V2020, "6.4.1", Shall),
+        checked(E::V2023, "6.4.1", Shall),
+        checked(E::V2026, "7.4.1", Shall),
     ],
 };
 
@@ -714,11 +716,11 @@ pub static ComponentDepth: Rule<E> = Rule {
     description: "ComponentDepth is missing, or the pixel bit depth is not permitted for the image characteristics.",
     example: Some("<ComponentDepth>9</ComponentDepth>  <!-- not in {8,10,12,16} -->"),
     editions: &[
-        absent(E::V2014),
-        absent(E::V2016),
-        row(E::V2020, "6.4", Severity::Error),
-        row(E::V2023, "6.4", Severity::Error),
-        row(E::V2026, "7.4.1", Severity::Error),
+        absent(E::V2014).verified(),
+        absent(E::V2016).verified(),
+        checked(E::V2020, "6.4.1", Shall),
+        checked(E::V2023, "6.4.1", Shall),
+        checked(E::V2026, "7.4.1", Shall),
     ],
 };
 
@@ -729,11 +731,11 @@ pub static HorizontalSubsampling: Rule<E> = Rule {
     description: "HorizontalSubsampling value is not in the permitted set.",
     example: Some("<HorizontalSubsampling>3</HorizontalSubsampling>  <!-- not in {1,2,4} -->"),
     editions: &[
-        absent(E::V2014),
-        absent(E::V2016),
-        row(E::V2020, "6.4", Severity::Error),
-        row(E::V2023, "6.4", Severity::Error),
-        row(E::V2026, "7.4.2", Severity::Error),
+        absent(E::V2014).verified(),
+        absent(E::V2016).verified(),
+        checked(E::V2020, "6.4.2", Shall),
+        checked(E::V2023, "6.4.2", Shall),
+        checked(E::V2026, "7.4.2", Shall),
     ],
 };
 
@@ -744,11 +746,11 @@ pub static PaddingBits: Rule<E> = Rule {
     description: "PaddingBits must be zero.",
     example: Some("<PaddingBits>4</PaddingBits>  <!-- must be 0 -->"),
     editions: &[
-        absent(E::V2014),
-        absent(E::V2016),
-        row(E::V2020, "6.4", Severity::Error),
-        row(E::V2023, "6.4", Severity::Error),
-        row(E::V2026, "7.4.1", Severity::Error),
+        absent(E::V2014).verified(),
+        absent(E::V2016).verified(),
+        checked(E::V2020, "6.4.1", Shall),
+        checked(E::V2023, "6.4.1", Shall),
+        checked(E::V2026, "7.4.1", Shall),
     ],
 };
 
@@ -759,11 +761,11 @@ pub static ReversedByteOrder: Rule<E> = Rule {
     description: "ReversedByteOrder flag is set; byte reversal is not permitted.",
     example: Some("<ReversedByteOrder>true</ReversedByteOrder>  <!-- byte reversal forbidden -->"),
     editions: &[
-        absent(E::V2014),
-        absent(E::V2016),
-        row(E::V2020, "6.4", Severity::Error),
-        row(E::V2023, "6.4", Severity::Error),
-        row(E::V2026, "7.4.1", Severity::Error),
+        absent(E::V2014).verified(),
+        absent(E::V2016).verified(),
+        checked(E::V2020, "6.4.1", Shall),
+        checked(E::V2023, "6.4.1", Shall),
+        checked(E::V2026, "7.4.1", Shall),
     ],
 };
 
@@ -774,11 +776,11 @@ pub static VerticalSubsampling: Rule<E> = Rule {
     description: "VerticalSubsampling value is not in the permitted set.",
     example: Some("<VerticalSubsampling>3</VerticalSubsampling>  <!-- not in {1,2} -->"),
     editions: &[
-        absent(E::V2014),
-        absent(E::V2016),
-        row(E::V2020, "6.4", Severity::Error),
-        row(E::V2023, "6.4", Severity::Error),
-        row(E::V2026, "7.4.1", Severity::Error),
+        absent(E::V2014).verified(),
+        absent(E::V2016).verified(),
+        checked(E::V2020, "6.4.1", Shall),
+        checked(E::V2023, "6.4.1", Shall),
+        checked(E::V2026, "7.4.1", Shall),
     ],
 };
 
@@ -791,11 +793,11 @@ pub static CodingStyle: Rule<E> = Rule {
         "JPEG2000SubDescriptor CodingStyleDefault Scod byte declares non-compliant entropy coding",
     ),
     editions: &[
-        absent(E::V2014),
-        absent(E::V2016),
-        row(E::V2020, "6.5.2", Severity::Error).suspect(),
-        row(E::V2023, "6.5.2", Severity::Error).suspect(),
-        row(E::V2026, "7.5.1", Severity::Error),
+        absent(E::V2014).verified(),
+        absent(E::V2016).verified(),
+        checked(E::V2020, "6.5.1", Shall),
+        checked(E::V2023, "6.5.1", Shall),
+        checked(E::V2026, "7.5.1", Shall),
     ],
 };
 
@@ -806,11 +808,11 @@ pub static J2CLayout: Rule<E> = Rule {
     description: "JPEG 2000 codestream layout does not meet App2E requirements.",
     example: Some("JPEG2000SubDescriptor declares >1 layer or unsupported precinct sizes"),
     editions: &[
-        absent(E::V2014),
-        absent(E::V2016),
-        row(E::V2020, "6.5.2", Severity::Error).suspect(),
-        row(E::V2023, "6.5.2", Severity::Error).suspect(),
-        row(E::V2026, "7.5.2", Severity::Error),
+        absent(E::V2014).verified(),
+        absent(E::V2016).verified(),
+        checked(E::V2020, "6.5.1", Shall),
+        checked(E::V2023, "6.5.1", Shall),
+        checked(E::V2026, "7.5.1", Shall),
     ],
 };
 
@@ -823,11 +825,11 @@ pub static Jpeg2000SubDescriptor: Rule<E> = Rule {
         "<PictureDescriptor>…</PictureDescriptor>  <!-- no JPEG2000SubDescriptor child -->",
     ),
     editions: &[
-        absent(E::V2014),
-        absent(E::V2016),
-        row(E::V2020, "6.5.2", Severity::Warning).suspect(),
-        row(E::V2023, "6.5.2", Severity::Warning).suspect(),
-        row(E::V2026, "7.5.1", Severity::Warning),
+        absent(E::V2014).verified(),
+        absent(E::V2016).verified(),
+        checked(E::V2020, "6.5.1", Shall).severity(Severity::Warning).reason("Checked on the CPL EssenceDescriptor, where the JPEG 2000 Picture Sub Descriptor is often not mapped; a missing copy is not proof the Track File lacks it."),
+        checked(E::V2023, "6.5.1", Shall).severity(Severity::Warning).reason("Checked on the CPL EssenceDescriptor, where the JPEG 2000 Picture Sub Descriptor is often not mapped; a missing copy is not proof the Track File lacks it."),
+        checked(E::V2026, "7.5.1", Shall).severity(Severity::Warning).reason("Checked on the CPL EssenceDescriptor, where the JPEG 2000 Picture Sub Descriptor is often not mapped; a missing copy is not proof the Track File lacks it."),
     ],
 };
 
@@ -838,11 +840,11 @@ pub static J2KHtNotAllowed: Rule<E> = Rule {
     description: "JPEG 2000 HT (ISO 15444-15) is not permitted by App2E 2020.",
     example: Some("JPEG2000SubDescriptor Profile field declares HTJ2K (ISO 15444-15)"),
     editions: &[
-        absent(E::V2014),
+        absent(E::V2014).verified(),
         absent(E::V2016),
-        row(E::V2020, "6.2.5", Severity::Error),
-        absent(E::V2023),
-        absent(E::V2026),
+        checked(E::V2020, "5.5.2", Shall).interpret("The table is worded as the combinations implementations shall support; imferno treats them as the permitted combinations of profile and image frame dimensions.", None),
+        absent(E::V2023).verified(),
+        absent(E::V2026).verified(),
     ],
 };
 
@@ -853,11 +855,11 @@ pub static J2K4KResolution: Rule<E> = Rule {
     description: "JPEG 2000 IMF 4K Profile: stored resolution is outside the permitted range.",
     example: Some("<StoredWidth>5000</StoredWidth>  <!-- IMF 4K profile caps width at 4096 -->"),
     editions: &[
-        absent(E::V2014),
+        absent(E::V2014).verified(),
         absent(E::V2016),
-        row(E::V2020, "6.2.5", Severity::Error),
-        row(E::V2023, "6.2.5", Severity::Error),
-        row(E::V2026, "7.2.5", Severity::Error),
+        checked(E::V2020, "5.5.2", Shall).interpret("The table is worded as the combinations implementations shall support; imferno treats them as the permitted combinations of profile and image frame dimensions.", None),
+        checked(E::V2023, "5.5.2", Shall).interpret("The table is worded as the combinations implementations shall support; imferno treats them as the permitted combinations of profile and image frame dimensions.", None),
+        checked(E::V2026, "6.5.2", Shall).interpret("The table is worded as the combinations implementations shall support; imferno treats them as the permitted combinations of profile and image frame dimensions.", None),
     ],
 };
 
@@ -868,11 +870,11 @@ pub static J2K2KResolution: Rule<E> = Rule {
     description: "JPEG 2000 IMF 2K Profile: stored resolution is outside the permitted range.",
     example: Some("<StoredWidth>2400</StoredWidth>  <!-- IMF 2K profile caps width at 2048 -->"),
     editions: &[
-        absent(E::V2014),
+        absent(E::V2014).verified(),
         absent(E::V2016),
-        row(E::V2020, "6.2.5", Severity::Error),
-        row(E::V2023, "6.2.5", Severity::Error),
-        row(E::V2026, "7.2.5", Severity::Error),
+        checked(E::V2020, "5.5.2", Shall).interpret("The table is worded as the combinations implementations shall support; imferno treats them as the permitted combinations of profile and image frame dimensions.", None),
+        checked(E::V2023, "5.5.2", Shall).interpret("The table is worded as the combinations implementations shall support; imferno treats them as the permitted combinations of profile and image frame dimensions.", None),
+        checked(E::V2026, "6.5.2", Shall).interpret("The table is worded as the combinations implementations shall support; imferno treats them as the permitted combinations of profile and image frame dimensions.", None),
     ],
 };
 
@@ -883,11 +885,11 @@ pub static J2KBcpResolution: Rule<E> = Rule {
     description: "JPEG 2000 Broadcast Contribution Profile: stored resolution is outside the permitted range.",
     example: Some("<StoredWidth>4096</StoredWidth> with a Broadcast Contribution profile  <!-- profile column is 1..3840 x 1..2160 -->"),
     editions: &[
-        absent(E::V2014),
+        absent(E::V2014).verified(),
         absent(E::V2016),
-        row(E::V2020, "6.2.5", Severity::Error),
-        row(E::V2023, "6.2.5", Severity::Error),
-        row(E::V2026, "7.2.5", Severity::Error),
+        checked(E::V2020, "5.5.2", Shall).interpret("The table is worded as the combinations implementations shall support; imferno treats them as the permitted combinations of profile and image frame dimensions.", None),
+        checked(E::V2023, "5.5.2", Shall).interpret("The table is worded as the combinations implementations shall support; imferno treats them as the permitted combinations of profile and image frame dimensions.", None),
+        checked(E::V2026, "6.5.2", Shall).interpret("The table is worded as the combinations implementations shall support; imferno treats them as the permitted combinations of profile and image frame dimensions.", None),
     ],
 };
 
@@ -898,11 +900,11 @@ pub static J2KProfileNotAllowed: Rule<E> = Rule {
     description: "The JPEG 2000 profile is not listed in the edition's JPEG 2000 profile table.",
     example: Some("<PictureCompression>urn:smpte:ul:060e2b34.0401010d.04010202.03010403</PictureCompression>  <!-- 8K IMF profile, not in the 2023 table -->"),
     editions: &[
-        absent(E::V2014),
+        absent(E::V2014).verified(),
         absent(E::V2016),
-        row(E::V2020, "6.2.5", Severity::Error),
-        row(E::V2023, "6.2.5", Severity::Error),
-        absent(E::V2026),
+        checked(E::V2020, "5.5.2", Shall).interpret("The table is worded as the combinations implementations shall support; imferno treats them as the permitted combinations of profile and image frame dimensions.", None),
+        checked(E::V2023, "5.5.2", Shall).interpret("The table is worded as the combinations implementations shall support; imferno treats them as the permitted combinations of profile and image frame dimensions.", None),
+        absent(E::V2026).verified(),
     ],
 };
 
@@ -915,11 +917,11 @@ pub static HomogeneousImageEssence: Rule<E> = Rule {
         "Composition mixes Color1 (BT.709) and Color3 (BT.2020) resources across segments",
     ),
     editions: &[
-        absent(E::V2014),
-        absent(E::V2016),
-        row(E::V2020, "7.2", Severity::Error),
-        row(E::V2023, "7.2", Severity::Error),
-        row(E::V2026, "8.2", Severity::Error),
+        absent(E::V2014).verified(),
+        absent(E::V2016).verified(),
+        checked(E::V2020, "7.2", Shall).interpret("Only the colour system is compared; InstanceID, J2K defaults and aspect-ratio spelling are not.", Some("https://github.com/Netflix/photon/issues/216")),
+        checked(E::V2023, "7.2", Shall).interpret("Only the colour system is compared; InstanceID, J2K defaults and aspect-ratio spelling are not.", Some("https://github.com/Netflix/photon/issues/216")),
+        checked(E::V2026, "8.2", Shall).interpret("Only the colour system is compared; InstanceID, J2K defaults and aspect-ratio spelling are not.", Some("https://github.com/Netflix/photon/issues/216")),
     ],
 };
 
@@ -932,11 +934,11 @@ pub static SegmentDurationMultiple: Rule<E> = Rule {
         "<Resource><SourceDuration>7</SourceDuration></Resource>  <!-- not a multiple of 5 -->",
     ),
     editions: &[
-        absent(E::V2014),
-        absent(E::V2016),
-        row(E::V2020, "7.4", Severity::Error),
-        row(E::V2023, "7.4", Severity::Error),
-        row(E::V2026, "8.3.2", Severity::Error),
+        absent(E::V2014).verified(),
+        absent(E::V2016).verified(),
+        checked(E::V2020, "7.4", Shall).interpret("Segment duration per resource is (SourceDuration or IntrinsicDuration - EntryPoint) x RepeatCount.", Some("https://github.com/Netflix/photon/issues/160")),
+        checked(E::V2023, "7.4", Shall).interpret("Segment duration per resource is (SourceDuration or IntrinsicDuration - EntryPoint) x RepeatCount.", Some("https://github.com/Netflix/photon/issues/160")),
+        checked(E::V2026, "8.3.2", Shall).interpret("Segment duration per resource is (SourceDuration or IntrinsicDuration - EntryPoint) x RepeatCount.", Some("https://github.com/Netflix/photon/issues/160")),
     ],
 };
 
@@ -947,11 +949,11 @@ pub static J2KExtendedCapabilities: Rule<E> = Rule {
     description: "J2KExtendedCapabilities shall be present when ISO/IEC 15444-15 (HTJ2K) coding is used, but it is missing.",
     example: Some("<JPEG2000SubDescriptor><Rsiz>16384</Rsiz>…</JPEG2000SubDescriptor>  <!-- HTJ2K (Rsiz bit 14) but no <J2KExtendedCapabilities> -->"),
     editions: &[
-        absent(E::V2014),
-        absent(E::V2016),
-        absent(E::V2020),
-        row(E::V2023, "6.5.2", Severity::Error).suspect(),
-        row(E::V2026, "7.5.1", Severity::Error),
+        absent(E::V2014).verified(),
+        absent(E::V2016).verified(),
+        absent(E::V2020).verified(),
+        checked(E::V2023, "6.5.1", Shall).interpret("J2KExtendedCapabilities shall be present when HTJ2K (ISO/IEC 15444-15) coding is used.", Some("https://github.com/SMPTE/st2067-21/issues/2")),
+        checked(E::V2026, "7.5.1", Shall).interpret("J2KExtendedCapabilities shall be present when HTJ2K (ISO/IEC 15444-15) coding is used.", Some("https://github.com/SMPTE/st2067-21/issues/2")),
     ],
 };
 
@@ -962,11 +964,11 @@ pub static HtIrvParameterBMax: Rule<E> = Rule {
     description: "HTJ2K irreversible (APP2.HT.IRV) codestream: the MAGB_P set signalled in Ccap15 allows parameter B above 31. APP2.HT.REV is not checked: Table H.1 gives its B as a value calculated per Table H.2, not a limit (SMPTE st2067-21 issue 7, open for REV).",
     example: Some("<J2KExtendedCapabilities><Pcap>131072</Pcap><Ccapi><UInt16>53</UInt16></Ccapi></J2KExtendedCapabilities>  <!-- HTIRV, MAGB_P 21: B = 35 -->"),
     editions: &[
-        absent(E::V2014),
-        absent(E::V2016),
-        absent(E::V2020),
-        absent(E::V2023),
-        row(E::V2026, "H", Severity::Error),
+        absent(E::V2014).verified(),
+        absent(E::V2016).verified(),
+        absent(E::V2020).verified(),
+        absent(E::V2023).verified(),
+        checked(E::V2026, "H", Shall).interpret("Table values are maxima; B shall not exceed 31.", Some("https://github.com/SMPTE/st2067-21/issues/7")),
     ],
 };
 
@@ -977,11 +979,11 @@ pub static HtIrvParameterBRecommended: Rule<E> = Rule {
     description: "HTJ2K irreversible (APP2.HT.IRV) codestream: the MAGB_P set signalled in Ccap15 allows parameter B above the recommended value for its bit depth and multiple component transform.",
     example: Some("<Ssiz>9</Ssiz> … <Ccapi><UInt16>36</UInt16></Ccapi>  <!-- 10-bit HTIRV, MAGB_P 4: B = 12, table value 11 -->"),
     editions: &[
-        absent(E::V2014),
-        absent(E::V2016),
-        absent(E::V2020),
-        absent(E::V2023),
-        row(E::V2026, "H", Severity::Warning),
+        absent(E::V2014).verified(),
+        absent(E::V2016).verified(),
+        absent(E::V2020).verified(),
+        absent(E::V2023).verified(),
+        checked(E::V2026, "H", Should).interpret("APP2.HT.IRV: parameter B (from the Ccap15 MAGB_P set) should not exceed the Table H.3 value for the bit depth and multiple component transform; the values are maxima, not exact values.", Some("https://github.com/SMPTE/st2067-21/issues/7")),
     ],
 };
 
@@ -992,11 +994,11 @@ pub static J2K8KResolution: Rule<E> = Rule {
     description: "JPEG 2000 IMF 8K Profile: stored resolution is outside the permitted range.",
     example: Some("<StoredWidth>3840</StoredWidth> with an 8K IMF profile  <!-- profile column is 4097..8192 x 1..6224 -->"),
     editions: &[
-        absent(E::V2014),
-        absent(E::V2016),
-        absent(E::V2020),
-        absent(E::V2023),
-        row(E::V2026, "7.2.5", Severity::Error),
+        absent(E::V2014).verified(),
+        absent(E::V2016).verified(),
+        absent(E::V2020).verified(),
+        absent(E::V2023).verified(),
+        checked(E::V2026, "6.5.2", Shall).interpret("The table is worded as the combinations implementations shall support; imferno treats them as the permitted combinations of profile and image frame dimensions.", None),
     ],
 };
 

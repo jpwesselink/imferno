@@ -2362,15 +2362,12 @@ impl Imferno {
     ///
     /// For each MXF track file in the package:
     /// 1. Parse the MXF Header Partition Pack
-    /// 2. Check that the Operational Pattern is OP1a (required for IMF per ST 2067-2)
+    /// 2. Report an empty EssenceContainers batch (ST 377-1 §7.1)
     /// 3. Report parse failures as warnings (file may be unavailable or corrupt)
+    ///
+    /// The Operational Pattern is checked by `mxf::essence::validate_mxf_essence`.
     #[cfg_attr(target_arch = "wasm32", allow(unused_variables))]
     fn validate_mxf_headers(&self, report: &mut ValidationReport, spec_ed: St2067_2Edition) {
-        // OP1a UL prefix: 060e2b34.04010102.0d010201.0101__00
-        // Bytes 13-14 identify the OP variant: 01 01 = OP1a, 01 02 = OP1b, etc.
-        // Byte 15 encodes the qualifier (xxxx xxxx pattern). We ignore byte 8 (version).
-        const OP1A_BYTES_13_14: [u8; 2] = [0x01, 0x01];
-
         // Collect MXF asset UUIDs from PKLs
         for pkl in self.packing_lists.values() {
             for asset in &pkl.asset_list.assets {
@@ -2386,8 +2383,8 @@ impl Imferno {
                 }
 
                 // MXF essence checks via the `regxmllib-rs` family
-                // (smpte-mxf). Emits ST 2067-2 §5.2 / ST 377-1 §6.4
-                // and §8.3.3 diagnostics that the hand-rolled parser
+                // (smpte-mxf). Emits ST 2067-2 §5.1.1 / ST 377-1 §6.1.1, §6.2.4
+                // and §6.2.5 diagnostics that the hand-rolled parser
                 // below doesn't cover. Native-only — the wasm build
                 // doesn't link smpte-mxf, and browser callers don't
                 // see MXF binaries anyway (they upload XML only).
@@ -2461,34 +2458,10 @@ impl Imferno {
 
                 match crate::mxf::parse_mxf_header_info(path) {
                     Ok(info) => {
-                        // Parse the operational pattern UL back to bytes to check OP variant.
-                        // The UL format is: urn:smpte:ul:XXXXXXXX.XXXXXXXX.XXXXXXXX.XXXXXXXX
-                        // We need bytes 13-14 (1-indexed) to identify the OP.
-                        let op_bytes = parse_ul_bytes(&info.operational_pattern);
-                        if let Some(bytes) = op_bytes {
-                            // IMF requires OP1a: bytes 13-14 (0-indexed: 12-13) = 01 01
-                            if bytes[12] != OP1A_BYTES_13_14[0] || bytes[13] != OP1A_BYTES_13_14[1]
-                            {
-                                report.add(
-                                    ValidationIssue::from_rule(
-                                        &st377_1::Op1a,
-                                        St377_1Edition::V2011,
-                                        format!(
-                                            "MXF track file '{}' has Operational Pattern '{}' \
-                                             but IMF requires OP1a (ST 2067-2 §5.1)",
-                                            path.file_name()
-                                                .map(|n| n.to_string_lossy())
-                                                .unwrap_or_default(),
-                                            info.operational_pattern,
-                                        ),
-                                    )
-                                    .with_location(Location::new().with_file(path.clone()))
-                                    .with_context("asset_uuid", asset.id.to_string()),
-                                );
-                            }
-                        }
+                        // OP1a is checked by `mxf::essence::validate_mxf_essence`
+                        // (ST 2067-2 OperationalPatternNotOP1A).
 
-                        // ST 377-1: MXF track files should have at least one essence container
+                        // ST 377-1 §7.1: the header partition pack lists the essence containers
                         if info.essence_containers.is_empty() {
                             report.add(
                                 ValidationIssue::from_rule(&st377_1::NoEssenceContainers, St377_1Edition::V2011,
@@ -2521,8 +2494,8 @@ impl Imferno {
                     Err(e) => {
                         report.add(
                             ValidationIssue::from_rule(
-                                &st377_1::ParseError,
-                                St377_1Edition::V2011,
+                                &crate::catalogue::imferno::MxfHeaderUnreadable,
+                                crate::catalogue::imferno::ImfernoEdition::Current,
                                 format!(
                                     "Could not parse MXF header of '{}': {}",
                                     path.file_name()
@@ -2540,7 +2513,7 @@ impl Imferno {
         }
     }
 
-    /// ST 2067-3 §7.2.2: Within each segment, all virtual tracks must span the
+    /// ST 2067-3 §7.2: Within each segment, all virtual tracks must span the
     /// same timeline duration. Durations are compared in time (seconds), not in
     /// raw edit-rate units, because video (e.g. 24fps) and audio (e.g. 48000Hz)
     /// use different edit rates.
@@ -2693,20 +2666,6 @@ impl Imferno {
             }
         }
     }
-}
-
-/// Parse a `urn:smpte:ul:XXXXXXXX.XXXXXXXX.XXXXXXXX.XXXXXXXX` string into 16 raw bytes.
-fn parse_ul_bytes(ul: &str) -> Option<[u8; 16]> {
-    let hex = ul.strip_prefix("urn:smpte:ul:")?;
-    let hex_clean: String = hex.chars().filter(|c| c.is_ascii_hexdigit()).collect();
-    if hex_clean.len() != 32 {
-        return None;
-    }
-    let mut bytes = [0u8; 16];
-    for i in 0..16 {
-        bytes[i] = u8::from_str_radix(&hex_clean[i * 2..i * 2 + 2], 16).ok()?;
-    }
-    Some(bytes)
 }
 
 #[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
@@ -3170,6 +3129,12 @@ mod tests {
             "SoundfieldGroupLinkIDMismatch".to_string(),
             crate::diagnostics::rules::RuleSeverity::Off,
         );
+        // MERIDIAN's ContentKind "Test" is not a Table 3 value (Table 3
+        // lists lowercase "test"; ST 2067-3 §6.1.8 match is exact).
+        rules.set_raw(
+            "ContentKindUnknown".to_string(),
+            crate::diagnostics::rules::RuleSeverity::Off,
+        );
         ValidationOptions {
             rules,
             ..ValidationOptions::default()
@@ -3275,7 +3240,7 @@ mod tests {
         let package =
             Imferno::parse(read_dir(test_path).unwrap()).expect("Failed to parse package");
 
-        const INJECTED_CODE: &str = "ST2067-3:2016:5.5.1.2/ContentKindUnknown";
+        const INJECTED_CODE: &str = "ST2067-3:2016:6.1.8/ContentKindUnknown";
 
         let report = package.validate_package_structure_with_cpl_validator(
             |cpl| {
@@ -4105,7 +4070,7 @@ mod tests {
     }
 
     /// A track file listed in a PKL of this package but missing from the
-    /// AssetMap is part of the package; that gap is UnresolvedUuid (ERROR,
+    /// AssetMap is part of the package; that gap is UnresolvedUuid (WARNING,
     /// from the PKL check), so no TrackFileNotInPackage INFO is added.
     #[test]
     fn cpl_track_file_in_pkl_but_not_assetmap_gets_no_info() {
@@ -4147,8 +4112,8 @@ mod tests {
             .iter()
             .any(|i| i.is(&imferno::DeliveryNotChecked)));
 
-        // Checked as ST 2067-2:2020, the PKL→AssetMap gap is an ERROR even
-        // without disk checks.
+        // Checked as ST 2067-2:2020, the PKL→AssetMap gap is a WARNING
+        // (§8.3, should) even without disk checks.
         let full = package.validate_package_structure_for(
             |_| Vec::new(),
             true,
@@ -4158,11 +4123,11 @@ mod tests {
             .code(St2067_2Edition::V2020)
             .unwrap();
         assert!(
-            full.errors
+            full.warnings
                 .iter()
                 .any(|i| i.code == unresolved && i.message.contains(&track_file.to_string())),
             "{:#?}",
-            full.errors
+            full.warnings
         );
 
         let mut report = ValidationReport::default();
@@ -4259,7 +4224,7 @@ mod tests {
             original_file_name: Some("test.mxf".to_string()),
         };
         let issue = err.to_issue(St2067_2Edition::V2020).unwrap();
-        assert_eq!(issue.severity, Severity::Error);
+        assert_eq!(issue.severity, Severity::Warning);
         assert_eq!(issue.category, Category::Reference);
         assert!(issue.is(&st2067_2::UnresolvedUuid));
         assert!(issue.message.contains("test-uuid"));
@@ -4342,14 +4307,9 @@ mod tests {
         let package = Imferno::parse(read_dir(root).unwrap()).expect("parse");
         let report = package.validate(&ValidationOptions::default());
 
-        assert!(
-            report.has_errors(),
-            "Should report errors for orphan PKL asset: {}",
-            report.summary()
-        );
-        // Should have at least the NotInAssetMap error
+        // ST 2067-2 §8.3 (should): the orphan PKL asset is a warning.
         let all_issues: Vec<_> = report
-            .errors
+            .warnings
             .iter()
             .filter(|i| i.is(&st2067_2::UnresolvedUuid))
             .collect();
@@ -4427,25 +4387,6 @@ mod tests {
         );
     }
 
-    // ── parse_ul_bytes ──────────────────────────────────────────────────────
-
-    #[test]
-    fn parse_ul_bytes_valid() {
-        let bytes = parse_ul_bytes("urn:smpte:ul:060e2b34.04010102.0d010201.01010900");
-        assert!(bytes.is_some());
-        let b = bytes.unwrap();
-        assert_eq!(b[0], 0x06);
-        assert_eq!(b[12], 0x01);
-        assert_eq!(b[13], 0x01); // OP1a
-        assert_eq!(b[14], 0x09);
-    }
-
-    #[test]
-    fn parse_ul_bytes_invalid() {
-        assert!(parse_ul_bytes("not-a-ul").is_none());
-        assert!(parse_ul_bytes("urn:smpte:ul:060e2b34").is_none());
-    }
-
     // ── MXF header cross-validation ─────────────────────────────────────────
 
     /// Build a minimal MXF byte stream with the given Operational Pattern UL.
@@ -4472,17 +4413,12 @@ mod tests {
         stream
     }
 
-    #[test]
-    fn mxf_validation_accepts_op1a() {
+    /// Validate a one-MXF package whose header carries Operational Pattern `op`.
+    fn op_report(op: [u8; 16]) -> ValidationReport {
         let root = tempfile::tempdir().unwrap();
         let root = root.path();
 
-        // OP1a UL
-        let op1a: [u8; 16] = [
-            0x06, 0x0E, 0x2B, 0x34, 0x04, 0x01, 0x01, 0x02, 0x0D, 0x01, 0x02, 0x01, 0x01, 0x01,
-            0x09, 0x00,
-        ];
-        std::fs::write(root.join("video.mxf"), make_mxf_bytes(op1a)).unwrap();
+        std::fs::write(root.join("video.mxf"), make_mxf_bytes(op)).unwrap();
 
         // Minimal PKL + AssetMap
         let pkl_xml = r#"<?xml version="1.0" encoding="UTF-8"?>
@@ -4524,21 +4460,54 @@ mod tests {
         std::fs::write(root.join("ASSETMAP.xml"), assetmap_xml).unwrap();
 
         let package = Imferno::parse(read_dir(root).unwrap()).expect("parse");
-        let report = package.validate(&ValidationOptions::default());
+        package.validate(&ValidationOptions::default())
+    }
 
-        let op_issues: Vec<_> = report
+    fn op_issues<'a>(
+        report: &'a ValidationReport,
+        rule: &dyn Fn(&ValidationIssue) -> bool,
+    ) -> Vec<&'a ValidationIssue> {
+        report
             .critical
             .iter()
             .chain(report.errors.iter())
             .chain(report.warnings.iter())
             .chain(report.info.iter())
-            .filter(|i| i.is(&st377_1::Op1a))
-            .collect();
+            .filter(|i| rule(i))
+            .collect()
+    }
+
+    /// OP1a with qualifier 0x01 (internal, stream, uni-track): no OP finding.
+    #[test]
+    fn mxf_validation_accepts_op1a() {
+        let report = op_report([
+            0x06, 0x0E, 0x2B, 0x34, 0x04, 0x01, 0x01, 0x02, 0x0D, 0x01, 0x02, 0x01, 0x01, 0x01,
+            0x01, 0x00,
+        ]);
+        let found = op_issues(&report, &|i| {
+            i.is(&st2067_2::OperationalPatternNotOP1A)
+                || i.is(&crate::catalogue::st2067_5::OperationalPatternQualifier)
+        });
         assert!(
-            op_issues.is_empty(),
-            "OP1a should not produce OP issues: {:#?}",
-            op_issues,
+            found.is_empty(),
+            "OP1a should not produce OP issues: {found:#?}"
         );
+    }
+
+    /// OP1a with qualifier 0x09 sets bit 3 (multi-track): ST 2067-5 §5.2.1
+    /// requires uni-track, so the qualifier finding fires (OP1a identity holds).
+    #[test]
+    fn mxf_validation_flags_multi_track_qualifier() {
+        let report = op_report([
+            0x06, 0x0E, 0x2B, 0x34, 0x04, 0x01, 0x01, 0x02, 0x0D, 0x01, 0x02, 0x01, 0x01, 0x01,
+            0x09, 0x00,
+        ]);
+        assert!(op_issues(&report, &|i| i.is(&st2067_2::OperationalPatternNotOP1A)).is_empty());
+        let q = op_issues(&report, &|i| {
+            i.is(&crate::catalogue::st2067_5::OperationalPatternQualifier)
+        });
+        assert_eq!(q.len(), 1, "{q:#?}");
+        assert_eq!(q[0].code, "ST2067-5:2020:5.2.1/OperationalPatternQualifier");
     }
 
     #[test]
@@ -4599,7 +4568,7 @@ mod tests {
             .chain(report.errors.iter())
             .chain(report.warnings.iter())
             .chain(report.info.iter())
-            .filter(|i| i.is(&st377_1::Op1a))
+            .filter(|i| i.is(&st2067_2::OperationalPatternNotOP1A))
             .collect();
         assert_eq!(
             op_issues.len(),
@@ -4847,7 +4816,8 @@ mod tests {
   <Index>1</Index>
 </VolumeIndex>"#;
 
-    /// ST 429-9 §7: absent VOLINDEX.xml emits VolindexMissing (Info severity).
+    /// ST 429-9:2014 §8 (VolumeIndex deprecated): absent VOLINDEX.xml emits
+    /// VolindexMissing (Info severity).
     #[test]
     fn volindex_missing_emits_info() {
         let mut files = HashMap::new();
@@ -4863,9 +4833,10 @@ mod tests {
         );
     }
 
-    /// ST 429-9 §7: malformed VOLINDEX.xml emits MalformedXml (Error severity).
+    /// ST 429-9:2014 §8 (VolumeIndex deprecated): malformed VOLINDEX.xml
+    /// emits MalformedXml (Warning severity).
     #[test]
-    fn volindex_malformed_emits_error() {
+    fn volindex_malformed_emits_warning() {
         let mut files = HashMap::new();
         files.insert("ASSETMAP.xml".to_string(), MINIMAL_ASSETMAP.to_string());
         files.insert(
@@ -4878,15 +4849,15 @@ mod tests {
 
         assert!(
             report
-                .errors
+                .warnings
                 .iter()
                 .any(|i| i.code.contains("MalformedXml")),
-            "expected MalformedXml error, got: {:?}",
-            report.errors,
+            "expected MalformedXml warning, got: {:?}",
+            report.warnings,
         );
     }
 
-    /// ST 429-9 §7: valid VOLINDEX.xml produces no VOLINDEX diagnostic.
+    /// ST 429-9:2014 §8: valid VOLINDEX.xml produces no VOLINDEX diagnostic.
     #[test]
     fn volindex_valid_no_issue() {
         let mut files = HashMap::new();

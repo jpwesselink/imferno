@@ -224,7 +224,7 @@ pub struct ValidationIssue {
     pub severity:   Severity,                 // Critical | Error | Warning | Info
     pub category:   Category,                 // Structure | Asset | Reference | Timing | ...
     pub location:   Location,
-    pub code:       String,                   // e.g. "ST2067-2:2020:8.3/FileNotFound" (edition applied)
+    pub code:       String,                   // e.g. "ST2067-2:2020:7.2/FileNotFound" (edition applied)
     pub message:    String,
     pub suggestion: Option<String>,
     pub context:    HashMap<String, String>,  // optional key/value annotations

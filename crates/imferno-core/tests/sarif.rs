@@ -59,9 +59,11 @@ fn levels(log: &serde_json::Value) -> Vec<String> {
 #[test]
 fn valid_package_sarif_validates_against_the_schema() {
     // The Photon MERIDIAN package is valid apart from one known MXF MCA
-    // link mismatch, switched off here (and reported as suppressed).
+    // link mismatch and its ContentKind "Test" (Table 3 has lowercase
+    // "test"), both switched off here (and reported as suppressed).
     let mut rules = RulesConfig::default();
     rules.set_raw("SoundfieldGroupLinkIDMismatch".into(), RuleSeverity::Off);
+    rules.set_raw("ContentKindUnknown".into(), RuleSeverity::Off);
     let log = sarif_for(
         "MERIDIAN_Netflix_Photon_161006",
         &ValidationOptions {
@@ -77,7 +79,10 @@ fn valid_package_sarif_validates_against_the_schema() {
         .as_array()
         .unwrap()
         .iter()
-        .find(|r| r.get("suppressions").is_some())
+        .find(|r| {
+            r.get("suppressions").is_some()
+                && r["ruleId"] == "ST377-4/SoundfieldGroupLinkIDMismatch"
+        })
         .expect("suppressed finding is reported with a suppression");
     assert_eq!(
         suppressed["ruleId"],

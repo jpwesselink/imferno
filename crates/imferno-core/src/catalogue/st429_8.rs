@@ -5,8 +5,9 @@
 
 #![allow(non_upper_case_globals)]
 
-use crate::diagnostics::rule::{row, AnyRule, Rule, Spec};
-use crate::diagnostics::{Category, Severity};
+use crate::diagnostics::rule::Strength::Shall;
+use crate::diagnostics::rule::{checked, AnyRule, Rule, Spec};
+use crate::diagnostics::Category;
 
 crate::diagnostics::rule::editions! {
     /// Editions of SMPTE ST 429-8 (Packing List) imferno knows.
@@ -23,7 +24,9 @@ pub static SizeMismatch: Rule<E> = Rule {
     category: Category::Asset,
     description: "The asset's size differs from the Size element the Packing List declares for it.",
     example: Some("<Size>1048576</Size> but the file is 1048000 bytes"),
-    editions: &[row(E::V2007, "6.4", Severity::Error).verified()],
+    editions: &[
+        checked(E::V2007, "6.4", Shall).interpret("§6.4 defines Size declaratively (it \"contains the size of the asset\"); a Size that differs from the asset's size makes the element wrong, so imferno treats it as a requirement.", None),
+    ],
 };
 
 /// The asset's SHA-1 digest differs from the Hash the Packing List declares.
@@ -32,7 +35,9 @@ pub static ChecksumMismatch: Rule<E> = Rule {
     category: Category::Asset,
     description: "The asset's SHA-1 message digest differs from the Hash element the Packing List declares for it.",
     example: Some("<Hash>2jmj7l5rSw0yVb/vlWAYkK/YBwk=</Hash> but the file's SHA-1 differs"),
-    editions: &[row(E::V2007, "6.3", Severity::Error).verified()],
+    editions: &[
+        checked(E::V2007, "6.3", Shall),
+    ],
 };
 
 /// Every rule of this spec.

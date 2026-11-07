@@ -24,25 +24,33 @@ use smpte_types::Ul;
 
 use crate::catalogue::imferno::{self, ImfernoEdition};
 use crate::catalogue::st2067_2::{self, St2067_2Edition};
+use crate::catalogue::st2067_5::{self, St2067_5Edition};
 use crate::catalogue::st377_1::{self, St377_1Edition};
 use crate::diagnostics::{Location, ValidationIssue};
 
 /// SMPTE Operational Pattern 1A UL — bytes per ST 378:2004 §6.
 ///
-/// IMF mandates OP1a via ST 2067-2 §5.2 (which cites ST 2067-5:2013 §5.2),
-/// itself citing ST 377-1:2011 §8.3.3 for the constraint that an OP1a
-/// file contains exactly one MaterialPackage with one essence.
+/// IMF mandates OP1a via ST 2067-2 §5.1.1 (Track Files conform to
+/// ST 2067-5); ST 377-1:2011 §8.3.3 defines the OP UL.
 const OP1A_UL_BYTES: [u8; 16] = [
     0x06, 0x0e, 0x2b, 0x34, 0x04, 0x01, 0x01, 0x01, 0x0d, 0x01, 0x02, 0x01, 0x01, 0x01, 0x01, 0x00,
 ];
 
-/// Mask used when comparing the registry-byte (byte 7) and the version
-/// byte (byte 16) of an OP UL — both vary across SMPTE registry
-/// revisions but the operational-pattern identity is byte 13-14.
-const OP_UL_MATCH_MASK: u128 = 0xffff_ffff_ff00_ffff_ffff_ffff_ffff_ff00;
+/// Mask used when comparing an OP UL against OP1a. Ignored bytes (1-based):
+/// 6 (registry designator) and 8 (version) vary across SMPTE registry
+/// revisions; 15 carries the qualifier bits, checked separately against
+/// ST 2067-5 §5.2.1 (see [`OP_QUALIFIER_IMF`]); 16 is reserved. The OP
+/// identity is bytes 13-14 (item and package complexity 01 01).
+const OP_UL_MATCH_MASK: u128 = 0xffff_ffff_ff00_ff00_ffff_ffff_ffff_0000;
+
+/// Low nibble of OP UL byte 15 for an IMF Essence Component: ST 2067-5
+/// §5.2.1 sets bit 1 (internal essence), bit 2 (stream file) and bit 3
+/// (uni-track) to 0; ST 377-1 Table 11 sets marker bit 0 to 1. Bits 4-7 are
+/// reserved and not checked.
+const OP_QUALIFIER_IMF: u8 = 0x01;
 
 /// Validate an MXF file against the partition-pack-level rules of
-/// ST 2067-2 §5.2 and ST 377-1 §8.3.3. Returns a catalogue of
+/// ST 2067-2 §5.1.1 and ST 377-1 §6. Returns a catalogue of
 /// `ValidationIssue`s; the caller folds them into the usual
 /// `ValidationReport`.
 ///
@@ -318,13 +326,13 @@ fn check_partition_pack(
 ) -> Vec<ValidationIssue> {
     let mut issues = Vec::new();
 
-    // ST 2067-5:2013 §5.1.5 / ST 377-1 §6.4: the header partition MUST
+    // ST 2067-5:2013 §5.1.5 / ST 377-1 §6.2.5: the header partition MUST
     // be the first partition in the file.
     if !matches!(pack.kind, PartitionKind::Header) {
         issues.push(
             ValidationIssue::from_rule(&st377_1::NonHeaderFirstPartition, St377_1Edition::V2011,
                 format!(
-                    "First partition in MXF file at {} is {:?}, not the Header partition required by ST 377-1 §6.4",
+                    "First partition in MXF file at {} is {:?}, not the Header partition required by ST 377-1 §6.2.5",
                     path.display(),
                     pack.kind,
                 ),
@@ -333,7 +341,7 @@ fn check_partition_pack(
         );
     }
 
-    // ST 2067-2 §5.2 / ST 377-1 §8.3.3: IMF essence MXFs SHALL be
+    // ST 2067-2 §5.1.1 (via ST 2067-5): IMF essence MXFs SHALL be
     // OP1a. Compare via the UL match mask so registry-byte and
     // version-byte revisions don't false-flag conformant files.
     let pack_op = u128::from_be_bytes(*pack.operational_pattern.as_bytes());
@@ -342,13 +350,32 @@ fn check_partition_pack(
         issues.push(
             ValidationIssue::from_rule(&st2067_2::OperationalPatternNotOP1A, spec_ed,
                 format!(
-                    "MXF file at {} uses Operational Pattern UL {} — ST 2067-2 §5.2 requires OP1a (ST 378:2004)",
+                    "MXF file at {} uses Operational Pattern UL {} — ST 2067-2 §5.1.1 (via ST 2067-5) requires OP1a (ST 378:2004)",
                     path.display(),
                     format_ul(pack.operational_pattern.as_bytes()),
                 ),
             )
             .with_location(Location::new().with_file(path.to_path_buf())),
         );
+    } else {
+        // ST 2067-5 §5.2.1: qualifier bits of an IMF Essence Component.
+        let qualifier = pack.operational_pattern.as_bytes()[14];
+        if qualifier & 0x0f != OP_QUALIFIER_IMF {
+            issues.push(
+                ValidationIssue::from_rule(
+                    &st2067_5::OperationalPatternQualifier,
+                    St2067_5Edition::for_core(spec_ed),
+                    format!(
+                        "MXF file at {} uses Operational Pattern qualifier {:#04x}; ST 2067-5 \
+                         §5.2.1 requires internal essence, stream file and uni-track \
+                         (bits 1-3 = 0, low nibble 0x1)",
+                        path.display(),
+                        qualifier,
+                    ),
+                )
+                .with_location(Location::new().with_file(path.to_path_buf())),
+            );
+        }
     }
 
     // ST 377-1 §6.2.5: the Header Partition may be Open or Closed.
@@ -372,7 +399,7 @@ fn check_partition_pack(
         );
     }
 
-    // ST 377-1 §8.3.3: the IMF essence MXF MUST contain header
+    // ST 377-1 §6.1.1: the IMF essence MXF MUST contain header
     // metadata in its header partition (header_byte_count > 0).
     if pack.header_byte_count == 0 {
         issues.push(

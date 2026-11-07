@@ -45,6 +45,9 @@ pub enum Spec {
     /// SMPTE ST 2067-3 — IMF Composition Playlist.
     #[serde(rename = "ST2067-3")]
     St2067_3,
+    /// SMPTE ST 2067-5 — IMF Essence Component.
+    #[serde(rename = "ST2067-5")]
+    St2067_5,
     /// SMPTE ST 2067-9 — IMF Sidecar Composition Map.
     #[serde(rename = "ST2067-9")]
     St2067_9,
@@ -76,6 +79,7 @@ impl Spec {
         Spec::St429_9,
         Spec::St2067_2,
         Spec::St2067_3,
+        Spec::St2067_5,
         Spec::St2067_9,
         Spec::St2067_21,
         Spec::St2067_201,
@@ -93,6 +97,7 @@ impl Spec {
             Spec::St429_9 => "ST429-9",
             Spec::St2067_2 => "ST2067-2",
             Spec::St2067_3 => "ST2067-3",
+            Spec::St2067_5 => "ST2067-5",
             Spec::St2067_9 => "ST2067-9",
             Spec::St2067_21 => "ST2067-21",
             Spec::St2067_201 => "ST2067-201",
@@ -111,6 +116,7 @@ impl Spec {
             Spec::St429_9 => "SMPTE ST 429-9 — Asset Mapping and File Segmentation",
             Spec::St2067_2 => "SMPTE ST 2067-2 — Core Constraints",
             Spec::St2067_3 => "SMPTE ST 2067-3 — Composition Playlist",
+            Spec::St2067_5 => "SMPTE ST 2067-5 — Essence Component",
             Spec::St2067_9 => "SMPTE ST 2067-9 — Sidecar Composition Map",
             Spec::St2067_21 => "SMPTE ST 2067-21 — Application #2E",
             Spec::St2067_201 => "SMPTE ST 2067-201 — IAB Level 0 Plug-in",
@@ -308,6 +314,27 @@ pub const fn row<E: Edition>(
     }
 }
 
+/// A row whose clause and strength were checked against this edition's text.
+/// The default severity follows `strength`; override it with
+/// [`EditionEntry::severity`] plus [`EditionEntry::reason`].
+pub const fn checked<E: Edition>(
+    edition: E,
+    clause: &'static str,
+    strength: Strength,
+) -> EditionEntry<E> {
+    EditionEntry {
+        edition,
+        clause: Some(clause),
+        strength,
+        default_severity: strength.default_severity(),
+        severity_reason: None,
+        interpretation: None,
+        verified: true,
+        suspect: false,
+        strength_verified: true,
+    }
+}
+
 /// A row for an edition that does not contain the rule.
 pub const fn absent<E: Edition>(edition: E) -> EditionEntry<E> {
     EditionEntry {
@@ -334,6 +361,13 @@ impl<E: Edition> EditionEntry<E> {
     pub const fn suspect(mut self) -> Self {
         self.suspect = true;
         self.verified = false;
+        self
+    }
+
+    /// Override the default severity (pair with [`EditionEntry::reason`]
+    /// when it differs from the strength's).
+    pub const fn severity(mut self, severity: Severity) -> Self {
+        self.default_severity = severity;
         self
     }
 
@@ -388,7 +422,7 @@ impl<E: Edition> Rule<E> {
         self.editions.iter().find(|e| e.edition == edition)
     }
 
-    /// The display code for `edition` (`ST2067-3:2016:7.2.2/SegmentDuration`),
+    /// The display code for `edition` (`ST2067-3:2016:7.2/SegmentDuration`),
     /// or `None` when the edition does not contain the rule.
     pub fn code(&self, edition: E) -> Option<String> {
         let clause = self.entry(edition)?.clause?;

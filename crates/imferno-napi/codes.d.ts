@@ -3,9 +3,7 @@
 export declare const codes: {
   readonly ST377_1: {
     readonly NotMxf: "ST377-1/NotMxf";
-    readonly ParseError: "ST377-1/ParseError";
     readonly NoEssenceContainers: "ST377-1/NoEssenceContainers";
-    readonly Op1a: "ST377-1/Op1a";
     readonly NonHeaderFirstPartition: "ST377-1/NonHeaderFirstPartition";
     readonly HeaderPartitionOpen: "ST377-1/HeaderPartitionOpen";
     readonly MissingHeaderMetadata: "ST377-1/MissingHeaderMetadata";
@@ -31,9 +29,9 @@ export declare const codes: {
     readonly AssetMapFileName: "ST429-9/AssetMapFileName";
     readonly AssetMapHasNoPackingList: "ST429-9/AssetMapHasNoPackingList";
     readonly PklIdNotInAssetMap: "ST429-9/PklIdNotInAssetMap";
+    readonly AssetMapMalformedXml: "ST429-9/AssetMapMalformedXml";
   };
   readonly ST2067_2: {
-    readonly AssetMapMalformedXml: "ST2067-2/AssetMapMalformedXml";
     readonly PklMalformedXml: "ST2067-2/PklMalformedXml";
     readonly NoCpls: "ST2067-2/NoCpls";
     readonly SizeMismatch: "ST2067-2/SizeMismatch";
@@ -43,30 +41,6 @@ export declare const codes: {
     readonly TrackFileNotInPackage: "ST2067-2/TrackFileNotInPackage";
     readonly DuplicateUuid: "ST2067-2/DuplicateUuid";
     readonly PklUnknownNamespace: "ST2067-2/PklUnknownNamespace";
-    readonly ResourceListEmpty: "ST2067-2/ResourceListEmpty";
-    readonly ContentTitle: "ST2067-2/ContentTitle";
-    readonly TotalRunningTimeFormat: "ST2067-2/TotalRunningTimeFormat";
-    readonly SegmentList: "ST2067-2/SegmentList";
-    readonly Segment: "ST2067-2/Segment";
-    readonly EditRate: "ST2067-2/EditRate";
-    readonly IssueDate: "ST2067-2/IssueDate";
-    readonly IssueDateFormat: "ST2067-2/IssueDateFormat";
-    readonly CompositionTimecodeDropFrame: "ST2067-2/CompositionTimecodeDropFrame";
-    readonly CompositionTimecodeRate: "ST2067-2/CompositionTimecodeRate";
-    readonly CompositionTimecodeStartAddress: "ST2067-2/CompositionTimecodeStartAddress";
-    readonly CompositionTimecodeRateZero: "ST2067-2/CompositionTimecodeRateZero";
-    readonly CompositionTimecodeStartAddressFormat: "ST2067-2/CompositionTimecodeStartAddressFormat";
-    readonly CompositionTimecodeRateMismatch: "ST2067-2/CompositionTimecodeRateMismatch";
-    readonly LocaleListNonEmpty: "ST2067-2/LocaleListNonEmpty";
-    readonly UniqueSegmentId: "ST2067-2/UniqueSegmentId";
-    readonly UniqueEssenceDescriptorId: "ST2067-2/UniqueEssenceDescriptorId";
-    readonly UniqueResourceId: "ST2067-2/UniqueResourceId";
-    readonly IntrinsicDuration: "ST2067-2/IntrinsicDuration";
-    readonly EntryPoint: "ST2067-2/EntryPoint";
-    readonly ResourceDuration: "ST2067-2/ResourceDuration";
-    readonly RepeatCount: "ST2067-2/RepeatCount";
-    readonly TrackFileId: "ST2067-2/TrackFileId";
-    readonly VirtualTrackContinuity: "ST2067-2/VirtualTrackContinuity";
     readonly VirtualTrackEditRate: "ST2067-2/VirtualTrackEditRate";
     readonly TimedTextSampleRate: "ST2067-2/TimedTextSampleRate";
     readonly TimedTextEmptyLanguageTag: "ST2067-2/TimedTextEmptyLanguageTag";
@@ -79,7 +53,6 @@ export declare const codes: {
     readonly MCATagSymbol: "ST2067-2/MCATagSymbol";
     readonly SoundfieldChannelCount: "ST2067-2/SoundfieldChannelCount";
     readonly DigitalSignature: "ST2067-2/DigitalSignature";
-    readonly DanglingEssenceDescriptor: "ST2067-2/DanglingEssenceDescriptor";
     readonly EssenceDescriptorList: "ST2067-2/EssenceDescriptorList";
     readonly CplIdAssetMapMismatch: "ST2067-2/CplIdAssetMapMismatch";
     readonly OperationalPatternNotOP1A: "ST2067-2/OperationalPatternNotOP1A";
@@ -102,8 +75,12 @@ export declare const codes: {
     readonly TimedTextNamespaceNotIMSC: "ST2067-2/TimedTextNamespaceNotIMSC";
     readonly TimedTextResourceMIMETypeUnsupported: "ST2067-2/TimedTextResourceMIMETypeUnsupported";
     readonly TimedTextMappingKindNot0x13: "ST2067-2/TimedTextMappingKindNot0x13";
+    readonly MainImageVirtualTrackCount: "ST2067-2/MainImageVirtualTrackCount";
+    readonly AudioVirtualTrackMissing: "ST2067-2/AudioVirtualTrackMissing";
   };
   readonly ST2067_3: {
+    readonly ContentTitleEmpty: "ST2067-3/ContentTitleEmpty";
+    readonly ResourceListEmpty: "ST2067-3/ResourceListEmpty";
     readonly ContentKindUnknown: "ST2067-3/ContentKindUnknown";
     readonly SourceEncodingNoEssenceDescriptorList: "ST2067-3/SourceEncodingNoEssenceDescriptorList";
     readonly SourceEncodingUnresolved: "ST2067-3/SourceEncodingUnresolved";
@@ -118,6 +95,18 @@ export declare const codes: {
     readonly SegmentDuration: "ST2067-3/SegmentDuration";
     readonly ContentVersionIdDuplicate: "ST2067-3/ContentVersionIdDuplicate";
     readonly SegmentDurationIntegerEditUnits: "ST2067-3/SegmentDurationIntegerEditUnits";
+    readonly UniqueSegmentId: "ST2067-3/UniqueSegmentId";
+    readonly UniqueEssenceDescriptorId: "ST2067-3/UniqueEssenceDescriptorId";
+    readonly UniqueResourceId: "ST2067-3/UniqueResourceId";
+    readonly EntryPoint: "ST2067-3/EntryPoint";
+    readonly ResourceDuration: "ST2067-3/ResourceDuration";
+    readonly RepeatCount: "ST2067-3/RepeatCount";
+    readonly TrackFileId: "ST2067-3/TrackFileId";
+    readonly VirtualTrackContinuity: "ST2067-3/VirtualTrackContinuity";
+    readonly DanglingEssenceDescriptor: "ST2067-3/DanglingEssenceDescriptor";
+  };
+  readonly ST2067_5: {
+    readonly OperationalPatternQualifier: "ST2067-5/OperationalPatternQualifier";
   };
   readonly ST2067_9: {
     readonly MalformedXml: "ST2067-9/MalformedXml";
@@ -248,6 +237,7 @@ export declare const codes: {
     readonly OpenFailed: "IMFERNO/OpenFailed";
     readonly PartitionPackParseFailed: "IMFERNO/PartitionPackParseFailed";
     readonly RegXmlConversionFailed: "IMFERNO/RegXmlConversionFailed";
+    readonly MxfHeaderUnreadable: "IMFERNO/MxfHeaderUnreadable";
     readonly EssenceContainersDetected: "IMFERNO/EssenceContainersDetected";
     readonly IoError: "IMFERNO/IoError";
     readonly UnreferencedAsset: "IMFERNO/UnreferencedAsset";

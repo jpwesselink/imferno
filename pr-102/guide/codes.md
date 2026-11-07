@@ -79,7 +79,6 @@ Each spec edition has its own codes, even when a rule is unchanged between editi
 | `ST2067-2:2020:9/PklUnknownNamespace`       | PKL document namespace is not one of the published SMPTE PKL namespaces.                                                                                | ERROR            | Structure |
 | `ST429-9:2014:6.3/AssetMapHasNoPackingList` | AssetMap declares no asset as a PackingList (ST 429-9 §6.3).                                                                                            | CRITICAL         | Structure |
 | `ST429-9:2014:6.3/PklIdNotInAssetMap`       | PKL document Id is not declared as a PackingList asset in the AssetMap.                                                                                 | ERROR            | Reference |
-| `ST2067-2:2020:7.3.1/CplIdAssetMapMismatch` | An AssetMap asset points at a CPL file whose Id differs from the asset Id.                                                                              | ERROR            | Reference |
 
 ### Core Constraints — 2013
 
@@ -122,6 +121,7 @@ Each spec edition has its own codes, even when a rule is unchanged between editi
 | `ST2067-2:2013:6.9/DigitalSignature`                        | The CPL carries a Signature (ST 2067-2 §6.9); signature verification is not performed.    | INFO             | Security  |
 | `ST2067-2:2013:6.4.2/DanglingEssenceDescriptor`             | EssenceDescriptor present in EssenceDescriptorList but not referenced by any Resource.    | ERROR            | Reference |
 | `ST2067-2:2013:6.4.2/EssenceDescriptorList`                 | EssenceDescriptorList is required per ST 2067-2 §6.4.2.                                   | ERROR            | Structure |
+| `ST2067-2:2013:7.2/CplIdAssetMapMismatch`                   | An AssetMap asset points at a CPL file whose Id differs from the asset Id.                | ERROR            | Reference |
 
 ### Core Constraints — 2016
 
@@ -164,6 +164,7 @@ Each spec edition has its own codes, even when a rule is unchanged between editi
 | `ST2067-2:2016:6.9/DigitalSignature`                        | The CPL carries a Signature (ST 2067-2 §6.9); signature verification is not performed.    | INFO             | Security  |
 | `ST2067-2:2016:6.4.2/DanglingEssenceDescriptor`             | EssenceDescriptor present in EssenceDescriptorList but not referenced by any Resource.    | ERROR            | Reference |
 | `ST2067-2:2016:6.4.2/EssenceDescriptorList`                 | EssenceDescriptorList is required per ST 2067-2 §6.4.2.                                   | ERROR            | Structure |
+| `ST2067-2:2016:7.3.1/CplIdAssetMapMismatch`                 | An AssetMap asset points at a CPL file whose Id differs from the asset Id.                | ERROR            | Reference |
 
 ### Core Constraints — 2020
 
@@ -206,6 +207,7 @@ Each spec edition has its own codes, even when a rule is unchanged between editi
 | `ST2067-2:2020:6.9/DigitalSignature`                        | The CPL carries a Signature (ST 2067-2 §6.9); signature verification is not performed.    | INFO             | Security  |
 | `ST2067-2:2020:6.4.2/DanglingEssenceDescriptor`             | EssenceDescriptor present in EssenceDescriptorList but not referenced by any Resource.    | ERROR            | Reference |
 | `ST2067-2:2020:6.4.2/EssenceDescriptorList`                 | EssenceDescriptorList is required per ST 2067-2 §6.4.2.                                   | ERROR            | Structure |
+| `ST2067-2:2020:7.3.1/CplIdAssetMapMismatch`                 | An AssetMap asset points at a CPL file whose Id differs from the asset Id.                | ERROR            | Reference |
 
 ### Essence Layer — 2016 (inherited by later editions)
 

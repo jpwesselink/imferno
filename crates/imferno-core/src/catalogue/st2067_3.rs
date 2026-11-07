@@ -230,11 +230,11 @@ pub static UniqueResourceId: Rule<E> = Rule {
 pub static EntryPoint: Rule<E> = Rule {
     name: "EntryPoint",
     category: Category::Timing,
-    description: "EntryPoint shall be less than IntrinsicDuration.",
+    description: "EntryPoint exceeds IntrinsicDuration, leaving no valid SourceDuration.",
     example: Some("<IntrinsicDuration>100</IntrinsicDuration><EntryPoint>150</EntryPoint>"),
     editions: &[
-        checked(E::V2013, "6.11.6", Shall).interpret("Flags EntryPoint >= IntrinsicDuration. The text bounds SourceDuration (0 to IntrinsicDuration - EntryPoint), so EntryPoint == IntrinsicDuration with a zero SourceDuration is arguably allowed; open for decision.", None),
-        checked(E::V2016, "6.11.6", Shall).interpret("Flags EntryPoint >= IntrinsicDuration. The text bounds SourceDuration (0 to IntrinsicDuration - EntryPoint), so EntryPoint == IntrinsicDuration with a zero SourceDuration is arguably allowed; open for decision.", None),
+        checked(E::V2013, "6.11.6", Shall).interpret("Flags EntryPoint > IntrinsicDuration. EntryPoint == IntrinsicDuration is allowed: SourceDuration is then 0, which 6.11.6 permits.", None),
+        checked(E::V2016, "6.11.6", Shall).interpret("Flags EntryPoint > IntrinsicDuration. EntryPoint == IntrinsicDuration is allowed: SourceDuration is then 0, which 6.11.6 permits.", None),
     ],
 };
 

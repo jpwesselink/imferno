@@ -144,7 +144,7 @@ Unmarked rows are carried over from earlier catalogues and not yet checked.
 | `ST2067-3/UniqueSegmentId` | Duplicate Segment Id within the CPL. | Structure | 6.9.1✓ error | 6.9.1✓ error |
 | `ST2067-3/UniqueEssenceDescriptorId` | Duplicate EssenceDescriptor Id within the CPL. | Structure | 6.7.1✓ error | 6.7.1✓ error |
 | `ST2067-3/UniqueResourceId` | Duplicate Resource Id within the CPL. | Structure | 6.11.1✓ error | 6.11.1✓ error |
-| `ST2067-3/EntryPoint` | EntryPoint shall be less than IntrinsicDuration. | Timing | 6.11.6✓ error | 6.11.6✓ error |
+| `ST2067-3/EntryPoint` | EntryPoint exceeds IntrinsicDuration, leaving no valid SourceDuration. | Timing | 6.11.6✓ error | 6.11.6✓ error |
 | `ST2067-3/ResourceDuration` | EntryPoint + SourceDuration exceeds IntrinsicDuration. | Timing | 6.11.6✓ error | 6.11.6✓ error |
 | `ST2067-3/RepeatCount` | RepeatCount shall be a positive integer. | Timing | 6.11✓ error | 6.11✓ error |
 | `ST2067-3/TrackFileId` | A non-marker resource is missing a TrackFileId. | Reference | 6.12✓ error | 6.12✓ error |

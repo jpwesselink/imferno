@@ -1044,18 +1044,19 @@ fn validate_resource_constraints(
                         .with_segment(seg_idx)
                         .with_resource(res_idx);
 
-                    // B: EntryPoint < IntrinsicDuration (ST 2067-3 §6.11.6)
+                    // B: EntryPoint <= IntrinsicDuration (ST 2067-3 §6.11.6:
+                    // SourceDuration lies between 0 and IntrinsicDuration -
+                    // EntryPoint, so EntryPoint == IntrinsicDuration with a
+                    // zero SourceDuration is allowed; a larger EntryPoint
+                    // leaves no valid SourceDuration).
                     let entry_point = resource.entry_point.unwrap_or(0);
-                    if resource.entry_point.is_some()
-                        && resource.intrinsic_duration > 0
-                        && entry_point >= resource.intrinsic_duration
-                    {
+                    if entry_point > resource.intrinsic_duration {
                         issues.push(
                             ValidationIssue::from_rule(
                                 &st2067_3::EntryPoint,
                                 cpl_ed,
                                 format!(
-                                    "{} resource {}: EntryPoint ({}) shall be less than \
+                                    "{} resource {}: EntryPoint ({}) exceeds \
                                  IntrinsicDuration ({})",
                                     track_type,
                                     resource.id,
@@ -4574,7 +4575,7 @@ mod tests {
     // ── B: EntryPoint < IntrinsicDuration ───────────────────────────────────
 
     #[test]
-    fn core_rejects_entry_point_gte_intrinsic_duration() {
+    fn core_entry_point_equal_to_intrinsic_is_allowed_greater_is_not() {
         let mut cpl = minimal_cpl();
         let ed_id = uuid(10);
         cpl.segment_list.segments[0]
@@ -4589,7 +4590,7 @@ mod tests {
                         annotation: None,
                         edit_rate: None,
                         intrinsic_duration: 100,
-                        entry_point: Some(100), // Equal — invalid, must be < 100
+                        entry_point: Some(100), // Equal: SourceDuration 0, allowed (§6.11.6)
                         source_duration: None,
                         source_encoding: Some(ed_id),
                         track_file_id: Some(uuid(50)),
@@ -4602,8 +4603,20 @@ mod tests {
             });
         let issues = CoreConstraints2020.validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| mentions(i, "EntryPoint")),
-            "EntryPoint >= IntrinsicDuration should be flagged: {:#?}",
+            !issues.iter().any(|i| i.is(&st2067_3::EntryPoint)),
+            "EntryPoint == IntrinsicDuration (SourceDuration 0) is allowed: {:#?}",
+            issues,
+        );
+        cpl.segment_list.segments[0]
+            .sequence_list
+            .main_image_sequences[0]
+            .resource_list
+            .resources[0]
+            .entry_point = Some(101);
+        let issues = CoreConstraints2020.validate_cpl(&cpl);
+        assert!(
+            issues.iter().any(|i| i.is(&st2067_3::EntryPoint)),
+            "EntryPoint > IntrinsicDuration should be flagged: {:#?}",
             issues,
         );
     }

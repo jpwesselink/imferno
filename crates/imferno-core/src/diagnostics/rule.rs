@@ -45,6 +45,9 @@ pub enum Spec {
     /// SMPTE ST 2067-3 — IMF Composition Playlist.
     #[serde(rename = "ST2067-3")]
     St2067_3,
+    /// SMPTE ST 2067-5 — IMF Essence Component.
+    #[serde(rename = "ST2067-5")]
+    St2067_5,
     /// SMPTE ST 2067-9 — IMF Sidecar Composition Map.
     #[serde(rename = "ST2067-9")]
     St2067_9,
@@ -76,6 +79,7 @@ impl Spec {
         Spec::St429_9,
         Spec::St2067_2,
         Spec::St2067_3,
+        Spec::St2067_5,
         Spec::St2067_9,
         Spec::St2067_21,
         Spec::St2067_201,
@@ -93,6 +97,7 @@ impl Spec {
             Spec::St429_9 => "ST429-9",
             Spec::St2067_2 => "ST2067-2",
             Spec::St2067_3 => "ST2067-3",
+            Spec::St2067_5 => "ST2067-5",
             Spec::St2067_9 => "ST2067-9",
             Spec::St2067_21 => "ST2067-21",
             Spec::St2067_201 => "ST2067-201",
@@ -111,6 +116,7 @@ impl Spec {
             Spec::St429_9 => "SMPTE ST 429-9 — Asset Mapping and File Segmentation",
             Spec::St2067_2 => "SMPTE ST 2067-2 — Core Constraints",
             Spec::St2067_3 => "SMPTE ST 2067-3 — Composition Playlist",
+            Spec::St2067_5 => "SMPTE ST 2067-5 — Essence Component",
             Spec::St2067_9 => "SMPTE ST 2067-9 — Sidecar Composition Map",
             Spec::St2067_21 => "SMPTE ST 2067-21 — Application #2E",
             Spec::St2067_201 => "SMPTE ST 2067-201 — IAB Level 0 Plug-in",

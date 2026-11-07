@@ -147,6 +147,12 @@ Unmarked rows are carried over from earlier catalogues and not yet checked.
 | `ST2067-3/VirtualTrackContinuity` | A virtual track is missing from one or more segments. | Structure | 6.9.3✓ error | 6.9.3✓ error |
 | `ST2067-3/DanglingEssenceDescriptor` | EssenceDescriptor present in EssenceDescriptorList but not referenced by any Resource. | Reference | 6.1.10.1✓ error | 6.1.10.1✓ error |
 
+## SMPTE ST 2067-5 — Essence Component
+
+| Rule | Description | Category | 2013 | 2020 |
+|------|-------------|----------|------|------|
+| `ST2067-5/OperationalPatternQualifier` | Operational Pattern UL byte 15 qualifier bits 1-3 shall be 0 (internal essence, stream file, uni-track); with the ST 377-1 marker bit 0 set, the low nibble is 0x1. | Container | 5.2.1✓ error | 5.2.1✓ error |
+
 ## SMPTE ST 2067-9 — Sidecar Composition Map
 
 | Rule | Description | Category | 2018 |

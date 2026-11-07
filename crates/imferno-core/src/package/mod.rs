@@ -4412,17 +4412,12 @@ mod tests {
         stream
     }
 
-    #[test]
-    fn mxf_validation_accepts_op1a() {
+    /// Validate a one-MXF package whose header carries Operational Pattern `op`.
+    fn op_report(op: [u8; 16]) -> ValidationReport {
         let root = tempfile::tempdir().unwrap();
         let root = root.path();
 
-        // OP1a UL
-        let op1a: [u8; 16] = [
-            0x06, 0x0E, 0x2B, 0x34, 0x04, 0x01, 0x01, 0x02, 0x0D, 0x01, 0x02, 0x01, 0x01, 0x01,
-            0x09, 0x00,
-        ];
-        std::fs::write(root.join("video.mxf"), make_mxf_bytes(op1a)).unwrap();
+        std::fs::write(root.join("video.mxf"), make_mxf_bytes(op)).unwrap();
 
         // Minimal PKL + AssetMap
         let pkl_xml = r#"<?xml version="1.0" encoding="UTF-8"?>
@@ -4464,21 +4459,54 @@ mod tests {
         std::fs::write(root.join("ASSETMAP.xml"), assetmap_xml).unwrap();
 
         let package = Imferno::parse(read_dir(root).unwrap()).expect("parse");
-        let report = package.validate(&ValidationOptions::default());
+        package.validate(&ValidationOptions::default())
+    }
 
-        let op_issues: Vec<_> = report
+    fn op_issues<'a>(
+        report: &'a ValidationReport,
+        rule: &dyn Fn(&ValidationIssue) -> bool,
+    ) -> Vec<&'a ValidationIssue> {
+        report
             .critical
             .iter()
             .chain(report.errors.iter())
             .chain(report.warnings.iter())
             .chain(report.info.iter())
-            .filter(|i| i.is(&st2067_2::OperationalPatternNotOP1A))
-            .collect();
+            .filter(|i| rule(i))
+            .collect()
+    }
+
+    /// OP1a with qualifier 0x01 (internal, stream, uni-track): no OP finding.
+    #[test]
+    fn mxf_validation_accepts_op1a() {
+        let report = op_report([
+            0x06, 0x0E, 0x2B, 0x34, 0x04, 0x01, 0x01, 0x02, 0x0D, 0x01, 0x02, 0x01, 0x01, 0x01,
+            0x01, 0x00,
+        ]);
+        let found = op_issues(&report, &|i| {
+            i.is(&st2067_2::OperationalPatternNotOP1A)
+                || i.is(&crate::catalogue::st2067_5::OperationalPatternQualifier)
+        });
         assert!(
-            op_issues.is_empty(),
-            "OP1a should not produce OP issues: {:#?}",
-            op_issues,
+            found.is_empty(),
+            "OP1a should not produce OP issues: {found:#?}"
         );
+    }
+
+    /// OP1a with qualifier 0x09 sets bit 3 (multi-track): ST 2067-5 §5.2.1
+    /// requires uni-track, so the qualifier finding fires (OP1a identity holds).
+    #[test]
+    fn mxf_validation_flags_multi_track_qualifier() {
+        let report = op_report([
+            0x06, 0x0E, 0x2B, 0x34, 0x04, 0x01, 0x01, 0x02, 0x0D, 0x01, 0x02, 0x01, 0x01, 0x01,
+            0x09, 0x00,
+        ]);
+        assert!(op_issues(&report, &|i| i.is(&st2067_2::OperationalPatternNotOP1A)).is_empty());
+        let q = op_issues(&report, &|i| {
+            i.is(&crate::catalogue::st2067_5::OperationalPatternQualifier)
+        });
+        assert_eq!(q.len(), 1, "{q:#?}");
+        assert_eq!(q[0].code, "ST2067-5:2020:5.2.1/OperationalPatternQualifier");
     }
 
     #[test]

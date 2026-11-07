@@ -197,6 +197,8 @@ ST2067-3/VirtualTrackContinuity | 2013 | ST2067-3:2013:6.9.3/VirtualTrackContinu
 ST2067-3/VirtualTrackContinuity | 2016 | ST2067-3:2016:6.9.3/VirtualTrackContinuity | Error | shall | verified
 ST2067-3/DanglingEssenceDescriptor | 2013 | ST2067-3:2013:6.1.10.1/DanglingEssenceDescriptor | Error | shall | verified
 ST2067-3/DanglingEssenceDescriptor | 2016 | ST2067-3:2016:6.1.10.1/DanglingEssenceDescriptor | Error | shall | verified
+ST2067-5/OperationalPatternQualifier | 2013 | ST2067-5:2013:5.2.1/OperationalPatternQualifier | Error | shall | verified
+ST2067-5/OperationalPatternQualifier | 2020 | ST2067-5:2020:5.2.1/OperationalPatternQualifier | Error | shall | verified
 ST2067-9/MalformedXml | 2018 | ST2067-9:2018:6.1/MalformedXml | Critical | shall | verified
 ST2067-9/SidecarAssetReferencedByVirtualTrack | 2018 | ST2067-9:2018:5/SidecarAssetReferencedByVirtualTrack | Error | shall | verified
 ST2067-9/DuplicateAssetId | 2018 | ST2067-9:2018:7.2.3/DuplicateAssetId | Error | shall | verified

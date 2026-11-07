@@ -12,6 +12,7 @@ pub mod st2067_201;
 pub mod st2067_202;
 pub mod st2067_21;
 pub mod st2067_3;
+pub mod st2067_5;
 pub mod st2067_9;
 pub mod st377_1;
 pub mod st377_4;
@@ -38,7 +39,7 @@ impl Edition for crate::validation::App2EEdition {
 }
 
 /// The rule tables of every spec, in catalogue order.
-pub fn tables() -> [(Spec, &'static [&'static dyn AnyRule]); 12] {
+pub fn tables() -> [(Spec, &'static [&'static dyn AnyRule]); 13] {
     [
         (Spec::St377_1, st377_1::ALL),
         (Spec::St377_4, st377_4::ALL),
@@ -46,6 +47,7 @@ pub fn tables() -> [(Spec, &'static [&'static dyn AnyRule]); 12] {
         (Spec::St429_9, st429_9::ALL),
         (Spec::St2067_2, st2067_2::ALL),
         (Spec::St2067_3, st2067_3::ALL),
+        (Spec::St2067_5, st2067_5::ALL),
         (Spec::St2067_9, st2067_9::ALL),
         (Spec::St2067_21, st2067_21::ALL),
         (Spec::St2067_201, st2067_201::ALL),

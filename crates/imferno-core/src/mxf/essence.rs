@@ -24,6 +24,7 @@ use smpte_types::Ul;
 
 use crate::catalogue::imferno::{self, ImfernoEdition};
 use crate::catalogue::st2067_2::{self, St2067_2Edition};
+use crate::catalogue::st2067_5::{self, St2067_5Edition};
 use crate::catalogue::st377_1::{self, St377_1Edition};
 use crate::diagnostics::{Location, ValidationIssue};
 
@@ -37,10 +38,16 @@ const OP1A_UL_BYTES: [u8; 16] = [
 
 /// Mask used when comparing an OP UL against OP1a. Ignored bytes (1-based):
 /// 6 (registry designator) and 8 (version) vary across SMPTE registry
-/// revisions; 15 carries the ST 378 qualifier bits (e.g. 0x09 for a
-/// stream file with internal essence) and 16 is reserved. The OP identity
-/// is bytes 13-14 (item and package complexity 01 01).
+/// revisions; 15 carries the qualifier bits, checked separately against
+/// ST 2067-5 §5.2.1 (see [`OP_QUALIFIER_IMF`]); 16 is reserved. The OP
+/// identity is bytes 13-14 (item and package complexity 01 01).
 const OP_UL_MATCH_MASK: u128 = 0xffff_ffff_ff00_ff00_ffff_ffff_ffff_0000;
+
+/// Low nibble of OP UL byte 15 for an IMF Essence Component: ST 2067-5
+/// §5.2.1 sets bit 1 (internal essence), bit 2 (stream file) and bit 3
+/// (uni-track) to 0; ST 377-1 Table 11 sets marker bit 0 to 1. Bits 4-7 are
+/// reserved and not checked.
+const OP_QUALIFIER_IMF: u8 = 0x01;
 
 /// Validate an MXF file against the partition-pack-level rules of
 /// ST 2067-2 §5.1.1 and ST 377-1 §6. Returns a catalogue of
@@ -350,6 +357,25 @@ fn check_partition_pack(
             )
             .with_location(Location::new().with_file(path.to_path_buf())),
         );
+    } else {
+        // ST 2067-5 §5.2.1: qualifier bits of an IMF Essence Component.
+        let qualifier = pack.operational_pattern.as_bytes()[14];
+        if qualifier & 0x0f != OP_QUALIFIER_IMF {
+            issues.push(
+                ValidationIssue::from_rule(
+                    &st2067_5::OperationalPatternQualifier,
+                    St2067_5Edition::for_core(spec_ed),
+                    format!(
+                        "MXF file at {} uses Operational Pattern qualifier {:#04x}; ST 2067-5 \
+                         §5.2.1 requires internal essence, stream file and uni-track \
+                         (bits 1-3 = 0, low nibble 0x1)",
+                        path.display(),
+                        qualifier,
+                    ),
+                )
+                .with_location(Location::new().with_file(path.to_path_buf())),
+            );
+        }
     }
 
     // ST 377-1 §6.2.5: the Header Partition may be Open or Closed.

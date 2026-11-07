@@ -101,6 +101,9 @@ export declare const codes: {
     readonly VirtualTrackContinuity: "ST2067-3/VirtualTrackContinuity";
     readonly DanglingEssenceDescriptor: "ST2067-3/DanglingEssenceDescriptor";
   };
+  readonly ST2067_5: {
+    readonly OperationalPatternQualifier: "ST2067-5/OperationalPatternQualifier";
+  };
   readonly ST2067_9: {
     readonly MalformedXml: "ST2067-9/MalformedXml";
     readonly SidecarAssetReferencedByVirtualTrack: "ST2067-9/SidecarAssetReferencedByVirtualTrack";

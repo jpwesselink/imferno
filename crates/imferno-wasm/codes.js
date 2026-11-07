@@ -101,6 +101,9 @@ export const codes = {
     VirtualTrackContinuity: "ST2067-3/VirtualTrackContinuity",
     DanglingEssenceDescriptor: "ST2067-3/DanglingEssenceDescriptor",
   },
+  ST2067_5: {
+    OperationalPatternQualifier: "ST2067-5/OperationalPatternQualifier",
+  },
   ST2067_9: {
     MalformedXml: "ST2067-9/MalformedXml",
     SidecarAssetReferencedByVirtualTrack: "ST2067-9/SidecarAssetReferencedByVirtualTrack",

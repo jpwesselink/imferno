@@ -464,13 +464,29 @@ fn sanitize_asset_path(root: &Path, chunk_path: &str) -> Option<PathBuf> {
     if rel.is_absolute() {
         return None;
     }
-    // Check lexical components for parent-dir traversal
+    // ST 429-9:2014 A.2: "." and ".." segments are allowed (Note 3), but
+    // every location traversed while resolving the path shall stay inside
+    // the tree rooted at the Asset Map's directory (Example 2:
+    // `bar/../../foo/bar/Image.mxf` is forbidden). Normalise lexically
+    // and reject as soon as a ".." would leave the root.
+    let mut normalised = PathBuf::new();
+    let mut depth: usize = 0;
     for component in rel.components() {
-        if component == std::path::Component::ParentDir {
-            return None;
+        match component {
+            std::path::Component::CurDir => {}
+            std::path::Component::ParentDir => {
+                depth = depth.checked_sub(1)?;
+                normalised.pop();
+            }
+            std::path::Component::Normal(part) => {
+                depth += 1;
+                normalised.push(part);
+            }
+            // Prefix / RootDir: not a relative path.
+            _ => return None,
         }
     }
-    let joined = root.join(rel);
+    let joined = root.join(normalised);
     // If the file exists, verify the canonical path is still under root
     if let Ok(canonical) = joined.canonicalize() {
         if canonical.starts_with(root) {
@@ -4576,6 +4592,28 @@ mod tests {
     fn sanitize_rejects_double_dot_prefix() {
         let root = std::env::temp_dir();
         assert!(sanitize_asset_path(&root, "../../etc/shadow").is_none());
+    }
+
+    /// ST 429-9:2014 A.2 Note 3 allows "." and ".." segments; only a
+    /// location outside the package root is forbidden, at any step of the
+    /// resolution (A.2 Example 2).
+    #[test]
+    fn sanitize_allows_dot_dot_that_stays_inside_root() {
+        let root = std::env::temp_dir();
+        let p = sanitize_asset_path(&root, "a/../video.mxf").expect("inside root");
+        assert_eq!(p, root.join("video.mxf"));
+        let p = sanitize_asset_path(&root, "./a/b/../c.mxf").expect("inside root");
+        assert_eq!(p, root.join("a/c.mxf"));
+    }
+
+    #[test]
+    fn sanitize_rejects_dot_dot_that_leaves_root_at_any_step() {
+        let root = std::env::temp_dir();
+        // A.2 Example 2: bar/../.. is outside the tree even though the
+        // final path would come back in.
+        assert!(sanitize_asset_path(&root, "bar/../../foo/bar/Image.mxf").is_none());
+        assert!(sanitize_asset_path(&root, "a/../../a/video.mxf").is_none());
+        assert!(sanitize_asset_path(&root, "../").is_none());
     }
 
     // ── parse_issues tests ────────────────────────────────────────────────

@@ -6,7 +6,6 @@ use serde::{Deserialize, Serialize};
 #[cfg(feature = "typescript")]
 use ts_rs::TS;
 
-
 /// Helper: parse a UL string and return normalized bytes (byte 8 zeroed).
 /// Used by `from_ul()` methods on enum types to implement version-agnostic matching.
 fn parse_and_normalize_ul(ul: &str) -> Option<[u8; 16]> {

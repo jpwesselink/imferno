@@ -11,7 +11,7 @@
  *
  * Options (all optional):
  * - `coreSpec`: `"auto"` | `"v2013"` | `"v2016"` | `"v2020"`
- * - `app2eSpec`: `"auto"` | `"none"` | `"v2020"` | `"v2021"` | `"v2023"`
+ * - `app2eSpec`: `"auto"` | `"none"` | `"v2014"` | `"v2016"` | `"v2020"` | `"v2023"` | `"v2026"`
  * - `rules`: ESLint-style rules configuration object
  * @param {any} files
  * @param {any} options

@@ -557,12 +557,28 @@ pub static AudioSampleRate: Rule<E> = Rule {
 pub static ChannelCount: Rule<E> = Rule {
     name: "ChannelCount",
     category: Category::Audio,
-    description: "WAVEPCMDescriptor ChannelCount is zero or missing.",
-    example: Some("<WAVEPCMDescriptor><ChannelCount>0</ChannelCount></WAVEPCMDescriptor>"),
+    description: "WAVEPCMDescriptor ChannelCount is missing.",
+    example: Some("<WAVEPCMDescriptor>…</WAVEPCMDescriptor>  <!-- no <ChannelCount> -->"),
     editions: &[
         row(E::V2013, "ST377-4", Severity::Warning).unverified(),
         row(E::V2016, "ST377-4", Severity::Warning).unverified(),
         row(E::V2020, "ST377-4", Severity::Warning).unverified(),
+    ],
+};
+
+/// WAVEPCMDescriptor ChannelCount is zero.
+///
+/// Split from `ChannelCount` in C0: the old site reported a zero count as
+/// an error and an absent count as a warning under one code.
+pub static ChannelCountZero: Rule<E> = Rule {
+    name: "ChannelCountZero",
+    category: Category::Audio,
+    description: "WAVEPCMDescriptor ChannelCount is zero.",
+    example: Some("<WAVEPCMDescriptor><ChannelCount>0</ChannelCount></WAVEPCMDescriptor>"),
+    editions: &[
+        row(E::V2013, "ST377-4", Severity::Error).unverified(),
+        row(E::V2016, "ST377-4", Severity::Error).unverified(),
+        row(E::V2020, "ST377-4", Severity::Error).unverified(),
     ],
 };
 
@@ -999,6 +1015,7 @@ pub static ALL: &[&dyn AnyRule] = &[
     &TimedTextMalformedLanguageTag,
     &AudioSampleRate,
     &ChannelCount,
+    &ChannelCountZero,
     &MCASubDescriptors,
     &SoundfieldGroup,
     &MCATagSymbol,

@@ -22,8 +22,10 @@ use smpte_mxf::{
 };
 use smpte_types::Ul;
 
+use crate::catalogue::imferno::{self, ImfernoEdition};
+use crate::catalogue::st2067_2::{self, St2067_2Edition};
+use crate::catalogue::st377_1::{self, St377_1Edition};
 use crate::diagnostics::{Location, ValidationIssue};
-use crate::mxf::codes::{ImfernoMxf, St2067_2_2016, St377_1_2011};
 
 /// SMPTE Operational Pattern 1A UL — bytes per ST 378:2004 §6.
 ///
@@ -43,7 +45,9 @@ const OP_UL_MATCH_MASK: u128 = 0xffff_ffff_ff00_ffff_ffff_ffff_ffff_ff00;
 /// ST 2067-2 §5.2 and ST 377-1 §8.3.3. Returns a catalogue of
 /// `ValidationIssue`s; the caller folds them into the usual
 /// `ValidationReport`.
-pub fn validate_mxf_essence(path: &Path) -> Vec<ValidationIssue> {
+///
+/// `spec_ed` is the ST 2067-2 edition applied to the track file.
+pub fn validate_mxf_essence(path: &Path, spec_ed: St2067_2Edition) -> Vec<ValidationIssue> {
     let mut issues = Vec::new();
     let file = match std::fs::File::open(path) {
         Ok(f) => f,
@@ -68,7 +72,7 @@ pub fn validate_mxf_essence(path: &Path) -> Vec<ValidationIssue> {
                     FooterSearch::Absent => true,
                     FooterSearch::Unknown => false,
                 };
-            issues.extend(check_partition_pack(path, &pack, file_is_open));
+            issues.extend(check_partition_pack(path, &pack, file_is_open, spec_ed));
         }
         Err(e) => {
             issues.push(parse_failure_issue(path, &e));
@@ -310,6 +314,7 @@ fn check_partition_pack(
     path: &Path,
     pack: &PartitionPack,
     file_is_open: bool,
+    spec_ed: St2067_2Edition,
 ) -> Vec<ValidationIssue> {
     let mut issues = Vec::new();
 
@@ -317,7 +322,7 @@ fn check_partition_pack(
     // be the first partition in the file.
     if !matches!(pack.kind, PartitionKind::Header) {
         issues.push(
-            ValidationIssue::from_code(St377_1_2011::NonHeaderFirstPartition,
+            ValidationIssue::from_rule(&st377_1::NonHeaderFirstPartition, St377_1Edition::V2011,
                 format!(
                     "First partition in MXF file at {} is {:?}, not the Header partition required by ST 377-1 §6.4",
                     path.display(),
@@ -335,7 +340,7 @@ fn check_partition_pack(
     let op1a = u128::from_be_bytes(OP1A_UL_BYTES);
     if (pack_op & OP_UL_MATCH_MASK) != (op1a & OP_UL_MATCH_MASK) {
         issues.push(
-            ValidationIssue::from_code(St2067_2_2016::OperationalPatternNotOP1A,
+            ValidationIssue::from_rule(&st2067_2::OperationalPatternNotOP1A, spec_ed,
                 format!(
                     "MXF file at {} uses Operational Pattern UL {} — ST 2067-2 §5.2 requires OP1a (ST 378:2004)",
                     path.display(),
@@ -353,8 +358,9 @@ fn check_partition_pack(
     // footer, i.e. an Open MXF file.
     if file_is_open {
         issues.push(
-            ValidationIssue::from_code(
-                St377_1_2011::HeaderPartitionOpen,
+            ValidationIssue::from_rule(
+                &st377_1::HeaderPartitionOpen,
+                St377_1Edition::V2011,
                 format!(
                     "Header partition in MXF file at {} is {:?} and no Closed footer partition \
                      with header metadata was found, so the file is Open (ST 377-1 §6.2.4)",
@@ -370,7 +376,7 @@ fn check_partition_pack(
     // metadata in its header partition (header_byte_count > 0).
     if pack.header_byte_count == 0 {
         issues.push(
-            ValidationIssue::from_code(St377_1_2011::MissingHeaderMetadata,
+            ValidationIssue::from_rule(&st377_1::MissingHeaderMetadata, St377_1Edition::V2011,
                 format!(
                     "Header partition in MXF file at {} has no header metadata (HeaderByteCount = 0) — \
                      IMF requires header metadata in the header partition",
@@ -382,8 +388,9 @@ fn check_partition_pack(
     }
 
     issues.push(
-        ValidationIssue::from_code(
-            ImfernoMxf::EssenceContainersDetected,
+        ValidationIssue::from_rule(
+            &imferno::EssenceContainersDetected,
+            ImfernoEdition::Current,
             format!(
                 "MXF file at {} declares {} essence container UL(s) in its header partition",
                 path.display(),
@@ -397,16 +404,18 @@ fn check_partition_pack(
 }
 
 fn open_failure_issue(path: &Path, err: &std::io::Error) -> ValidationIssue {
-    ValidationIssue::from_code(
-        ImfernoMxf::OpenFailed,
+    ValidationIssue::from_rule(
+        &imferno::OpenFailed,
+        ImfernoEdition::Current,
         format!("Could not open MXF file {}: {}", path.display(), err),
     )
     .with_location(Location::new().with_file(path.to_path_buf()))
 }
 
 fn parse_failure_issue(path: &Path, err: &MxfError) -> ValidationIssue {
-    ValidationIssue::from_code(
-        ImfernoMxf::PartitionPackParseFailed,
+    ValidationIssue::from_rule(
+        &imferno::PartitionPackParseFailed,
+        ImfernoEdition::Current,
         format!(
             "Failed to parse the header partition pack of {}: {}",
             path.display(),
@@ -515,7 +524,7 @@ mod tests {
         let value = synthetic_header_partition(&OP1A_UL_BYTES, 1024);
         write_klv(&mut buf, &key, &value);
         let tmp = dump_to_temp(&buf);
-        let issues = validate_mxf_essence(tmp.path());
+        let issues = validate_mxf_essence(tmp.path(), St2067_2Edition::V2016);
         let non_info: Vec<_> = issues
             .iter()
             .filter(|i| i.severity != Severity::Info)
@@ -544,7 +553,7 @@ mod tests {
         let value = synthetic_header_partition(&op, 1024);
         write_klv(&mut buf, &key, &value);
         let tmp = dump_to_temp(&buf);
-        let issues = validate_mxf_essence(tmp.path());
+        let issues = validate_mxf_essence(tmp.path(), St2067_2Edition::V2016);
         assert!(
             issues
                 .iter()
@@ -562,7 +571,7 @@ mod tests {
         let value = synthetic_header_partition(&OP1A_UL_BYTES, 0); // no metadata
         write_klv(&mut buf, &key, &value);
         let tmp = dump_to_temp(&buf);
-        let issues = validate_mxf_essence(tmp.path());
+        let issues = validate_mxf_essence(tmp.path(), St2067_2Edition::V2016);
         assert!(
             issues
                 .iter()
@@ -635,7 +644,7 @@ mod tests {
     #[test]
     fn open_header_with_closed_footer_metadata_is_not_flagged() {
         let tmp = dump_to_temp(&open_header_with_footer(0x04, 2048));
-        let issues = validate_mxf_essence(tmp.path());
+        let issues = validate_mxf_essence(tmp.path(), St2067_2Edition::V2016);
         assert!(
             !has_header_partition_open(&issues),
             "Open header + Closed footer with header metadata is a Closed file: {issues:#?}",
@@ -648,7 +657,10 @@ mod tests {
     fn open_header_without_closed_footer_metadata_is_flagged() {
         // Closed footer but no header metadata in it.
         let tmp = dump_to_temp(&open_header_with_footer(0x04, 0));
-        assert!(has_header_partition_open(&validate_mxf_essence(tmp.path())));
+        assert!(has_header_partition_open(&validate_mxf_essence(
+            tmp.path(),
+            St2067_2Edition::V2016
+        )));
 
         // No footer at all.
         let mut buf = Vec::new();
@@ -660,7 +672,10 @@ mod tests {
             &synthetic_header_partition(&OP1A_UL_BYTES, 1024),
         );
         let tmp = dump_to_temp(&buf);
-        assert!(has_header_partition_open(&validate_mxf_essence(tmp.path())));
+        assert!(has_header_partition_open(&validate_mxf_essence(
+            tmp.path(),
+            St2067_2Edition::V2016
+        )));
     }
 
     /// ST 377-1:2011 §7.2.2 (p45): an Open Header Partition Pack may carry
@@ -670,7 +685,7 @@ mod tests {
     #[test]
     fn open_header_with_zero_footer_offset_and_no_rip_is_not_flagged() {
         let tmp = dump_to_temp(&open_header_with_footer_opts(0x04, 2048, 0, false));
-        let issues = validate_mxf_essence(tmp.path());
+        let issues = validate_mxf_essence(tmp.path(), St2067_2Edition::V2016);
         assert!(
             !has_header_partition_open(&issues),
             "footer found by walking partitions; file is Closed: {issues:#?}",
@@ -682,7 +697,7 @@ mod tests {
     #[test]
     fn open_header_with_run_in_finds_footer_relative_to_header() {
         let tmp = dump_to_temp(&open_header_with_footer_opts(0x04, 2048, 100, true));
-        let issues = validate_mxf_essence(tmp.path());
+        let issues = validate_mxf_essence(tmp.path(), St2067_2Edition::V2016);
         assert!(
             !has_header_partition_open(&issues),
             "footer offset is relative to the header partition: {issues:#?}",
@@ -878,7 +893,7 @@ mod tests {
 
         // End to end: reported as a parse failure, no panic.
         let tmp = dump_to_temp(&buf);
-        let issues = validate_mxf_essence(tmp.path());
+        let issues = validate_mxf_essence(tmp.path(), St2067_2Edition::V2016);
         assert!(issues
             .iter()
             .any(|i| i.code.contains("PartitionPackParseFailed")));
@@ -905,7 +920,7 @@ mod tests {
         write_partition_key(&mut key, 0x02, 0x04); // header, closed+complete
         write_klv(&mut buf, &key, &value);
         let tmp = dump_to_temp(&buf);
-        let issues = validate_mxf_essence(tmp.path());
+        let issues = validate_mxf_essence(tmp.path(), St2067_2Edition::V2016);
         assert!(
             !issues
                 .iter()
@@ -919,8 +934,10 @@ mod tests {
 
     #[test]
     fn validate_mxf_essence_handles_missing_file_gracefully() {
-        let issues =
-            validate_mxf_essence(std::path::Path::new("/nonexistent/imferno-mxf-test.mxf"));
+        let issues = validate_mxf_essence(
+            std::path::Path::new("/nonexistent/imferno-mxf-test.mxf"),
+            St2067_2Edition::V2016,
+        );
         assert!(
             issues.iter().any(|i| i.code == "IMFERNO:Mxf/OpenFailed"),
             "missing file should produce OpenFailed, got: {:#?}",

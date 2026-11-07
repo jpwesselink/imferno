@@ -39,7 +39,11 @@ fn main() {
         ) {
             Ok(xml) => {
                 let descriptor = detect_descriptor(&xml);
-                let audio_issues = imferno_core::mxf::audio_mca::check_audio_mca(&xml, path);
+                let audio_issues = imferno_core::mxf::audio_mca::check_audio_mca(
+                    &xml,
+                    path,
+                    imferno_core::catalogue::st2067_2::St2067_2Edition::V2020,
+                );
                 println!(
                     "{:<60} {:>10}  {:<40}  {:>6}",
                     name,

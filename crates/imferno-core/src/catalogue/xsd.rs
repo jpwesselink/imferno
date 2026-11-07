@@ -115,6 +115,30 @@ pub static SchemaConstraintFailed: Rule<E> = Rule {
     ],
 };
 
+/// XSD validation could not run: the schema or the instance failed to parse,
+/// or the validator could not be built from the schema.
+///
+/// Split from `SchemaConstraintFailed` in C0: the old sites reported an
+/// aborted validation as Critical under the Error-level constraint code.
+pub static ValidationAborted: Rule<E> = Rule {
+    name: "ValidationAborted",
+    category: Category::Schema,
+    description: "XSD validation aborted: the schema or the document failed to parse, or the schema could not be compiled.",
+    example: Some("CPL.xml truncated mid-element, so no schema validation could run"),
+    editions: &[
+        row(E::Cpl2013, "", Severity::Critical).reason(CRITICAL),
+        row(E::Cpl2016, "", Severity::Critical).reason(CRITICAL),
+        row(E::Pkl2016, "", Severity::Critical).reason(CRITICAL),
+        row(E::DciPkl2007, "", Severity::Critical).reason(CRITICAL),
+        row(E::Scm2018, "", Severity::Critical).reason(CRITICAL),
+        row(E::Opl2014, "", Severity::Critical).reason(CRITICAL),
+        row(E::Custom, "", Severity::Critical).reason(CRITICAL),
+        absent(E::Unvendored),
+    ],
+};
+
+const CRITICAL: &str = "The document could not be checked against its schema at all.";
+
 /// XSD validation was skipped: no vendored schema covers this document's namespace.
 pub static NotValidated: Rule<E> = Rule {
     name: "NotValidated",
@@ -140,5 +164,6 @@ pub static ALL: &[&dyn AnyRule] = &[
     &PatternInvalid,
     &TypeInvalid,
     &SchemaConstraintFailed,
+    &ValidationAborted,
     &NotValidated,
 ];

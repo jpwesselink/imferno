@@ -17,8 +17,8 @@ use std::path::Path;
 
 use quick_xml::events::Event;
 
+use crate::catalogue::st377_1::{self, St377_1Edition};
 use crate::diagnostics::{Location, ValidationIssue};
-use crate::mxf::codes::St377_1_2011;
 
 struct Open {
     name: String,
@@ -85,8 +85,9 @@ pub fn check_structural_components(regxml: &str, path: &Path) -> Vec<ValidationI
     missing
         .into_iter()
         .map(|component| {
-            ValidationIssue::from_code(
-                St377_1_2011::StructuralComponentDurationMissing,
+            ValidationIssue::from_rule(
+                &st377_1::StructuralComponentDurationMissing,
+                St377_1Edition::V2011,
                 format!(
                     "{component} on a Timeline Track in MXF file at {} has no Duration; \
                      ST 377-1 Annex B.8 makes it a Best Effort property that shall be \

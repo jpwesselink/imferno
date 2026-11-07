@@ -22,8 +22,9 @@
 
 use std::path::Path;
 
+use crate::catalogue::st2067_2::{self, St2067_2Edition};
+use crate::catalogue::st377_4::{self, St377_4Edition};
 use crate::diagnostics::{Location, ValidationIssue};
-use crate::mxf::codes::{St2067_2_2016, St377_4_2012};
 
 /// Walk a RegXML document for the WAVEPCMDescriptor and apply the
 /// audio MCA rules. Returns a list of `ValidationIssue`s the caller
@@ -34,7 +35,12 @@ use crate::mxf::codes::{St2067_2_2016, St377_4_2012};
 /// and human-readable messages. When no audio descriptor is present
 /// in the RegXML (the file is video or timed-text), this returns an
 /// empty Vec — these checks only fire on sound essence.
-pub fn check_audio_mca(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
+/// `spec_ed` is the ST 2067-2 edition applied to the track file.
+pub fn check_audio_mca(
+    regxml: &str,
+    path: &Path,
+    spec_ed: St2067_2Edition,
+) -> Vec<ValidationIssue> {
     let mut issues = Vec::new();
 
     // ST 2067-203:2023 (S-ADM) audio is wrapped as MGA (Multichannel
@@ -76,7 +82,7 @@ pub fn check_audio_mca(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
     let has_wave_pcm = regxml.contains("WAVEPCMDescriptor");
     if has_audio_sample_rate && !has_wave_pcm {
         issues.push(
-            ValidationIssue::from_code(St2067_2_2016::SoundDescriptorNotWAVEPCM,
+            ValidationIssue::from_rule(&st2067_2::SoundDescriptorNotWAVEPCM, spec_ed,
                 format!(
                     "MXF {} carries audio essence but its descriptor is not a WAVEPCMDescriptor — ST 2067-2 §5.3.4.1 requires WAVE PCM",
                     path.display()
@@ -96,7 +102,7 @@ pub fn check_audio_mca(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
     if let Some(rate) = extract_field(regxml, "AudioSampleRate") {
         if !is_acceptable_audio_rate(&rate) {
             issues.push(
-                ValidationIssue::from_code(St2067_2_2016::AudioSampleRateUnsupported,
+                ValidationIssue::from_rule(&st2067_2::AudioSampleRateUnsupported, spec_ed,
                     format!(
                         "MXF {} declares AudioSampleRate = {} — ST 2067-2 §5.3.2.2 requires 48000 Hz or 96000 Hz",
                         path.display(),
@@ -112,7 +118,7 @@ pub fn check_audio_mca(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
     if let Some(qb) = extract_field(regxml, "QuantizationBits") {
         if qb.trim() != "24" {
             issues.push(
-                ValidationIssue::from_code(St2067_2_2016::QuantizationBitsNot24,
+                ValidationIssue::from_rule(&st2067_2::QuantizationBitsNot24, spec_ed,
                     format!(
                         "MXF {} declares QuantizationBits = {} — ST 2067-2 §5.3.2.3 requires 24-bit audio",
                         path.display(),
@@ -163,7 +169,7 @@ pub fn check_audio_mca(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
         if let Some(cc) = channel_count {
             if (channel_labels as u32) != cc {
                 issues.push(
-                    ValidationIssue::from_code(St2067_2_2016::ChannelLabelCountMismatch,
+                    ValidationIssue::from_rule(&st2067_2::ChannelLabelCountMismatch, spec_ed,
                         format!(
                             "MXF {} declares ChannelCount = {} but carries {} AudioChannelLabelSubDescriptor(s) — \
                              ST 2067-2 §5.3.6.2 requires one label per channel",
@@ -180,7 +186,7 @@ pub fn check_audio_mca(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
         // §5.3.6.3 — Mode B: exactly one SoundfieldGroupLabelSubDescriptor.
         if soundfield_count != 1 {
             issues.push(
-                ValidationIssue::from_code(St2067_2_2016::SoundFieldGroupLabelCount,
+                ValidationIssue::from_rule(&st2067_2::SoundFieldGroupLabelCount, spec_ed,
                     format!(
                         "MXF {} carries {} SoundfieldGroupLabelSubDescriptor(s) — ST 2067-2 §5.3.6.3 requires exactly one",
                         path.display(),
@@ -205,8 +211,9 @@ pub fn check_audio_mca(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
     let expected_link_count = channel_labels + soundfield_count;
     if !is_adm_audio && mca_link_count < expected_link_count {
         issues.push(
-            ValidationIssue::from_code(
-                St377_4_2012::MCALinkIDMissing,
+            ValidationIssue::from_rule(
+                &st377_4::MCALinkIDMissing,
+                St377_4Edition::V2012,
                 format!(
                     "MXF {} carries {} MCALinkID(s) but expected {} ({} channel-label + {} \
                      soundfield-group). ST 377-4 §6.3 Table 3 requires every MCA \
@@ -230,8 +237,9 @@ pub fn check_audio_mca(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
     let sf_link_count = count_elements(regxml, "SoundfieldGroupLinkID");
     if !is_adm_audio && sf_link_count < channel_labels {
         issues.push(
-            ValidationIssue::from_code(
-                St2067_2_2016::SoundfieldGroupLinkIDMissing,
+            ValidationIssue::from_rule(
+                &st2067_2::SoundfieldGroupLinkIDMissing,
+                spec_ed,
                 format!(
                     "MXF {} carries {} SoundfieldGroupLinkID(s) across {} \
                      AudioChannelLabelSubDescriptor(s) — every channel label shall carry a \
@@ -259,8 +267,9 @@ pub fn check_audio_mca(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
             for sf_link in extract_all_fields(regxml, "SoundfieldGroupLinkID") {
                 if sf_link.trim() != sg_link.trim() {
                     issues.push(
-                        ValidationIssue::from_code(
-                            St377_4_2012::SoundfieldGroupLinkIDMismatch,
+                        ValidationIssue::from_rule(
+                            &st377_4::SoundfieldGroupLinkIDMismatch,
+                            St377_4Edition::V2012,
                             format!(
                                 "MXF {} carries an AudioChannelLabelSubDescriptor with \
                                  SoundfieldGroupLinkID '{}' that doesn't match the SoundfieldGroup \
@@ -289,7 +298,10 @@ pub fn check_audio_mca(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
     // size is not checked because ST 377-4 Table 3 and the register
     // disagree on it. Open SMPTE issue:
     // https://github.com/SMPTE/ST377-4-Revision-and-ST377-41/issues/8
-    if !is_adm_audio {
+    // ST 2067-2:2013 Table 7 has no presence requirement ("if absent, a
+    // value of 1 shall be assumed"), so the check runs only for editions
+    // whose table contains the rule.
+    if !is_adm_audio && st2067_2::MCAChannelIDMissing.in_edition(spec_ed) {
         if let Some(cc) = channel_count {
             let channel_ids: std::collections::HashSet<u32> =
                 extract_all_fields(regxml, "MCAChannelID")
@@ -299,8 +311,9 @@ pub fn check_audio_mca(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
             for expected in 2..=cc {
                 if !channel_ids.contains(&expected) {
                     issues.push(
-                        ValidationIssue::from_code(
-                            St2067_2_2016::MCAChannelIDMissing,
+                        ValidationIssue::from_rule(
+                            &st2067_2::MCAChannelIDMissing,
+                            spec_ed,
                             format!(
                                 "MXF {} declares ChannelCount = {} but no \
                                  AudioChannelLabelSubDescriptor carries MCAChannelID = {} — \
@@ -329,8 +342,9 @@ pub fn check_audio_mca(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
     match extract_field(regxml, "ChannelAssignment") {
         None if !is_adm_audio => {
             issues.push(
-                ValidationIssue::from_code(
-                    St2067_2_2016::ChannelAssignmentMissing,
+                ValidationIssue::from_rule(
+                    &st2067_2::ChannelAssignmentMissing,
+                    spec_ed,
                     format!(
                         "MXF {} sound descriptor has no ChannelAssignment — ST 2067-2 \
                          §5.3.4.2 requires the item to be present.",
@@ -348,8 +362,9 @@ pub fn check_audio_mca(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
             });
             if !table5_ok {
                 issues.push(
-                    ValidationIssue::from_code(
-                        St2067_2_2016::ChannelAssignmentNotMCA,
+                    ValidationIssue::from_rule(
+                        &st2067_2::ChannelAssignmentNotMCA,
+                        spec_ed,
                         format!(
                             "MXF {} declares ChannelAssignment = {ca} — ST 2067-2 §5.3.4.2 \
                              requires the Table 5 channel-assignment label \
@@ -374,8 +389,9 @@ pub fn check_audio_mca(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
         if let Some(bytes) = parse_ul_bytes(&cf) {
             if bytes[14] != 0x02 {
                 issues.push(
-                    ValidationIssue::from_code(
-                        St2067_2_2016::AudioNotClipWrapped,
+                    ValidationIssue::from_rule(
+                        &st2067_2::AudioNotClipWrapped,
+                        spec_ed,
                         format!(
                             "MXF {} audio ContainerFormat UL byte 15 = 0x{:02x} \
                              — ST 2067-2 §5.3.3 / ST 382 §10 require Clip-Wrapped (0x02). \
@@ -397,8 +413,9 @@ pub fn check_audio_mca(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
     // tighten via `RulesConfig` when their pipeline mandates it.
     if !regxml.contains(":RFC5646SpokenLanguage") {
         issues.push(
-            ValidationIssue::from_code(
-                St2067_2_2016::RFC5646SpokenLanguageMissing,
+            ValidationIssue::from_rule(
+                &st2067_2::RFC5646SpokenLanguageMissing,
+                spec_ed,
                 format!(
                     "MXF {} sound descriptor is missing RFC5646SpokenLanguage — ST 2067-2 \
                      §5.3 recommends declaring the spoken-language BCP-47 tag.",
@@ -419,24 +436,25 @@ pub fn check_audio_mca(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
         // diagnostic message) with the typed enum variant that carries
         // its catalogue code, severity, and category.
         for (required, code) in &[
-            ("MCATitle", St2067_2_2016::SoundfieldGroupMissingMCATitle),
+            ("MCATitle", &st2067_2::SoundfieldGroupMissingMCATitle),
             (
                 "MCATitleVersion",
-                St2067_2_2016::SoundfieldGroupMissingMCATitleVersion,
+                &st2067_2::SoundfieldGroupMissingMCATitleVersion,
             ),
             (
                 "MCAAudioContentKind",
-                St2067_2_2016::SoundfieldGroupMissingMCAAudioContentKind,
+                &st2067_2::SoundfieldGroupMissingMCAAudioContentKind,
             ),
             (
                 "MCAAudioElementKind",
-                St2067_2_2016::SoundfieldGroupMissingMCAAudioElementKind,
+                &st2067_2::SoundfieldGroupMissingMCAAudioElementKind,
             ),
         ] {
             if !regxml.contains(&format!(":{required}")) {
                 issues.push(
-                    ValidationIssue::from_code(
-                        *code,
+                    ValidationIssue::from_rule(
+                        code,
+                        spec_ed,
                         format!(
                             "MXF {} SoundfieldGroupLabelSubDescriptor is missing {} — \
                              ST 2067-2 §5.3.6.5 Table 7 requires the item on the \
@@ -663,11 +681,11 @@ mod tests {
         // `audio1_fires_errors_for_missing_table7_sfg_items` and
         // excluded here.
         let (xml, path) = audio1_regxml();
-        let issues = check_audio_mca(&xml, &path);
+        let issues = check_audio_mca(&xml, &path, St2067_2Edition::V2016);
         let errors: Vec<_> = issues
             .iter()
             .filter(|i| i.severity == Severity::Error || i.severity == Severity::Critical)
-            .filter(|i| !i.code.contains("SoundfieldGroupMissing/"))
+            .filter(|i| !i.code.contains("SoundfieldGroupMissing"))
             .collect();
         assert!(
             errors.is_empty(),
@@ -684,7 +702,7 @@ mod tests {
         // label, so they fire as Errors (AUDIT-11 corrected the former
         // Warning severity).
         let (xml, path) = audio1_regxml();
-        let issues = check_audio_mca(&xml, &path);
+        let issues = check_audio_mca(&xml, &path, St2067_2Edition::V2016);
         for field in &[
             "MCATitle",
             "MCATitleVersion",
@@ -693,15 +711,15 @@ mod tests {
         ] {
             let hit = issues
                 .iter()
-                .find(|i| i.code.contains(&format!("SoundfieldGroupMissing/{field}")));
+                .find(|i| i.code.contains(&format!("SoundfieldGroupMissing{field}")));
             match hit {
                 Some(i) => assert_eq!(
                     i.severity,
                     Severity::Error,
-                    "SoundfieldGroupMissing/{field} is a Table 7 SHALL — Error severity"
+                    "SoundfieldGroupMissing{field} is a Table 7 SHALL — Error severity"
                 ),
                 None => panic!(
-                    "expected SoundfieldGroupMissing/{field} error on audio1.mxf, got: {issues:#?}"
+                    "expected SoundfieldGroupMissing{field} error on audio1.mxf, got: {issues:#?}"
                 ),
             }
         }
@@ -733,7 +751,11 @@ mod tests {
                 <ns2:SoundfieldGroupLinkID>urn:uuid:99999999-0000-0000-0000-000000000099</ns2:SoundfieldGroupLinkID>
             </ns1:AudioChannelLabelSubDescriptor>
         </ns1:WAVEPCMDescriptor>"#;
-        let issues = check_audio_mca(xml, std::path::Path::new("/synth.mxf"));
+        let issues = check_audio_mca(
+            xml,
+            std::path::Path::new("/synth.mxf"),
+            St2067_2Edition::V2016,
+        );
         assert!(
             issues
                 .iter()
@@ -769,7 +791,11 @@ mod tests {
                 <ns2:SoundfieldGroupLinkID>urn:uuid:11111111-0000-0000-0000-000000000001</ns2:SoundfieldGroupLinkID>
             </ns1:AudioChannelLabelSubDescriptor>
         </ns1:WAVEPCMDescriptor>"#;
-        let issues = check_audio_mca(xml, std::path::Path::new("/synth.mxf"));
+        let issues = check_audio_mca(
+            xml,
+            std::path::Path::new("/synth.mxf"),
+            St2067_2Edition::V2016,
+        );
         let missing_ids: Vec<_> = issues
             .iter()
             .filter(|i| i.code.contains("MCAChannelIDMissing"))
@@ -887,7 +913,11 @@ mod tests {
             <ns1:SoundfieldGroupLabelSubDescriptor/>
             <ns1:AudioChannelLabelSubDescriptor/>
         </ns1:WAVEPCMDescriptor>"#;
-        let issues = check_audio_mca(xml, std::path::Path::new("/synth.mxf"));
+        let issues = check_audio_mca(
+            xml,
+            std::path::Path::new("/synth.mxf"),
+            St2067_2Edition::V2016,
+        );
         assert!(
             issues
                 .iter()
@@ -906,7 +936,11 @@ mod tests {
             <ns1:SoundfieldGroupLabelSubDescriptor/>
             <ns1:AudioChannelLabelSubDescriptor/>
         </ns1:WAVEPCMDescriptor>"#;
-        let issues = check_audio_mca(xml, std::path::Path::new("/synth.mxf"));
+        let issues = check_audio_mca(
+            xml,
+            std::path::Path::new("/synth.mxf"),
+            St2067_2Edition::V2016,
+        );
         assert!(
             issues
                 .iter()
@@ -926,7 +960,11 @@ mod tests {
             <ns1:SoundfieldGroupLabelSubDescriptor/>
             <ns1:AudioChannelLabelSubDescriptor/>
         </ns1:WAVEPCMDescriptor>"#;
-        let issues = check_audio_mca(xml, std::path::Path::new("/synth.mxf"));
+        let issues = check_audio_mca(
+            xml,
+            std::path::Path::new("/synth.mxf"),
+            St2067_2Edition::V2016,
+        );
         assert!(
             issues
                 .iter()
@@ -948,7 +986,11 @@ mod tests {
             <ns1:AudioChannelLabelSubDescriptor/>
             <ns1:AudioChannelLabelSubDescriptor/>
         </ns1:WAVEPCMDescriptor>"#;
-        let issues = check_audio_mca(xml, std::path::Path::new("/synth.mxf"));
+        let issues = check_audio_mca(
+            xml,
+            std::path::Path::new("/synth.mxf"),
+            St2067_2Edition::V2016,
+        );
         assert!(
             issues
                 .iter()
@@ -970,7 +1012,11 @@ mod tests {
             <ns1:AudioChannelLabelSubDescriptor/>
             <ns1:AudioChannelLabelSubDescriptor/>
         </ns1:WAVEPCMDescriptor>"#;
-        let issues = check_audio_mca(xml, std::path::Path::new("/synth.mxf"));
+        let issues = check_audio_mca(
+            xml,
+            std::path::Path::new("/synth.mxf"),
+            St2067_2Edition::V2016,
+        );
         assert!(
             issues.iter().any(|i| i.code.contains("MCALinkIDMissing")),
             "expected MCALinkIDMissing, got: {:#?}",
@@ -1017,7 +1063,11 @@ mod tests {
                 <ns2:SoundfieldGroupLinkID>urn:uuid:11111111-0000-0000-0000-000000000001</ns2:SoundfieldGroupLinkID>
             </ns1:AudioChannelLabelSubDescriptor>
         </ns1:WAVEPCMDescriptor>"#;
-        let issues = check_audio_mca(xml, std::path::Path::new("/synth.mxf"));
+        let issues = check_audio_mca(
+            xml,
+            std::path::Path::new("/synth.mxf"),
+            St2067_2Edition::V2016,
+        );
         assert!(
             issues
                 .iter()
@@ -1043,7 +1093,11 @@ mod tests {
                 <ns2:SoundfieldGroupLinkID>urn:uuid:11111111-0000-0000-0000-000000000001</ns2:SoundfieldGroupLinkID>
             </ns1:AudioChannelLabelSubDescriptor>
         </ns1:WAVEPCMDescriptor>"#;
-        let issues = check_audio_mca(xml, std::path::Path::new("/synth.mxf"));
+        let issues = check_audio_mca(
+            xml,
+            std::path::Path::new("/synth.mxf"),
+            St2067_2Edition::V2016,
+        );
         assert!(
             issues
                 .iter()
@@ -1065,7 +1119,7 @@ mod tests {
             ..Default::default()
         };
         let xml = parse_mxf_to_regxml(&path, opts).expect("video1 → RegXML");
-        let issues = check_audio_mca(&xml, &path);
+        let issues = check_audio_mca(&xml, &path, St2067_2Edition::V2016);
         assert!(
             issues.is_empty(),
             "audio MCA pipeline must be silent on video1.mxf (no audio descriptor), got: {:#?}",
@@ -1077,7 +1131,7 @@ mod tests {
     fn fires_warning_when_rfc5646_spoken_language_missing() {
         // audio1 lacks RFC5646SpokenLanguage — should fire a Warning.
         let (xml, path) = audio1_regxml();
-        let issues = check_audio_mca(&xml, &path);
+        let issues = check_audio_mca(&xml, &path, St2067_2Edition::V2016);
         assert!(
             issues
                 .iter()
@@ -1096,7 +1150,11 @@ mod tests {
                 <ns2:SampleRate>24000/1001</ns2:SampleRate>
             </ns1:CDCIDescriptor>
         </ns1:Preface>"#;
-        let issues = check_audio_mca(xml, std::path::Path::new("/synth.mxf"));
+        let issues = check_audio_mca(
+            xml,
+            std::path::Path::new("/synth.mxf"),
+            St2067_2Edition::V2016,
+        );
         assert!(
             issues.is_empty(),
             "video-only RegXML should produce no audio diagnostics, got: {:#?}",
@@ -1122,7 +1180,11 @@ mod tests {
                 </ns2:SubDescriptors>
             </ns1:MGASoundEssenceDescriptor>
         </ns1:Preface>"#;
-        let issues = check_audio_mca(xml, std::path::Path::new("/sadm.mxf"));
+        let issues = check_audio_mca(
+            xml,
+            std::path::Path::new("/sadm.mxf"),
+            St2067_2Edition::V2016,
+        );
         assert!(
             issues.is_empty(),
             "MGA/SADM RegXML should produce no audio diagnostics (WAVE PCM rules don't apply), got: {:#?}",
@@ -1146,7 +1208,11 @@ mod tests {
                 </ns2:SubDescriptors>
             </ns1:IABEssenceDescriptor>
         </ns1:Preface>"#;
-        let issues = check_audio_mca(xml, std::path::Path::new("/iab.mxf"));
+        let issues = check_audio_mca(
+            xml,
+            std::path::Path::new("/iab.mxf"),
+            St2067_2Edition::V2016,
+        );
         assert!(
             issues.is_empty(),
             "IAB RegXML should produce no §5.3 audio diagnostics (WAVE PCM rules don't apply), got: {:#?}",
@@ -1174,7 +1240,7 @@ mod tests {
             },
         )
         .expect("IAB Atmos MXF → RegXML");
-        let issues = check_audio_mca(&xml, &path);
+        let issues = check_audio_mca(&xml, &path, St2067_2Edition::V2016);
         assert!(
             !issues
                 .iter()
@@ -1218,7 +1284,11 @@ mod tests {
                 <ns2:RFC5646SpokenLanguage>en</ns2:RFC5646SpokenLanguage>
             </ns1:WAVEPCMDescriptor>
         </ns1:Preface>"#;
-        let issues = check_audio_mca(xml, std::path::Path::new("/adm-label.mxf"));
+        let issues = check_audio_mca(
+            xml,
+            std::path::Path::new("/adm-label.mxf"),
+            St2067_2Edition::V2016,
+        );
         let gated = mca_label_codes(&issues);
         assert!(
             gated.is_empty(),
@@ -1245,7 +1315,11 @@ mod tests {
                 <ns2:RFC5646SpokenLanguage>en</ns2:RFC5646SpokenLanguage>
             </ns1:WAVEPCMDescriptor>
         </ns1:Preface>"#;
-        let issues = check_audio_mca(xml, std::path::Path::new("/adm-subdesc.mxf"));
+        let issues = check_audio_mca(
+            xml,
+            std::path::Path::new("/adm-subdesc.mxf"),
+            St2067_2Edition::V2016,
+        );
         let gated = mca_label_codes(&issues);
         assert!(
             gated.is_empty(),
@@ -1269,7 +1343,11 @@ mod tests {
                 <ns2:ChannelAssignment>urn:smpte:ul:060e2b34.0401010d.04020210.04010000</ns2:ChannelAssignment>
             </ns1:WAVEPCMDescriptor>
         </ns1:Preface>"#;
-        let issues = check_audio_mca(xml, std::path::Path::new("/no-labels-ca.mxf"));
+        let issues = check_audio_mca(
+            xml,
+            std::path::Path::new("/no-labels-ca.mxf"),
+            St2067_2Edition::V2016,
+        );
         assert!(
             issues
                 .iter()
@@ -1296,7 +1374,11 @@ mod tests {
                 <ns2:ChannelCount>2</ns2:ChannelCount>
             </ns1:WAVEPCMDescriptor>
         </ns1:Preface>"#;
-        let issues = check_audio_mca(xml, std::path::Path::new("/no-labels.mxf"));
+        let issues = check_audio_mca(
+            xml,
+            std::path::Path::new("/no-labels.mxf"),
+            St2067_2Edition::V2016,
+        );
         assert!(
             issues
                 .iter()

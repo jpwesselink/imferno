@@ -7,7 +7,7 @@ use imferno_core::package::{
     ValidationOptions, ValidationResult,
 };
 use imferno_core::validation::{AppSpecTarget, CoreSpecTarget};
-use imferno_core::{Category, Severity, ValidationIssue, ValidationProfile, ValidationReport};
+use imferno_core::{ValidationIssue, ValidationProfile, ValidationReport};
 use std::io::IsTerminal;
 use std::path::PathBuf;
 
@@ -302,10 +302,9 @@ async fn cmd_validate(
             if matches!(format, OutputFormat::Json) {
                 let mut validation = ValidationReport::new(ValidationProfile::SMPTE);
                 validation.add(
-                    ValidationIssue::new(
-                        Severity::Critical,
-                        Category::Structure,
-                        "PARSE-PACKAGE-FAILED",
+                    ValidationIssue::from_rule(
+                        &imferno_core::catalogue::imferno::ParseError,
+                        imferno_core::catalogue::imferno::ImfernoEdition::Current,
                         format!("Failed to load IMF package: {}", e),
                     )
                     .with_suggestion(
@@ -570,13 +569,9 @@ async fn cmd_validate(
                 println!("  FAIL  {}/{} verified, {} failed", verified, total, failed);
             }
         }
+        let spec_ed = result.package.package_edition();
         for err in &hash_errs {
-            result.validation.add(ValidationIssue::new(
-                Severity::Error,
-                Category::Asset,
-                "FILE-HASH-ERROR",
-                err.to_string(),
-            ));
+            result.validation.add(err.to_issue(spec_ed));
         }
     }
 

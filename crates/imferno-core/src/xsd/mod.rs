@@ -42,12 +42,9 @@
 
 use std::path::Path;
 
-use crate::diagnostics::codes::ValidationCode;
-use crate::diagnostics::{Category, Location, Severity, ValidationIssue};
-
-pub mod codes;
-
-use codes::XsdConstraintCode;
+use crate::catalogue::imferno::{self, ImfernoEdition};
+use crate::catalogue::xsd::{self, XsdSchema};
+use crate::diagnostics::{Location, Rule, ValidationIssue};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Embedded XSDs — vendored under `crates/imferno-core/specs/` and baked in at
@@ -92,17 +89,16 @@ pub fn validate_parsed_cpl(cpl: &crate::cpl::CompositionPlaylist) -> Vec<Validat
     let Some(source_xml) = &cpl.source_xml else {
         return Vec::new();
     };
-    let primary_xsd = match &cpl.namespace {
-        crate::cpl::CplNamespace::Smpte2067_3_2013 => IMF_CPL_2013_XSD,
-        crate::cpl::CplNamespace::Smpte2067_3_2016 => IMF_CPL_2016_XSD,
+    let (primary_xsd, schema) = match &cpl.namespace {
+        crate::cpl::CplNamespace::Smpte2067_3_2013 => (IMF_CPL_2013_XSD, XsdSchema::Cpl2013),
+        crate::cpl::CplNamespace::Smpte2067_3_2016 => (IMF_CPL_2016_XSD, XsdSchema::Cpl2016),
         // No vendored XSD for DCI / Unknown. Don't fail — the semantic
         // prose-rule layer still runs — but say so: a silent skip reads
         // as "schema-clean" when the schema pre-pass never ran at all.
         // Emitted as Info (`XSD/NotValidated`); operators can silence it
         // with `XSD/NotValidated=off`.
         other => {
-            return vec![ValidationIssue::from_code(
-                XsdConstraintCode::NotValidated,
+            return vec![ValidationIssue::from_rule(&xsd::NotValidated, XsdSchema::Unvendored,
                 format!(
                     "XSD validation skipped for CPL {}: no vendored schema covers namespace '{}' ({})",
                     cpl.id,
@@ -113,7 +109,7 @@ pub fn validate_parsed_cpl(cpl: &crate::cpl::CompositionPlaylist) -> Vec<Validat
             .with_location(Location::new().with_cpl(cpl.id))];
         }
     };
-    validate_against_schema(source_xml, primary_xsd, Some(cpl.id))
+    validate_against_schema_as(source_xml, primary_xsd, Some(cpl.id), schema)
 }
 
 /// Run the runtime-XSD validator against an Output Profile List XML.
@@ -122,14 +118,14 @@ pub fn validate_parsed_cpl(cpl: &crate::cpl::CompositionPlaylist) -> Vec<Validat
 /// preserve `source_xml` like the CPL one does). Validates against
 /// `st2067-100a-2014.xsd`; OPL has only the 2014 edition published.
 pub fn validate_opl_xml(source_xml: &str) -> Vec<ValidationIssue> {
-    validate_against_schema(source_xml, IMF_OPL_2014_XSD, None)
+    validate_against_schema_as(source_xml, IMF_OPL_2014_XSD, None, XsdSchema::Opl2014)
 }
 
 /// Run the runtime-XSD validator against a Sidecar Composition Map XML.
 ///
 /// Validates against `st2067-9a-2018.xsd` — the only published SCM edition.
 pub fn validate_scm_xml(source_xml: &str) -> Vec<ValidationIssue> {
-    validate_against_schema(source_xml, IMF_SCM_2018_XSD, None)
+    validate_against_schema_as(source_xml, IMF_SCM_2018_XSD, None, XsdSchema::Scm2018)
 }
 
 /// Run the runtime-XSD validator against a Packing List XML.
@@ -154,9 +150,11 @@ pub fn validate_pkl_xml(
 ) -> Vec<ValidationIssue> {
     use crate::assetmap::PklNamespace;
     match namespace {
-        PklNamespace::Dci429_8 => validate_against_schema(source_xml, DCI_PKL_2007_XSD, None),
+        PklNamespace::Dci429_8 => {
+            validate_against_schema_as(source_xml, DCI_PKL_2007_XSD, None, XsdSchema::DciPkl2007)
+        }
         PklNamespace::Smpte2067_2_2016Pkl | PklNamespace::Smpte2067_2_2020 => {
-            validate_against_schema(source_xml, IMF_PKL_2016_XSD, None)
+            validate_against_schema_as(source_xml, IMF_PKL_2016_XSD, None, XsdSchema::Pkl2016)
         }
         // ST 2067-2:2013 and the bare 2016/2020 namespaces don't have a
         // PKL-companion XSD in the wild. Skip — semantic checks still
@@ -174,10 +172,11 @@ pub fn validate_against_composite_schema_str(
     specs_dir: &Path,
     cpl_id: Option<crate::assetmap::ImfUuid>,
 ) -> Vec<ValidationIssue> {
+    let schema = XsdSchema::Custom;
     let injected = inject_dcml_schema_location(&inline_dcml_types(primary_xsd));
     let schema_doc = match uppsala::parse(&injected) {
         Ok(d) => d,
-        Err(e) => return vec![parse_failure_issue("xsd-schema", e, cpl_id)],
+        Err(e) => return vec![parse_failure_issue("xsd-schema", e, cpl_id, schema)],
     };
     // uppsala's `from_schema_with_base_path` interprets `base_path` as a
     // *file* path and takes its parent to resolve `schemaLocation` URIs.
@@ -188,16 +187,16 @@ pub fn validate_against_composite_schema_str(
     let validator =
         match uppsala::XsdValidator::from_schema_with_base_path(&schema_doc, Some(&virtual_base)) {
             Ok(v) => v,
-            Err(e) => return vec![schema_build_failure_issue(e, cpl_id)],
+            Err(e) => return vec![schema_build_failure_issue(e, cpl_id, schema)],
         };
     let instance_doc = match uppsala::parse(instance_xml) {
         Ok(d) => d,
-        Err(e) => return vec![parse_failure_issue("xml-instance", e, cpl_id)],
+        Err(e) => return vec![parse_failure_issue("xml-instance", e, cpl_id, schema)],
     };
     validator
         .validate(&instance_doc)
         .into_iter()
-        .map(|err| translate(err, cpl_id))
+        .map(|err| translate(err, cpl_id, schema))
         .collect()
 }
 
@@ -220,30 +219,41 @@ pub fn validate_against_schema(
     schema_xml: &str,
     cpl_id: Option<crate::assetmap::ImfUuid>,
 ) -> Vec<ValidationIssue> {
+    validate_against_schema_as(instance_xml, schema_xml, cpl_id, XsdSchema::Custom)
+}
+
+/// [`validate_against_schema`] reporting findings against `schema`, the
+/// vendored schema `schema_xml` is.
+fn validate_against_schema_as(
+    instance_xml: &str,
+    schema_xml: &str,
+    cpl_id: Option<crate::assetmap::ImfUuid>,
+    schema: XsdSchema,
+) -> Vec<ValidationIssue> {
     let schema_xml = inline_dcml_types(schema_xml);
     let schema_doc = match uppsala::parse(&schema_xml) {
         Ok(d) => d,
         Err(e) => {
-            return vec![parse_failure_issue("xsd-schema", e, cpl_id)];
+            return vec![parse_failure_issue("xsd-schema", e, cpl_id, schema)];
         }
     };
     let validator = match uppsala::XsdValidator::from_schema(&schema_doc) {
         Ok(v) => v,
         Err(e) => {
-            return vec![schema_build_failure_issue(e, cpl_id)];
+            return vec![schema_build_failure_issue(e, cpl_id, schema)];
         }
     };
     let instance_doc = match uppsala::parse(instance_xml) {
         Ok(d) => d,
         Err(e) => {
-            return vec![parse_failure_issue("xml-instance", e, cpl_id)];
+            return vec![parse_failure_issue("xml-instance", e, cpl_id, schema)];
         }
     };
 
     validator
         .validate(&instance_doc)
         .into_iter()
-        .map(|err| translate(err, cpl_id))
+        .map(|err| translate(err, cpl_id, schema))
         .collect()
 }
 
@@ -274,16 +284,17 @@ pub fn validate_against_composite_schema(
     specs_dir: &Path,
     cpl_id: Option<crate::assetmap::ImfUuid>,
 ) -> Vec<ValidationIssue> {
+    let schema = XsdSchema::Custom;
     let primary_xsd = match std::fs::read_to_string(primary_xsd_path) {
         Ok(s) => s,
         Err(e) => {
-            return vec![parse_failure_issue("primary-xsd", e, cpl_id)];
+            return vec![parse_failure_issue("primary-xsd", e, cpl_id, schema)];
         }
     };
     let injected = inject_dcml_schema_location(&inline_dcml_types(&primary_xsd));
     let schema_doc = match uppsala::parse(&injected) {
         Ok(d) => d,
-        Err(e) => return vec![parse_failure_issue("xsd-schema", e, cpl_id)],
+        Err(e) => return vec![parse_failure_issue("xsd-schema", e, cpl_id, schema)],
     };
     // See `validate_against_composite_schema_str` for why the base path
     // is a file inside `specs_dir` rather than the directory itself.
@@ -291,16 +302,16 @@ pub fn validate_against_composite_schema(
     let validator =
         match uppsala::XsdValidator::from_schema_with_base_path(&schema_doc, Some(&virtual_base)) {
             Ok(v) => v,
-            Err(e) => return vec![schema_build_failure_issue(e, cpl_id)],
+            Err(e) => return vec![schema_build_failure_issue(e, cpl_id, schema)],
         };
     let instance_doc = match uppsala::parse(instance_xml) {
         Ok(d) => d,
-        Err(e) => return vec![parse_failure_issue("xml-instance", e, cpl_id)],
+        Err(e) => return vec![parse_failure_issue("xml-instance", e, cpl_id, schema)],
     };
     validator
         .validate(&instance_doc)
         .into_iter()
-        .map(|err| translate(err, cpl_id))
+        .map(|err| translate(err, cpl_id, schema))
         .collect()
 }
 
@@ -331,10 +342,9 @@ pub fn validate_cpl_xml(
             issues.extend(crate::validation::validate_cpl(&cpl));
         }
         Err(e) => {
-            issues.push(ValidationIssue::new(
-                Severity::Critical,
-                Category::Structure,
-                "IMFERNO:Package/ParseError",
+            issues.push(ValidationIssue::from_rule(
+                &imferno::ParseError,
+                ImfernoEdition::Current,
                 format!("CPL XML failed to parse: {e:?}"),
             ));
         }
@@ -480,21 +490,20 @@ fn inject_dcml_schema_location(xsd_src: &str) -> String {
 pub fn translate(
     err: uppsala::ValidationError,
     cpl_id: Option<crate::assetmap::ImfUuid>,
+    schema: XsdSchema,
 ) -> ValidationIssue {
     let kind = classify(&err.message);
     let mut loc = Location::new();
     if let Some(id) = cpl_id {
         loc = loc.with_cpl(id);
     }
-    // Per-element code discrimination (e.g. `XSD/ElementMissing/EditRate`
-    // vs the generic `XSD/ElementMissing`) reads `err.element_path`, which
-    // only exists on the patched uppsala fork at jpwesselink/uppsala —
-    // upstream uppsala on crates.io lacks the field. We feature-gate
-    // the access so the lib compiles against vanilla uppsala for crates.io
-    // publishing while the workspace (which patches in the fork) gets the
-    // richer codes. See the `uppsala-patched` feature in Cargo.toml; once
-    // the patches land upstream this gate can be removed.
-    let code: String = element_path_code(kind, &err);
+    // The element path (e.g. `CompositionPlaylist/EditRate`) goes into
+    // the location; the rule stays one of the catalogue's XSD rules. It is
+    // only available with the patched uppsala fork (feature
+    // `uppsala-patched`); upstream uppsala lacks the field.
+    if let Some(path) = element_path(&err) {
+        loc = loc.with_path(path);
+    }
     // Until `Location` grows line/column fields, we fold the position
     // into the human-readable message body so the information isn't lost.
     let message = match (err.line, err.column) {
@@ -502,37 +511,34 @@ pub fn translate(
         (Some(line), None) => format!("{} (at line {line})", err.message),
         _ => err.message,
     };
-    ValidationIssue::new(kind.default_severity(), kind.category(), code, message).with_location(loc)
+    ValidationIssue::from_rule(kind, schema, message).with_location(loc)
 }
 
 #[cfg(feature = "uppsala-patched")]
-fn element_path_code(kind: XsdConstraintCode, err: &uppsala::ValidationError) -> String {
-    match &err.element_path {
-        Some(path) if !path.is_empty() => format!("{}/{}", kind.code(), path),
-        _ => kind.code().to_string(),
-    }
+fn element_path(err: &uppsala::ValidationError) -> Option<String> {
+    err.element_path.clone().filter(|p| !p.is_empty())
 }
 
 #[cfg(not(feature = "uppsala-patched"))]
-fn element_path_code(kind: XsdConstraintCode, _err: &uppsala::ValidationError) -> String {
-    kind.code().to_string()
+fn element_path(_err: &uppsala::ValidationError) -> Option<String> {
+    None
 }
 
-fn classify(message: &str) -> XsdConstraintCode {
+fn classify(message: &str) -> &'static Rule<XsdSchema> {
     // Patterns are observed from uppsala v0.4.0 — see the spike's
     // boundary probe + synthetic-broken-CPL output for the message
     // shapes these match. New uppsala versions may add new shapes;
     // anything unrecognized falls through to SchemaConstraintFailed.
     if message.contains("Expected at least") && message.contains("occurrence") {
-        XsdConstraintCode::ElementMissing
+        &xsd::ElementMissing
     } else if message.contains("Unexpected element") {
-        XsdConstraintCode::UnexpectedElement
+        &xsd::UnexpectedElement
     } else if message.contains("not match pattern") || message.contains("does not match") {
-        XsdConstraintCode::PatternInvalid
+        &xsd::PatternInvalid
     } else if message.contains("is not a valid") {
-        XsdConstraintCode::TypeInvalid
+        &xsd::TypeInvalid
     } else {
-        XsdConstraintCode::SchemaConstraintFailed
+        &xsd::SchemaConstraintFailed
     }
 }
 
@@ -540,15 +546,15 @@ fn parse_failure_issue(
     role: &'static str,
     err: impl std::fmt::Debug,
     cpl_id: Option<crate::assetmap::ImfUuid>,
+    schema: XsdSchema,
 ) -> ValidationIssue {
     let mut loc = Location::new();
     if let Some(id) = cpl_id {
         loc = loc.with_cpl(id);
     }
-    ValidationIssue::new(
-        Severity::Critical,
-        Category::Schema,
-        XsdConstraintCode::SchemaConstraintFailed.code(),
+    ValidationIssue::from_rule(
+        &xsd::ValidationAborted,
+        schema,
         format!("XSD validation aborted: failed to parse {role}: {err:?}"),
     )
     .with_location(loc)
@@ -557,15 +563,15 @@ fn parse_failure_issue(
 fn schema_build_failure_issue(
     err: impl std::fmt::Debug,
     cpl_id: Option<crate::assetmap::ImfUuid>,
+    schema: XsdSchema,
 ) -> ValidationIssue {
     let mut loc = Location::new();
     if let Some(id) = cpl_id {
         loc = loc.with_cpl(id);
     }
-    ValidationIssue::new(
-        Severity::Critical,
-        Category::Schema,
-        XsdConstraintCode::SchemaConstraintFailed.code(),
+    ValidationIssue::from_rule(
+        &xsd::ValidationAborted,
+        schema,
         format!(
             "XSD validation aborted: schema parsed but XsdValidator construction failed: {err:?}"
         ),
@@ -576,6 +582,7 @@ fn schema_build_failure_issue(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::Severity;
 
     const MINI_XSD: &str = r#"<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
       <xs:element name="thing">
@@ -684,38 +691,38 @@ mod tests {
     #[test]
     fn classifier_pins_element_missing_shape() {
         let m = "Expected at least 1 occurrence of element 'EditRate'";
-        assert_eq!(classify(m), XsdConstraintCode::ElementMissing);
+        assert_eq!(classify(m), &xsd::ElementMissing);
     }
 
     #[test]
     fn classifier_pins_unexpected_element_shape() {
         let m = "Unexpected element 'BogusTag' encountered";
-        assert_eq!(classify(m), XsdConstraintCode::UnexpectedElement);
+        assert_eq!(classify(m), &xsd::UnexpectedElement);
     }
 
     #[test]
     fn classifier_pins_pattern_invalid_shape_v1() {
         let m = "Value 'abc' does not match pattern '[0-9]+'";
-        assert_eq!(classify(m), XsdConstraintCode::PatternInvalid);
+        assert_eq!(classify(m), &xsd::PatternInvalid);
     }
 
     #[test]
     fn classifier_pins_pattern_invalid_shape_v2() {
         // Some uppsala paths emit the truncated phrasing without "pattern".
         let m = "Value does not match the expected facet";
-        assert_eq!(classify(m), XsdConstraintCode::PatternInvalid);
+        assert_eq!(classify(m), &xsd::PatternInvalid);
     }
 
     #[test]
     fn classifier_pins_type_invalid_shape() {
         let m = "Value 'not-a-number' is not a valid xs:positiveInteger";
-        assert_eq!(classify(m), XsdConstraintCode::TypeInvalid);
+        assert_eq!(classify(m), &xsd::TypeInvalid);
     }
 
     #[test]
     fn classifier_falls_back_to_schema_constraint_failed() {
         let m = "Some new message shape we don't know yet";
-        assert_eq!(classify(m), XsdConstraintCode::SchemaConstraintFailed);
+        assert_eq!(classify(m), &xsd::SchemaConstraintFailed);
     }
 
     // ── FIX-9: non-CPL XSD pre-pass entry points ────────────────────────────
@@ -741,7 +748,7 @@ mod tests {
         // important property here is the pre-pass is invokable end-to-end.
         for i in &issues {
             assert!(
-                i.code.starts_with("XSD/"),
+                i.spec == crate::diagnostics::Spec::Xsd,
                 "expected XSD/* codes only, got {i:#?}"
             );
         }
@@ -760,7 +767,9 @@ mod tests {
 </OutputProfileList>"#;
         let issues = validate_opl_xml(xml);
         assert!(
-            issues.iter().any(|i| i.code.contains("XSD/")),
+            issues
+                .iter()
+                .any(|i| i.spec == crate::diagnostics::Spec::Xsd),
             "expected at least one XSD diagnostic for missing Issuer: {issues:#?}"
         );
     }
@@ -785,7 +794,7 @@ mod tests {
         let issues = validate_scm_xml(xml);
         for i in &issues {
             assert!(
-                i.code.starts_with("XSD/"),
+                i.spec == crate::diagnostics::Spec::Xsd,
                 "expected XSD/* codes only, got {i:#?}"
             );
         }
@@ -819,7 +828,7 @@ mod tests {
         let issues = validate_pkl_xml(xml, &PklNamespace::Smpte2067_2_2016Pkl);
         for i in &issues {
             assert!(
-                i.code.starts_with("XSD/"),
+                i.spec == crate::diagnostics::Spec::Xsd,
                 "expected XSD/* codes only, got {i:#?}"
             );
         }
@@ -849,7 +858,7 @@ mod tests {
         let issues = validate_pkl_xml(xml, &PklNamespace::Smpte2067_2_2020);
         for i in &issues {
             assert!(
-                i.code.starts_with("XSD/"),
+                i.spec == crate::diagnostics::Spec::Xsd,
                 "expected XSD/* codes only, got {i:#?}"
             );
         }
@@ -876,7 +885,7 @@ mod tests {
         let issues = validate_pkl_xml(xml, &PklNamespace::Dci429_8);
         for i in &issues {
             assert!(
-                i.code.starts_with("XSD/"),
+                i.spec == crate::diagnostics::Spec::Xsd,
                 "expected XSD/* codes only, got {i:#?}"
             );
         }
@@ -934,7 +943,7 @@ mod tests {
             1,
             "expected exactly the skip notice: {issues:#?}"
         );
-        assert_eq!(issues[0].code, "XSD/NotValidated");
+        assert_eq!(issues[0].code, "XSD:unvendored/NotValidated");
         assert_eq!(issues[0].severity, Severity::Info);
         assert!(
             issues[0].message.contains("429-7/2006"),
@@ -969,7 +978,7 @@ mod tests {
             1,
             "expected exactly the skip notice: {issues:#?}"
         );
-        assert_eq!(issues[0].code, "XSD/NotValidated");
+        assert_eq!(issues[0].code, "XSD:unvendored/NotValidated");
         assert_eq!(issues[0].severity, Severity::Info);
     }
 
@@ -991,7 +1000,9 @@ mod tests {
         let cpl = crate::cpl::parse_cpl(xml).expect("2013 CPL should parse");
         let issues = validate_parsed_cpl(&cpl);
         assert!(
-            !issues.iter().any(|i| i.code == "XSD/NotValidated"),
+            !issues
+                .iter()
+                .any(|i| i.code == "XSD:unvendored/NotValidated"),
             "known namespace must not emit the skip notice: {issues:#?}"
         );
     }

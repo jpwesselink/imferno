@@ -9,12 +9,18 @@
 //! - [`format_report`] — render an [`ImfReport`] as a human-readable string.
 
 use crate::assetmap::ImfUuid;
+use crate::catalogue::imferno::{self, ImfernoEdition};
+use crate::catalogue::st2067_2::{self, St2067_2Edition};
+use crate::catalogue::st2067_3;
+use crate::catalogue::st2067_9::{self, St2067_9Edition};
+use crate::catalogue::st377_1::{self, St377_1Edition};
+use crate::catalogue::st429_9::{self, St429_9Edition};
 use crate::cpl::EditRate;
+use crate::diagnostics::Rule;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
 
-pub mod codes;
 pub mod report;
 
 #[allow(deprecated)]
@@ -81,10 +87,9 @@ pub fn validate(
         }
         Err(e) => {
             let mut validation = ValidationReport::new(ValidationProfile::SMPTE);
-            validation.add(ValidationIssue::new(
-                Severity::Critical,
-                Category::Structure,
-                codes::ImfernoCode::ParseError,
+            validation.add(ValidationIssue::from_rule(
+                &imferno::ParseError,
+                ImfernoEdition::Current,
                 format!("Failed to parse IMF package: {e}"),
             ));
             // Return a minimal Imferno with what we could parse
@@ -279,16 +284,29 @@ impl std::fmt::Display for FileValidationError {
     }
 }
 
-impl From<&FileValidationError> for ValidationIssue {
-    fn from(err: &FileValidationError) -> Self {
-        match err {
+/// Report an ST 2067-2 package-level rule for a package whose Packing List
+/// edition is `spec_ed`. When that edition does not contain the rule (e.g.
+/// ST 2067-2:2013 defines no Asset Map or ingest provisions), the rule is
+/// reported against the newest edition that does: that is the text whose
+/// requirement was applied.
+fn pkg_issue(
+    rule: &'static Rule<St2067_2Edition>,
+    spec_ed: St2067_2Edition,
+    message: impl Into<String>,
+) -> ValidationIssue {
+    ValidationIssue::from_rule(rule, rule.applicable_edition(spec_ed), message)
+}
+
+impl FileValidationError {
+    /// The finding for this error, for a package of ST 2067-2 edition `spec_ed`.
+    pub fn to_issue(&self, spec_ed: St2067_2Edition) -> ValidationIssue {
+        match self {
             FileValidationError::NotInAssetMap {
                 uuid,
                 original_file_name,
-            } => ValidationIssue::new(
-                Severity::Error,
-                Category::Reference,
-                codes::St2067_2_2020::UnresolvedUuid,
+            } => pkg_issue(
+                &st2067_2::UnresolvedUuid,
+                spec_ed,
                 format!(
                     "PKL asset {} ({}) not found in AssetMap",
                     uuid,
@@ -296,10 +314,9 @@ impl From<&FileValidationError> for ValidationIssue {
                 ),
             )
             .with_context("asset_uuid", uuid.clone()),
-            FileValidationError::Missing { uuid, path } => ValidationIssue::new(
-                Severity::Error,
-                Category::Asset,
-                codes::St2067_2_2020::FileNotFound,
+            FileValidationError::Missing { uuid, path } => pkg_issue(
+                &st2067_2::FileNotFound,
+                spec_ed,
                 format!("Missing file for asset {}: {}", uuid, path.display()),
             )
             .with_location(Location::new().with_file(path.clone()))
@@ -309,10 +326,9 @@ impl From<&FileValidationError> for ValidationIssue {
                 path,
                 expected,
                 actual,
-            } => ValidationIssue::new(
-                Severity::Error,
-                Category::Asset,
-                codes::St2067_2_2020::SizeMismatch,
+            } => pkg_issue(
+                &st2067_2::SizeMismatch,
+                spec_ed,
                 format!(
                     "Size mismatch for asset {} ({}): PKL declares {} bytes, file is {} bytes",
                     uuid,
@@ -330,10 +346,9 @@ impl From<&FileValidationError> for ValidationIssue {
                 path,
                 expected,
                 actual,
-            } => ValidationIssue::new(
-                Severity::Critical,
-                Category::Asset,
-                codes::St2067_2_2020::ChecksumMismatch,
+            } => pkg_issue(
+                &st2067_2::ChecksumMismatch,
+                spec_ed,
                 format!(
                     "Hash mismatch for asset {} ({}): expected {}, computed {}",
                     uuid,
@@ -349,10 +364,9 @@ impl From<&FileValidationError> for ValidationIssue {
                 uuid,
                 path,
                 message,
-            } => ValidationIssue::new(
-                Severity::Error,
-                Category::Asset,
-                codes::St2067_2_2020::IoError,
+            } => ValidationIssue::from_rule(
+                &imferno::IoError,
+                ImfernoEdition::Current,
                 format!(
                     "IO error reading asset {} ({}): {}",
                     uuid,
@@ -362,18 +376,16 @@ impl From<&FileValidationError> for ValidationIssue {
             )
             .with_location(Location::new().with_file(path.clone()))
             .with_context("asset_uuid", uuid.clone()),
-            FileValidationError::DuplicatePklAssetId { uuid, pkl_id } => ValidationIssue::new(
-                Severity::Error,
-                Category::Reference,
-                codes::St2067_2_2020::DuplicateUuid,
+            FileValidationError::DuplicatePklAssetId { uuid, pkl_id } => pkg_issue(
+                &st2067_2::DuplicateUuid,
+                spec_ed,
                 format!("Duplicate asset UUID {} in PKL {}", uuid, pkl_id),
             )
             .with_context("asset_uuid", uuid.clone())
             .with_context("pkl_id", pkl_id.clone()),
-            FileValidationError::UnknownPklNamespace { pkl_id, namespace } => ValidationIssue::new(
-                Severity::Error,
-                Category::Structure,
-                codes::St2067_2_2020::PklUnknownNamespace,
+            FileValidationError::UnknownPklNamespace { pkl_id, namespace } => pkg_issue(
+                &st2067_2::PklUnknownNamespace,
+                spec_ed,
                 format!(
                     "PKL {} carries unrecognised namespace '{}' — not in the published \
                      SMPTE PKL namespace set",
@@ -382,17 +394,15 @@ impl From<&FileValidationError> for ValidationIssue {
             )
             .with_context("pkl_id", pkl_id.clone())
             .with_context("namespace", namespace.clone()),
-            FileValidationError::AssetMapHasNoPackingList => ValidationIssue::new(
-                Severity::Critical,
-                Category::Structure,
-                codes::St2067_2_2020::AssetMapHasNoPackingList,
+            FileValidationError::AssetMapHasNoPackingList => ValidationIssue::from_rule(
+                &st429_9::AssetMapHasNoPackingList,
+                St429_9Edition::V2014,
                 "AssetMap declares no PKL (no asset has <PackingList>true</PackingList>)"
                     .to_string(),
             ),
-            FileValidationError::PklIdNotInAssetMap { pkl_id } => ValidationIssue::new(
-                Severity::Error,
-                Category::Reference,
-                codes::St2067_2_2020::PklIdNotInAssetMap,
+            FileValidationError::PklIdNotInAssetMap { pkl_id } => ValidationIssue::from_rule(
+                &st429_9::PklIdNotInAssetMap,
+                St429_9Edition::V2014,
                 format!(
                     "PKL document {} is not declared as a PackingList asset in the AssetMap",
                     pkl_id
@@ -685,10 +695,9 @@ impl Imferno {
             Ok(pkg) => pkg,
             Err(e) => {
                 let mut report = ValidationReport::new(ValidationProfile::SMPTE);
-                report.add(ValidationIssue::new(
-                    Severity::Critical,
-                    Category::Structure,
-                    codes::ImfernoCode::ParseError,
+                report.add(ValidationIssue::from_rule(
+                    &imferno::ParseError,
+                    ImfernoEdition::Current,
                     format!("Failed to parse IMF package: {e}"),
                 ));
                 return report.apply_rules(&options.rules);
@@ -846,20 +855,18 @@ impl Imferno {
             Some(xml) => match crate::assetmap::parse_volindex(xml) {
                 Ok(vi) => vi,
                 Err(e) => {
-                    volindex_issues.push(ValidationIssue::new(
-                        Severity::Error,
-                        Category::Structure,
-                        codes::St429_9_2014::MalformedXml,
+                    volindex_issues.push(ValidationIssue::from_rule(
+                        &st429_9::MalformedXml,
+                        St429_9Edition::V2014,
                         format!("VOLINDEX.xml is not well-formed XML: {e}"),
                     ));
                     VolumeIndex { index: 1 }
                 }
             },
             None => {
-                volindex_issues.push(ValidationIssue::new(
-                    Severity::Info,
-                    Category::Structure,
-                    codes::St429_9_2014::VolindexMissing,
+                volindex_issues.push(ValidationIssue::from_rule(
+                    &st429_9::VolindexMissing,
+                    St429_9Edition::V2014,
                     "VOLINDEX.xml is absent; single-volume package assumed",
                 ));
                 VolumeIndex { index: 1 }
@@ -887,8 +894,9 @@ impl Imferno {
                     .ok_or_else(|| ImfError::MissingFile("ASSETMAP.xml".to_string()))?;
                 let name = basename_of(key);
                 parse_issues.push(
-                    ValidationIssue::from_code(
-                        codes::St429_9_2014::AssetMapFileName,
+                    ValidationIssue::from_rule(
+                        &st429_9::AssetMapFileName,
+                        St429_9Edition::V2014,
                         format!(
                             "Asset Map file is named '{name}'; ST 429-9 A.4 requires \
                              'ASSETMAP.xml' (a case-sensitive reader finds no Asset Map)"
@@ -918,10 +926,9 @@ impl Imferno {
                         asset_paths.insert(asset.id, p);
                     }
                     None => {
-                        parse_issues.push(ValidationIssue::new(
-                            Severity::Error,
-                            Category::Structure,
-                            codes::ImfernoCode::PathTraversal,
+                        parse_issues.push(ValidationIssue::from_rule(
+                            &imferno::PathTraversal,
+                            ImfernoEdition::Current,
                             format!(
                                 "Asset '{}' chunk path '{}' escapes the package root directory",
                                 asset.id, chunk.path,
@@ -947,10 +954,9 @@ impl Imferno {
                                 packing_lists.insert(asset.id, pkl);
                             }
                             Err(e) => {
-                                parse_issues.push(ValidationIssue::new(
-                                    Severity::Error,
-                                    Category::Structure,
-                                    codes::ImfernoCode::PklParseError,
+                                parse_issues.push(ValidationIssue::from_rule(
+                                    &imferno::PklParseError,
+                                    ImfernoEdition::Current,
                                     format!("PKL '{}' parse error: {}", basename, e),
                                 ));
                             }
@@ -1010,10 +1016,7 @@ impl Imferno {
                             } else if let Ok(scm) = crate::scm::parse_scm(xml) {
                                 sidecar_composition_maps.insert(asset.id, scm);
                             } else {
-                                parse_issues.push(ValidationIssue::new(
-                                    Severity::Warning,
-                                    Category::Structure,
-                                    codes::ImfernoCode::XmlAssetParseError,
+                                parse_issues.push(ValidationIssue::from_rule(&imferno::XmlAssetParseError, ImfernoEdition::Current,
                                     format!(
                                         "XML asset '{}' ({}) could not be parsed as CPL, OPL, or SCM: {}",
                                         basename, asset.id, cpl_err,
@@ -1136,10 +1139,29 @@ impl Imferno {
             .collect()
     }
 
-    /// Emit `ImfernoCode::UnreferencedAsset` info findings into `report` for each
+    /// The ST 2067-2 edition applied to package-level rules: the edition of
+    /// the Packing Lists' namespace. Where that is not one ST 2067-2 edition
+    /// (an ST 429-8 DCI PKL, an unknown namespace, no PKL, or PKLs of
+    /// different editions), the newest edition is used.
+    pub fn package_edition(&self) -> St2067_2Edition {
+        use crate::assetmap::PklNamespace;
+        let mut editions = self.packing_lists.values().map(|pkl| match pkl.namespace {
+            PklNamespace::Smpte2067_2_2013 => Some(St2067_2Edition::V2013),
+            PklNamespace::Smpte2067_2_2016 | PklNamespace::Smpte2067_2_2016Pkl => {
+                Some(St2067_2Edition::V2016)
+            }
+            PklNamespace::Smpte2067_2_2020 => Some(St2067_2Edition::V2020),
+            PklNamespace::Dci429_8 | PklNamespace::Unknown(_) => None,
+        });
+        match editions.next().flatten() {
+            Some(first) if editions.all(|e| e == Some(first)) => first,
+            _ => St2067_2Edition::V2020,
+        }
+    }
+
+    /// Emit `IMFERNO/UnreferencedAsset` info findings into `report` for each
     /// asset that has no CPL Virtual Track reference and no SCM declaration.
     fn emit_unreferenced_asset_info(&self, report: &mut ValidationReport) {
-        use crate::diagnostics::codes::ValidationCode as _;
         for asset in self.unreferenced_assets() {
             let path = asset
                 .chunk_list
@@ -1147,10 +1169,9 @@ impl Imferno {
                 .first()
                 .map(|c| c.path.as_str())
                 .unwrap_or("(unknown)");
-            report.add(ValidationIssue::new(
-                Severity::Info,
-                Category::Structure,
-                codes::ImfernoCode::UnreferencedAsset.code(),
+            report.add(ValidationIssue::from_rule(
+                &imferno::UnreferencedAsset,
+                ImfernoEdition::Current,
                 format!(
                     "Asset '{}' ({}) is present in the AssetMap but not referenced by any CPL \
                      Virtual Track and has no SCM declaration",
@@ -1160,7 +1181,7 @@ impl Imferno {
         }
     }
 
-    /// Emit `ImfernoCode::UnlistedEssence` for any file in the package
+    /// Emit `IMFERNO/UnlistedEssence` for any file in the package
     /// directory that is not accounted for by the AssetMap, PKL, VOLINDEX,
     /// or ASSETMAP itself. Severity comes from the catalogue (Info: ST
     /// 2067-2:2020 §8.3 Note 3 lets the medium hold files that are not
@@ -1200,10 +1221,9 @@ impl Imferno {
         let entries = match std::fs::read_dir(&self.root_path) {
             Ok(e) => e,
             Err(e) => {
-                report.add(ValidationIssue::new(
-                    Severity::Info,
-                    Category::Structure,
-                    codes::ImfernoCode::ReadDirError,
+                report.add(ValidationIssue::from_rule(
+                    &imferno::ReadDirError,
+                    ImfernoEdition::Current,
                     format!("Could not scan package directory for unlisted files: {}", e,),
                 ));
                 return;
@@ -1214,10 +1234,9 @@ impl Imferno {
             let entry = match entry {
                 Ok(e) => e,
                 Err(e) => {
-                    report.add(ValidationIssue::new(
-                        Severity::Info,
-                        Category::Structure,
-                        codes::ImfernoCode::DirEntryError,
+                    report.add(ValidationIssue::from_rule(
+                        &imferno::DirEntryError,
+                        ImfernoEdition::Current,
                         format!("Could not read directory entry: {}", e),
                     ));
                     continue;
@@ -1236,8 +1255,9 @@ impl Imferno {
             if known.iter().any(|k| k.eq_ignore_ascii_case(&filename)) {
                 continue;
             }
-            report.add(ValidationIssue::from_code(
-                codes::ImfernoCode::UnlistedEssence,
+            report.add(ValidationIssue::from_rule(
+                &imferno::UnlistedEssence,
+                ImfernoEdition::Current,
                 format!(
                     "File '{}' is present in the package directory but not listed in the AssetMap",
                     filename,
@@ -1722,6 +1742,7 @@ impl Imferno {
     where
         F: Fn(&CompositionPlaylist) -> Vec<ValidationIssue>,
     {
+        let spec_ed = self.package_edition();
         let mut report = ValidationReport::new(ValidationProfile::SMPTE);
 
         // VOLINDEX diagnostics (ST 429-9) — emitted first
@@ -1753,7 +1774,7 @@ impl Imferno {
         for issue in self
             .validate_pkl_constraints()
             .iter()
-            .map(ValidationIssue::from)
+            .map(|e| e.to_issue(spec_ed))
         {
             report.add(issue);
         }
@@ -1770,7 +1791,7 @@ impl Imferno {
             for issue in self
                 .validate_file_manifest()
                 .iter()
-                .map(ValidationIssue::from)
+                .map(|e| e.to_issue(spec_ed))
             {
                 report.add(issue);
             }
@@ -1783,7 +1804,7 @@ impl Imferno {
             for issue in self
                 .pkl_assets_not_in_assetmap()
                 .iter()
-                .map(ValidationIssue::from)
+                .map(|e| e.to_issue(spec_ed))
             {
                 report.add(issue);
             }
@@ -1847,6 +1868,7 @@ impl Imferno {
     where
         F: Fn(&CompositionPlaylist) -> Vec<ValidationIssue>,
     {
+        let spec_ed = self.package_edition();
         let mut report = ValidationReport::new(ValidationProfile::SMPTE);
 
         // VOLINDEX diagnostics (ST 429-9) — emitted first
@@ -1863,7 +1885,7 @@ impl Imferno {
         for issue in self
             .validate_pkl_constraints()
             .iter()
-            .map(ValidationIssue::from)
+            .map(|e| e.to_issue(spec_ed))
         {
             report.add(issue);
         }
@@ -1872,7 +1894,7 @@ impl Imferno {
         for issue in self
             .validate_file_hashes()
             .iter()
-            .map(ValidationIssue::from)
+            .map(|e| e.to_issue(spec_ed))
         {
             report.add(issue);
         }
@@ -1941,10 +1963,9 @@ impl Imferno {
             // §7.2.4: Signer present → Signature must be present.
             if scm.has_signer && !scm.has_signature {
                 report.add(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Reference,
-                        codes::St2067_9_2018::SignerWithoutSignature,
+                    ValidationIssue::from_rule(
+                        &st2067_9::SignerWithoutSignature,
+                        St2067_9Edition::V2018,
                         format!(
                             "SCM {}: Signer element present but Signature element is absent",
                             scm.id
@@ -1957,10 +1978,9 @@ impl Imferno {
             // §7.2.5: Signature present → Signer must be present.
             if scm.has_signature && !scm.has_signer {
                 report.add(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Reference,
-                        codes::St2067_9_2018::SignatureWithoutSigner,
+                    ValidationIssue::from_rule(
+                        &st2067_9::SignatureWithoutSigner,
+                        St2067_9Edition::V2018,
                         format!(
                             "SCM {}: Signature element present but Signer element is absent",
                             scm.id
@@ -1975,10 +1995,9 @@ impl Imferno {
                 // §7.2.3: Duplicate SidecarAsset Id within SidecarAssetList.
                 if !seen_asset_ids.insert(sidecar_asset.id) {
                     report.add(
-                        ValidationIssue::new(
-                            Severity::Error,
-                            Category::Reference,
-                            codes::St2067_9_2018::DuplicateAssetId,
+                        ValidationIssue::from_rule(
+                            &st2067_9::DuplicateAssetId,
+                            St2067_9Edition::V2018,
                             format!(
                                 "Duplicate SidecarAsset Id {} in SCM {}",
                                 sidecar_asset.id, scm.id
@@ -1992,10 +2011,9 @@ impl Imferno {
                 // §7.3.1: SidecarAsset Id must exist in the AssetMap.
                 if !asset_ids.contains(&sidecar_asset.id) {
                     report.add(
-                        ValidationIssue::new(
-                            Severity::Error,
-                            Category::Reference,
-                            codes::St2067_9_2018::SidecarAssetNotFound,
+                        ValidationIssue::from_rule(
+                            &st2067_9::SidecarAssetNotFound,
+                            St2067_9Edition::V2018,
                             format!(
                                 "SCM {} references sidecar asset {} not found in AssetMap",
                                 scm.id, sidecar_asset.id
@@ -2009,10 +2027,9 @@ impl Imferno {
                 // §5: Sidecar asset shall not be referenced by any Virtual Track.
                 if virtual_track_file_ids.contains(&sidecar_asset.id) {
                     report.add(
-                        ValidationIssue::new(
-                            Severity::Error,
-                            Category::Reference,
-                            codes::St2067_9_2018::SidecarAssetReferencedByVirtualTrack,
+                        ValidationIssue::from_rule(
+                            &st2067_9::SidecarAssetReferencedByVirtualTrack,
+                            St2067_9Edition::V2018,
                             format!(
                             "Sidecar asset {} (SCM {}) is referenced by a Virtual Track in a CPL",
                             sidecar_asset.id, scm.id
@@ -2028,10 +2045,7 @@ impl Imferno {
                 for cpl_id in &sidecar_asset.cpl_ids {
                     // No duplicate CPLIds within one AssociatedCPLList.
                     if !seen_cpl_ids.insert(*cpl_id) {
-                        report.add(ValidationIssue::new(
-                            Severity::Error,
-                            Category::Reference,
-                            codes::St2067_9_2018::DuplicateCplId,
+                        report.add(ValidationIssue::from_rule(&st2067_9::DuplicateCplId, St2067_9Edition::V2018,
                             format!(
                                 "Duplicate CPLId {} in AssociatedCPLList of sidecar asset {} (SCM {})",
                                 cpl_id, sidecar_asset.id, scm.id
@@ -2045,10 +2059,7 @@ impl Imferno {
                     // §8 (Note): the referenced composition need not be in
                     // the same IMP, so this is a warning.
                     if !self.composition_playlists.contains_key(cpl_id) {
-                        report.add(ValidationIssue::new(
-                            Severity::Warning,
-                            Category::Reference,
-                            codes::St2067_9_2018::CplNotFound,
+                        report.add(ValidationIssue::from_rule(&st2067_9::CplNotFound, St2067_9Edition::V2018,
                             format!(
                                 "SCM {} sidecar asset {} references CPL {} which is not known in this package",
                                 scm.id, sidecar_asset.id, cpl_id
@@ -2068,6 +2079,7 @@ impl Imferno {
     /// the hash and size must be identical. Conflicting metadata indicates
     /// a corrupt or inconsistent package delivery.
     fn validate_multi_pkl_consistency(&self, report: &mut ValidationReport) {
+        let spec_ed = self.package_edition();
         if self.packing_lists.len() < 2 {
             return; // Nothing to cross-validate
         }
@@ -2092,10 +2104,9 @@ impl Imferno {
             for (pkl_id, hash, size) in &records[1..] {
                 if hash != first_hash {
                     report.add(
-                        ValidationIssue::new(
-                            Severity::Error,
-                            Category::Asset,
-                            codes::St2067_2_2020::ChecksumMismatch,
+                        pkg_issue(
+                            &st2067_2::ChecksumMismatch,
+                            spec_ed,
                             format!(
                                 "Asset {} has different hashes in PKL {} ({}) vs PKL {} ({})",
                                 asset_id,
@@ -2110,10 +2121,7 @@ impl Imferno {
                 }
                 if *size != first_size {
                     report.add(
-                        ValidationIssue::new(
-                            Severity::Error,
-                            Category::Asset,
-                            codes::St2067_2_2020::SizeMismatch,
+                        pkg_issue(&st2067_2::SizeMismatch, spec_ed,
                             format!(
                                 "Asset {} has different sizes in PKL {} ({} bytes) vs PKL {} ({} bytes)",
                                 asset_id,
@@ -2137,6 +2145,7 @@ impl Imferno {
     /// 2. Check that the Operational Pattern is OP1a (required for IMF per ST 2067-2)
     /// 3. Report parse failures as warnings (file may be unavailable or corrupt)
     fn validate_mxf_headers(&self, report: &mut ValidationReport) {
+        let spec_ed = self.package_edition();
         // OP1a UL prefix: 060e2b34.04010102.0d010201.0101__00
         // Bytes 13-14 identify the OP variant: 01 01 = OP1a, 01 02 = OP1b, etc.
         // Byte 15 encodes the qualifier (xxxx xxxx pattern). We ignore byte 8 (version).
@@ -2163,7 +2172,7 @@ impl Imferno {
                 // doesn't link smpte-mxf, and browser callers don't
                 // see MXF binaries anyway (they upload XML only).
                 #[cfg(not(target_arch = "wasm32"))]
-                for issue in crate::mxf::essence::validate_mxf_essence(path) {
+                for issue in crate::mxf::essence::validate_mxf_essence(path, spec_ed) {
                     let issue = issue.with_context("asset_uuid", asset.id.to_string());
                     report.add(issue);
                 }
@@ -2187,11 +2196,15 @@ impl Imferno {
                         regxml::RootMode::Preface,
                     ) {
                         Ok(regxml) => {
-                            for issue in crate::mxf::audio_mca::check_audio_mca(&regxml, path) {
+                            for issue in
+                                crate::mxf::audio_mca::check_audio_mca(&regxml, path, spec_ed)
+                            {
                                 let issue = issue.with_context("asset_uuid", asset.id.to_string());
                                 report.add(issue);
                             }
-                            for issue in crate::mxf::timed_text::check_timed_text(&regxml, path) {
+                            for issue in
+                                crate::mxf::timed_text::check_timed_text(&regxml, path, spec_ed)
+                            {
                                 let issue = issue.with_context("asset_uuid", asset.id.to_string());
                                 report.add(issue);
                             }
@@ -2206,8 +2219,13 @@ impl Imferno {
                             // ST 2067-201 §5.10.2 / Annex C.2 IAB labeling
                             // rules (AUDIT-18) — no-op unless the file
                             // carries an IABEssenceDescriptor.
-                            for issue in crate::mxf::iab_labeling::check_iab_labeling(&regxml, path)
-                            {
+                            for issue in crate::mxf::iab_labeling::check_iab_labeling(
+                                &regxml,
+                                path,
+                                // The IAB edition applied when a CPL does
+                                // not select one (see validation::push_sequence_presence_plugins).
+                                crate::catalogue::st2067_201::St2067_201Edition::V2021,
+                            ) {
                                 let issue = issue.with_context("asset_uuid", asset.id.to_string());
                                 report.add(issue);
                             }
@@ -2232,10 +2250,9 @@ impl Imferno {
                             if bytes[12] != OP1A_BYTES_13_14[0] || bytes[13] != OP1A_BYTES_13_14[1]
                             {
                                 report.add(
-                                    ValidationIssue::new(
-                                        Severity::Error,
-                                        Category::Encoding,
-                                        codes::St377_1_2011::Op1a,
+                                    ValidationIssue::from_rule(
+                                        &st377_1::Op1a,
+                                        St377_1Edition::V2011,
                                         format!(
                                             "MXF track file '{}' has Operational Pattern '{}' \
                                              but IMF requires OP1a (ST 2067-2 §5.1)",
@@ -2254,10 +2271,7 @@ impl Imferno {
                         // ST 377-1: MXF track files should have at least one essence container
                         if info.essence_containers.is_empty() {
                             report.add(
-                                ValidationIssue::new(
-                                    Severity::Warning,
-                                    Category::Encoding,
-                                    codes::St377_1_2011::NoEssenceContainers,
+                                ValidationIssue::from_rule(&st377_1::NoEssenceContainers, St377_1Edition::V2011,
                                     format!(
                                         "MXF track file '{}' has no essence containers in its header partition",
                                         path.file_name().map(|n| n.to_string_lossy()).unwrap_or_default(),
@@ -2270,10 +2284,9 @@ impl Imferno {
                     }
                     Err(crate::mxf::MxfParseError::NotMxf) => {
                         report.add(
-                            ValidationIssue::new(
-                                Severity::Warning,
-                                Category::Asset,
-                                codes::St377_1_2011::NotMxf,
+                            ValidationIssue::from_rule(
+                                &st377_1::NotMxf,
+                                St377_1Edition::V2011,
                                 format!(
                                     "File '{}' has MXF MIME type but is not a valid MXF file",
                                     path.file_name()
@@ -2287,10 +2300,9 @@ impl Imferno {
                     }
                     Err(e) => {
                         report.add(
-                            ValidationIssue::new(
-                                Severity::Warning,
-                                Category::Asset,
-                                codes::St377_1_2011::ParseError,
+                            ValidationIssue::from_rule(
+                                &st377_1::ParseError,
+                                St377_1Edition::V2011,
                                 format!(
                                     "Could not parse MXF header of '{}': {}",
                                     path.file_name()
@@ -2362,10 +2374,9 @@ impl Imferno {
                 for (track_id, dur) in &durations[1..] {
                     if (*dur - first_dur).abs() > TOLERANCE {
                         report.add(
-                            ValidationIssue::new(
-                                Severity::Error,
-                                Category::Timing,
-                                codes::St2067_3_2016::SegmentDuration,
+                            ValidationIssue::from_rule(
+                                &st2067_3::SegmentDuration,
+                                crate::cpl::validate::st2067_3_edition(&cpl.namespace),
                                 format!(
                                     "Segment {} has mismatched virtual track durations: \
                                      track {} = {:.6}s but track {} = {:.6}s",
@@ -2391,15 +2402,11 @@ impl Imferno {
         cpl: &crate::cpl::CompositionPlaylist,
         report: &mut ValidationReport,
     ) {
+        let spec_ed = self.package_edition();
         if self.asset_map.asset_list.assets.is_empty() {
             report.add(
-                ValidationIssue::new(
-                    Severity::Critical,
-                    Category::Structure,
-                    codes::St2067_2_2020::AssetMap,
-                    "AssetMap contains no assets",
-                )
-                .with_location(Location::new().with_cpl(cpl.id)),
+                pkg_issue(&st2067_2::AssetMap, spec_ed, "AssetMap contains no assets")
+                    .with_location(Location::new().with_cpl(cpl.id)),
             );
             return;
         }
@@ -2434,8 +2441,9 @@ impl Imferno {
                             // supplemental package referring to the OV).
                             // https://github.com/Netflix/photon/issues/337
                             report.add(
-                                ValidationIssue::from_code(
-                                    codes::St2067_2_2020::TrackFileNotInPackage,
+                                pkg_issue(
+                                    &st2067_2::TrackFileNotInPackage,
+                                    spec_ed,
                                     format!(
                                         "{} TrackFileId {} is not in this package \
                                          (supplemental package?); it was not validated",
@@ -2909,7 +2917,6 @@ fn hash_single_file(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use codes::{St2067_2_2020, St377_1_2011, ValidationCode};
 
     fn test_data(name: &str) -> PathBuf {
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -3039,14 +3046,13 @@ mod tests {
         let package =
             Imferno::parse(read_dir(test_path).unwrap()).expect("Failed to parse package");
 
-        const INJECTED_CODE: &str = "ST2067-2:2020:6.12/InjectedRuleForTest";
+        const INJECTED_CODE: &str = "ST2067-3:2016:5.5.1.2/ContentKindUnknown";
 
         let report = package.validate_package_structure_with_cpl_validator(
             |cpl| {
-                vec![ValidationIssue::new(
-                    Severity::Warning,
-                    Category::Metadata,
-                    INJECTED_CODE,
+                vec![ValidationIssue::from_rule(
+                    &st2067_3::ContentKindUnknown,
+                    crate::catalogue::st2067_3::St2067_3Edition::V2016,
                     format!("Injected validator issue for CPL {}", cpl.id),
                 )]
             },
@@ -3406,9 +3412,13 @@ mod tests {
     /// informational, never critical.
     #[test]
     fn no_cpls_is_info_not_critical() {
-        use crate::assetmap::codes::St2067_2_2020;
-        use crate::diagnostics::codes::ValidationCode;
-        assert_eq!(St2067_2_2020::NoCpls.default_severity(), Severity::Info);
+        assert_eq!(
+            st2067_2::NoCpls
+                .entry(St2067_2Edition::V2020)
+                .unwrap()
+                .default_severity,
+            Severity::Info
+        );
     }
 
     #[test]
@@ -3854,7 +3864,7 @@ mod tests {
         let info: Vec<_> = report
             .info
             .iter()
-            .filter(|i| i.code == codes::St2067_2_2020::TrackFileNotInPackage.code())
+            .filter(|i| i.is(&st2067_2::TrackFileNotInPackage))
             .collect();
         assert_eq!(info.len(), 1, "{:#?}", report.info);
         assert!(info[0].message.contains("not in this package"));
@@ -3894,7 +3904,9 @@ mod tests {
 
         // Without disk checks the PKL→AssetMap gap is still an ERROR.
         let full = package.validate_package_structure_with_cpl_validator(|_| Vec::new(), true);
-        let unresolved = codes::St2067_2_2020::UnresolvedUuid.code();
+        let unresolved = st2067_2::UnresolvedUuid
+            .code(St2067_2Edition::V2020)
+            .unwrap();
         assert!(
             full.errors
                 .iter()
@@ -3909,7 +3921,7 @@ mod tests {
             !report
                 .info
                 .iter()
-                .any(|i| i.code == codes::St2067_2_2020::TrackFileNotInPackage.code()),
+                .any(|i| i.is(&st2067_2::TrackFileNotInPackage)),
             "{:#?}",
             report.info
         );
@@ -3992,14 +4004,15 @@ mod tests {
             uuid: "test-uuid".to_string(),
             original_file_name: Some("test.mxf".to_string()),
         };
-        let issue = ValidationIssue::from(&err);
+        let issue = err.to_issue(St2067_2Edition::V2020);
         assert_eq!(issue.severity, Severity::Error);
         assert_eq!(issue.category, Category::Reference);
-        assert_eq!(issue.code, codes::St2067_2_2020::UnresolvedUuid.code());
+        assert!(issue.is(&st2067_2::UnresolvedUuid));
         assert!(issue.message.contains("test-uuid"));
     }
 
-    /// FileValidationError::HashMismatch converts to Critical severity.
+    /// FileValidationError::HashMismatch reports ChecksumMismatch at its
+    /// table severity (Error; it was Critical at this site before C0).
     #[test]
     fn test_file_validation_error_to_issue_hash_mismatch() {
         let err = FileValidationError::HashMismatch {
@@ -4008,9 +4021,9 @@ mod tests {
             expected: "abc123".to_string(),
             actual: "def456".to_string(),
         };
-        let issue = ValidationIssue::from(&err);
-        assert_eq!(issue.severity, Severity::Critical);
-        assert_eq!(issue.code, codes::St2067_2_2020::ChecksumMismatch.code());
+        let issue = err.to_issue(St2067_2Edition::V2020);
+        assert_eq!(issue.severity, Severity::Error);
+        assert!(issue.is(&st2067_2::ChecksumMismatch));
         assert!(issue.suggestion.is_some());
     }
 
@@ -4021,10 +4034,10 @@ mod tests {
             uuid: "missing-uuid".to_string(),
             path: PathBuf::from("/tmp/missing.mxf"),
         };
-        let issue = ValidationIssue::from(&err);
+        let issue = err.to_issue(St2067_2Edition::V2020);
         assert_eq!(issue.severity, Severity::Error);
         assert_eq!(issue.category, Category::Asset);
-        assert_eq!(issue.code, codes::St2067_2_2020::FileNotFound.code());
+        assert!(issue.is(&st2067_2::FileNotFound));
     }
 
     /// validate_package_structure detects PKL→AssetMap orphans.
@@ -4084,7 +4097,7 @@ mod tests {
         let all_issues: Vec<_> = report
             .errors
             .iter()
-            .filter(|i| i.code == codes::St2067_2_2020::UnresolvedUuid.code())
+            .filter(|i| i.is(&st2067_2::UnresolvedUuid))
             .collect();
         assert!(
             !all_issues.is_empty(),
@@ -4152,7 +4165,7 @@ mod tests {
         let missing_issues: Vec<_> = report
             .errors
             .iter()
-            .filter(|i| i.code == codes::St2067_2_2020::FileNotFound.code())
+            .filter(|i| i.is(&st2067_2::FileNotFound))
             .collect();
         assert!(
             !missing_issues.is_empty(),
@@ -4265,7 +4278,7 @@ mod tests {
             .chain(report.errors.iter())
             .chain(report.warnings.iter())
             .chain(report.info.iter())
-            .filter(|i| i.code == St377_1_2011::Op1a.code())
+            .filter(|i| i.is(&st377_1::Op1a))
             .collect();
         assert!(
             op_issues.is_empty(),
@@ -4332,7 +4345,7 @@ mod tests {
             .chain(report.errors.iter())
             .chain(report.warnings.iter())
             .chain(report.info.iter())
-            .filter(|i| i.code == St377_1_2011::Op1a.code())
+            .filter(|i| i.is(&st377_1::Op1a))
             .collect();
         assert_eq!(
             op_issues.len(),
@@ -4396,7 +4409,7 @@ mod tests {
             .chain(report.errors.iter())
             .chain(report.warnings.iter())
             .chain(report.info.iter())
-            .filter(|i| i.code == St377_1_2011::NotMxf.code())
+            .filter(|i| i.is(&st377_1::NotMxf))
             .collect();
         assert!(
             !notmxf_issues.is_empty(),
@@ -4418,10 +4431,10 @@ mod tests {
             expected: 1000,
             actual: 2000,
         };
-        let issue = ValidationIssue::from(&err);
+        let issue = err.to_issue(St2067_2Edition::V2020);
         assert_eq!(issue.severity, Severity::Error);
         assert_eq!(issue.category, Category::Asset);
-        assert_eq!(issue.code, St2067_2_2020::SizeMismatch.code());
+        assert!(issue.is(&st2067_2::SizeMismatch));
         assert!(issue.message.contains("1000"));
         assert!(issue.message.contains("2000"));
     }
@@ -4434,10 +4447,10 @@ mod tests {
             path: PathBuf::from("/tmp/broken.mxf"),
             message: "permission denied".to_string(),
         };
-        let issue = ValidationIssue::from(&err);
+        let issue = err.to_issue(St2067_2Edition::V2020);
         assert_eq!(issue.severity, Severity::Error);
         assert_eq!(issue.category, Category::Asset);
-        assert_eq!(issue.code, "IMF:General/IoError");
+        assert_eq!(issue.code, "IMFERNO:General/IoError");
         assert!(issue.message.contains("permission denied"));
     }
 
@@ -4448,10 +4461,10 @@ mod tests {
             uuid: "dup-uuid".to_string(),
             pkl_id: "pkl-001".to_string(),
         };
-        let issue = ValidationIssue::from(&err);
+        let issue = err.to_issue(St2067_2Edition::V2020);
         assert_eq!(issue.severity, Severity::Error);
         assert_eq!(issue.category, Category::Reference);
-        assert_eq!(issue.code, codes::St2067_2_2020::DuplicateUuid.code());
+        assert!(issue.is(&st2067_2::DuplicateUuid));
         assert!(issue.message.contains("dup-uuid"));
         assert!(issue.message.contains("pkl-001"));
     }
@@ -4479,8 +4492,7 @@ mod tests {
             !report
                 .errors
                 .iter()
-                .any(|i| i.code.contains("ChecksumMismatch")
-                    || i.code == St2067_2_2020::SizeMismatch.code()),
+                .any(|i| i.code.contains("ChecksumMismatch") || i.is(&st2067_2::SizeMismatch)),
             "Single-PKL package should have no multi-PKL consistency issues: {:#?}",
             report.errors,
         );
@@ -4742,7 +4754,7 @@ mod tests {
             package
                 .parse_issues
                 .iter()
-                .any(|i| i.code == codes::ImfernoCode::PklParseError.code()),
+                .any(|i| i.is(&imferno::PklParseError)),
             "expected PklParseError issue, got: {:?}",
             package.parse_issues,
         );
@@ -4767,7 +4779,7 @@ mod tests {
             package
                 .parse_issues
                 .iter()
-                .any(|i| i.code == codes::ImfernoCode::XmlAssetParseError.code()),
+                .any(|i| i.is(&imferno::XmlAssetParseError)),
             "expected XmlAssetParseError issue, got: {:?}",
             package.parse_issues,
         );
@@ -4785,7 +4797,7 @@ mod tests {
             !package
                 .parse_issues
                 .iter()
-                .any(|i| i.code == codes::ImfernoCode::PathTraversal.code()),
+                .any(|i| i.is(&imferno::PathTraversal)),
             "valid package should have no path traversal issues",
         );
     }
@@ -4879,8 +4891,9 @@ mod tests {
     /// https://github.com/jpwesselink/imferno/issues/80
     #[test]
     fn assetmap_file_name_must_be_exact() {
-        use crate::assetmap::volindex_codes::St429_9_2014;
-        let code = St429_9_2014::AssetMapFileName.code();
+        let code = st429_9::AssetMapFileName
+            .code(St429_9Edition::V2014)
+            .unwrap();
 
         let clean = copy_xml_package("MERIDIAN_Netflix_Photon_161006");
         let package = Imferno::parse(read_dir(clean.path()).unwrap()).unwrap();
@@ -4914,7 +4927,9 @@ mod tests {
     /// https://github.com/jpwesselink/imferno/issues/84
     #[test]
     fn unlisted_file_reported_as_info_with_skip_disk_checks() {
-        let code = codes::ImfernoCode::UnlistedEssence.code();
+        let code = imferno::UnlistedEssence
+            .code(ImfernoEdition::Current)
+            .unwrap();
         let dir = copy_xml_package("MERIDIAN_Netflix_Photon_161006");
         std::fs::write(dir.path().join("CPL_copy.xml"), "<x/>").unwrap();
         let package = Imferno::parse(read_dir(dir.path()).unwrap()).unwrap();

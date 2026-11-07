@@ -382,7 +382,32 @@ impl<E: Edition> Rule<E> {
     pub fn in_edition(&self, edition: E) -> bool {
         self.entry(edition).is_some_and(|e| e.clause.is_some())
     }
+
+    /// `preferred` when it contains the rule, otherwise the newest edition
+    /// that does. For checks whose governing document's edition lacks the
+    /// requirement while imferno still applies it (as stated in a later
+    /// edition), so the finding names the text actually applied.
+    pub fn applicable_edition(&self, preferred: E) -> E {
+        if self.in_edition(preferred) {
+            return preferred;
+        }
+        self.editions
+            .iter()
+            .rev()
+            .find(|e| e.clause.is_some())
+            .map(|e| e.edition)
+            .unwrap_or(preferred)
+    }
 }
+
+/// Rules are equal when they are the same rule (same spec and name).
+impl<E: Edition> PartialEq for Rule<E> {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name
+    }
+}
+
+impl<E: Edition> Eq for Rule<E> {}
 
 /// `SPEC:EDITION:CLAUSE/Name`, dropping empty parts.
 pub fn display_code(spec: Spec, edition: &str, clause: &str, name: &str) -> String {

@@ -7,10 +7,8 @@
 //! - Document parsers: [`parse_assetmap`], [`parse_pkl`], [`parse_opl`]
 //! - Re-exports from [`volindex`]: [`VolumeIndex`], [`parse_volindex`]
 
-pub mod codes;
 pub mod map_profile;
 pub mod volindex;
-pub mod volindex_codes;
 
 // Re-export VOLINDEX types
 pub use volindex::{parse_volindex, VolindexError, VolumeIndex};

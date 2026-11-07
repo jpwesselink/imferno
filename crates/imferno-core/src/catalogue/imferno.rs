@@ -186,7 +186,7 @@ pub static RuleNotInEdition: Rule<E> = Rule {
     name: "RuleNotInEdition",
     category: Category::Structure,
     description: "Internal: a check reported a rule against an edition whose table row says the edition does not contain it. The finding was dropped; please report this as an imferno bug.",
-    example: None,
+    example: Some("IMFERNO:Engine/RuleNotInEdition — ST2067-21/HtIrvParameterBMax was reported for ST2067-21 2014, which does not contain it"),
     editions: &[
         row(E::Current, "Engine", Severity::Warning),
     ],

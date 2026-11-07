@@ -16,8 +16,6 @@ pub use types::{
 pub mod validate;
 pub use validate::validate_cpl as validate_cpl_constraints;
 
-pub mod codes;
-
 use crate::assetmap::{HashAlgorithm, ImfUuid};
 use base64::Engine;
 use quick_xml::events::Event;

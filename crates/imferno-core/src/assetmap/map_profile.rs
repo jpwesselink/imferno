@@ -17,7 +17,8 @@
 
 use std::collections::HashMap;
 
-use crate::assetmap::volindex_codes::St429_9_2014;
+use crate::catalogue::st429_9::{self, St429_9Edition};
+use crate::diagnostics::Rule;
 use crate::diagnostics::ValidationIssue;
 
 const MAX_PATH_CHARS: usize = 100;
@@ -36,9 +37,13 @@ pub fn basic_map_profile_v2_issues<'a>(
     let mut seen: HashMap<String, &str> = HashMap::new();
 
     for path in paths {
-        let issue = |code: St429_9_2014, detail: String| {
-            ValidationIssue::from_code(code, format!("Asset Map Path '{path}' {detail}"))
-                .with_context("path", path.to_string())
+        let issue = |rule: &'static Rule<St429_9Edition>, detail: String| {
+            ValidationIssue::from_rule(
+                rule,
+                St429_9Edition::V2014,
+                format!("Asset Map Path '{path}' {detail}"),
+            )
+            .with_context("path", path.to_string())
         };
 
         // RFC 3986 relative-path reference: no scheme, does not start
@@ -50,7 +55,7 @@ pub fn basic_map_profile_v2_issues<'a>(
             || path.contains('#')
         {
             issues.push(issue(
-                St429_9_2014::PathNotRelative,
+                &st429_9::PathNotRelative,
                 "is not a relative-path reference without query or fragment (ST 429-9 A.2)".into(),
             ));
         }
@@ -71,7 +76,7 @@ pub fn basic_map_profile_v2_issues<'a>(
         if !bad.is_empty() {
             let listed: Vec<String> = bad.iter().map(|c| format!("{c:?}")).collect();
             issues.push(issue(
-                St429_9_2014::PathCharacters,
+                &st429_9::PathCharacters,
                 format!(
                     "has characters outside a-z, A-Z, 0-9, '-', '_', '.': {} (ST 429-9 A.2)",
                     listed.join(", ")
@@ -82,7 +87,7 @@ pub fn basic_map_profile_v2_issues<'a>(
         let path_len = path.chars().count();
         if path_len > MAX_PATH_CHARS {
             issues.push(issue(
-                St429_9_2014::PathTooLong,
+                &st429_9::PathTooLong,
                 format!("is {path_len} characters; the limit is {MAX_PATH_CHARS} (ST 429-9 A.2)"),
             ));
         } else if let Some(long) = segments
@@ -90,7 +95,7 @@ pub fn basic_map_profile_v2_issues<'a>(
             .find(|s| s.chars().count() > MAX_SEGMENT_CHARS)
         {
             issues.push(issue(
-                St429_9_2014::PathTooLong,
+                &st429_9::PathTooLong,
                 format!(
                     "has segment '{long}' longer than {MAX_SEGMENT_CHARS} characters (ST 429-9 A.2)"
                 ),
@@ -99,7 +104,7 @@ pub fn basic_map_profile_v2_issues<'a>(
 
         if segments.len() > MAX_SEGMENTS {
             issues.push(issue(
-                St429_9_2014::PathTooManySegments,
+                &st429_9::PathTooManySegments,
                 format!(
                     "has {} segments; the limit is {MAX_SEGMENTS} (ST 429-9 A.2)",
                     segments.len()
@@ -109,7 +114,7 @@ pub fn basic_map_profile_v2_issues<'a>(
 
         match seen.get(&path.to_lowercase()) {
             Some(other) => issues.push(issue(
-                St429_9_2014::PathDuplicate,
+                &st429_9::PathDuplicate,
                 format!("is identical to '{other}' regardless of case (ST 429-9 A.2)"),
             )),
             None => {

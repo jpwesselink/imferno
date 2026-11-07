@@ -11,12 +11,10 @@
 
 use std::collections::HashSet;
 
+use crate::catalogue::st2067_201::{self, St2067_201Edition};
 use crate::cpl::{CompositionPlaylist, McaTagSymbol};
-use crate::diagnostics::{Category, Location, Severity, ValidationIssue};
+use crate::diagnostics::{Location, ValidationIssue};
 use crate::validation::ConstraintsValidator;
-
-use crate::diagnostics::codes::ValidationCode;
-use crate::validation::iab_codes::{self as iab_codes, IabCode};
 
 // ── Public API ───────────────────────────────────────────────────────────────
 
@@ -32,10 +30,7 @@ impl ConstraintsValidator for AppIabPlugin2019 {
     }
 
     fn validate_cpl(&self, cpl: &CompositionPlaylist) -> Vec<ValidationIssue> {
-        let mut issues = Vec::new();
-        validate_iab_descriptors(cpl, iab_codes::St2067_201_2019::for_code, true, &mut issues);
-        validate_iab_sequences(cpl, iab_codes::St2067_201_2019::for_code, &mut issues);
-        issues
+        validate_iab(cpl, St2067_201Edition::V2019)
     }
 }
 
@@ -60,15 +55,7 @@ impl ConstraintsValidator for AppIabPlugin2021 {
     }
 
     fn validate_cpl(&self, cpl: &CompositionPlaylist) -> Vec<ValidationIssue> {
-        let mut issues = Vec::new();
-        validate_iab_descriptors(
-            cpl,
-            iab_codes::St2067_201_2021::for_code,
-            false,
-            &mut issues,
-        );
-        validate_iab_sequences(cpl, iab_codes::St2067_201_2021::for_code, &mut issues);
-        issues
+        validate_iab(cpl, St2067_201Edition::V2021)
     }
 }
 
@@ -95,10 +82,20 @@ impl ConstraintsValidator for AppIabPlugin2026 {
     }
 
     fn validate_cpl(&self, cpl: &CompositionPlaylist) -> Vec<ValidationIssue> {
-        let mut issues = AppIabPlugin2021.validate_cpl(cpl);
+        let mut issues = validate_iab(cpl, St2067_201Edition::V2026);
         validate_iab_channel_sub_descriptor_recommendation(cpl, &mut issues);
         issues
     }
+}
+
+/// The checks every edition shares, reported against `spec_ed`.
+/// ChannelCount is checked only where the edition contains the rule (2019).
+fn validate_iab(cpl: &CompositionPlaylist, spec_ed: St2067_201Edition) -> Vec<ValidationIssue> {
+    let mut issues = Vec::new();
+    let check_channel_count = st2067_201::ChannelCountNotZero.in_edition(spec_ed);
+    validate_iab_descriptors(cpl, spec_ed, check_channel_count, &mut issues);
+    validate_iab_sequences(cpl, spec_ed, &mut issues);
+    issues
 }
 
 /// ST 2067-201:2026 Annex E §E.2 — Warning-level recommendation.
@@ -114,9 +111,6 @@ fn validate_iab_channel_sub_descriptor_recommendation(
     cpl: &CompositionPlaylist,
     issues: &mut Vec<ValidationIssue>,
 ) {
-    use crate::diagnostics::codes::ValidationCode;
-    use crate::validation::iab_codes::St2067_201_2026Delta;
-
     let edl = match &cpl.essence_descriptor_list {
         Some(edl) => edl,
         None => return,
@@ -134,15 +128,13 @@ fn validate_iab_channel_sub_descriptor_recommendation(
             .map(|sd| sd.iab_channel_sub_descriptors.len())
             .unwrap_or(0);
         if n == 0 {
-            let code = St2067_201_2026Delta::IabChannelSubDescriptorRecommended;
             let ed_loc = Location::new()
                 .with_cpl(cpl.id)
                 .with_path(format!("EssenceDescriptor/{}", ed.id));
             issues.push(
-                ValidationIssue::new(
-                    code.default_severity(),
-                    code.category(),
-                    code.code(),
+                ValidationIssue::from_rule(
+                    &st2067_201::IabChannelSubDescriptorRecommended,
+                    St2067_201Edition::V2026,
                     format!(
                         "IABEssenceDescriptor {}: no <IABChannelSubDescriptor> entries — \
                          ST 2067-201:2026 Annex E §E.2 recommends one per channel of each BedDefinition.",
@@ -205,12 +197,12 @@ fn ul_matches(provided: &str, canonical: &str) -> bool {
 
 /// ST 2067-201 §5.9: Validate IABEssenceDescriptor constraints.
 ///
-/// `code`: edition dispatch function (e.g. `St2067_201_2019::for_code`).
+/// `spec_ed`: the ST 2067-201 edition applied.
 /// `check_channel_count`: true for 2019 (ChannelCount shall be 0);
 ///                        false for 2021 (ChannelCount is ignored).
 fn validate_iab_descriptors(
     cpl: &CompositionPlaylist,
-    code: fn(IabCode) -> &'static str,
+    spec_ed: St2067_201Edition,
     check_channel_count: bool,
     issues: &mut Vec<ValidationIssue>,
 ) {
@@ -236,10 +228,9 @@ fn validate_iab_descriptors(
         // §5.9: Codec item shall NOT be present.
         if iab.codec.is_some() {
             issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Audio,
-                    code(IabCode::CodecForbidden),
+                ValidationIssue::from_rule(
+                    &st2067_201::CodecForbidden,
+                    spec_ed,
                     format!(
                         "IABEssenceDescriptor {}: Codec item shall not be present \
                          (ST 2067-201 §5.9)",
@@ -257,10 +248,9 @@ fn validate_iab_descriptors(
         if let Some(esf) = iab.electrospatial_formulation {
             if esf != 15 {
                 issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Audio,
-                        code(IabCode::ElectrospatialFormulationInvalid),
+                    ValidationIssue::from_rule(
+                        &st2067_201::ElectrospatialFormulationInvalid,
+                        spec_ed,
                         format!(
                             "IABEssenceDescriptor {}: ElectrospatialFormulation {} shall be 15 \
                              — multi-channel mode default (ST 2067-201 §5.9)",
@@ -276,10 +266,9 @@ fn validate_iab_descriptors(
         match iab.quantization_bits {
             None => {
                 issues.push(
-                    ValidationIssue::new(
-                        Severity::Warning,
-                        Category::Audio,
-                        code(IabCode::QuantizationBitsMissing),
+                    ValidationIssue::from_rule(
+                        &st2067_201::QuantizationBitsMissing,
+                        spec_ed,
                         format!(
                             "IABEssenceDescriptor {}: QuantizationBits is missing; \
                              ST 2067-201 §5.9 requires 24",
@@ -291,10 +280,9 @@ fn validate_iab_descriptors(
             }
             Some(qb) if qb != 24 => {
                 issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Audio,
-                        code(IabCode::QuantizationBitsInvalid),
+                    ValidationIssue::from_rule(
+                        &st2067_201::QuantizationBitsInvalid,
+                        spec_ed,
                         format!(
                             "IABEssenceDescriptor {}: QuantizationBits {} shall be 24 \
                              (ST 2067-201 §5.9)",
@@ -311,10 +299,9 @@ fn validate_iab_descriptors(
         match &iab.container_format {
             None => {
                 issues.push(
-                    ValidationIssue::new(
-                        Severity::Warning,
-                        Category::Audio,
-                        code(IabCode::ContainerFormatMissing),
+                    ValidationIssue::from_rule(
+                        &st2067_201::ContainerFormatMissing,
+                        spec_ed,
                         format!(
                             "IABEssenceDescriptor {}: ContainerFormat is missing; \
                              should be {IAB_CONTAINER_FORMAT}",
@@ -326,10 +313,9 @@ fn validate_iab_descriptors(
             }
             Some(cf) if !ul_matches(cf, IAB_CONTAINER_FORMAT) => {
                 issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Audio,
-                        code(IabCode::EssenceContainerInvalid),
+                    ValidationIssue::from_rule(
+                        &st2067_201::EssenceContainerInvalid,
+                        spec_ed,
                         format!(
                             "IABEssenceDescriptor {}: ContainerFormat `{cf}` is not the \
                              required IAB container UL {IAB_CONTAINER_FORMAT} \
@@ -353,10 +339,9 @@ fn validate_iab_descriptors(
         match &iab.audio_sample_rate {
             None => {
                 issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Audio,
-                        code(IabCode::AudioSamplingRateMissing),
+                    ValidationIssue::from_rule(
+                        &st2067_201::AudioSamplingRateMissing,
+                        spec_ed,
                         format!(
                             "IABEssenceDescriptor {}: AudioSampleRate is missing; \
                              ST 2067-201 §5.9 requires it to be present",
@@ -371,10 +356,9 @@ fn validate_iab_descriptors(
                     || (rate.numerator != 48000 && rate.numerator != 96000) =>
             {
                 issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Audio,
-                        code(IabCode::AudioSamplingRateInvalid),
+                    ValidationIssue::from_rule(
+                        &st2067_201::AudioSamplingRateInvalid,
+                        spec_ed,
                         format!(
                             "IABEssenceDescriptor {}: AudioSampleRate {}/{} is not an \
                              ST 2098-2 sampling rate (48000/1 or 96000/1) \
@@ -392,10 +376,9 @@ fn validate_iab_descriptors(
         match &iab.sound_compression {
             None => {
                 issues.push(
-                    ValidationIssue::new(
-                        Severity::Warning,
-                        Category::Audio,
-                        code(IabCode::SoundCompressionMissing),
+                    ValidationIssue::from_rule(
+                        &st2067_201::SoundCompressionMissing,
+                        spec_ed,
                         format!(
                             "IABEssenceDescriptor {}: SoundCompression is missing; \
                              should be {IAB_SOUND_COMPRESSION}",
@@ -407,10 +390,9 @@ fn validate_iab_descriptors(
             }
             Some(sc) if !ul_matches(sc, IAB_SOUND_COMPRESSION) => {
                 issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Audio,
-                        code(IabCode::SoundCompressionInvalid),
+                    ValidationIssue::from_rule(
+                        &st2067_201::SoundCompressionInvalid,
+                        spec_ed,
                         format!(
                             "IABEssenceDescriptor {}: SoundCompression `{sc}` is not the \
                              required IAB UL {IAB_SOUND_COMPRESSION} (ST 2067-201 §5.9)",
@@ -428,12 +410,9 @@ fn validate_iab_descriptors(
             match iab.channel_count {
                 Some(cc) if cc != 0 => {
                     issues.push(
-                        ValidationIssue::new(
-                            Severity::Error,
-                            Category::Audio,
-                            // 2019-only rule (check_channel_count), so the
-                            // 2019 code is used regardless of `code`.
-                            iab_codes::St2067_201_2019::ChannelCountNotZero.code(),
+                        ValidationIssue::from_rule(
+                            &st2067_201::ChannelCountNotZero,
+                            spec_ed,
                             format!(
                                 "IABEssenceDescriptor {}: ChannelCount {cc} shall be the \
                                  distinguished value 0 (ST 2067-201 §5.9, ST 377-1 Annex F.5)",
@@ -455,10 +434,9 @@ fn validate_iab_descriptors(
 
         if soundfield.is_none() {
             issues.push(
-                ValidationIssue::new(
-                    Severity::Error,
-                    Category::Audio,
-                    code(IabCode::SubDescriptorMissing),
+                ValidationIssue::from_rule(
+                    &st2067_201::SubDescriptorMissing,
+                    spec_ed,
                     format!(
                         "IABEssenceDescriptor {}: IABSoundfieldLabelSubDescriptor shall be \
                          present (ST 2067-201 §5.10.2)",
@@ -480,10 +458,9 @@ fn validate_iab_descriptors(
         match &sf.mca_tag_symbol {
             None => {
                 issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Audio,
-                        code(IabCode::MCATagSymbolMissing),
+                    ValidationIssue::from_rule(
+                        &st2067_201::MCATagSymbolMissing,
+                        spec_ed,
                         format!(
                             "IABEssenceDescriptor {}: IABSoundfieldLabelSubDescriptor \
                              MCATagSymbol shall be \"IAB\" (ST 2067-201 §5.10.4)",
@@ -495,10 +472,9 @@ fn validate_iab_descriptors(
             }
             Some(sym) if *sym != McaTagSymbol::Iab => {
                 issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Audio,
-                        code(IabCode::MCATagSymbolInvalid),
+                    ValidationIssue::from_rule(
+                        &st2067_201::MCATagSymbolInvalid,
+                        spec_ed,
                         format!(
                             "IABEssenceDescriptor {}: IABSoundfieldLabelSubDescriptor \
                              MCATagSymbol shall be \"IAB\", got \"{sym:?}\" \
@@ -516,10 +492,7 @@ fn validate_iab_descriptors(
         match sf.mca_tag_name.as_deref() {
             None => {
                 issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Audio,
-                        code(IabCode::MCATagNameMissing),
+                    ValidationIssue::from_rule(&st2067_201::MCATagNameMissing, spec_ed,
                         format!(
                             "IABEssenceDescriptor {}: IABSoundfieldLabelSubDescriptor \
                              MCATagName shall be present (ST 2067-201 §5.10.3) with value \"IAB\" (§5.10.4)",
@@ -531,10 +504,9 @@ fn validate_iab_descriptors(
             }
             Some(name) if name != "IAB" => {
                 issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Audio,
-                        code(IabCode::MCATagNameInvalid),
+                    ValidationIssue::from_rule(
+                        &st2067_201::MCATagNameInvalid,
+                        spec_ed,
                         format!(
                             "IABEssenceDescriptor {}: IABSoundfieldLabelSubDescriptor \
                              MCATagName shall be \"IAB\", got \"{name}\" \
@@ -552,10 +524,9 @@ fn validate_iab_descriptors(
         match sf.mca_label_dictionary_id.as_deref() {
             None => {
                 issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Audio,
-                        code(IabCode::MCALabelDictionaryIDMissing),
+                    ValidationIssue::from_rule(
+                        &st2067_201::MCALabelDictionaryIDMissing,
+                        spec_ed,
                         format!(
                             "IABEssenceDescriptor {}: IABSoundfieldLabelSubDescriptor \
                              MCALabelDictionaryID is missing; shall be {IAB_MCA_LABEL_DICT_ID} \
@@ -568,10 +539,9 @@ fn validate_iab_descriptors(
             }
             Some(id) if !ul_matches(id, IAB_MCA_LABEL_DICT_ID) => {
                 issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Audio,
-                        code(IabCode::MCALabelDictionaryIDInvalid),
+                    ValidationIssue::from_rule(
+                        &st2067_201::MCALabelDictionaryIDInvalid,
+                        spec_ed,
                         format!(
                             "IABEssenceDescriptor {}: IABSoundfieldLabelSubDescriptor \
                              MCALabelDictionaryID `{id}` shall be {IAB_MCA_LABEL_DICT_ID} \
@@ -597,7 +567,7 @@ fn validate_iab_descriptors(
 ///   ST 2067-3 §6.9.3).
 fn validate_iab_sequences(
     cpl: &CompositionPlaylist,
-    code: fn(IabCode) -> &'static str,
+    spec_ed: St2067_201Edition,
     issues: &mut Vec<ValidationIssue>,
 ) {
     let iab_ed_ids: HashSet<String> = cpl
@@ -639,10 +609,9 @@ fn validate_iab_sequences(
             // §6.2: IABSequence shall contain at least one Resource.
             if iab_seq.resource_list.resources.is_empty() {
                 issues.push(
-                    ValidationIssue::new(
-                        Severity::Error,
-                        Category::Audio,
-                        code(IabCode::IABSequenceNoResources),
+                    ValidationIssue::from_rule(
+                        &st2067_201::IABSequenceNoResources,
+                        spec_ed,
                         format!(
                             "IABSequence {}: shall contain at least one Resource \
                              (ST 2067-201 §6.2)",
@@ -664,10 +633,9 @@ fn validate_iab_sequences(
                     let integer_multiple = rhs != 0 && lhs % rhs == 0 && lhs / rhs >= 1;
                     if !integer_multiple {
                         issues.push(
-                            ValidationIssue::new(
-                                Severity::Error,
-                                Category::Audio,
-                                code(IabCode::EditRateNotIntegerMultiple),
+                            ValidationIssue::from_rule(
+                                &st2067_201::EditRateNotIntegerMultiple,
+                                spec_ed,
                                 format!(
                                     "IABSequence {}: Resource {} EditRate {}/{} is not an \
                                      integer multiple of the Main Image Virtual Track Edit \
@@ -689,10 +657,9 @@ fn validate_iab_sequences(
                     let se_str = se.to_string();
                     if !iab_ed_ids.contains(&se_str) {
                         issues.push(
-                            ValidationIssue::new(
-                                Severity::Error,
-                                Category::Audio,
-                                code(IabCode::IABSequenceSourceEncodingInvalid),
+                            ValidationIssue::from_rule(
+                                &st2067_201::IABSequenceSourceEncodingInvalid,
+                                spec_ed,
                                 format!(
                                     "IABSequence {}: Resource {} SourceEncoding {se_str} \
                                      does not reference an IABEssenceDescriptor \

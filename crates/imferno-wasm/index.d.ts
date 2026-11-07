@@ -42,8 +42,11 @@ export function buildReport(
     options?: ValidateOptions | null,
 ): Promise<ImfReport>;
 
-/** Pretty-print an `ImfReport` as a human-readable string. */
-export function formatReport(report: ImfReport): Promise<string>;
+/**
+ * Pretty-print a validation result as a human-readable string.
+ * @param report The object `validate()` returned, or (legacy) `buildReport()`'s.
+ */
+export function formatReport(report: ValidationResult | ImfReport): Promise<string>;
 
 /** Get the library version */
 export function getVersion(): Promise<string>;

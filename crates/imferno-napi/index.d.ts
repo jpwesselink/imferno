@@ -93,13 +93,13 @@ export declare function buildReportFromPath(path: string, options?: PathValidate
 export declare function buildReportFromUri(uri: string, options?: UriValidateOptions | undefined | null): ImfReport
 
 /**
- * Pretty-print an `ImfReport` as a human-readable string.
+ * Pretty-print a validation result as a human-readable string.
  *
- * @param report - A report previously returned by one of the `buildReport*` functions
+ * @param report - The object returned by `validate*`, or (legacy) by `buildReport*`
  * @returns A formatted plain-text report.
- * @throws If `report` is not a valid `ImfReport`.
+ * @throws If `report` is neither a `ValidationResult` nor an `ImfReport`.
  */
-export declare function formatReport(report: ImfReport): string
+export declare function formatReport(report: ValidationResult | ImfReport): string
 
 /** Returns the imferno library version string. */
 export declare function getVersion(): string

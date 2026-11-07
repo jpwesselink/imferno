@@ -40,6 +40,7 @@ assert<Equals<ReturnType<typeof api.buildReport>, ImfReport>>();
 assert<Equals<ReturnType<typeof api.buildReportFromPath>, ImfReport>>();
 assert<Equals<ReturnType<typeof api.buildReportFromUri>, ImfReport>>();
 assert<Equals<ReturnType<typeof api.formatReport>, string>>();
+assert<Equals<Parameters<typeof api.formatReport>, [report: ValidationResult | ImfReport]>>();
 assert<Equals<ReturnType<typeof api.listRules>, RuleInfo[]>>();
 assert<Equals<ReturnType<typeof api.getVersion>, string>>();
 

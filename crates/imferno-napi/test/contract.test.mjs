@@ -155,7 +155,10 @@ describe("runtime outputs conform to their declared types", () => {
       check("ValidationResult", api.validatePath(dir), "validatePath");
       check("ValidationResult", api.validatePath(dir, { aggregateRepeats: true, skipDiskChecks: true }), "validatePath(opts)");
       check("ValidationResult", api.validateUri(pathToFileURL(dir).href), "validateUri");
-      check("ValidationResult", api.validate(readXmlFiles(dir)), "validate");
+      const inMemory = api.validate(readXmlFiles(dir));
+      check("ValidationResult", inMemory, "validate");
+      // formatReport accepts what validate* returns.
+      expect(api.formatReport(inMemory)).toMatch(/CPL|ASSETMAP|error|ok/);
     });
 
     it("parsePackage* → Imferno, buildReport* → ImfReport (when they don't throw)", () => {

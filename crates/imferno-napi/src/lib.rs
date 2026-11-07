@@ -15,7 +15,7 @@ use std::path::PathBuf;
 use imferno_core::diagnostics::codes::ValidationCode;
 #[allow(deprecated)]
 use imferno_core::package::{
-    build_report, format_report, validate as validate_package, ImfReport, Imferno, RulesConfig,
+    build_report, format_json_report, validate as validate_package, Imferno, RulesConfig,
     ValidationOptions,
 };
 use imferno_core::validation::{
@@ -196,18 +196,17 @@ pub fn build_report_from_path(
 // Format report — pretty-print an ImfReport as a human-readable string
 // =============================================================================
 
-/// Pretty-print an `ImfReport` as a human-readable string.
+/// Pretty-print a validation result as a human-readable string.
 ///
-/// @param report - A report previously returned by one of the `buildReport*` functions
+/// @param report - The object returned by `validate*`, or (legacy) by `buildReport*`
 /// @returns A formatted plain-text report.
-/// @throws If `report` is not a valid `ImfReport`.
-#[allow(deprecated)]
-#[napi(js_name = "formatReport", ts_args_type = "report: ImfReport")]
+/// @throws If `report` is neither a `ValidationResult` nor an `ImfReport`.
+#[napi(
+    js_name = "formatReport",
+    ts_args_type = "report: ValidationResult | ImfReport"
+)]
 pub fn format_report_js(report: serde_json::Value) -> napi::Result<String> {
-    let imf_report: ImfReport = serde_json::from_value(report)
-        .map_err(|e| napi::Error::from_reason(format!("Invalid ImfReport JSON: {}", e)))?;
-
-    Ok(format_report(&imf_report, false))
+    format_json_report(report).map_err(napi::Error::from_reason)
 }
 
 // =============================================================================

@@ -37,7 +37,6 @@ use xmlsec::{XmlSecKey, XmlSecKeyFormat, XmlSecSignatureContext};
 #[cfg(feature = "typescript")]
 use ts_rs::TS;
 
-
 // =============================================================================
 // Error type
 // =============================================================================
@@ -553,16 +552,48 @@ fn collapse_xml_text(text: &str) -> String {
 // Serde deserialization helpers
 // =============================================================================
 
-mod de_helpers {
+pub(crate) mod de_helpers {
+    //! The XML forms of several CPL values (`"24000 1001"`, Universal Labels,
+    //! comma-separated language lists) differ from their JSON serialisation.
+    //! These helpers parse the XML form, except while [`json_mode`] is active
+    //! (re-reading imferno's own JSON output, see
+    //! [`crate::package::ValidationResult::from_json`]), where they accept the
+    //! serialised form instead.
+
     use crate::cpl::{
         CodingEquations, ColorPrimaries, EditRate, LanguageTag, McaTagSymbol,
         TransferCharacteristic, VideoCodec,
     };
     use serde::{Deserialize, Deserializer};
+    use std::cell::Cell;
+
+    thread_local! {
+        static JSON_MODE: Cell<bool> = const { Cell::new(false) };
+    }
+
+    /// Run `f` with the helpers reading imferno's JSON serialisation rather
+    /// than CPL XML.
+    pub(crate) fn json_mode<R>(f: impl FnOnce() -> R) -> R {
+        struct Reset(bool);
+        impl Drop for Reset {
+            fn drop(&mut self) {
+                JSON_MODE.with(|m| m.set(self.0));
+            }
+        }
+        let _reset = Reset(JSON_MODE.with(|m| m.replace(true)));
+        f()
+    }
+
+    fn in_json_mode() -> bool {
+        JSON_MODE.with(|m| m.get())
+    }
 
     pub fn de_optional_edit_rate<'de, D: Deserializer<'de>>(
         d: D,
     ) -> Result<Option<EditRate>, D::Error> {
+        if in_json_mode() {
+            return Option::deserialize(d);
+        }
         let s = String::deserialize(d)?;
         let trimmed = s.trim();
         if trimmed.is_empty() {
@@ -581,7 +612,11 @@ mod de_helpers {
     where
         D: Deserializer<'de>,
         F: FnOnce(&str) -> T,
+        T: Deserialize<'de>,
     {
+        if in_json_mode() {
+            return Option::deserialize(d);
+        }
         let s = String::deserialize(d)?;
         Ok(if s.trim().is_empty() {
             None
@@ -617,6 +652,9 @@ mod de_helpers {
     pub fn de_optional_mca_tag_symbol<'de, D: Deserializer<'de>>(
         d: D,
     ) -> Result<Option<McaTagSymbol>, D::Error> {
+        if in_json_mode() {
+            return Option::deserialize(d);
+        }
         let s = String::deserialize(d)?;
         Ok(if s.trim().is_empty() {
             None
@@ -628,6 +666,9 @@ mod de_helpers {
     pub fn de_optional_language_tag<'de, D: Deserializer<'de>>(
         d: D,
     ) -> Result<Option<LanguageTag>, D::Error> {
+        if in_json_mode() {
+            return Option::deserialize(d);
+        }
         let s = String::deserialize(d)?;
         let trimmed = s.trim();
         if trimmed.is_empty() {
@@ -644,6 +685,9 @@ mod de_helpers {
     pub fn de_optional_color_siting<'de, D: Deserializer<'de>>(
         d: D,
     ) -> Result<Option<u32>, D::Error> {
+        if in_json_mode() {
+            return Option::deserialize(d);
+        }
         let s = String::deserialize(d)?;
         let s = s.trim();
         if s.is_empty() {
@@ -667,6 +711,9 @@ mod de_helpers {
     pub fn de_language_tag_list<'de, D: Deserializer<'de>>(
         d: D,
     ) -> Result<Vec<LanguageTag>, D::Error> {
+        if in_json_mode() {
+            return Vec::deserialize(d);
+        }
         let s = String::deserialize(d)?;
         s.split(',')
             .map(|part| part.trim())

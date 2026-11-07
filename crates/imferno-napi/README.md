@@ -86,10 +86,10 @@ const result = validate({
 ### Pretty-print a report
 
 ```js
-import { buildReportFromPath, formatReport } from "@imferno/node";
+import { validatePath, formatReport } from "@imferno/node";
 
-const report = buildReportFromPath("./my-imp");
-console.log(formatReport(report));
+const result = validatePath("./my-imp");
+console.log(formatReport(result)); // same text as `imferno validate`
 ```
 
 ### Get the library version
@@ -112,7 +112,7 @@ console.log(getVersion()); // e.g. "2.0.0"
 | `buildReport(files, options?)` | Legacy: validate from strings (returns `ImfReport`) |
 | `buildReportFromPath(path, options?)` | Legacy: validate from disk (returns `ImfReport`) |
 | `buildReportFromUri(uri, options?)` | Legacy: validate via URI (returns `ImfReport`) |
-| `formatReport(report)` | Pretty-print a report as a human-readable string |
+| `formatReport(result)` | Pretty-print a `ValidationResult` (or legacy `ImfReport`) as text |
 | `listRules()` | Get the full catalogue of validation rule codes |
 | `getVersion()` | Get the library version |
 

@@ -26,6 +26,7 @@ assert<Equals<ReturnType<typeof api.validate>, Promise<ValidationResult>>>();
 assert<Equals<ReturnType<typeof api.parsePackage>, Promise<Imferno>>>();
 assert<Equals<ReturnType<typeof api.buildReport>, Promise<ImfReport>>>();
 assert<Equals<ReturnType<typeof api.formatReport>, Promise<string>>>();
+assert<Equals<Parameters<typeof api.formatReport>, [report: ValidationResult | ImfReport]>>();
 assert<Equals<ReturnType<typeof api.getVersion>, Promise<string>>>();
 assert<Equals<ReturnType<typeof api.init>, Promise<void>>>();
 

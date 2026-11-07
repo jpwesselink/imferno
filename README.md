@@ -90,7 +90,7 @@ const result = await validate({
 });
 
 console.log(result.validation.is_compliant);
-console.log(formatReport(result));
+console.log(await formatReport(result));
 ```
 
 ### Rust

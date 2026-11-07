@@ -40,7 +40,7 @@ if (!result.validation.is_compliant) {
 }
 
 // Pretty-print the validation report
-console.log(formatReport(result));
+console.log(await formatReport(result));
 ```
 
 ### Options
@@ -99,7 +99,7 @@ const report = await buildReport({
   'CPL.xml': cplXml,
 });
 
-console.log(formatReport(report));
+console.log(await formatReport(report));
 ```
 
 Accepts the same options as `validate`.
@@ -114,7 +114,7 @@ Pretty-print a `ValidationResult` or `ImfReport` as a human-readable string. Sam
 import { validate, formatReport } from '@imferno/wasm';
 
 const result = await validate(files);
-console.log(formatReport(result));
+console.log(await formatReport(result));
 ```
 
 ---

@@ -93,7 +93,10 @@ describe('WASM outputs conform to types.d.ts', () => {
 
     it.each(packages.map((p) => [p.slice(testData.length + 1), p]))('%s', (_name, dir) => {
         const files = readXmlFiles(dir);
-        check('ValidationResult', wasm.validate(files, undefined), 'validate');
+        const result = wasm.validate(files, undefined);
+        check('ValidationResult', result, 'validate');
+        // formatReport accepts what validate returns.
+        expect(typeof wasm.formatReport(result)).toBe('string');
         check('ValidationResult', wasm.validate(files, { aggregateRepeats: true }), 'validate(aggregateRepeats)');
         let parsed;
         try {

@@ -55,6 +55,10 @@ pub fn basic_map_profile_v2_issues<'a>(
             ));
         }
 
+        // Empty segments (`a//b`, a trailing `/`) are not flagged: the
+        // RFC 3986 relative-path grammar allows empty segments after the
+        // first (path-noscheme = segment-nz-nc *( "/" segment ), segment =
+        // *pchar), and A.2 only constrains the characters a segment has.
         let segments: Vec<&str> = path.split('/').collect();
         // "/" separates segments; "?" and "#" are reported above. The
         // segment rule still covers them, so they are listed here too.
@@ -135,6 +139,13 @@ mod tests {
             "./a/../b.mxf",
         ])
         .is_empty());
+    }
+
+    /// Neither A.2 nor the RFC 3986 relative-path grammar forbids empty
+    /// segments after the first, so they are not flagged.
+    #[test]
+    fn empty_segments_are_not_flagged() {
+        assert!(codes(&["a//b.mxf", "dir/"]).is_empty());
     }
 
     #[test]

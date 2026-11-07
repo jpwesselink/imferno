@@ -2088,7 +2088,9 @@ impl App2E {
     /// which is not a limit, so no REV check is made.
     ///
     /// MAGB_P is read from bits 0-4 of Ccap15 in the CPL descriptor's
-    /// J2KExtendedCapabilities; bit 5 selects HTIRV.
+    /// J2KExtendedCapabilities; bit 5 = 1 signals HTIRV (ISO/IEC
+    /// 15444-15:2019 | ITU-T T.814 (06/2019) Table A.2, clauses A.3.6 and
+    /// A.3.7).
     fn check_ht_irv_parameter_b(
         &self,
         j2k_sub: &crate::cpl::JPEG2000SubDescriptor,
@@ -2114,9 +2116,9 @@ impl App2E {
                     Category::Encoding,
                     self.code(App2ERule::HtIrvParameterBMax).to_string(),
                     format!(
-                        "Ccap15 signals MAGB_P {magb_p} (parameter B up to {}); \
+                        "Ccap15 signals MAGB_P {magb_p} (parameter B = {}); \
                          APP2.HT.IRV requires parameter B of at most 31",
-                        parameter_b_bound(magb_p)
+                        parameter_b(magb_p)
                     ),
                 )
                 .with_location(loc.clone()),
@@ -2157,10 +2159,10 @@ impl App2E {
                     Category::Encoding,
                     self.code(App2ERule::HtIrvParameterBRecommended).to_string(),
                     format!(
-                        "Ccap15 signals MAGB_P {magb_p} (parameter B up to {}); \
+                        "Ccap15 signals MAGB_P {magb_p} (parameter B = {}); \
                          for Ssiz {ssiz} and SGcod.C = {mct}, parameter B should be \
                          at most {recommended}",
-                        parameter_b_bound(magb_p)
+                        parameter_b(magb_p)
                     ),
                 )
                 .with_location(loc.clone()),
@@ -2945,24 +2947,23 @@ const SYSTEMS_2016: &[EditionColorSystem] = &[
     },
 ];
 
-/// The smallest MAGB_P whose set admits `b` (ISO/IEC 15444-15 Table 4:
-/// P = 0 for B <= 8, B = P + 8 for 0 < P < 20, B <= 4P - 49 for
-/// 20 <= P < 31, P = 31 above that).
+/// Parameter B of the MAGB_P set signalled by bits 0-4 of Ccap15, per
+/// ISO/IEC 15444-15:2019 | ITU-T T.814 (06/2019) clause A.3.7 and Table 4:
+/// 8 for P = 0, P + 8 for P < 20, 4(P - 19) + 27 for 20 <= P < 31, and 74
+/// for P = 31. Clause 8.7.3 bounds the HT cleanup magnitudes of a set by
+/// its B, so a larger B never admits fewer codestreams.
+///
+/// The smallest MAGB_P whose parameter B is at least `b`.
 fn magb_p_for_parameter_b(b: u16) -> u16 {
-    match b {
-        0..=8 => 0,
-        9..=27 => b - 8,
-        28..=74 => (b + 49).div_ceil(4),
-        _ => 31,
-    }
+    (0..=31).find(|&p| parameter_b(p) >= b).unwrap_or(31)
 }
 
-/// The largest parameter B a codestream signalling `magb_p` may use.
-fn parameter_b_bound(magb_p: u16) -> u16 {
+/// Parameter B of set MAGB_P (T.814 clause A.3.7, Table 4).
+fn parameter_b(magb_p: u16) -> u16 {
     match magb_p {
         0 => 8,
         1..=19 => magb_p + 8,
-        20..=30 => 4 * magb_p - 49,
+        20..=30 => 4 * (magb_p - 19) + 27,
         _ => 74,
     }
 }
@@ -2998,11 +2999,17 @@ mod ht_parameter_b_tests {
     #[test]
     fn magb_mapping_round_trips() {
         assert_eq!(magb_p_for_parameter_b(31), 20);
-        assert_eq!(parameter_b_bound(20), 31);
+        assert_eq!(parameter_b(20), 31);
         assert_eq!(magb_p_for_parameter_b(14), 6);
-        assert_eq!(parameter_b_bound(21), 35);
-        for b in 9..=74 {
-            assert!(parameter_b_bound(magb_p_for_parameter_b(b)) >= b, "{b}");
+        assert_eq!(parameter_b(21), 35);
+        // T.814 Table 4 rows.
+        let table4: [u16; 32] = [
+            8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 31, 35,
+            39, 43, 47, 51, 55, 59, 63, 67, 71, 74,
+        ];
+        for (p, b) in table4.iter().enumerate() {
+            assert_eq!(parameter_b(p as u16), *b, "MAGB{p}");
+            assert_eq!(magb_p_for_parameter_b(*b), p as u16, "B {b}");
         }
     }
 

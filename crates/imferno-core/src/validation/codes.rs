@@ -427,7 +427,7 @@ impl App2ERule {
             Self::Jpeg2000SubDescriptor =>
                 "<PictureDescriptor>…</PictureDescriptor>  <!-- no JPEG2000SubDescriptor child -->",
             Self::HtIrvParameterBMax =>
-                "<J2KExtendedCapabilities><Pcap>131072</Pcap><Ccapi><UInt16>53</UInt16></Ccapi></J2KExtendedCapabilities>  <!-- HTIRV, MAGB_P 21: B up to 35 -->",
+                "<J2KExtendedCapabilities><Pcap>131072</Pcap><Ccapi><UInt16>53</UInt16></Ccapi></J2KExtendedCapabilities>  <!-- HTIRV, MAGB_P 21: B = 35 -->",
             Self::HtIrvParameterBRecommended =>
                 "<Ssiz>9</Ssiz> … <Ccapi><UInt16>36</UInt16></Ccapi>  <!-- 10-bit HTIRV, MAGB_P 4: B = 12, table value 11 -->",
             Self::J2KHtNotAllowed =>

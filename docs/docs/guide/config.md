@@ -221,6 +221,17 @@ edition used (one per package, and per CPL).
   Label in the `2020#standard-markers` scope, which only 2020 defines. An
   ST 429-7 (DCI) or unknown namespace is not an ST 2067-3 namespace: the newest
   edition is applied and announced.
+- **ST 377-1 / ST 377-4, MXF track file**: MXF has no namespace; the dated
+  normative references of the specs that apply to the file decide. Every
+  ST 2067-2 edition references ST 377-1:2011; ST 2067-2:2020 references
+  ST 377-4:2012 (2013 and 2016 cite "ST 377-4:2011", which is not an edition).
+  For a track file a CPL IAB Virtual Track references, ST 2067-201 adds its
+  references (2021: ST 377-1:2019; 2026: ST 377-1:2019 and ST 377-4:2021).
+  When these do not leave one edition, the newest is applied, announced for
+  the file when it has findings of that spec. ST 2067-201 rules on a track
+  file (IAB labeling) use the edition the referencing CPL's IAB plug-in
+  applies; a file no CPL IAB Virtual Track references gets the newest
+  (2026), announced.
 
 ST 2067-2:2013 defines no delivery requirements, so for a 2013 package the
 delivery rules of later editions are not checked and

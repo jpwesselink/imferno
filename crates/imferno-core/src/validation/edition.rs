@@ -8,7 +8,10 @@
 //! namespace seen and the edition used.
 
 use crate::catalogue::st2067_2::St2067_2Edition;
+use crate::catalogue::st2067_201::St2067_201Edition;
 use crate::catalogue::st2067_3::St2067_3Edition;
+use crate::catalogue::st377_1::St377_1Edition;
+use crate::catalogue::st377_4::St377_4Edition;
 use crate::cpl::{CompositionPlaylist, CplNamespace};
 use crate::diagnostics::rule::Edition;
 
@@ -103,7 +106,12 @@ pub fn resolve<E: Edition + Ord>(
             assumed: None,
         };
     }
-    let ns = if names_none {
+    let ns = if namespace.is_empty() {
+        format!(
+            "it carries no namespace, so it could be any of {}",
+            labels(&candidates)
+        )
+    } else if names_none {
         format!("{namespace} is not the namespace of any {spec} edition")
     } else {
         format!("{namespace} is used by {}", labels(&candidates))
@@ -194,6 +202,77 @@ pub fn cpl_edition(cpl: &CompositionPlaylist) -> EditionChoice<St2067_3Edition> 
         &cpl_evidence(cpl),
     )
 }
+
+/// The ST 377-1 and ST 377-4 editions applied to an MXF track file.
+///
+/// MXF carries no namespace; the editions come from the dated normative
+/// references of the specs whose rules apply to the file: ST 2067-2 (every
+/// edition references ST 377-1:2011; 2020 references ST 377-4:2012, 2013
+/// and 2016 reference "ST 377-4:2011", which is not an edition, so they name
+/// none) and, for an IAB track file, ST 2067-201 (2019: 377-1:2011 and
+/// 377-4:2012; 2021: 377-1:2019 and 377-4:2012; 2026: 377-1:2019 and
+/// 377-4:2021). See [`resolve`].
+pub fn mxf_editions(
+    subject: &str,
+    core: St2067_2Edition,
+    iab: Option<St2067_201Edition>,
+) -> (EditionChoice<St377_1Edition>, EditionChoice<St377_4Edition>) {
+    use St2067_201Edition as Iab;
+    let core_label = core.label();
+    let mut e1 = vec![Evidence::one(
+        St377_1Edition::V2011,
+        format!("ST 2067-2:{core_label} references ST 377-1:2011"),
+    )];
+    let mut e4 = Vec::new();
+    if core == St2067_2Edition::V2020 {
+        e4.push(Evidence::one(
+            St377_4Edition::V2012,
+            "ST 2067-2:2020 references ST 377-4:2012",
+        ));
+    }
+    if let Some(iab) = iab {
+        let (one, four) = match iab {
+            Iab::V2019 => (St377_1Edition::V2011, St377_4Edition::V2012),
+            Iab::V2021 => (St377_1Edition::V2019, St377_4Edition::V2012),
+            Iab::V2026 => (St377_1Edition::V2019, St377_4Edition::V2021),
+        };
+        let iab_label = iab.label();
+        e1.push(Evidence::one(
+            one,
+            format!(
+                "ST 2067-201:{iab_label} references ST 377-1:{}",
+                one.label()
+            ),
+        ));
+        e4.push(Evidence::one(
+            four,
+            format!(
+                "ST 2067-201:{iab_label} references ST 377-4:{}",
+                four.label()
+            ),
+        ));
+    }
+    let mut four = resolve(subject, "", St377_4Edition::ALL, &e4);
+    if core != St2067_2Edition::V2020 {
+        four.assumed = four.assumed.map(|why| {
+            why.replacen(
+                "could not be determined: ",
+                &format!(
+                    "could not be determined: ST 2067-2:{core_label} references ST 377-4:2011, \
+                     which is not an ST 377-4 edition; "
+                ),
+                1,
+            )
+        });
+    }
+    (resolve(subject, "", St377_1Edition::ALL, &e1), four)
+}
+
+/// The ST 2067-201 edition whose rules the IAB plug-in validator applies to
+/// a CPL that does not pin one. Every edition (2019, 2021, 2026) reuses the
+/// 2019 namespace, so the CPL does not tell them apart; imferno applies 2021
+/// (see `push_sequence_presence_plugins`).
+pub const CPL_IAB_EDITION: St2067_201Edition = St2067_201Edition::V2021;
 
 /// The ST 2067-2 editions a CPL namespace allows: ST 2067-2:2013 uses
 /// ST 2067-3:2013 (2013 §6.1); 2016 and 2020 both use the ST 2067-3:2016
@@ -552,6 +631,33 @@ mod tests {
             why.contains("the evidence does not agree: a (ST 2067-2:2016); b (ST 2067-2:2020)"),
             "{why}"
         );
+    }
+
+    /// MXF editions come from the dated references of the specs that apply.
+    #[test]
+    fn mxf_editions_follow_the_dated_references() {
+        use St2067_201Edition as Iab;
+        // Every ST 2067-2 edition references ST 377-1:2011; 2020 references
+        // ST 377-4:2012.
+        let (one, four) = mxf_editions("f", St2067_2Edition::V2020, None);
+        assert_eq!((one.edition, one.assumed), (St377_1Edition::V2011, None));
+        assert_eq!((four.edition, four.assumed), (St377_4Edition::V2012, None));
+        // 2016 references "ST 377-4:2011", not an edition: newest, announced.
+        let (_, four) = mxf_editions("f", St2067_2Edition::V2016, None);
+        assert_eq!(four.edition, St377_4Edition::V2021);
+        let why = four.assumed.unwrap();
+        assert!(why.contains("it carries no namespace"), "{why}");
+        // IAB 2026 references ST 377-1:2019 / 377-4:2021; with ST 2067-2's
+        // 377-1:2011 that conflicts: newest, announced.
+        let (one, four) = mxf_editions("f", St2067_2Edition::V2020, Some(Iab::V2026));
+        assert_eq!(one.edition, St377_1Edition::V2019);
+        assert!(one.assumed.unwrap().contains("the evidence does not agree"));
+        assert_eq!(four.edition, St377_4Edition::V2021);
+        assert!(four.assumed.is_some());
+        // IAB 2019 agrees with ST 2067-2:2020.
+        let (one, four) = mxf_editions("f", St2067_2Edition::V2020, Some(Iab::V2019));
+        assert_eq!((one.edition, one.assumed), (St377_1Edition::V2011, None));
+        assert_eq!((four.edition, four.assumed), (St377_4Edition::V2012, None));
     }
 
     #[test]

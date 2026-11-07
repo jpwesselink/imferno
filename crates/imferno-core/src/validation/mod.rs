@@ -37,8 +37,8 @@ pub mod isxd;
 pub use app2e::{App2E, App2E2014, App2E2016, App2E2020, App2E2023, App2E2026, App2EEdition};
 pub use edition::{
     application_identification_core_edition, cpl_core_edition, cpl_core_evidence, cpl_edition,
-    cpl_evidence, declared_core_constraints_editions, resolve as resolve_edition, EditionChoice,
-    Evidence,
+    cpl_evidence, declared_core_constraints_editions, mxf_editions, resolve as resolve_edition,
+    EditionChoice, Evidence, CPL_IAB_EDITION,
 };
 pub use iab::{AppIabPlugin2019, AppIabPlugin2021, AppIabPlugin2026, URI_2019, URI_2019_SCHEMAS};
 pub use isxd::{AppIsxdPlugin2023, URI_2022};
@@ -293,6 +293,10 @@ fn push_sequence_presence_plugins(
     // shouldn't be warned about by default. Pin a different edition via
     // `ValidatorSelection::app_specs`.
     if has_iab && !already("2067-201", validators) {
+        debug_assert_eq!(
+            CPL_IAB_EDITION,
+            crate::catalogue::st2067_201::St2067_201Edition::V2021
+        );
         validators.push(Box::new(AppIabPlugin2021));
     }
     if has_isxd && !already("2067-202", validators) {

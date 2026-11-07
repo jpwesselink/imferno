@@ -31,21 +31,21 @@ Unmarked rows are carried over from earlier catalogues and not yet checked.
 
 ## SMPTE ST 377-1 — MXF File Format
 
-| Rule | Description | Category | 2011 |
-|------|-------------|----------|------|
-| `ST377-1/NotMxf` | File is not a valid MXF container. | Asset | 6.1.1✓ error |
-| `ST377-1/NoEssenceContainers` | MXF file contains no essence containers. | Encoding | 7.1✓ warning |
-| `ST377-1/NonHeaderFirstPartition` | The first partition in an MXF file must be the Header partition. | Container | 6.2.5✓ error |
-| `ST377-1/HeaderPartitionOpen` | The header partition is Open and no Closed footer partition carries header metadata, so the MXF file is Open. | Container | 6.2.4✓ warning |
-| `ST377-1/MissingHeaderMetadata` | The header partition must carry header metadata (HeaderByteCount > 0). | Container | 6.1.1✓ error |
-| `ST377-1/StructuralComponentDurationMissing` | A Structural Component on a Timeline Track has no Duration; it is a Best Effort property there and shall be encoded (-1 when unknown). | Container | B.8✓ error |
+| Rule | Description | Category | 2011 | 2019 |
+|------|-------------|----------|------|------|
+| `ST377-1/NotMxf` | File is not a valid MXF container. | Asset | 6.1.1✓ error | 6.1.1✓ error |
+| `ST377-1/NoEssenceContainers` | MXF file contains no essence containers. | Encoding | 7.1✓ warning | 7.1✓ warning |
+| `ST377-1/NonHeaderFirstPartition` | The first partition in an MXF file must be the Header partition. | Container | 6.2.5✓ error | 6.2.5✓ error |
+| `ST377-1/HeaderPartitionOpen` | The header partition is Open and no Closed footer partition carries header metadata, so the MXF file is Open. | Container | 6.2.4✓ warning | 6.2.4✓ warning |
+| `ST377-1/MissingHeaderMetadata` | The header partition must carry header metadata (HeaderByteCount > 0). | Container | 6.1.1✓ error | 6.1.1✓ error |
+| `ST377-1/StructuralComponentDurationMissing` | A Structural Component on a Timeline Track has no Duration; it is a Best Effort property there and shall be encoded (-1 when unknown). | Container | B.8✓ error | B.8✓ error |
 
 ## SMPTE ST 377-4 — MXF Multichannel Audio Labeling
 
-| Rule | Description | Category | 2012 |
-|------|-------------|----------|------|
-| `ST377-4/MCALinkIDMissing` | Every MCA sub-descriptor shall carry an MCALinkID (§6.3 Table 3, Req). | Audio | 6.3✓ error |
-| `ST377-4/SoundfieldGroupLinkIDMismatch` | AudioChannelLabelSubDescriptor SoundfieldGroupLinkID shall equal the SoundfieldGroup's MCALinkID (§6.4.1). | Audio | 6.4.1✓ error |
+| Rule | Description | Category | 2012 | 2021 |
+|------|-------------|----------|------|------|
+| `ST377-4/MCALinkIDMissing` | Every MCA sub-descriptor shall carry an MCALinkID (§6.3 Table 3, Req). | Audio | 6.3✓ error | 6.3✓ error |
+| `ST377-4/SoundfieldGroupLinkIDMismatch` | AudioChannelLabelSubDescriptor SoundfieldGroupLinkID shall equal the SoundfieldGroup's MCALinkID (§6.4.1). | Audio | 6.4.1✓ error | 6.4.1✓ error |
 
 ## SMPTE ST 429-8 — Packing List
 

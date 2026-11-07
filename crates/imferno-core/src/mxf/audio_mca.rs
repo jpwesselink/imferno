@@ -41,6 +41,17 @@ pub fn check_audio_mca(
     path: &Path,
     spec_ed: St2067_2Edition,
 ) -> Vec<ValidationIssue> {
+    check_audio_mca_for(regxml, path, spec_ed, St377_4Edition::V2012)
+}
+
+/// [`check_audio_mca`] with the ST 377-4 edition `st377_4` (see
+/// [`crate::validation::mxf_editions`]).
+pub fn check_audio_mca_for(
+    regxml: &str,
+    path: &Path,
+    spec_ed: St2067_2Edition,
+    st377_4: St377_4Edition,
+) -> Vec<ValidationIssue> {
     let mut issues = Vec::new();
 
     // ST 2067-203:2023 (S-ADM) audio is wrapped as MGA (Multichannel
@@ -213,7 +224,7 @@ pub fn check_audio_mca(
         issues.push(
             ValidationIssue::from_rule(
                 &st377_4::MCALinkIDMissing,
-                St377_4Edition::V2012,
+                st377_4,
                 format!(
                     "MXF {} carries {} MCALinkID(s) but expected {} ({} channel-label + {} \
                      soundfield-group). ST 377-4 §6.3 Table 3 requires every MCA \
@@ -269,7 +280,7 @@ pub fn check_audio_mca(
                     issues.push(
                         ValidationIssue::from_rule(
                             &st377_4::SoundfieldGroupLinkIDMismatch,
-                            St377_4Edition::V2012,
+                            st377_4,
                             format!(
                                 "MXF {} carries an AudioChannelLabelSubDescriptor with \
                                  SoundfieldGroupLinkID '{}' that doesn't match the SoundfieldGroup \

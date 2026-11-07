@@ -13,7 +13,7 @@ use crate::catalogue::imferno::{self, ImfernoEdition};
 use crate::catalogue::st2067_2::{self, St2067_2Edition};
 use crate::catalogue::st2067_3;
 use crate::catalogue::st2067_9::{self, St2067_9Edition};
-use crate::catalogue::st377_1::{self, St377_1Edition};
+use crate::catalogue::st377_1;
 use crate::catalogue::st429_8::{self, St429_8Edition};
 use crate::catalogue::st429_9::{self, St429_9Edition};
 use crate::cpl::EditRate;
@@ -2362,6 +2362,30 @@ impl Imferno {
                     continue; // Missing file already reported by validate_file_manifest
                 }
 
+                // The ST 377-1 / ST 377-4 editions of this track file, from the
+                // dated references of the specs that apply to it; the ST 2067-201
+                // edition from the CPLs whose IAB Virtual Tracks reference it.
+                let file_name = path
+                    .file_name()
+                    .map(|n| n.to_string_lossy().into_owned())
+                    .unwrap_or_default();
+                let iab_ref = self
+                    .referenced_by_iab_track(&asset.id)
+                    .then_some(crate::validation::CPL_IAB_EDITION);
+                let (c1, c4) = crate::validation::mxf_editions(
+                    &format!("MXF track file '{file_name}'"),
+                    spec_ed,
+                    iab_ref,
+                );
+                let iab_ed =
+                    iab_ref.unwrap_or(crate::catalogue::st2067_201::St2067_201Edition::V2026);
+                let mark = |r: &ValidationReport, spec| count_spec(r, spec);
+                let before = [
+                    mark(report, crate::diagnostics::Spec::St377_1),
+                    mark(report, crate::diagnostics::Spec::St377_4),
+                    mark(report, crate::diagnostics::Spec::St2067_201),
+                ];
+
                 // MXF essence checks via the `regxmllib-rs` family
                 // (smpte-mxf). Emits ST 2067-2 §5.1.1 / ST 377-1 §6.1.1, §6.2.4
                 // and §6.2.5 diagnostics that the hand-rolled parser
@@ -2369,7 +2393,9 @@ impl Imferno {
                 // doesn't link smpte-mxf, and browser callers don't
                 // see MXF binaries anyway (they upload XML only).
                 #[cfg(not(target_arch = "wasm32"))]
-                for issue in crate::mxf::essence::validate_mxf_essence(path, spec_ed) {
+                for issue in
+                    crate::mxf::essence::validate_mxf_essence_for(path, spec_ed, c1.edition)
+                {
                     let issue = issue.with_context("asset_uuid", asset.id.to_string());
                     report.add(issue);
                 }
@@ -2393,9 +2419,9 @@ impl Imferno {
                         regxml::RootMode::Preface,
                     ) {
                         Ok(regxml) => {
-                            for issue in
-                                crate::mxf::audio_mca::check_audio_mca(&regxml, path, spec_ed)
-                            {
+                            for issue in crate::mxf::audio_mca::check_audio_mca_for(
+                                &regxml, path, spec_ed, c4.edition,
+                            ) {
                                 let issue = issue.with_context("asset_uuid", asset.id.to_string());
                                 report.add(issue);
                             }
@@ -2407,22 +2433,18 @@ impl Imferno {
                             }
                             // ST 377-1 Annex B.8: Duration on Timeline
                             // Track components (ST377-1 issue 18).
-                            for issue in
-                                crate::mxf::structural::check_structural_components(&regxml, path)
-                            {
+                            for issue in crate::mxf::structural::check_structural_components_for(
+                                &regxml, path, c1.edition,
+                            ) {
                                 let issue = issue.with_context("asset_uuid", asset.id.to_string());
                                 report.add(issue);
                             }
                             // ST 2067-201 §5.10.2 / Annex C.2 IAB labeling
                             // rules (AUDIT-18) — no-op unless the file
                             // carries an IABEssenceDescriptor.
-                            for issue in crate::mxf::iab_labeling::check_iab_labeling(
-                                &regxml,
-                                path,
-                                // The IAB edition applied when a CPL does
-                                // not select one (see validation::push_sequence_presence_plugins).
-                                crate::catalogue::st2067_201::St2067_201Edition::V2021,
-                            ) {
+                            for issue in
+                                crate::mxf::iab_labeling::check_iab_labeling(&regxml, path, iab_ed)
+                            {
                                 let issue = issue.with_context("asset_uuid", asset.id.to_string());
                                 report.add(issue);
                             }
@@ -2444,7 +2466,7 @@ impl Imferno {
                         // ST 377-1 §7.1: the header partition pack lists the essence containers
                         if info.essence_containers.is_empty() {
                             report.add(
-                                ValidationIssue::from_rule(&st377_1::NoEssenceContainers, St377_1Edition::V2011,
+                                ValidationIssue::from_rule(&st377_1::NoEssenceContainers, c1.edition,
                                     format!(
                                         "MXF track file '{}' has no essence containers in its header partition",
                                         path.file_name().map(|n| n.to_string_lossy()).unwrap_or_default(),
@@ -2459,7 +2481,7 @@ impl Imferno {
                         report.add(
                             ValidationIssue::from_rule(
                                 &st377_1::NotMxf,
-                                St377_1Edition::V2011,
+                                c1.edition,
                                 format!(
                                     "File '{}' has MXF MIME type but is not a valid MXF file",
                                     path.file_name()
@@ -2489,8 +2511,55 @@ impl Imferno {
                         );
                     }
                 }
+
+                // Announce an assumed edition when this file has findings of
+                // that spec.
+                let iab_assumed = iab_ref.is_none().then(|| {
+                    format!(
+                        "ST 2067-201 edition of MXF track file '{file_name}' could not be \
+                         determined: no CPL IAB Virtual Track references it, and every \
+                         ST 2067-201 edition shares one namespace; ST 2067-201 rules were \
+                         checked against ST 2067-201:2026 (the newest)"
+                    )
+                });
+                for ((spec, assumed), before) in [
+                    (crate::diagnostics::Spec::St377_1, c1.assumed),
+                    (crate::diagnostics::Spec::St377_4, c4.assumed),
+                    (crate::diagnostics::Spec::St2067_201, iab_assumed),
+                ]
+                .into_iter()
+                .zip(before)
+                {
+                    if let Some(why) = assumed {
+                        if count_spec(report, spec) > before {
+                            report.add(
+                                ValidationIssue::from_rule(
+                                    &imferno::EditionAssumed,
+                                    ImfernoEdition::Current,
+                                    why,
+                                )
+                                .with_location(Location::new().with_file(path.clone()))
+                                .with_context("asset_uuid", asset.id.to_string()),
+                            );
+                        }
+                    }
+                }
             }
         }
+    }
+
+    /// Whether a CPL IAB Virtual Track references track file `id`.
+    fn referenced_by_iab_track(&self, id: &ImfUuid) -> bool {
+        self.composition_playlists.values().any(|cpl| {
+            cpl.segment_list.segments.iter().any(|s| {
+                s.sequence_list.iab_sequences.iter().any(|seq| {
+                    seq.resource_list
+                        .resources
+                        .iter()
+                        .any(|r| r.track_file_id.as_ref() == Some(id))
+                })
+            })
+        })
     }
 
     /// ST 2067-3 §7.2: Within each segment, all virtual tracks must span the
@@ -3083,6 +3152,18 @@ fn hash_single_file(
     } else {
         None
     }
+}
+
+/// Number of findings of `spec` in `report`.
+fn count_spec(report: &ValidationReport, spec: crate::diagnostics::Spec) -> usize {
+    report
+        .critical
+        .iter()
+        .chain(&report.errors)
+        .chain(&report.warnings)
+        .chain(&report.info)
+        .filter(|i| i.spec == spec)
+        .count()
 }
 
 #[cfg(test)]
@@ -5251,3 +5332,4 @@ mod tests {
             .contains("99999999-b77b-4d3f-bbe5-7c69b15dca85"));
     }
 }
+

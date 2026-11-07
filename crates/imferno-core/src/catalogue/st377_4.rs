@@ -1,6 +1,6 @@
 //! Rule table: SMPTE ST 377-4 (MXF Multichannel Audio Labeling).
 //!
-//! Every row checked against the text of its edition (C1/C4).
+//! Every row checked against the text of its edition (C1/C4; 2021 rows C17).
 
 #![allow(non_upper_case_globals)]
 
@@ -12,6 +12,7 @@ crate::diagnostics::rule::editions! {
     /// Editions of SMPTE ST 377-4 (MXF Multichannel Audio Labeling) imferno knows.
     pub enum St377_4Edition for Spec::St377_4 {
         V2012 => "2012",
+        V2021 => "2021",
     }
 }
 
@@ -25,6 +26,7 @@ pub static MCALinkIDMissing: Rule<E> = Rule {
     example: Some("<AudioChannelLabelSubDescriptor>…</AudioChannelLabelSubDescriptor>  <!-- no <MCALinkID> child -->"),
     editions: &[
         checked(E::V2012, "6.3", Shall),
+        checked(E::V2021, "6.3", Shall),
     ],
 };
 
@@ -36,6 +38,7 @@ pub static SoundfieldGroupLinkIDMismatch: Rule<E> = Rule {
     example: Some("<AudioChannelLabelSubDescriptor><SoundfieldGroupLinkID>urn:uuid:abc…</SoundfieldGroupLinkID></AudioChannelLabelSubDescriptor>  <!-- but the parent SoundfieldGroupLabelSubDescriptor MCALinkID = urn:uuid:def… -->"),
     editions: &[
         checked(E::V2012, "6.4.1", Shall),
+        checked(E::V2021, "6.4.1", Shall),
     ],
 };
 

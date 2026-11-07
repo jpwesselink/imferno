@@ -1732,6 +1732,8 @@ impl Imferno {
             }
         }
 
+        self.validate_cpl_ids_match_assetmap(&mut report);
+
         // CPL TrackFileId → AssetMap cross-references
         for cpl in self.composition_playlists.values() {
             self.validate_cpl_asset_references_accumulating(cpl, &mut report);
@@ -1808,6 +1810,8 @@ impl Imferno {
             report.add(issue);
         }
 
+        self.validate_cpl_ids_match_assetmap(&mut report);
+
         // CPL TrackFileId → AssetMap cross-references
         for cpl in self.composition_playlists.values() {
             self.validate_cpl_asset_references_accumulating(cpl, &mut report);
@@ -1825,6 +1829,37 @@ impl Imferno {
         self.validate_mxf_headers(&mut report);
 
         report
+    }
+
+    /// ST 2067-2:2020 §7.3.1 Table 19: a CPL asset is identified by the
+    /// CompositionPlaylist Id, so the AssetMap asset that locates a CPL file
+    /// shall carry that Id. CPLs are loaded under their AssetMap asset Id,
+    /// which is the key of `composition_playlists`.
+    /// https://github.com/Netflix/photon/issues/265
+    fn validate_cpl_ids_match_assetmap(&self, report: &mut ValidationReport) {
+        let mut cpl_assets: Vec<_> = self.composition_playlists.iter().collect();
+        cpl_assets.sort_by_key(|(asset_id, _)| asset_id.to_string());
+        for (asset_id, cpl) in cpl_assets {
+            if *asset_id == cpl.id {
+                continue;
+            }
+            let path = self
+                .asset_paths
+                .get(asset_id)
+                .and_then(|p| p.file_name())
+                .map(|f| f.to_string_lossy().into_owned())
+                .unwrap_or_default();
+            report.add(
+                ValidationIssue::from_code(
+                    codes::St2067_2_2020::CplIdAssetMapMismatch,
+                    format!(
+                        "AssetMap asset {asset_id} points at CPL file '{path}', whose Id is {}",
+                        cpl.id
+                    ),
+                )
+                .with_location(Location::new().with_cpl(cpl.id)),
+            );
+        }
     }
 
     /// Validate Sidecar Composition Map references (ST 2067-9:2018).
@@ -3052,9 +3087,20 @@ mod tests {
     fn test_package_with_id_mismatch() {
         let test_path = test_data("MERIDIAN_Netflix_Photon_161006_ID_MISMATCH");
 
-        if let Ok(package) = Imferno::parse(read_dir(test_path).unwrap()) {
-            assert!(!package.composition_playlists.is_empty());
-        }
+        let package = Imferno::parse(read_dir(test_path).unwrap()).unwrap();
+        assert!(!package.composition_playlists.is_empty());
+        // Photon's ID_MISMATCH fixture: the AssetMap lists the CPL under
+        // ...dca85, the CPL document says ...dca84.
+        let report = package.validate(&skip_disk_options());
+        assert!(
+            report
+                .errors
+                .iter()
+                .any(|i| i.code == St2067_2_2020::CplIdAssetMapMismatch.code()
+                    && i.message.contains("0eb3d1b9-b77b-4d3f-bbe5-7c69b15dca84")),
+            "{:#?}",
+            report.errors
+        );
     }
 
     #[test]
@@ -4782,5 +4828,44 @@ mod tests {
         assert!(dangling[0]
             .message
             .contains("11111111-2222-4333-8444-555555555555"));
+    }
+
+    /// ST 2067-2:2020 §7.3.1 Table 19: a CPL asset is identified by the Id
+    /// element of the CompositionPlaylist, and ST 429-9 maps those asset
+    /// Ids to files. An AssetMap entry whose file is a CPL with another Id
+    /// sends every lookup by Id to the wrong composition.
+    /// https://github.com/jpwesselink/imferno/issues/81
+    /// https://github.com/Netflix/photon/issues/265
+    #[test]
+    fn cpl_id_differing_from_assetmap_id_is_reported() {
+        let code = St2067_2_2020::CplIdAssetMapMismatch.code();
+
+        let clean = copy_xml_package("MERIDIAN_Netflix_Photon_161006");
+        let package = Imferno::parse(read_dir(clean.path()).unwrap()).unwrap();
+        let report = package.validate(&skip_disk_options());
+        assert!(
+            !report.errors.iter().any(|i| i.code == code),
+            "{:#?}",
+            report.errors
+        );
+
+        let dir = copy_xml_package("MERIDIAN_Netflix_Photon_161006");
+        let cpl_path = dir.path().join(MERIDIAN_CPL);
+        let xml = std::fs::read_to_string(&cpl_path).unwrap().replacen(
+            "<Id>urn:uuid:0eb3d1b9-b77b-4d3f-bbe5-7c69b15dca85</Id>",
+            "<Id>urn:uuid:99999999-b77b-4d3f-bbe5-7c69b15dca85</Id>",
+            1,
+        );
+        std::fs::write(&cpl_path, xml).unwrap();
+        let package = Imferno::parse(read_dir(dir.path()).unwrap()).unwrap();
+        let report = package.validate(&skip_disk_options());
+        let found: Vec<_> = report.errors.iter().filter(|i| i.code == code).collect();
+        assert_eq!(found.len(), 1, "{:#?}", report.errors);
+        assert!(found[0]
+            .message
+            .contains("0eb3d1b9-b77b-4d3f-bbe5-7c69b15dca85"));
+        assert!(found[0]
+            .message
+            .contains("99999999-b77b-4d3f-bbe5-7c69b15dca85"));
     }
 }

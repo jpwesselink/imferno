@@ -354,6 +354,7 @@ ST2067-2:2020:6.4.2/EssenceDescriptorList
 ST2067-2:2020:6.9.3/VirtualTrackEditRate
 ST2067-2:2020:6.9/VirtualTrackContinuity
 ST2067-2:2020:7.1/TrackFileNotInPackage
+ST2067-2:2020:7.3.1/CplIdAssetMapMismatch
 ST2067-2:2020:7/AssetMap
 ST2067-2:2020:7/DuplicateUuid
 ST2067-2:2020:7/MalformedXml

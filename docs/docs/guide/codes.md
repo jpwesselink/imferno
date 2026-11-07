@@ -79,6 +79,7 @@ Each spec edition has its own codes, even when a rule is unchanged between editi
 | `ST2067-2:2020:9/PklUnknownNamespace` | PKL document namespace is not one of the published SMPTE PKL namespaces. | ERROR | Structure |
 | `ST429-9:2014:6.3/AssetMapHasNoPackingList` | AssetMap declares no asset as a PackingList (ST 429-9 §6.3). | CRITICAL | Structure |
 | `ST429-9:2014:6.3/PklIdNotInAssetMap` | PKL document Id is not declared as a PackingList asset in the AssetMap. | ERROR | Reference |
+| `ST2067-2:2020:7.3.1/CplIdAssetMapMismatch` | An AssetMap asset points at a CPL file whose Id differs from the asset Id. | ERROR | Reference |
 
 ### Core Constraints — 2013
 

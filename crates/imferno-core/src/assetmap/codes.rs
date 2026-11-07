@@ -65,6 +65,10 @@ pub enum St2067_2_2020 {
     /// A PKL document was parsed but its Id is not declared in the
     /// AssetMap as a `PackingList`-flagged asset (ST 429-9 §6.3).
     PklIdNotInAssetMap,
+    /// An AssetMap asset points at a CPL file whose `<Id>` differs from
+    /// the asset Id (ST 2067-2:2020 §7.3.1 Table 19: a CPL asset is
+    /// identified by its CompositionPlaylist Id).
+    CplIdAssetMapMismatch,
 }
 
 impl ValidationCode for St2067_2_2020 {
@@ -85,6 +89,7 @@ impl ValidationCode for St2067_2_2020 {
             Self::PklUnknownNamespace => "ST2067-2:2020:9/PklUnknownNamespace",
             Self::AssetMapHasNoPackingList => "ST429-9:2014:6.3/AssetMapHasNoPackingList",
             Self::PklIdNotInAssetMap => "ST429-9:2014:6.3/PklIdNotInAssetMap",
+            Self::CplIdAssetMapMismatch => "ST2067-2:2020:7.3.1/CplIdAssetMapMismatch",
         }
     }
     fn description(&self) -> &'static str {
@@ -117,6 +122,10 @@ impl ValidationCode for St2067_2_2020 {
             Self::PklIdNotInAssetMap => {
                 "PKL document Id is not declared as a PackingList asset in the AssetMap."
             }
+            // https://github.com/Netflix/photon/issues/265
+            Self::CplIdAssetMapMismatch => {
+                "An AssetMap asset points at a CPL file whose Id differs from the asset Id."
+            }
         }
     }
     fn default_severity(&self) -> Severity {
@@ -143,7 +152,8 @@ impl ValidationCode for St2067_2_2020 {
             Self::UnresolvedUuid
             | Self::TrackFileNotInPackage
             | Self::DuplicateUuid
-            | Self::PklIdNotInAssetMap => Category::Reference,
+            | Self::PklIdNotInAssetMap
+            | Self::CplIdAssetMapMismatch => Category::Reference,
         }
     }
     fn example(&self) -> Option<&'static str> {
@@ -163,6 +173,7 @@ impl ValidationCode for St2067_2_2020 {
             Self::PklUnknownNamespace => "PKL with `xmlns=\"http://example.org/not-a-pkl-namespace\"`",
             Self::AssetMapHasNoPackingList => "AssetMap whose `<Asset>` entries all omit `<PackingList>true</PackingList>`",
             Self::PklIdNotInAssetMap => "PKL `<Id>urn:uuid:abc…</Id>` not present in the AssetMap as a packing-list asset",
+            Self::CplIdAssetMapMismatch => "AssetMap `<Id>urn:uuid:aaa…</Id>` with `<Path>CPL.xml</Path>`, but CPL.xml carries `<Id>urn:uuid:bbb…</Id>`",
         })
     }
 }
@@ -184,6 +195,7 @@ impl St2067_2_2020 {
         Self::PklUnknownNamespace,
         Self::AssetMapHasNoPackingList,
         Self::PklIdNotInAssetMap,
+        Self::CplIdAssetMapMismatch,
     ];
 }
 

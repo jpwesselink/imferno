@@ -35,6 +35,7 @@ const codes = {
     PklUnknownNamespace: "ST2067-2:2020:9/PklUnknownNamespace",
     AssetMapHasNoPackingList: "ST429-9:2014:6.3/AssetMapHasNoPackingList",
     PklIdNotInAssetMap: "ST429-9:2014:6.3/PklIdNotInAssetMap",
+    CplIdAssetMapMismatch: "ST2067-2:2020:7.3.1/CplIdAssetMapMismatch",
   },
   ST2067_2_2013_Core: {
     ResourceListEmpty: "ST2067-2:2013:XSD/ResourceList-Empty",

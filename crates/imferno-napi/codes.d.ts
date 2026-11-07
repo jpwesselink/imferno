@@ -35,6 +35,7 @@ export declare const codes: {
     readonly PklUnknownNamespace: "ST2067-2:2020:9/PklUnknownNamespace";
     readonly AssetMapHasNoPackingList: "ST429-9:2014:6.3/AssetMapHasNoPackingList";
     readonly PklIdNotInAssetMap: "ST429-9:2014:6.3/PklIdNotInAssetMap";
+    readonly CplIdAssetMapMismatch: "ST2067-2:2020:7.3.1/CplIdAssetMapMismatch";
   };
   readonly ST2067_2_2013_Core: {
     readonly ResourceListEmpty: "ST2067-2:2013:XSD/ResourceList-Empty";

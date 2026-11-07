@@ -1578,6 +1578,26 @@ impl Imferno {
     /// Build a map from asset UUID to sanitized relative file path.
     ///
     /// Paths that would escape the package root (path traversal) are excluded.
+    /// PKL assets whose Id is not an AssetMap asset (XML only, no disk).
+    fn pkl_assets_not_in_assetmap(&self) -> Vec<FileValidationError> {
+        let assetmap_ids: std::collections::HashSet<ImfUuid> = self
+            .asset_map
+            .asset_list
+            .assets
+            .iter()
+            .map(|a| a.id)
+            .collect();
+        self.packing_lists
+            .values()
+            .flat_map(|pkl| pkl.asset_list.assets.iter())
+            .filter(|a| !assetmap_ids.contains(&a.id))
+            .map(|a| FileValidationError::NotInAssetMap {
+                uuid: a.id.to_string(),
+                original_file_name: a.original_file_name.clone(),
+            })
+            .collect()
+    }
+
     fn build_asset_path_map(&self) -> HashMap<ImfUuid, PathBuf> {
         let mut map = HashMap::new();
         let has_root = !self.root_path.as_os_str().is_empty();
@@ -1669,9 +1689,26 @@ impl Imferno {
         // (skipped on WASM — no real filesystem available, skipped when no root_path is set,
         //  and skipped when skip_disk_checks is true)
         #[cfg(not(target_arch = "wasm32"))]
-        if !skip_disk_checks && !self.root_path.as_os_str().is_empty() {
+        let manifest_checked = !skip_disk_checks && !self.root_path.as_os_str().is_empty();
+        #[cfg(target_arch = "wasm32")]
+        let manifest_checked = false;
+        #[cfg(not(target_arch = "wasm32"))]
+        if manifest_checked {
             for issue in self
                 .validate_file_manifest()
+                .iter()
+                .map(ValidationIssue::from)
+            {
+                report.add(issue);
+            }
+        }
+        // Without the disk pass, still report PKL assets missing from the
+        // AssetMap (UnresolvedUuid): it needs only the XML, and
+        // validate_cpl_asset_references_accumulating relies on it for
+        // CPL track files that are in a PKL but not in the AssetMap.
+        if !manifest_checked {
+            for issue in self
+                .pkl_assets_not_in_assetmap()
                 .iter()
                 .map(ValidationIssue::from)
             {
@@ -2282,13 +2319,23 @@ impl Imferno {
             .map(|a| a.id)
             .collect();
 
+        // An Id listed in a PKL of this package is part of the package even
+        // when the AssetMap lacks it; that gap is reported as UnresolvedUuid
+        // (ERROR) by the PKL check, so no INFO is added here.
+        let pkl_ids: std::collections::HashSet<ImfUuid> = self
+            .packing_lists
+            .values()
+            .flat_map(|pkl| pkl.asset_list.assets.iter().map(|a| a.id))
+            .collect();
+
         let cpl_id = cpl.id;
 
         for (seg_idx, segment) in cpl.segment_list.segments.iter().enumerate() {
             for (seq, track_type) in segment.sequence_list.all_sequences_typed() {
                 for (res_idx, resource) in seq.resource_list().resources.iter().enumerate() {
                     if let Some(ref track_file_id) = resource.track_file_id {
-                        if !assetmap_ids.contains(track_file_id) {
+                        if !assetmap_ids.contains(track_file_id) && !pkl_ids.contains(track_file_id)
+                        {
                             // ST 2067-2:2020 §7.1: an IMP need not contain
                             // complete compositions, so this is legal (e.g. a
                             // supplemental package referring to the OV).
@@ -3708,6 +3755,60 @@ mod tests {
         assert_eq!(info.len(), 1, "{:#?}", report.info);
         assert!(info[0].message.contains("not in this package"));
         assert!(info[0].message.contains(&outside.to_string()));
+    }
+
+    /// A track file listed in a PKL of this package but missing from the
+    /// AssetMap is part of the package; that gap is UnresolvedUuid (ERROR,
+    /// from the PKL check), so no TrackFileNotInPackage INFO is added.
+    #[test]
+    fn cpl_track_file_in_pkl_but_not_assetmap_gets_no_info() {
+        let test_path = test_data("MERIDIAN_Netflix_Photon_161006");
+        let mut package = Imferno::parse(read_dir(test_path).unwrap()).expect("parse");
+        let cpl_xml = std::fs::read_to_string(
+            test_data("MERIDIAN_Netflix_Photon_161006")
+                .join("CPL_0eb3d1b9-b77b-4d3f-bbe5-7c69b15dca85.xml"),
+        )
+        .unwrap();
+        let cpl = crate::cpl::parse_cpl(&cpl_xml).expect("CPL");
+        let track_file = cpl.segment_list.segments[0]
+            .sequence_list
+            .main_image_sequences[0]
+            .resource_list
+            .resources[0]
+            .track_file_id
+            .expect("TrackFileId");
+        assert!(package.packing_lists.values().any(|pkl| pkl
+            .asset_list
+            .assets
+            .iter()
+            .any(|a| a.id == track_file)));
+        package
+            .asset_map
+            .asset_list
+            .assets
+            .retain(|a| a.id != track_file);
+
+        // Without disk checks the PKL→AssetMap gap is still an ERROR.
+        let full = package.validate_package_structure_with_cpl_validator(|_| Vec::new(), true);
+        let unresolved = codes::St2067_2_2020::UnresolvedUuid.code();
+        assert!(
+            full.errors
+                .iter()
+                .any(|i| i.code == unresolved && i.message.contains(&track_file.to_string())),
+            "{:#?}",
+            full.errors
+        );
+
+        let mut report = ValidationReport::default();
+        package.validate_cpl_asset_references_accumulating(&cpl, &mut report);
+        assert!(
+            !report
+                .info
+                .iter()
+                .any(|i| i.code == codes::St2067_2_2020::TrackFileNotInPackage.code()),
+            "{:#?}",
+            report.info
+        );
     }
 
     /// ST 429-9:2014 Annex A.2 path rules run for a package on disk.

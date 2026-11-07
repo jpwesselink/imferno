@@ -167,14 +167,14 @@ Unmarked rows are carried over from earlier catalogues and not yet checked.
 
 | Rule | Description | Category | 2018 |
 |------|-------------|----------|------|
-| `ST2067-9/MalformedXml` | SidecarCompositionMap document is not well-formed XML (§6.1). | Reference | 6.1 critical |
-| `ST2067-9/SidecarAssetReferencedByVirtualTrack` | A sidecar asset shall not be referenced by any Virtual Track in a CPL (§5). | Reference | 5 error |
-| `ST2067-9/DuplicateAssetId` | Duplicate SidecarAsset Id within SidecarAssetList (§7.2.3). | Reference | 7.2.3 error |
-| `ST2067-9/SignerWithoutSignature` | Signer element is present but the required Signature element is absent (§7.2.4). | Reference | 7.2.4 error |
-| `ST2067-9/SignatureWithoutSigner` | Signature element is present but the required Signer element is absent (§7.2.5). | Reference | 7.2.5 error |
-| `ST2067-9/SidecarAssetNotFound` | SidecarAsset Id is not present in the package AssetMap (§7.3.1). | Reference | 7.3.1 error |
-| `ST2067-9/CplNotFound` | CPLId in AssociatedCPLList does not reference a known CPL in this package (§7.3.1.1). | Reference | 7.3.1.1 warning |
-| `ST2067-9/DuplicateCplId` | Duplicate CPLId within a single AssociatedCPLList (§7.3.1.1). | Reference | 7.3.1.1 error |
+| `ST2067-9/MalformedXml` | SidecarCompositionMap document is not well-formed XML (§6.1). | Reference | 6.1✓ critical |
+| `ST2067-9/SidecarAssetReferencedByVirtualTrack` | A sidecar asset shall not be referenced by any Virtual Track in a CPL (§5). | Reference | 5✓ error |
+| `ST2067-9/DuplicateAssetId` | Duplicate SidecarAsset Id within SidecarAssetList (§7.2.3). | Reference | 7.2.3✓ error |
+| `ST2067-9/SignerWithoutSignature` | Signer element is present but the required Signature element is absent (§7.2.4). | Reference | 7.2.4✓ error |
+| `ST2067-9/SignatureWithoutSigner` | Signature element is present but the required Signer element is absent (§7.2.5). | Reference | 7.2.5✓ error |
+| `ST2067-9/SidecarAssetNotFound` | SidecarAsset Id is not present in the package AssetMap (§7.3.1). | Reference | 7.3.1✓ error |
+| `ST2067-9/CplNotFound` | CPLId in AssociatedCPLList does not reference a known CPL in this package (§7.3.1.1). | Reference | 7.3.1.1✓ warning |
+| `ST2067-9/DuplicateCplId` | Duplicate CPLId within a single AssociatedCPLList (§7.3.1.1). | Reference | 7.3.1.1✓ error |
 
 ## SMPTE ST 2067-21 — Application #2E
 

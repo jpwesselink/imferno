@@ -1,10 +1,11 @@
 //! Rule table: SMPTE ST 2067-9 (Sidecar Composition Map).
 //!
-//! Generated from the pre-C0 per-edition code enums; edit by hand from now on.
+//! Every row checked against the text of its edition (C1/C4).
 
 #![allow(non_upper_case_globals)]
 
-use crate::diagnostics::rule::{row, AnyRule, Rule, Spec};
+use crate::diagnostics::rule::Strength::Shall;
+use crate::diagnostics::rule::{checked, AnyRule, Rule, Spec};
 use crate::diagnostics::{Category, Severity};
 
 crate::diagnostics::rule::editions! {
@@ -22,9 +23,9 @@ pub static MalformedXml: Rule<E> = Rule {
     category: Category::Reference,
     description: "SidecarCompositionMap document is not well-formed XML (§6.1).",
     example: Some("SCM_<uuid>.xml ends mid-element or has mismatched tags."),
-    editions: &[row(E::V2018, "6.1", Severity::Critical).reason(
-        "Prevents the package or file from being processed further (pre-C0 catalogue severity).",
-    )],
+    editions: &[checked(E::V2018, "6.1", Shall)
+        .severity(Severity::Critical)
+        .reason("A Sidecar Composition Map that is not XML cannot be processed further.")],
 };
 
 /// A sidecar asset shall not be referenced by any Virtual Track in a CPL (§5).
@@ -35,7 +36,7 @@ pub static SidecarAssetReferencedByVirtualTrack: Rule<E> = Rule {
     example: Some(
         "A CPL <Resource><TrackFileId> points at a sidecar asset declared in an SCM document.",
     ),
-    editions: &[row(E::V2018, "5", Severity::Error)],
+    editions: &[checked(E::V2018, "5", Shall)],
 };
 
 /// Duplicate SidecarAsset Id within SidecarAssetList (§7.2.3).
@@ -44,7 +45,7 @@ pub static DuplicateAssetId: Rule<E> = Rule {
     category: Category::Reference,
     description: "Duplicate SidecarAsset Id within SidecarAssetList (§7.2.3).",
     example: Some("Two <SidecarAsset> entries in one SCM share the same <Id>urn:uuid:abc…</Id>."),
-    editions: &[row(E::V2018, "7.2.3", Severity::Error)],
+    editions: &[checked(E::V2018, "7.2.3", Shall)],
 };
 
 /// Signer element is present but the required Signature element is absent (§7.2.4).
@@ -53,7 +54,7 @@ pub static SignerWithoutSignature: Rule<E> = Rule {
     category: Category::Reference,
     description: "Signer element is present but the required Signature element is absent (§7.2.4).",
     example: Some("<Signer>…</Signer> appears but no sibling <Signature> follows."),
-    editions: &[row(E::V2018, "7.2.4", Severity::Error)],
+    editions: &[checked(E::V2018, "7.2.4", Shall)],
 };
 
 /// Signature element is present but the required Signer element is absent (§7.2.5).
@@ -62,7 +63,7 @@ pub static SignatureWithoutSigner: Rule<E> = Rule {
     category: Category::Reference,
     description: "Signature element is present but the required Signer element is absent (§7.2.5).",
     example: Some("<Signature>…</Signature> appears without a preceding <Signer>."),
-    editions: &[row(E::V2018, "7.2.5", Severity::Error)],
+    editions: &[checked(E::V2018, "7.2.5", Shall)],
 };
 
 /// SidecarAsset Id is not present in the package AssetMap (§7.3.1).
@@ -72,7 +73,7 @@ pub static SidecarAssetNotFound: Rule<E> = Rule {
     description: "SidecarAsset Id is not present in the package AssetMap (§7.3.1).",
     example: Some("<SidecarAsset><Id>urn:uuid:abc…</Id> references a UUID that is not present in ASSETMAP.xml."),
     editions: &[
-        row(E::V2018, "7.3.1", Severity::Error),
+        checked(E::V2018, "7.3.1", Shall),
     ],
 };
 
@@ -83,7 +84,7 @@ pub static CplNotFound: Rule<E> = Rule {
     description: "CPLId in AssociatedCPLList does not reference a known CPL in this package (§7.3.1.1).",
     example: Some("<AssociatedCPLList><CPLId>urn:uuid:xyz…</CPLId> points at a CPL that isn't in the package."),
     editions: &[
-        row(E::V2018, "7.3.1.1", Severity::Warning),
+        checked(E::V2018, "7.3.1.1", Shall).severity(Severity::Warning).reason("§7.3.1.1 requires the CPLId to be the Id of an associated Composition, not of one delivered in the same package; a CPL absent from this package may live in another."),
     ],
 };
 
@@ -93,7 +94,7 @@ pub static DuplicateCplId: Rule<E> = Rule {
     category: Category::Reference,
     description: "Duplicate CPLId within a single AssociatedCPLList (§7.3.1.1).",
     example: Some("An <AssociatedCPLList> contains the same <CPLId>urn:uuid:xyz…</CPLId> twice."),
-    editions: &[row(E::V2018, "7.3.1.1", Severity::Error)],
+    editions: &[checked(E::V2018, "7.3.1.1", Shall)],
 };
 
 /// Every rule of this spec.

@@ -4,7 +4,7 @@
 //! keys match a finding, the most specific one wins:
 //!
 //! 1. `ST2067-3:2016/SegmentDuration` — the rule in one edition. The full
-//!    display code of a finding (`ST2067-3:2016:7.2.2/SegmentDuration`) is
+//!    display code of a finding (`ST2067-3:2016:7.2/SegmentDuration`) is
 //!    accepted too, so a code copied from a report works as a key.
 //! 2. `ST2067-3/SegmentDuration` — the rule in every edition (the rule id).
 //! 3. `SegmentDuration` — every rule with that name, in any spec.
@@ -362,7 +362,7 @@ mod tests {
 
     #[test]
     fn level1_accepts_the_full_display_code() {
-        let r = rules(&[("ST2067-3:2016:7.2.2/SegmentDuration", RuleSeverity::Warn)]);
+        let r = rules(&[("ST2067-3:2016:7.2/SegmentDuration", RuleSeverity::Warn)]);
         assert_eq!(
             severity(seg(St2067_3Edition::V2016), &r),
             Some(Severity::Warning)
@@ -513,7 +513,7 @@ mod tests {
     fn validate_accepts_every_key_form() {
         let r = rules(&[
             ("ST2067-3:2016/SegmentDuration", RuleSeverity::Warn),
-            ("ST2067-3:2016:7.2.2/SegmentDuration", RuleSeverity::Warn),
+            ("ST2067-3:2016:7.2/SegmentDuration", RuleSeverity::Warn),
             ("ST2067-3/SegmentDuration", RuleSeverity::Warn),
             ("SegmentDuration", RuleSeverity::Warn),
             ("ST2067-3:2016:*", RuleSeverity::Warn),

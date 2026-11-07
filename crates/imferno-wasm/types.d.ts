@@ -373,7 +373,7 @@ export interface ValidationIssue {
    */
   clause: string;
   /**
-   * Display code: `SPEC:EDITION:CLAUSE/Name`, with the edition actually applied (e.g. `ST2067-3:2016:7.2.2/SegmentDuration`).
+   * Display code: `SPEC:EDITION:CLAUSE/Name`, with the edition actually applied (e.g. `ST2067-3:2016:7.2/SegmentDuration`).
    */
   code: string;
   /**

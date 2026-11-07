@@ -1,20 +1,23 @@
 //! ST 2067-3 normative constraint validation.
 //!
-//! Implements all "shall" rules from SMPTE ST 2067-3 (all editions: 2013, 2016, 2020).
+//! Implements "shall" rules from SMPTE ST 2067-3 (editions 2013 and 2016;
+//! clauses are the same in both unless noted).
 //! Issue codes follow the canonical shape: `ST2067-3:{year}:{clause}/{cause}`
 //!
-//! Covered clauses (per normative test matrices):
-//! - §5.5.1.2  ContentKind vocabulary under SMPTE scope
+//! Covered clauses:
+//! - §6.1      CompositionPlaylistType schema (non-empty lists)
+//! - §6.1.8    ContentKind vocabulary under the SMPTE scopes
 //! - §6.1.9    ContentVersion/Id uniqueness within ContentVersionList
-//! - §6.4.2    SourceEncoding → EssenceDescriptor cross-reference
-//! - §6.11     ContentVersionList / ContentVersion constraints
-//! - §6.12     Locale language tags (RFC 5646)
-//! - §6.14.1.2 Marker label vocabulary (2013 and 2016 scopes)
-//! - §7.3      TrackId uniqueness within segment; sequence duration integer edit-units
+//! - §6.5.2    Locale language tags (RFC 5646)
+//! - §6.8      ContentVersion Id / LabelText
+//! - §6.9.3    TrackId uniqueness within a segment
+//! - §6.12.1   SourceEncoding → EssenceDescriptor cross-reference
 //! - §6.13     Marker offset bounds
+//! - §6.14.2 (2013) / §6.14.1.2 (2016) Marker label vocabulary
+//! - §7.3      Sequence duration integer edit units
 //!
-//! Note: §7.2.2 (segment duration homogeneity) is enforced by the st2067-21
-//! core structure validator which handles edit-rate normalisation across all
+//! Note: §7.2 (segment duration homogeneity) is enforced by the core
+//! structure validator, which handles edit-rate normalisation across all
 //! track types and runs on every CPL regardless of application profile.
 
 use std::collections::HashSet;
@@ -41,7 +44,7 @@ pub fn st2067_3_edition(ns: &CplNamespace) -> St2067_3Edition {
 
 /// Validate a `CompositionPlaylist` against the normative constraints of ST 2067-3.
 ///
-/// Runs normative rules across §5.5.1.2, §6.4.2, §6.11, §6.12, §7.3, §7.4.
+/// Runs the normative rules listed in the module documentation.
 /// The spec year in issue codes is derived from the CPL's detected namespace.
 pub fn validate_cpl(cpl: &CompositionPlaylist) -> Vec<ValidationIssue> {
     let mut issues = Vec::new();
@@ -60,7 +63,7 @@ pub fn validate_cpl(cpl: &CompositionPlaylist) -> Vec<ValidationIssue> {
     issues
 }
 
-// ─── §5.5.1.2 ContentKind vocabulary ────────────────────────────────────────
+// ─── §6.1.8 ContentKind vocabulary ────────────────────────────────────────
 
 /// ST 2067-3:2013 / 2016 §6.1.8 Table 3: ContentKind values under the
 /// default scope (identical in both editions).
@@ -222,9 +225,9 @@ fn validate_content_kind_vocabulary(
     }
 }
 
-// ─── §6.4.2 SourceEncoding cross-reference ───────────────────────────────────
+// ─── §6.12.1 SourceEncoding cross-reference ───────────────────────────────────
 
-/// ST 2067-3 §6.4.2: `SourceEncoding` shall reference an `EssenceDescriptor/Id` in the CPL.
+/// ST 2067-3 §6.12.1: `SourceEncoding` shall reference an `EssenceDescriptor/Id` in the CPL.
 fn validate_source_encoding_refs(
     cpl: &CompositionPlaylist,
     spec_ed: St2067_3Edition,
@@ -305,9 +308,9 @@ fn validate_source_encoding_refs(
     }
 }
 
-// ─── §6.11 ContentVersionList ─────────────────────────────────────────────────
+// ─── §6.1 / §6.8 ContentVersionList ─────────────────────────────────────────────────
 
-/// ST 2067-3 §6.11: ContentVersionList, ContentVersion/Id and ContentVersion/LabelText constraints.
+/// ST 2067-3 §6.1 (schema) / §6.8: ContentVersionList, ContentVersion/Id and ContentVersion/LabelText constraints.
 fn validate_content_versions(
     cpl: &CompositionPlaylist,
     spec_ed: St2067_3Edition,
@@ -356,9 +359,9 @@ fn validate_content_versions(
     }
 }
 
-// ─── §6.12 Locale language tags ──────────────────────────────────────────────
+// ─── §6.5.2 Locale language tags ──────────────────────────────────────────────
 
-/// ST 2067-3 §6.12: Locale language tags shall conform to RFC 5646.
+/// ST 2067-3 §6.5.2: Locale language tags shall conform to RFC 5646.
 fn validate_locale_language_tags(
     cpl: &CompositionPlaylist,
     spec_ed: St2067_3Edition,
@@ -393,9 +396,9 @@ fn validate_locale_language_tags(
     }
 }
 
-// ─── §7.3 TrackId uniqueness ──────────────────────────────────────────────────
+// ─── §6.9.3 TrackId uniqueness ──────────────────────────────────────────────────
 
-/// ST 2067-3 §7.3: TrackId values shall be unique within each segment.
+/// ST 2067-3 §6.9.3: TrackId values shall be unique within each segment.
 fn validate_track_id_uniqueness(
     cpl: &CompositionPlaylist,
     spec_ed: St2067_3Edition,

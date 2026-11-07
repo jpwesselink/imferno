@@ -6,7 +6,7 @@ type RuleSeverity = 'off' | 'info' | 'warn' | 'error' | 'critical';
 
 const CONFIGURABLE_RULES: Array<{ code: string; label: string; hint: string }> = [
     { code: 'ST2067-2:2020:8.3/FileNotFound',        label: 'FileNotFound',      hint: 'Asset file not found on disk' },
-    { code: 'ST2067-3:2020:7.2.2/SegmentDuration',   label: 'SegmentDuration',   hint: 'Unequal segment durations across tracks' },
+    { code: 'ST2067-3:2020:7.2/SegmentDuration',   label: 'SegmentDuration',   hint: 'Unequal segment durations across tracks' },
 ];
 import IMFPackageViewer from './IMFPackageViewer';
 

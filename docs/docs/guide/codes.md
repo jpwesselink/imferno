@@ -4,7 +4,7 @@ description: Every validation rule imferno checks, per spec and per edition.
 ---
 
 Every finding names the rule it reports and the edition of the spec that was
-applied, as a code like `ST2067-3:2016:7.2.2/SegmentDuration`. Use the rule
+applied, as a code like `ST2067-3:2016:7.2/SegmentDuration`. Use the rule
 ids and codes to [configure rule severity](/guide/config/).
 
 ## Code format
@@ -150,20 +150,20 @@ Unmarked rows are carried over from earlier catalogues and not yet checked.
 
 | Rule | Description | Category | 2013 | 2016 |
 |------|-------------|----------|------|------|
-| `ST2067-3/ContentKindUnknown` | ContentKind uses an unrecognized value under the SMPTE scope. | Metadata | 5.5.1.2† warning | 5.5.1.2† warning |
-| `ST2067-3/SourceEncodingNoEssenceDescriptorList` | SourceEncoding present but EssenceDescriptorList absent. | Reference | 6.4.2 error | 6.4.2 error |
-| `ST2067-3/SourceEncodingUnresolved` | SourceEncoding does not match any EssenceDescriptor Id. | Reference | 6.4.2 error | 6.4.2 error |
-| `ST2067-3/EssenceDescriptorListEmpty` | EssenceDescriptorList present but contains no descriptors. | Structure | 6.4.2 error | 6.4.2 error |
-| `ST2067-3/ContentVersionListEmpty` | ContentVersionList present but empty. | Structure | 6.11 error | 6.11 error |
-| `ST2067-3/ContentVersionIdInvalid` | ContentVersion/Id is empty (shall be a URI). | Metadata | 6.11 error | 6.11 error |
-| `ST2067-3/ContentVersionLabelTextMissing` | ContentVersion/LabelText is absent. | Metadata | 6.11 warning | 6.11 warning |
-| `ST2067-3/LocaleLanguageTagInvalid` | Locale language tag does not conform to RFC 5646. | Metadata | 6.12 warning | 6.12 warning |
-| `ST2067-3/TrackIdNotUnique` | TrackId is not unique within a segment. | Structure | 7.3 error | 7.3 error |
-| `ST2067-3/MarkerOffsetOutOfRange` | Marker offset exceeds the resource IntrinsicDuration. | Timing | 7.4† error | 7.4† error |
-| `ST2067-3/MarkerLabelUnknown` | Marker label is not a recognized SMPTE standard value. | Metadata | 7.4† warning | 7.4† warning |
-| `ST2067-3/SegmentDuration` | All virtual tracks in a segment must span the same number of edit units. | Timing | 7.2.2 error | 7.2.2† error |
-| `ST2067-3/ContentVersionIdDuplicate` | No two ContentVersion elements shall have identical Id values. | Structure | 6.1.9 error | 6.1.9 error |
-| `ST2067-3/SegmentDurationIntegerEditUnits` | Sequence duration shall be an integer number of Composition Edit Units. | Timing | 7.3 error | 7.3 error |
+| `ST2067-3/ContentKindUnknown` | ContentKind uses an unrecognized value under the SMPTE scope. | Metadata | 6.1.8✓ warning | 6.1.8✓ warning |
+| `ST2067-3/SourceEncodingNoEssenceDescriptorList` | SourceEncoding present but EssenceDescriptorList absent. | Reference | 6.12.1✓ error | 6.12.1✓ error |
+| `ST2067-3/SourceEncodingUnresolved` | SourceEncoding does not match any EssenceDescriptor Id. | Reference | 6.12.1✓ error | 6.12.1✓ error |
+| `ST2067-3/EssenceDescriptorListEmpty` | EssenceDescriptorList present but contains no descriptors. | Structure | 6.1✓ error | 6.1✓ error |
+| `ST2067-3/ContentVersionListEmpty` | ContentVersionList present but empty. | Structure | 6.1✓ error | 6.1✓ error |
+| `ST2067-3/ContentVersionIdInvalid` | ContentVersion/Id is empty (shall be a URI). | Metadata | 6.8.1✓ error | 6.8.1✓ error |
+| `ST2067-3/ContentVersionLabelTextMissing` | ContentVersion/LabelText is absent. | Metadata | 6.8✓ error | 6.8✓ error |
+| `ST2067-3/LocaleLanguageTagInvalid` | Locale language tag does not conform to RFC 5646. | Metadata | 6.5.2✓ error | 6.5.2✓ error |
+| `ST2067-3/TrackIdNotUnique` | TrackId is not unique within a segment. | Structure | 6.9.3✓ error | 6.9.3✓ error |
+| `ST2067-3/MarkerOffsetOutOfRange` | Marker offset exceeds the resource IntrinsicDuration. | Timing | 6.13✓ error | 6.13✓ error |
+| `ST2067-3/MarkerLabelUnknown` | Marker label is not a recognized SMPTE standard value. | Metadata | 6.14.2✓ error | 6.14.1.2✓ error |
+| `ST2067-3/SegmentDuration` | All virtual tracks in a segment must span the same number of edit units. | Timing | 7.2✓ error | 7.2✓ error |
+| `ST2067-3/ContentVersionIdDuplicate` | No two ContentVersion elements shall have identical Id values. | Structure | 6.1.9✓ error | 6.1.9✓ error |
+| `ST2067-3/SegmentDurationIntegerEditUnits` | Sequence duration shall be an integer number of Composition Edit Units. | Timing | 7.3✓ error | 7.3✓ error |
 
 ## SMPTE ST 2067-9 — Sidecar Composition Map
 

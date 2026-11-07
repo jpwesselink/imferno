@@ -3275,7 +3275,7 @@ mod tests {
         let package =
             Imferno::parse(read_dir(test_path).unwrap()).expect("Failed to parse package");
 
-        const INJECTED_CODE: &str = "ST2067-3:2016:5.5.1.2/ContentKindUnknown";
+        const INJECTED_CODE: &str = "ST2067-3:2016:6.1.8/ContentKindUnknown";
 
         let report = package.validate_package_structure_with_cpl_validator(
             |cpl| {

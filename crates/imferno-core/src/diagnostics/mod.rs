@@ -267,7 +267,7 @@ pub struct ValidationIssue {
     /// Location where issue was found
     pub location: Location,
     /// Display code: `SPEC:EDITION:CLAUSE/Name`, with the edition actually
-    /// applied (e.g. `ST2067-3:2016:7.2.2/SegmentDuration`).
+    /// applied (e.g. `ST2067-3:2016:7.2/SegmentDuration`).
     pub code: String,
     /// Human-readable message
     pub message: String,
@@ -706,12 +706,12 @@ mod tests {
             St2067_3Edition::V2013,
             "durations differ",
         );
-        assert_eq!(issue.code, "ST2067-3:2013:7.2.2/SegmentDuration");
+        assert_eq!(issue.code, "ST2067-3:2013:7.2/SegmentDuration");
         assert_eq!(issue.rule.0, "ST2067-3/SegmentDuration");
         assert_eq!(issue.rule_name(), "SegmentDuration");
         assert_eq!(issue.spec, Spec::St2067_3);
         assert_eq!(issue.edition, "2013");
-        assert_eq!(issue.clause, "7.2.2");
+        assert_eq!(issue.clause, "7.2");
         assert_eq!(issue.severity, Severity::Error);
         assert_eq!(issue.strength, Strength::Shall);
         assert_eq!(issue.category, Category::Timing);

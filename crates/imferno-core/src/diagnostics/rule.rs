@@ -308,6 +308,27 @@ pub const fn row<E: Edition>(
     }
 }
 
+/// A row whose clause and strength were checked against this edition's text.
+/// The default severity follows `strength`; override it with
+/// [`EditionEntry::severity`] plus [`EditionEntry::reason`].
+pub const fn checked<E: Edition>(
+    edition: E,
+    clause: &'static str,
+    strength: Strength,
+) -> EditionEntry<E> {
+    EditionEntry {
+        edition,
+        clause: Some(clause),
+        strength,
+        default_severity: strength.default_severity(),
+        severity_reason: None,
+        interpretation: None,
+        verified: true,
+        suspect: false,
+        strength_verified: true,
+    }
+}
+
 /// A row for an edition that does not contain the rule.
 pub const fn absent<E: Edition>(edition: E) -> EditionEntry<E> {
     EditionEntry {
@@ -334,6 +355,13 @@ impl<E: Edition> EditionEntry<E> {
     pub const fn suspect(mut self) -> Self {
         self.suspect = true;
         self.verified = false;
+        self
+    }
+
+    /// Override the default severity (pair with [`EditionEntry::reason`]
+    /// when it differs from the strength's).
+    pub const fn severity(mut self, severity: Severity) -> Self {
+        self.default_severity = severity;
         self
     }
 
@@ -388,7 +416,7 @@ impl<E: Edition> Rule<E> {
         self.editions.iter().find(|e| e.edition == edition)
     }
 
-    /// The display code for `edition` (`ST2067-3:2016:7.2.2/SegmentDuration`),
+    /// The display code for `edition` (`ST2067-3:2016:7.2/SegmentDuration`),
     /// or `None` when the edition does not contain the rule.
     pub fn code(&self, edition: E) -> Option<String> {
         let clause = self.entry(edition)?.clause?;

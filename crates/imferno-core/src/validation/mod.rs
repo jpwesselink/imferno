@@ -944,23 +944,10 @@ fn validate_resource_constraints(
                         );
                     }
 
-                    // A: SourceDuration > 0 (ST 2067-2 §6.10)
-                    // EntryPoint + SourceDuration <= IntrinsicDuration
+                    // A: EntryPoint + SourceDuration <= IntrinsicDuration
+                    // (ST 2067-3 §6.11.6). The lower bound is 0, inclusive:
+                    // a SourceDuration of 0 is allowed and not flagged.
                     if let Some(source_duration) = resource.source_duration {
-                        if source_duration == 0 {
-                            issues.push(
-                                ValidationIssue::new(
-                                    Severity::Error,
-                                    Category::Timing,
-                                    code(CoreConstraintsCode::SourceDuration),
-                                    format!(
-                                        "{} resource {}: SourceDuration shall be greater than 0",
-                                        track_type, resource.id,
-                                    ),
-                                )
-                                .with_location(res_loc.clone()),
-                            );
-                        }
                         if entry_point + source_duration > resource.intrinsic_duration {
                             issues.push(
                                 ValidationIssue::new(
@@ -4180,41 +4167,56 @@ mod tests {
         );
     }
 
-    // ── A: SourceDuration > 0 ────────────────────────────────────────────────
+    // ── A: SourceDuration 0 is permitted ─────────────────────────────────────
 
+    /// ST 2067-3 §6.11.6 (2013, 2016 and 2020 alike) allows SourceDuration
+    /// from 0 (zero) up to IntrinsicDuration - EntryPoint, and the XSD types
+    /// it as xs:nonNegativeInteger. ST 2067-2 adds no lower bound. A
+    /// zero-length Resource is therefore legal and must not be flagged.
+    /// https://github.com/jpwesselink/imferno/issues/89
     #[test]
-    fn core_rejects_zero_source_duration() {
-        let mut cpl = minimal_cpl();
-        let ed_id = uuid(10);
-        cpl.segment_list.segments[0]
-            .sequence_list
-            .main_image_sequences
-            .push(MainImageSequence {
-                id: uuid(3),
-                track_id: uuid(4),
-                resource_list: ResourceList {
-                    resources: vec![Resource {
-                        id: uuid(99),
-                        annotation: None,
-                        edit_rate: None,
-                        intrinsic_duration: 100,
-                        entry_point: None,
-                        source_duration: Some(0), // Invalid
-                        source_encoding: Some(ed_id),
-                        track_file_id: Some(uuid(50)),
-                        repeat_count: None,
-                        key_id: None,
-                        hash: None,
-                        markers: vec![],
-                    }],
-                },
-            });
-        let issues = CoreConstraints2020.validate_cpl(&cpl);
-        assert!(
-            issues.iter().any(|i| i.code.contains("SourceDuration")),
-            "Zero SourceDuration should be flagged: {:#?}",
-            issues,
-        );
+    fn core_accepts_zero_source_duration() {
+        for edition in [
+            &CoreConstraints2013 as &dyn ConstraintsValidator,
+            &CoreConstraints2016,
+            &CoreConstraints2020,
+        ] {
+            let mut cpl = minimal_cpl();
+            let ed_id = uuid(10);
+            cpl.segment_list.segments[0]
+                .sequence_list
+                .main_image_sequences
+                .push(MainImageSequence {
+                    id: uuid(3),
+                    track_id: uuid(4),
+                    resource_list: ResourceList {
+                        resources: vec![Resource {
+                            id: uuid(99),
+                            annotation: None,
+                            edit_rate: None,
+                            intrinsic_duration: 24,
+                            entry_point: None,
+                            source_duration: Some(0),
+                            source_encoding: Some(ed_id),
+                            track_file_id: Some(uuid(50)),
+                            repeat_count: None,
+                            key_id: None,
+                            hash: None,
+                            markers: vec![],
+                        }],
+                    },
+                });
+            let issues = edition.validate_cpl(&cpl);
+            assert!(
+                !issues
+                    .iter()
+                    .any(|i| i.code.contains("SourceDuration")
+                        || i.code.contains("ResourceDuration")),
+                "{}: SourceDuration 0 is allowed by ST 2067-3 6.11.6: {:#?}",
+                edition.spec_id(),
+                issues,
+            );
+        }
     }
 
     #[test]

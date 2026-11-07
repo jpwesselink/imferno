@@ -223,7 +223,6 @@ pub enum CoreConstraintsCode {
     UniqueResourceId,
     IntrinsicDuration,
     EntryPoint,
-    SourceDuration,
     ResourceDuration,
     RepeatCount,
     TrackFileId,
@@ -299,8 +298,6 @@ macro_rules! define_core_constraints_enum {
             /// EntryPoint shall be less than IntrinsicDuration.
             EntryPoint,
             /// EntryPoint + SourceDuration exceeds IntrinsicDuration.
-            SourceDuration,
-            /// SourceDuration shall be a positive integer.
             ResourceDuration,
             /// RepeatCount shall be a positive integer.
             RepeatCount,
@@ -359,7 +356,6 @@ macro_rules! define_core_constraints_enum {
                     Self::UniqueResourceId                     => concat!($prefix, ":6.1/UniqueResourceId"),
                     Self::IntrinsicDuration                    => concat!($prefix, ":6.10/IntrinsicDuration"),
                     Self::EntryPoint                           => concat!($prefix, ":6.10/EntryPoint"),
-                    Self::SourceDuration                       => concat!($prefix, ":6.10/SourceDuration"),
                     Self::ResourceDuration                     => concat!($prefix, ":6.10/ResourceDuration"),
                     Self::RepeatCount                          => concat!($prefix, ":6.10/RepeatCount"),
                     Self::TrackFileId                          => concat!($prefix, ":6.10/TrackFileId"),
@@ -401,8 +397,7 @@ macro_rules! define_core_constraints_enum {
                     Self::UniqueResourceId                     => "Duplicate Resource Id within the CPL.",
                     Self::IntrinsicDuration                    => "IntrinsicDuration shall be greater than 0.",
                     Self::EntryPoint                           => "EntryPoint shall be less than IntrinsicDuration.",
-                    Self::SourceDuration                       => "EntryPoint + SourceDuration exceeds IntrinsicDuration.",
-                    Self::ResourceDuration                     => "SourceDuration shall be a positive integer.",
+                    Self::ResourceDuration                     => "EntryPoint + SourceDuration exceeds IntrinsicDuration.",
                     Self::RepeatCount                          => "RepeatCount shall be a positive integer.",
                     Self::TrackFileId                          => "A non-marker resource is missing a TrackFileId.",
                     Self::VirtualTrackContinuity               => "A virtual track is missing from one or more segments.",
@@ -452,7 +447,6 @@ macro_rules! define_core_constraints_enum {
                     | Self::CompositionTimecodeStartAddressFormat
                     | Self::IntrinsicDuration
                     | Self::EntryPoint
-                    | Self::SourceDuration
                     | Self::ResourceDuration
                     | Self::RepeatCount
                     | Self::VirtualTrackEditRate => Category::Timing,
@@ -500,8 +494,7 @@ macro_rules! define_core_constraints_enum {
                     Self::UniqueResourceId                     => "Two <Resource><Id>urn:uuid:abc…</Id></Resource> with the same Id",
                     Self::IntrinsicDuration                    => "<IntrinsicDuration>0</IntrinsicDuration>",
                     Self::EntryPoint                           => "<IntrinsicDuration>100</IntrinsicDuration><EntryPoint>150</EntryPoint>",
-                    Self::SourceDuration                       => "<IntrinsicDuration>100</IntrinsicDuration><EntryPoint>50</EntryPoint><SourceDuration>80</SourceDuration>  <!-- 50+80 > 100 -->",
-                    Self::ResourceDuration                     => "<SourceDuration>-5</SourceDuration>",
+                    Self::ResourceDuration                     => "<IntrinsicDuration>100</IntrinsicDuration><EntryPoint>50</EntryPoint><SourceDuration>80</SourceDuration>  <!-- 50+80 > 100 -->",
                     Self::RepeatCount                          => "<RepeatCount>0</RepeatCount>",
                     Self::TrackFileId                          => "<Resource xsi:type=\"TrackFileResourceType\">…</Resource>  <!-- no <TrackFileId> child -->",
                     Self::VirtualTrackContinuity               => "Two <Segment> entries, MainAudio track present in segment 0 but absent from segment 1",
@@ -544,7 +537,6 @@ macro_rules! define_core_constraints_enum {
                 Self::UniqueResourceId,
                 Self::IntrinsicDuration,
                 Self::EntryPoint,
-                Self::SourceDuration,
                 Self::ResourceDuration,
                 Self::RepeatCount,
                 Self::TrackFileId,
@@ -588,7 +580,6 @@ macro_rules! define_core_constraints_enum {
                     CoreConstraintsCode::UniqueResourceId                     => concat!($prefix, ":6.1/UniqueResourceId"),
                     CoreConstraintsCode::IntrinsicDuration                    => concat!($prefix, ":6.10/IntrinsicDuration"),
                     CoreConstraintsCode::EntryPoint                           => concat!($prefix, ":6.10/EntryPoint"),
-                    CoreConstraintsCode::SourceDuration                       => concat!($prefix, ":6.10/SourceDuration"),
                     CoreConstraintsCode::ResourceDuration                     => concat!($prefix, ":6.10/ResourceDuration"),
                     CoreConstraintsCode::RepeatCount                          => concat!($prefix, ":6.10/RepeatCount"),
                     CoreConstraintsCode::TrackFileId                          => concat!($prefix, ":6.10/TrackFileId"),

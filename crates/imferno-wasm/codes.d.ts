@@ -57,7 +57,6 @@ export declare const codes: {
     readonly UniqueResourceId: "ST2067-2:2013:6.1/UniqueResourceId";
     readonly IntrinsicDuration: "ST2067-2:2013:6.10/IntrinsicDuration";
     readonly EntryPoint: "ST2067-2:2013:6.10/EntryPoint";
-    readonly SourceDuration: "ST2067-2:2013:6.10/SourceDuration";
     readonly ResourceDuration: "ST2067-2:2013:6.10/ResourceDuration";
     readonly RepeatCount: "ST2067-2:2013:6.10/RepeatCount";
     readonly TrackFileId: "ST2067-2:2013:6.10/TrackFileId";
@@ -97,7 +96,6 @@ export declare const codes: {
     readonly UniqueResourceId: "ST2067-2:2016:6.1/UniqueResourceId";
     readonly IntrinsicDuration: "ST2067-2:2016:6.10/IntrinsicDuration";
     readonly EntryPoint: "ST2067-2:2016:6.10/EntryPoint";
-    readonly SourceDuration: "ST2067-2:2016:6.10/SourceDuration";
     readonly ResourceDuration: "ST2067-2:2016:6.10/ResourceDuration";
     readonly RepeatCount: "ST2067-2:2016:6.10/RepeatCount";
     readonly TrackFileId: "ST2067-2:2016:6.10/TrackFileId";
@@ -137,7 +135,6 @@ export declare const codes: {
     readonly UniqueResourceId: "ST2067-2:2020:6.1/UniqueResourceId";
     readonly IntrinsicDuration: "ST2067-2:2020:6.10/IntrinsicDuration";
     readonly EntryPoint: "ST2067-2:2020:6.10/EntryPoint";
-    readonly SourceDuration: "ST2067-2:2020:6.10/SourceDuration";
     readonly ResourceDuration: "ST2067-2:2020:6.10/ResourceDuration";
     readonly RepeatCount: "ST2067-2:2020:6.10/RepeatCount";
     readonly TrackFileId: "ST2067-2:2020:6.10/TrackFileId";

@@ -104,8 +104,7 @@ Each spec edition has its own codes, even when a rule is unchanged between editi
 | `ST2067-2:2013:6.1/UniqueResourceId` | Duplicate Resource Id within the CPL. | ERROR | Structure |
 | `ST2067-2:2013:6.10/IntrinsicDuration` | IntrinsicDuration shall be greater than 0. | ERROR | Timing |
 | `ST2067-2:2013:6.10/EntryPoint` | EntryPoint shall be less than IntrinsicDuration. | ERROR | Timing |
-| `ST2067-2:2013:6.10/SourceDuration` | EntryPoint + SourceDuration exceeds IntrinsicDuration. | ERROR | Timing |
-| `ST2067-2:2013:6.10/ResourceDuration` | SourceDuration shall be a positive integer. | ERROR | Timing |
+| `ST2067-2:2013:6.10/ResourceDuration` | EntryPoint + SourceDuration exceeds IntrinsicDuration. | ERROR | Timing |
 | `ST2067-2:2013:6.10/RepeatCount` | RepeatCount shall be a positive integer. | ERROR | Timing |
 | `ST2067-2:2013:6.10/TrackFileId` | A non-marker resource is missing a TrackFileId. | ERROR | Reference |
 | `ST2067-2:2013:6.9/VirtualTrackContinuity` | A virtual track is missing from one or more segments. | ERROR | Structure |
@@ -147,8 +146,7 @@ Each spec edition has its own codes, even when a rule is unchanged between editi
 | `ST2067-2:2016:6.1/UniqueResourceId` | Duplicate Resource Id within the CPL. | ERROR | Structure |
 | `ST2067-2:2016:6.10/IntrinsicDuration` | IntrinsicDuration shall be greater than 0. | ERROR | Timing |
 | `ST2067-2:2016:6.10/EntryPoint` | EntryPoint shall be less than IntrinsicDuration. | ERROR | Timing |
-| `ST2067-2:2016:6.10/SourceDuration` | EntryPoint + SourceDuration exceeds IntrinsicDuration. | ERROR | Timing |
-| `ST2067-2:2016:6.10/ResourceDuration` | SourceDuration shall be a positive integer. | ERROR | Timing |
+| `ST2067-2:2016:6.10/ResourceDuration` | EntryPoint + SourceDuration exceeds IntrinsicDuration. | ERROR | Timing |
 | `ST2067-2:2016:6.10/RepeatCount` | RepeatCount shall be a positive integer. | ERROR | Timing |
 | `ST2067-2:2016:6.10/TrackFileId` | A non-marker resource is missing a TrackFileId. | ERROR | Reference |
 | `ST2067-2:2016:6.9/VirtualTrackContinuity` | A virtual track is missing from one or more segments. | ERROR | Structure |
@@ -190,8 +188,7 @@ Each spec edition has its own codes, even when a rule is unchanged between editi
 | `ST2067-2:2020:6.1/UniqueResourceId` | Duplicate Resource Id within the CPL. | ERROR | Structure |
 | `ST2067-2:2020:6.10/IntrinsicDuration` | IntrinsicDuration shall be greater than 0. | ERROR | Timing |
 | `ST2067-2:2020:6.10/EntryPoint` | EntryPoint shall be less than IntrinsicDuration. | ERROR | Timing |
-| `ST2067-2:2020:6.10/SourceDuration` | EntryPoint + SourceDuration exceeds IntrinsicDuration. | ERROR | Timing |
-| `ST2067-2:2020:6.10/ResourceDuration` | SourceDuration shall be a positive integer. | ERROR | Timing |
+| `ST2067-2:2020:6.10/ResourceDuration` | EntryPoint + SourceDuration exceeds IntrinsicDuration. | ERROR | Timing |
 | `ST2067-2:2020:6.10/RepeatCount` | RepeatCount shall be a positive integer. | ERROR | Timing |
 | `ST2067-2:2020:6.10/TrackFileId` | A non-marker resource is missing a TrackFileId. | ERROR | Reference |
 | `ST2067-2:2020:6.9/VirtualTrackContinuity` | A virtual track is missing from one or more segments. | ERROR | Structure |

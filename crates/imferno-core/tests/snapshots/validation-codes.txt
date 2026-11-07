@@ -273,7 +273,6 @@ ST2067-2:2013:6.10/EntryPoint
 ST2067-2:2013:6.10/IntrinsicDuration
 ST2067-2:2013:6.10/RepeatCount
 ST2067-2:2013:6.10/ResourceDuration
-ST2067-2:2013:6.10/SourceDuration
 ST2067-2:2013:6.10/TrackFileId
 ST2067-2:2013:6.4.2/DanglingEssenceDescriptor
 ST2067-2:2013:6.4.2/EssenceDescriptorList
@@ -311,7 +310,6 @@ ST2067-2:2016:6.10/EntryPoint
 ST2067-2:2016:6.10/IntrinsicDuration
 ST2067-2:2016:6.10/RepeatCount
 ST2067-2:2016:6.10/ResourceDuration
-ST2067-2:2016:6.10/SourceDuration
 ST2067-2:2016:6.10/TrackFileId
 ST2067-2:2016:6.4.2/DanglingEssenceDescriptor
 ST2067-2:2016:6.4.2/EssenceDescriptorList
@@ -349,7 +347,6 @@ ST2067-2:2020:6.10/EntryPoint
 ST2067-2:2020:6.10/IntrinsicDuration
 ST2067-2:2020:6.10/RepeatCount
 ST2067-2:2020:6.10/ResourceDuration
-ST2067-2:2020:6.10/SourceDuration
 ST2067-2:2020:6.10/TrackFileId
 ST2067-2:2020:6.4.2/DanglingEssenceDescriptor
 ST2067-2:2020:6.4.2/EssenceDescriptorList

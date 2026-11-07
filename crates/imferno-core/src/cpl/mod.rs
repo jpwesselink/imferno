@@ -1921,8 +1921,6 @@ pub struct J2KExtendedCapabilities {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone, Default)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
-#[cfg_attr(feature = "wasm", derive(Tsify))]
-#[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
 pub struct J2KCcapi {
     #[serde(rename = "UInt16", default)]
     pub values: Vec<u16>,

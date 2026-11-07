@@ -45,6 +45,10 @@ pub enum ImfernoCode {
     DirEntryError,
     /// An asset chunk path attempts to escape the package root directory.
     PathTraversal,
+    /// No application-profile validation ran for (part of) a CPL's
+    /// ApplicationIdentification: it is absent or lists URIs imferno has
+    /// no validator for.
+    ApplicationProfileNotValidated,
 }
 
 impl ValidationCode for ImfernoCode {
@@ -59,6 +63,9 @@ impl ValidationCode for ImfernoCode {
             Self::ReadDirError => "IMFERNO:Package/ReadDirError",
             Self::DirEntryError => "IMFERNO:Package/DirEntryError",
             Self::PathTraversal => "IMFERNO:Package/PathTraversal",
+            Self::ApplicationProfileNotValidated => {
+                "IMFERNO:Package/ApplicationProfileNotValidated"
+            }
         }
     }
 
@@ -82,6 +89,9 @@ impl ValidationCode for ImfernoCode {
                 "Could not read a directory entry while scanning for unlisted essences.",
             Self::PathTraversal =>
                 "An asset chunk path attempts to escape the package root directory (path traversal).",
+            // https://github.com/Netflix/photon/issues/407
+            Self::ApplicationProfileNotValidated =>
+                "Application-profile validation was not performed for the CPL: ApplicationIdentification is absent or lists URIs imferno has no validator for.",
         }
     }
 
@@ -96,6 +106,7 @@ impl ValidationCode for ImfernoCode {
             Self::ReadDirError => Severity::Info,
             Self::DirEntryError => Severity::Info,
             Self::PathTraversal => Severity::Error,
+            Self::ApplicationProfileNotValidated => Severity::Warning,
         }
     }
 
@@ -123,6 +134,8 @@ impl ValidationCode for ImfernoCode {
                 "A specific directory entry returned an error during scanning (often a broken symlink).",
             Self::PathTraversal =>
                 "<Chunk><Path>../../etc/passwd</Path></Chunk> — the asset path resolves outside the package root.",
+            Self::ApplicationProfileNotValidated =>
+                "<ExtensionProperties> without <ApplicationIdentification>, or listing only http://example.org/unknown-app",
         })
     }
 }
@@ -138,6 +151,7 @@ impl ImfernoCode {
         Self::ReadDirError,
         Self::DirEntryError,
         Self::PathTraversal,
+        Self::ApplicationProfileNotValidated,
     ];
 }
 

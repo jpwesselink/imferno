@@ -477,5 +477,6 @@ export declare const codes: {
     readonly ReadDirError: "IMFERNO:Package/ReadDirError";
     readonly DirEntryError: "IMFERNO:Package/DirEntryError";
     readonly PathTraversal: "IMFERNO:Package/PathTraversal";
+    readonly ApplicationProfileNotValidated: "IMFERNO:Package/ApplicationProfileNotValidated";
   }
 };

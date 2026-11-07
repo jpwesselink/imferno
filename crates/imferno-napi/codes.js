@@ -477,6 +477,7 @@ const codes = {
     ReadDirError: "IMFERNO:Package/ReadDirError",
     DirEntryError: "IMFERNO:Package/DirEntryError",
     PathTraversal: "IMFERNO:Package/PathTraversal",
+    ApplicationProfileNotValidated: "IMFERNO:Package/ApplicationProfileNotValidated",
   }
 };
 module.exports = { codes };

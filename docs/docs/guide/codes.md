@@ -620,6 +620,7 @@ Codes emitted by imferno's package-level logic for conditions that don't map to 
 | `IMFERNO:Package/ReadDirError` | Could not scan the package directory. | INFO | Structure |
 | `IMFERNO:Package/DirEntryError` | Could not read a directory entry while scanning for unlisted essences. | INFO | Structure |
 | `IMFERNO:Package/PathTraversal` | An asset chunk path attempts to escape the package root directory (path traversal). | ERROR | Structure |
+| `IMFERNO:Package/ApplicationProfileNotValidated` | Application-profile validation was not performed for the CPL: ApplicationIdentification is absent or lists URIs imferno has no validator for. | WARNING | Structure |
 
 | Code | Description | Default Severity | Category |
 |------|-------------|-----------------|----------|

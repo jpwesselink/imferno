@@ -90,19 +90,80 @@ pub trait ValidatorRegistry {
             }
         }
 
-        if let Some(ref ext) = cpl.extension_properties {
-            if let Some(ref app_id) = ext.application_identification {
-                for uri in app_id.split_whitespace() {
-                    if let Some(v) = self.resolve_namespace(uri) {
-                        validators.push(v);
-                    }
-                }
-            }
-        }
+        push_application_validators(cpl, |uri| self.resolve_namespace(uri), &mut validators);
 
         push_sequence_presence_plugins(cpl, &mut validators);
 
         validators
+    }
+}
+
+/// Resolve the CPL's ApplicationIdentification URIs (an `xs:list`) to
+/// validators. When the element is absent or a URI does not resolve, a
+/// validator emitting `IMFERNO:Package/ApplicationProfileNotValidated` is
+/// added, so a CPL whose application profile was not checked is not
+/// reported as if it passed (https://github.com/Netflix/photon/issues/407).
+fn push_application_validators(
+    cpl: &CompositionPlaylist,
+    resolve: impl Fn(&str) -> Option<Box<dyn ConstraintsValidator>>,
+    validators: &mut Vec<Box<dyn ConstraintsValidator>>,
+) {
+    let uris: Vec<&str> = cpl
+        .extension_properties
+        .as_ref()
+        .and_then(|ext| ext.application_identification.as_deref())
+        .map(|ids| ids.split_whitespace().collect())
+        .unwrap_or_default();
+    let mut unrecognised = Vec::new();
+    for uri in &uris {
+        match resolve(uri) {
+            Some(v) => validators.push(v),
+            None => unrecognised.push(uri.to_string()),
+        }
+    }
+    if uris.is_empty() || !unrecognised.is_empty() {
+        validators.push(Box::new(ApplicationProfileNotValidated {
+            any_validated: uris.len() > unrecognised.len(),
+            unrecognised,
+        }));
+    }
+}
+
+/// Emits `IMFERNO:Package/ApplicationProfileNotValidated` (see
+/// [`push_application_validators`]).
+struct ApplicationProfileNotValidated {
+    any_validated: bool,
+    unrecognised: Vec<String>,
+}
+
+impl ConstraintsValidator for ApplicationProfileNotValidated {
+    fn spec_id(&self) -> &str {
+        "imferno application-profile dispatch"
+    }
+
+    fn validate_cpl(&self, cpl: &CompositionPlaylist) -> Vec<ValidationIssue> {
+        use crate::package::codes::ImfernoCode;
+        let message = if self.unrecognised.is_empty() {
+            "CPL has no ApplicationIdentification, so no application-profile \
+             validation was performed"
+                .to_string()
+        } else if self.any_validated {
+            format!(
+                "CPL ApplicationIdentification lists URI(s) imferno has no validator for: {}; \
+                 those application profiles were not validated",
+                self.unrecognised.join(" ")
+            )
+        } else {
+            format!(
+                "CPL ApplicationIdentification lists no URI imferno has a validator for ({}), \
+                 so no application-profile validation was performed",
+                self.unrecognised.join(" ")
+            )
+        };
+        vec![
+            ValidationIssue::from_code(ImfernoCode::ApplicationProfileNotValidated, message)
+                .with_location(crate::diagnostics::Location::new().with_cpl(cpl.id)),
+        ]
     }
 }
 
@@ -384,15 +445,7 @@ impl ValidatorRegistry for ConfigurableValidatorRegistry {
             // signaled by sequence presence (IAB/ISXD). When the caller
             // pinned app_specs/app_uris above, we respect that pin and do
             // NOT auto-add plug-ins.
-            if let Some(ref ext) = cpl.extension_properties {
-                if let Some(ref app_id) = ext.application_identification {
-                    for uri in app_id.split_whitespace() {
-                        if let Some(v) = self.resolve_namespace(uri) {
-                            validators.push(v);
-                        }
-                    }
-                }
-            }
+            push_application_validators(cpl, |uri| self.resolve_namespace(uri), &mut validators);
             push_sequence_presence_plugins(cpl, &mut validators);
         }
 
@@ -2298,6 +2351,79 @@ mod tests {
         assert_eq!(validators[1].spec_id(), "ST 2067-21:2023 (App2E)");
     }
 
+    fn not_validated_issues(cpl: &CompositionPlaylist) -> Vec<ValidationIssue> {
+        validate_cpl(cpl)
+            .into_iter()
+            .filter(|i| i.code == "IMFERNO:Package/ApplicationProfileNotValidated")
+            .collect()
+    }
+
+    fn with_app_id(app_id: Option<&str>) -> CompositionPlaylist {
+        let mut cpl = minimal_cpl();
+        cpl.extension_properties = Some(ExtensionProperties {
+            application_identification: app_id.map(str::to_string),
+            max_cll: None,
+            max_fall: None,
+        });
+        cpl
+    }
+
+    /// https://github.com/Netflix/photon/issues/407: a CPL whose application
+    /// profile was not validated must say so instead of passing silently.
+    #[test]
+    fn missing_application_identification_is_reported() {
+        for cpl in [minimal_cpl(), with_app_id(None), with_app_id(Some("  "))] {
+            let issues = not_validated_issues(&cpl);
+            assert_eq!(issues.len(), 1, "{issues:#?}");
+            assert_eq!(issues[0].severity, Severity::Warning);
+            assert!(issues[0].message.contains("no ApplicationIdentification"));
+        }
+    }
+
+    #[test]
+    fn unrecognised_application_identification_is_reported_with_uri() {
+        let issues = not_validated_issues(&with_app_id(Some("http://example.com/unknown-app")));
+        assert_eq!(issues.len(), 1, "{issues:#?}");
+        assert!(issues[0].message.contains("http://example.com/unknown-app"));
+        assert!(issues[0]
+            .message
+            .contains("no application-profile validation"));
+
+        // Partly recognised: the App #2E part runs, the rest is named.
+        let issues = not_validated_issues(&with_app_id(Some(
+            "http://www.smpte-ra.org/ns/2067-21/2021 http://example.com/unknown-app",
+        )));
+        assert_eq!(issues.len(), 1, "{issues:#?}");
+        assert!(issues[0].message.contains("http://example.com/unknown-app"));
+        assert!(!issues[0].message.contains("2067-21/2021"));
+    }
+
+    #[test]
+    fn recognised_application_identification_is_not_reported() {
+        let cpl = with_app_id(Some("http://www.smpte-ra.org/ns/2067-21/2021"));
+        assert!(not_validated_issues(&cpl).is_empty());
+    }
+
+    #[test]
+    fn pinned_app_selection_does_not_report() {
+        // The caller chose the app profiles (here: none), so nothing is
+        // left unvalidated by imferno's choice.
+        let registry = ConfigurableValidatorRegistry::new(ValidatorSelection {
+            app_specs: Some(vec![]),
+            ..Default::default()
+        });
+        let issues = validate_cpl_with_registry(&minimal_cpl(), &registry);
+        assert!(!issues
+            .iter()
+            .any(|i| i.code == "IMFERNO:Package/ApplicationProfileNotValidated"));
+        // Auto mode reports.
+        let auto = ConfigurableValidatorRegistry::new(ValidatorSelection::default());
+        let issues = validate_cpl_with_registry(&minimal_cpl(), &auto);
+        assert!(issues
+            .iter()
+            .any(|i| i.code == "IMFERNO:Package/ApplicationProfileNotValidated"));
+    }
+
     #[test]
     fn registry_resolve_for_cpl_handles_multiple_app_uris() {
         let mut cpl = minimal_cpl();
@@ -2310,9 +2436,13 @@ mod tests {
         });
         let registry = BuiltinValidatorRegistry;
         let validators = registry.resolve_for_cpl(&cpl);
-        assert_eq!(validators.len(), 2);
+        assert_eq!(validators.len(), 3);
         assert_eq!(validators[0].spec_id(), "ST 2067-2:2016");
         assert_eq!(validators[1].spec_id(), "ST 2067-21:2023 (App2E)");
+        assert_eq!(
+            validators[2].spec_id(),
+            "imferno application-profile dispatch"
+        );
     }
 
     #[test]
@@ -2348,7 +2478,11 @@ mod tests {
         });
 
         let validators = registry.resolve_for_cpl(&cpl);
-        assert_eq!(validators.len(), 1);
+        assert_eq!(validators.len(), 2); // + no-AppId notice (photon#407)
+        assert_eq!(
+            validators[1].spec_id(),
+            "imferno application-profile dispatch"
+        );
         assert_eq!(validators[0].spec_id(), "ST 2067-2:2016");
     }
 
@@ -2394,7 +2528,11 @@ mod tests {
         let mut cpl = minimal_cpl();
         cpl.namespace = CplNamespace::Smpte2067_3_2016;
         let validators = get_validators_for_cpl(&cpl);
-        assert_eq!(validators.len(), 1);
+        assert_eq!(validators.len(), 2); // + no-AppId notice (photon#407)
+        assert_eq!(
+            validators[1].spec_id(),
+            "imferno application-profile dispatch"
+        );
         assert_eq!(validators[0].spec_id(), "ST 2067-2:2016");
     }
 
@@ -2403,7 +2541,11 @@ mod tests {
         let mut cpl = minimal_cpl();
         cpl.namespace = CplNamespace::Smpte2067_3_2013;
         let validators = get_validators_for_cpl(&cpl);
-        assert_eq!(validators.len(), 1);
+        assert_eq!(validators.len(), 2); // + no-AppId notice (photon#407)
+        assert_eq!(
+            validators[1].spec_id(),
+            "imferno application-profile dispatch"
+        );
         assert_eq!(validators[0].spec_id(), "ST 2067-2:2013");
     }
 
@@ -2413,10 +2555,12 @@ mod tests {
         let mut cpl = minimal_cpl();
         cpl.namespace = CplNamespace::Dci429_7;
         let validators = get_validators_for_cpl(&cpl);
+        // Only the "no application profile validated" notice (photon#407).
+        let ids: Vec<_> = validators.iter().map(|v| v.spec_id()).collect();
         assert_eq!(
-            validators.len(),
-            0,
-            "DCI namespace should yield no validators"
+            ids,
+            vec!["imferno application-profile dispatch"],
+            "DCI namespace should yield no core validator"
         );
     }
 
@@ -2469,7 +2613,11 @@ mod tests {
             ..Default::default()
         });
         let validators = registry.resolve_for_cpl(&cpl);
-        assert_eq!(validators.len(), 1);
+        assert_eq!(validators.len(), 2); // + no-AppId notice (photon#407)
+        assert_eq!(
+            validators[1].spec_id(),
+            "imferno application-profile dispatch"
+        );
         assert_eq!(validators[0].spec_id(), "ST 2067-2:2016");
     }
 

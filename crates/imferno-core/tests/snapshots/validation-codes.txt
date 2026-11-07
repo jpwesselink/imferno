@@ -1,4 +1,5 @@
 IMF:General/IoError
+IMFERNO:Package/ApplicationProfileNotValidated
 IMFERNO:Package/DirEntryError
 IMFERNO:Package/ParseError
 IMFERNO:Package/PathTraversal

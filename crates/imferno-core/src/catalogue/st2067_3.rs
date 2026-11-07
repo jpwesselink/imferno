@@ -4,7 +4,7 @@
 
 #![allow(non_upper_case_globals)]
 
-use crate::diagnostics::rule::Strength::Shall;
+use crate::diagnostics::rule::Strength::{May, Shall};
 use crate::diagnostics::rule::{checked, AnyRule, Rule, Spec};
 use crate::diagnostics::{Category, Severity};
 
@@ -149,7 +149,7 @@ pub static MarkerLabelUnknown: Rule<E> = Rule {
     example: Some("<Marker><Label>NotARealMarker</Label></Marker>"),
     editions: &[
         checked(E::V2013, "6.14.2", Shall).interpret("Labels under the default scope must be in Table 19; other scopes are out of scope.", Some("https://github.com/Netflix/photon/issues/394")),
-        checked(E::V2016, "6.14.1.2", Shall).interpret("Labels under the 2013 and 2016 standard-marker scopes must be in Table 21; other scopes are out of scope.", Some("https://github.com/Netflix/photon/issues/394")),
+        checked(E::V2016, "6.14.1.2", May).interpret("2016 says Table 21 lists values that may be used (the 2013 shall-match sentence is gone); a label outside Table 21 under a standard-marker scope is reported as Info.", Some("https://github.com/Netflix/photon/issues/394")),
     ],
 };
 

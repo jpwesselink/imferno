@@ -4064,7 +4064,7 @@ mod tests {
     }
 
     /// A track file listed in a PKL of this package but missing from the
-    /// AssetMap is part of the package; that gap is UnresolvedUuid (ERROR,
+    /// AssetMap is part of the package; that gap is UnresolvedUuid (WARNING,
     /// from the PKL check), so no TrackFileNotInPackage INFO is added.
     #[test]
     fn cpl_track_file_in_pkl_but_not_assetmap_gets_no_info() {
@@ -4106,8 +4106,8 @@ mod tests {
             .iter()
             .any(|i| i.is(&imferno::DeliveryNotChecked)));
 
-        // Checked as ST 2067-2:2020, the PKL→AssetMap gap is an ERROR even
-        // without disk checks.
+        // Checked as ST 2067-2:2020, the PKL→AssetMap gap is a WARNING
+        // (§8.3, should) even without disk checks.
         let full = package.validate_package_structure_for(
             |_| Vec::new(),
             true,
@@ -4117,11 +4117,11 @@ mod tests {
             .code(St2067_2Edition::V2020)
             .unwrap();
         assert!(
-            full.errors
+            full.warnings
                 .iter()
                 .any(|i| i.code == unresolved && i.message.contains(&track_file.to_string())),
             "{:#?}",
-            full.errors
+            full.warnings
         );
 
         let mut report = ValidationReport::default();
@@ -4218,7 +4218,7 @@ mod tests {
             original_file_name: Some("test.mxf".to_string()),
         };
         let issue = err.to_issue(St2067_2Edition::V2020).unwrap();
-        assert_eq!(issue.severity, Severity::Error);
+        assert_eq!(issue.severity, Severity::Warning);
         assert_eq!(issue.category, Category::Reference);
         assert!(issue.is(&st2067_2::UnresolvedUuid));
         assert!(issue.message.contains("test-uuid"));
@@ -4301,14 +4301,9 @@ mod tests {
         let package = Imferno::parse(read_dir(root).unwrap()).expect("parse");
         let report = package.validate(&ValidationOptions::default());
 
-        assert!(
-            report.has_errors(),
-            "Should report errors for orphan PKL asset: {}",
-            report.summary()
-        );
-        // Should have at least the NotInAssetMap error
+        // ST 2067-2 §8.3 (should): the orphan PKL asset is a warning.
         let all_issues: Vec<_> = report
-            .errors
+            .warnings
             .iter()
             .filter(|i| i.is(&st2067_2::UnresolvedUuid))
             .collect();

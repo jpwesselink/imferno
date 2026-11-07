@@ -29,9 +29,9 @@ export declare const codes: {
     readonly AssetMapFileName: "ST429-9/AssetMapFileName";
     readonly AssetMapHasNoPackingList: "ST429-9/AssetMapHasNoPackingList";
     readonly PklIdNotInAssetMap: "ST429-9/PklIdNotInAssetMap";
+    readonly AssetMapMalformedXml: "ST429-9/AssetMapMalformedXml";
   };
   readonly ST2067_2: {
-    readonly AssetMapMalformedXml: "ST2067-2/AssetMapMalformedXml";
     readonly PklMalformedXml: "ST2067-2/PklMalformedXml";
     readonly NoCpls: "ST2067-2/NoCpls";
     readonly SizeMismatch: "ST2067-2/SizeMismatch";

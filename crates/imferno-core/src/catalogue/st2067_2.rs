@@ -4,7 +4,7 @@
 
 #![allow(non_upper_case_globals)]
 
-use crate::diagnostics::rule::Strength::{May, Shall};
+use crate::diagnostics::rule::Strength::{May, Shall, Should};
 use crate::diagnostics::rule::{absent, checked, AnyRule, Rule, Spec};
 use crate::diagnostics::{Category, Severity};
 
@@ -18,19 +18,6 @@ crate::diagnostics::rule::editions! {
 }
 
 type E = St2067_2Edition;
-
-/// The ASSETMAP.xml document is not well-formed XML.
-pub static AssetMapMalformedXml: Rule<E> = Rule {
-    name: "AssetMapMalformedXml",
-    category: Category::Structure,
-    description: "The ASSETMAP.xml document is not well-formed XML.",
-    example: Some("ASSETMAP.xml truncated mid-element: `<AssetMap><Id>urn:uuid:…</Id>`"),
-    editions: &[
-        absent(E::V2013).verified(),
-        checked(E::V2016, "8.1", Shall),
-        checked(E::V2020, "8.1", Shall),
-    ],
-};
 
 /// A Packing List document is not well-formed XML.
 pub static PklMalformedXml: Rule<E> = Rule {
@@ -109,8 +96,8 @@ pub static UnresolvedUuid: Rule<E> = Rule {
     example: Some("PKL `<Asset><Id>urn:uuid:aaa…</Id>` with no AssetMap asset of that Id"),
     editions: &[
         absent(E::V2013).verified(),
-        checked(E::V2016, "8.2", Shall).interpret("8.2 defines a Delivery as IMPs contained in a single Mapped File Set; a Packing List asset the Asset Map does not map is not in the Delivery (8.3 Note 6: it is not ingested).", None),
-        checked(E::V2020, "8.2", Shall).interpret("8.2 defines a Delivery as IMPs contained in a single Mapped File Set; a Packing List asset the Asset Map does not map is not in the Delivery (8.3 Note 6: it is not ingested).", None),
+        checked(E::V2016, "8.3", Should).interpret("8.3: assets intended to be ingested should be referenced by both the Packing List and the Asset Map (Note 6: otherwise not ingested).", None),
+        checked(E::V2020, "8.3", Should).interpret("8.3: assets intended to be ingested should be referenced by both the Packing List and the Asset Map (Note 6: otherwise not ingested).", None),
     ],
 };
 
@@ -706,7 +693,6 @@ pub static AudioVirtualTrackMissing: Rule<E> = Rule {
 
 /// Every rule of this spec.
 pub static ALL: &[&dyn AnyRule] = &[
-    &AssetMapMalformedXml,
     &PklMalformedXml,
     &NoCpls,
     &SizeMismatch,

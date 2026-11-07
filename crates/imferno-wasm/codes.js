@@ -29,9 +29,9 @@ export const codes = {
     AssetMapFileName: "ST429-9/AssetMapFileName",
     AssetMapHasNoPackingList: "ST429-9/AssetMapHasNoPackingList",
     PklIdNotInAssetMap: "ST429-9/PklIdNotInAssetMap",
+    AssetMapMalformedXml: "ST429-9/AssetMapMalformedXml",
   },
   ST2067_2: {
-    AssetMapMalformedXml: "ST2067-2/AssetMapMalformedXml",
     PklMalformedXml: "ST2067-2/PklMalformedXml",
     NoCpls: "ST2067-2/NoCpls",
     SizeMismatch: "ST2067-2/SizeMismatch",

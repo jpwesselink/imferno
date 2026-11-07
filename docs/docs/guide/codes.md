@@ -69,18 +69,18 @@ Unmarked rows are carried over from earlier catalogues and not yet checked.
 | `ST429-9/AssetMapFileName` | The Asset Map file is not named exactly ASSETMAP.xml (Basic Map Profile v2). | Structure | A.4✓ error |
 | `ST429-9/AssetMapHasNoPackingList` | AssetMap declares no asset as a PackingList (ST 429-9 §6.3). | Structure | 6.3✓ critical |
 | `ST429-9/PklIdNotInAssetMap` | PKL document Id is not declared as a PackingList asset in the AssetMap. | Reference | 6.3✓ error |
+| `ST429-9/AssetMapMalformedXml` | The ASSETMAP.xml document is not well-formed XML. | Structure | 11✓ error |
 
 ## SMPTE ST 2067-2 — Core Constraints
 
 | Rule | Description | Category | 2013 | 2016 | 2020 |
 |------|-------------|----------|------|------|------|
-| `ST2067-2/AssetMapMalformedXml` | The ASSETMAP.xml document is not well-formed XML. | Structure | —✓ | 8.1✓ error | 8.1✓ error |
 | `ST2067-2/PklMalformedXml` | A Packing List document is not well-formed XML. | Structure | 7.1✓ error | K✓ error | J✓ error |
 | `ST2067-2/NoCpls` | No CPL assets found in the AssetMap. | Structure | —✓ | 7.2.1✓ info | 7.2✓ info |
 | `ST2067-2/SizeMismatch` | Declared file size does not match the on-disk size. | Asset | —✓ | K✓ error | J✓ error |
 | `ST2067-2/FileNotFound` | A referenced asset file is not present at the declared path. | Asset | 7.1✓ error | 7.2.1✓ error | 7.2✓ error |
 | `ST2067-2/ChecksumMismatch` | File hash does not match the declared SHA-1/SHA-256 checksum. | Asset | —✓ | K✓ error | J✓ error |
-| `ST2067-2/UnresolvedUuid` | An asset listed in the Packing List is not in the AssetMap. | Reference | —✓ | 8.2✓ error | 8.2✓ error |
+| `ST2067-2/UnresolvedUuid` | An asset listed in the Packing List is not in the AssetMap. | Reference | —✓ | 8.3✓ warning | 8.3✓ warning |
 | `ST2067-2/TrackFileNotInPackage` | A CPL track file is not in this package; an IMP need not contain complete compositions (e.g. a supplemental package referring to the original version). | Reference | 7.6✓ info | 7.2.3✓ info | 7.2✓ info |
 | `ST2067-2/DuplicateUuid` | Two or more assets within the package share the same UUID. | Reference | 7.2✓ error | 7.3.1✓ error | 7.3.1✓ error |
 | `ST2067-2/PklUnknownNamespace` | PKL document namespace is not one of the published SMPTE PKL namespaces. | Structure | 7.1✓ error | K✓ error | J✓ error |
@@ -137,7 +137,7 @@ Unmarked rows are carried over from earlier catalogues and not yet checked.
 | `ST2067-3/LocaleLanguageTagInvalid` | Locale language tag does not conform to RFC 5646. | Metadata | 6.5.2✓ error | 6.5.2✓ error |
 | `ST2067-3/TrackIdNotUnique` | TrackId is not unique within a segment. | Structure | 6.9.3✓ error | 6.9.3✓ error |
 | `ST2067-3/MarkerOffsetOutOfRange` | Marker offset exceeds the resource IntrinsicDuration. | Timing | 6.13✓ error | 6.13✓ error |
-| `ST2067-3/MarkerLabelUnknown` | Marker label is not a recognized SMPTE standard value. | Metadata | 6.14.2✓ error | 6.14.1.2✓ error |
+| `ST2067-3/MarkerLabelUnknown` | Marker label is not a recognized SMPTE standard value. | Metadata | 6.14.2✓ error | 6.14.1.2✓ info |
 | `ST2067-3/SegmentDuration` | All virtual tracks in a segment must span the same number of edit units. | Timing | 7.2✓ error | 7.2✓ error |
 | `ST2067-3/ContentVersionIdDuplicate` | No two ContentVersion elements shall have identical Id values. | Structure | 6.1.9✓ error | 6.1.9✓ error |
 | `ST2067-3/SegmentDurationIntegerEditUnits` | Sequence duration shall be an integer number of Composition Edit Units. | Timing | 7.3✓ error | 7.3✓ error |

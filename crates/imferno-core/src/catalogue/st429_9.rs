@@ -135,6 +135,17 @@ pub static PklIdNotInAssetMap: Rule<E> = Rule {
     )],
 };
 
+/// The ASSETMAP.xml document is not well-formed XML.
+pub static AssetMapMalformedXml: Rule<E> = Rule {
+    name: "AssetMapMalformedXml",
+    category: Category::Structure,
+    description: "The ASSETMAP.xml document is not well-formed XML.",
+    example: Some("ASSETMAP.xml truncated mid-element: `<AssetMap><Id>urn:uuid:…</Id>`"),
+    editions: &[
+        checked(E::V2014, "11", Shall).interpret("The §11 schema normatively defines the Asset Map structure; a document that is not well-formed XML cannot conform. ST 2067-2 §8.1 only introduces the Asset Map mechanism (no normative verb).", None),
+    ],
+};
+
 /// Every rule of this spec.
 pub static ALL: &[&dyn AnyRule] = &[
     &AssetListEmpty,
@@ -148,4 +159,5 @@ pub static ALL: &[&dyn AnyRule] = &[
     &AssetMapFileName,
     &AssetMapHasNoPackingList,
     &PklIdNotInAssetMap,
+    &AssetMapMalformedXml,
 ];

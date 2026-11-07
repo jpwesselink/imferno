@@ -22,15 +22,17 @@ Prebuilt binaries are provided for:
 
 ### Validate a package on disk
 
-```js
-import { buildReportFromPath } from "@imferno/node";
+```ts
+import { validatePath } from "@imferno/node";
 
-const report = buildReportFromPath("./my-imp");
+const { package: pkg, validation } = validatePath("./my-imp");
 
-console.log("Compliant:", report.validation.is_compliant);
-console.log("Errors:", report.validation.errors.length);
-console.log("Warnings:", report.validation.warnings.length);
-console.log("CPLs:", report.package.cplCount);
+console.log("Compliant:", validation.is_compliant);
+console.log("Errors:", validation.errors.length);
+for (const issue of validation.errors) {
+  console.log(issue.severity, issue.code, issue.message, issue.location.file);
+}
+console.log("CPLs:", Object.keys(pkg.compositionPlaylists).length);
 ```
 
 ### Validate from a URI (filesystem or S3)
@@ -54,10 +56,10 @@ const report = buildReportFromUri("s3://my-bucket/path/to/imp/", {
 
 ### Validate with options
 
-```js
-import { buildReportFromPath } from "@imferno/node";
+```ts
+import { validatePath, type PathValidateOptions } from "@imferno/node";
 
-const report = buildReportFromPath("./my-imp", {
+const options: PathValidateOptions = {
   coreSpec: "v2020",
   app2eSpec: "v2023",
   skipDiskChecks: true,
@@ -65,15 +67,16 @@ const report = buildReportFromPath("./my-imp", {
     "ST2067-21:2023:7.1/AppIdMismatch": "error",
     "IMFERNO:Package/UnreferencedAsset": "off",
   },
-});
+};
+const result = validatePath("./my-imp", options);
 ```
 
 ### Validate from in-memory strings
 
 ```js
-import { buildReport } from "@imferno/node";
+import { validate } from "@imferno/node";
 
-const report = buildReport({
+const result = validate({
   "ASSETMAP.xml": assetmapXml,
   "PKL_abc.xml": pklXml,
   "CPL_def.xml": cplXml,
@@ -119,8 +122,34 @@ console.log(getVersion()); // e.g. "2.0.0"
 |--------|------|-------------|
 | `coreSpec` | `"auto" \| "v2013" \| "v2016" \| "v2020"` | Core constraints spec version |
 | `app2eSpec` | `"auto" \| "none" \| "v2014" \| "v2016" \| "v2020" \| "v2023" \| "v2026"` | Application spec version |
-| `skipDiskChecks` | `boolean` | Skip file manifest and MXF checks (`buildReportFromPath` only) |
-| `rules` | `Record<string, "error" \| "warn" \| "info" \| "off">` | ESLint-style per-rule severity overrides |
+| `rules` | `Record<string, "off" \| "info" \| "warn" \| "error" \| "critical">` | ESLint-style per-rule severity overrides |
+| `aggregateRepeats` | `boolean` | Collapse repeated identical findings into one issue with `additional_instances` |
+| `skipDiskChecks` | `boolean` | Skip file manifest and MXF checks (path / URI functions only; in-memory input never touches disk) |
+| `credentials` | `S3Credentials \| null` | Explicit S3 credentials (URI functions only) |
+
+### TypeScript
+
+The package ships precise declarations, generated from the Rust types (no
+`any`). Every function is synchronous. All value types are exported from the
+main entry:
+
+```ts
+import type {
+  ValidationResult,   // validate*, { package, validation }
+  Imferno,            // parsePackage*, the full parsed package
+  ImfReport,          // buildReport* (legacy)
+  ValidationIssue,    // severity, category, code, message, location, ...
+  ValidateOptions,    // coreSpec, app2eSpec, rules, aggregateRepeats
+  PathValidateOptions,
+  UriValidateOptions,
+  RuleInfo,           // listRules() entries
+} from "@imferno/node";
+```
+
+Field casing follows the serialised output: the validation report uses
+snake_case (`is_compliant`, `cpl_id`), the parsed package uses camelCase at the
+top level (`compositionPlaylists`) and the SMPTE element names inside CPLs
+(`ContentTitle`, `SegmentList`).
 
 ### Return types
 
@@ -133,6 +162,7 @@ console.log(getVersion()); // e.g. "2.0.0"
     "is_compliant": true,
     "is_playable": true,
     "profile": "SMPTE",
+    "timestamp": "2026-01-01T12:00:00.000000+00:00",
     "critical": [],
     "errors": [],
     "warnings": [],

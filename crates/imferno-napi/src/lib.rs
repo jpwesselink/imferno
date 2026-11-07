@@ -29,6 +29,7 @@ use strum::IntoEnumIterator;
 // Version
 // =============================================================================
 
+/// Returns the imferno library version string.
 #[napi(js_name = "getVersion")]
 pub fn get_version() -> String {
     env!("CARGO_PKG_VERSION").to_string()
@@ -42,7 +43,7 @@ pub fn get_version() -> String {
 /// per-spec enum variant. Useful for building settings UIs that render a
 /// configurable severity dropdown per rule. The shape is stable JSON, so
 /// downstream callers can store severity overrides keyed by `code`.
-#[napi(js_name = "listRules")]
+#[napi(js_name = "listRules", ts_return_type = "RuleInfo[]")]
 pub fn list_rules_js() -> serde_json::Value {
     fn collect<C: ValidationCode + IntoEnumIterator>(spec: &str, out: &mut Vec<serde_json::Value>) {
         for c in C::iter() {
@@ -104,8 +105,21 @@ pub fn list_rules_js() -> serde_json::Value {
 // Build report (string-based) — DEPRECATED, use validate() instead
 // =============================================================================
 
+/// Validate an IMF package from in-memory XML strings, returning the legacy
+/// `ImfReport` summary. Prefer `validate` for new code.
+///
+/// Disk checks are always skipped (there is no package on disk).
+///
+/// @param files - A map of filename to XML content (e.g. `{ "ASSETMAP.xml": "..." }`)
+/// @param options - Optional validation options (`coreSpec`, `app2eSpec`, `rules`, `aggregateRepeats`)
+/// @returns An `ImfReport` with `package`, `cpls`, and `validation` fields.
+/// @throws If the package cannot be parsed or the options are invalid.
 #[allow(deprecated)]
-#[napi(js_name = "buildReport")]
+#[napi(
+    js_name = "buildReport",
+    ts_args_type = "files: Record<string, string>, options?: ValidateOptions | undefined | null",
+    ts_return_type = "ImfReport"
+)]
 pub fn build_report_js(
     files: HashMap<String, String>,
     options: Option<serde_json::Value>,
@@ -135,8 +149,19 @@ pub fn build_report_js(
 // Build report (path-based) — DEPRECATED, use validatePath() instead
 // =============================================================================
 
+/// Validate an IMF package directory on disk, returning the legacy
+/// `ImfReport` summary. Prefer `validatePath` for new code.
+///
+/// @param path - Path to the IMP directory
+/// @param options - Optional validation options (`coreSpec`, `app2eSpec`, `skipDiskChecks`, `rules`, `aggregateRepeats`)
+/// @returns An `ImfReport` with `package`, `cpls`, and `validation` fields.
+/// @throws If the directory cannot be read, the package cannot be parsed, or the options are invalid.
 #[allow(deprecated)]
-#[napi(js_name = "buildReportFromPath")]
+#[napi(
+    js_name = "buildReportFromPath",
+    ts_args_type = "path: string, options?: PathValidateOptions | undefined | null",
+    ts_return_type = "ImfReport"
+)]
 pub fn build_report_from_path(
     path: String,
     options: Option<serde_json::Value>,
@@ -171,8 +196,13 @@ pub fn build_report_from_path(
 // Format report — pretty-print an ImfReport as a human-readable string
 // =============================================================================
 
+/// Pretty-print an `ImfReport` as a human-readable string.
+///
+/// @param report - A report previously returned by one of the `buildReport*` functions
+/// @returns A formatted plain-text report.
+/// @throws If `report` is not a valid `ImfReport`.
 #[allow(deprecated)]
-#[napi(js_name = "formatReport")]
+#[napi(js_name = "formatReport", ts_args_type = "report: ImfReport")]
 pub fn format_report_js(report: serde_json::Value) -> napi::Result<String> {
     let imf_report: ImfReport = serde_json::from_value(report)
         .map_err(|e| napi::Error::from_reason(format!("Invalid ImfReport JSON: {}", e)))?;
@@ -184,8 +214,13 @@ pub fn format_report_js(report: serde_json::Value) -> napi::Result<String> {
 // Parse package — full serialized Imferno struct
 // =============================================================================
 
-/// Parse an IMF package from in-memory files, returning the full parsed package.
-#[napi(js_name = "parsePackage")]
+/// Parse an IMF package from in-memory XML strings, returning the full parsed
+/// package without validating it.
+///
+/// @param files - A map of filename to XML content (e.g. `{ "ASSETMAP.xml": "..." }`)
+/// @returns The full parsed `Imferno` package.
+/// @throws If the package cannot be parsed.
+#[napi(js_name = "parsePackage", ts_return_type = "Imferno")]
 pub fn parse_package(files: HashMap<String, String>) -> napi::Result<serde_json::Value> {
     let package = Imferno::parse(files)
         .map_err(|e| napi::Error::from_reason(format!("Failed to parse IMF package: {}", e)))?;
@@ -194,8 +229,13 @@ pub fn parse_package(files: HashMap<String, String>) -> napi::Result<serde_json:
         .map_err(|e| napi::Error::from_reason(format!("Serialization error: {}", e)))
 }
 
-/// Parse an IMF package from a directory path, returning the full parsed package.
-#[napi(js_name = "parsePackageFromPath")]
+/// Parse an IMF package directory on disk, returning the full parsed package
+/// without validating it.
+///
+/// @param path - Path to the IMP directory
+/// @returns The full parsed `Imferno` package.
+/// @throws If the directory cannot be read or the package cannot be parsed.
+#[napi(js_name = "parsePackageFromPath", ts_return_type = "Imferno")]
 pub fn parse_package_from_path(path: String) -> napi::Result<serde_json::Value> {
     let pkg_path = PathBuf::from(&path);
     let files = imferno_core::package::read_dir(&pkg_path)
@@ -212,10 +252,21 @@ pub fn parse_package_from_path(path: String) -> napi::Result<serde_json::Value> 
 // VALIDATE — parse + validate, returns { package, validation }
 // =============================================================================
 
-/// Parse and validate an IMF package from in-memory files.
+/// Parse and validate an IMF package from in-memory XML strings. This is the
+/// recommended entry point.
 ///
-/// Returns `{ package, validation }` — the full parsed package and all findings.
-#[napi(js_name = "validate")]
+/// Parse failures are reported as findings in `validation`, not thrown.
+/// Disk checks are always skipped (there is no package on disk).
+///
+/// @param files - A map of filename to XML content
+/// @param options - Optional validation options
+/// @returns `{ package, validation }` — the full parsed package and all findings.
+/// @throws Only if the options are invalid.
+#[napi(
+    js_name = "validate",
+    ts_args_type = "files: Record<string, string>, options?: ValidateOptions | undefined | null",
+    ts_return_type = "ValidationResult"
+)]
 pub fn validate_js(
     files: HashMap<String, String>,
     options: Option<serde_json::Value>,
@@ -235,10 +286,17 @@ pub fn validate_js(
         .map_err(|e| napi::Error::from_reason(format!("Serialization error: {}", e)))
 }
 
-/// Parse and validate an IMF package from a directory path.
+/// Parse and validate an IMF package directory on disk.
 ///
-/// Returns `{ package, validation }` — the full parsed package and all findings.
-#[napi(js_name = "validatePath")]
+/// @param path - Path to the IMP directory
+/// @param options - Optional validation options
+/// @returns `{ package, validation }` — the full parsed package and all findings.
+/// @throws If the directory cannot be read or the options are invalid.
+#[napi(
+    js_name = "validatePath",
+    ts_args_type = "path: string, options?: PathValidateOptions | undefined | null",
+    ts_return_type = "ValidationResult"
+)]
 pub fn validate_path_js(
     path: String,
     options: Option<serde_json::Value>,
@@ -267,8 +325,19 @@ pub fn validate_path_js(
 // URI-based variants (file://, s3://, bare paths)
 // =============================================================================
 
+/// Build the legacy `ImfReport` summary from a URI. Accepts the same URI forms
+/// as `validateUri`; prefer `validateUri` for new code.
+///
+/// @param uri - Path or URI to the IMP
+/// @param options - Optional validation options
+/// @returns An `ImfReport` with `package`, `cpls`, and `validation` fields.
+/// @throws If the URI cannot be read, the package cannot be parsed, or the options are invalid.
 #[allow(deprecated)]
-#[napi(js_name = "buildReportFromUri")]
+#[napi(
+    js_name = "buildReportFromUri",
+    ts_args_type = "uri: string, options?: UriValidateOptions | undefined | null",
+    ts_return_type = "ImfReport"
+)]
 pub fn build_report_from_uri(
     uri: String,
     options: Option<serde_json::Value>,
@@ -295,7 +364,20 @@ pub fn build_report_from_uri(
         .map_err(|e| napi::Error::from_reason(format!("Serialization error: {}", e)))
 }
 
-#[napi(js_name = "validateUri")]
+/// Parse and validate an IMF package from a URI.
+///
+/// Accepts `file://` URIs, bare filesystem paths, and (when built with the
+/// `aws-s3` feature, as the prebuilt npm binaries are) `s3://bucket/prefix/`.
+///
+/// @param uri - Path or URI to the IMP
+/// @param options - Optional validation options (plus `credentials` for S3)
+/// @returns `{ package, validation }` — the full parsed package and all findings.
+/// @throws If the URI cannot be read or the options are invalid.
+#[napi(
+    js_name = "validateUri",
+    ts_args_type = "uri: string, options?: UriValidateOptions | undefined | null",
+    ts_return_type = "ValidationResult"
+)]
 pub fn validate_uri_js(
     uri: String,
     options: Option<serde_json::Value>,

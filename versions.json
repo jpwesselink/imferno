@@ -89,6 +89,10 @@
     {
       "label": "#96 feat/docs-sample-imp-browser",
       "path": "/pr-96/"
+    },
+    {
+      "label": "#99 feat/fuzzing",
+      "path": "/pr-99/"
     }
   ],
   "latest": "/v3.0.1/"

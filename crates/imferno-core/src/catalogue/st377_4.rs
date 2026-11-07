@@ -25,7 +25,7 @@ pub static MCALinkIDMissing: Rule<E> = Rule {
     description: "Every MCA sub-descriptor shall carry an MCALinkID (§6.3 Table 3, Req).",
     example: Some("<AudioChannelLabelSubDescriptor>…</AudioChannelLabelSubDescriptor>  <!-- no <MCALinkID> child -->"),
     editions: &[
-        checked(E::V2012, "6.3", Shall),
+        checked(E::V2012, "6.3", Shall).interpret("ST 2067-2:2013 and :2016 cite \"ST 377-4:2011\", which never existed (ST 377-4 was approved on 14 March 2012); the citation is read as this edition.", None),
         checked(E::V2021, "6.3", Shall),
     ],
 };
@@ -37,7 +37,7 @@ pub static SoundfieldGroupLinkIDMismatch: Rule<E> = Rule {
     description: "AudioChannelLabelSubDescriptor SoundfieldGroupLinkID shall equal the SoundfieldGroup's MCALinkID (§6.4.1).",
     example: Some("<AudioChannelLabelSubDescriptor><SoundfieldGroupLinkID>urn:uuid:abc…</SoundfieldGroupLinkID></AudioChannelLabelSubDescriptor>  <!-- but the parent SoundfieldGroupLabelSubDescriptor MCALinkID = urn:uuid:def… -->"),
     editions: &[
-        checked(E::V2012, "6.4.1", Shall),
+        checked(E::V2012, "6.4.1", Shall).interpret("ST 2067-2:2013 and :2016 cite \"ST 377-4:2011\", which never existed (ST 377-4 was approved on 14 March 2012); the citation is read as this edition.", None),
         checked(E::V2021, "6.4.1", Shall),
     ],
 };

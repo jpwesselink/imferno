@@ -235,7 +235,8 @@ edition used (one per package, and per CPL).
 - **ST 377-1 / ST 377-4, MXF track file**: MXF has no namespace; the dated
   normative references of the specs that apply to the file decide. Every
   ST 2067-2 edition references ST 377-1:2011; ST 2067-2:2020 references
-  ST 377-4:2012 (2013 and 2016 cite "ST 377-4:2011", which is not an edition).
+  ST 377-4:2012 (2013 and 2016 cite "ST 377-4:2011", which never existed; it is read as
+  ST 377-4:2012, the only edition then).
   For a track file a CPL IAB Virtual Track references, ST 2067-201 adds its
   references (2021: ST 377-1:2019; 2026: ST 377-1:2019 and ST 377-4:2021).
   When these do not leave one edition, the newest is applied, announced for

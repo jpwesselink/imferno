@@ -292,8 +292,7 @@ fn st2067_3_of_iab(iab: St2067_201Edition) -> St2067_3Edition {
 /// MXF carries no namespace; the editions come from the dated normative
 /// references of the specs whose rules apply to the file: ST 2067-2 (every
 /// edition references ST 377-1:2011; 2020 references ST 377-4:2012, 2013
-/// and 2016 reference "ST 377-4:2011", which is not an edition, so they name
-/// none) and, for an IAB track file, ST 2067-201 (2019: 377-1:2011 and
+/// and 2016 reference "ST 377-4:2011", read as ST 377-4:2012) and, for an IAB track file, ST 2067-201 (2019: 377-1:2011 and
 /// 377-4:2012; 2021: 377-1:2019 and 377-4:2012; 2026: 377-1:2019 and
 /// 377-4:2021). See [`resolve`].
 pub fn mxf_editions(
@@ -307,13 +306,19 @@ pub fn mxf_editions(
         St377_1Edition::V2011,
         format!("ST 2067-2:{core_label} references ST 377-1:2011"),
     )];
-    let mut e4 = Vec::new();
-    if core == St2067_2Edition::V2020 {
-        e4.push(Evidence::one(
-            St377_4Edition::V2012,
-            "ST 2067-2:2020 references ST 377-4:2012",
-        ));
-    }
+    // ST 2067-2:2020 cites ST 377-4:2012. ST 2067-2:2013 and :2016 cite
+    // "ST 377-4:2011", which never existed: ST 377-4 was approved on
+    // 14 March 2012 and :2012 is its first edition, so the citation is read
+    // as ST 377-4:2012 (JP, C17). It determines the edition; no notice.
+    let e4_what = if core == St2067_2Edition::V2020 {
+        "ST 2067-2:2020 references ST 377-4:2012".to_string()
+    } else {
+        format!(
+            "ST 2067-2:{core_label} references \"ST 377-4:2011\", read as ST 377-4:2012 \
+             (the only edition that existed)"
+        )
+    };
+    let mut e4 = vec![Evidence::one(St377_4Edition::V2012, e4_what)];
     if let Some(iab) = iab {
         let (one, four) = match iab {
             Iab::V2019 => (St377_1Edition::V2011, St377_4Edition::V2012),
@@ -336,20 +341,10 @@ pub fn mxf_editions(
             ),
         ));
     }
-    let mut four = resolve(subject, "", St377_4Edition::ALL, &e4);
-    if core != St2067_2Edition::V2020 {
-        four.assumed = four.assumed.map(|why| {
-            why.replacen(
-                "could not be determined: ",
-                &format!(
-                    "could not be determined: ST 2067-2:{core_label} references ST 377-4:2011, \
-                     which is not an ST 377-4 edition; "
-                ),
-                1,
-            )
-        });
-    }
-    (resolve(subject, "", St377_1Edition::ALL, &e1), four)
+    (
+        resolve(subject, "", St377_1Edition::ALL, &e1),
+        resolve(subject, "", St377_4Edition::ALL, &e4),
+    )
 }
 
 /// The ST 2067-201 edition of the IAB rules applied to a CPL (and to the
@@ -691,7 +686,10 @@ mod tests {
         assert_eq!((c.edition, c.assumed), (St2067_3Edition::V2016, None));
         let c = cpl_edition(&iab, None, Some(St2067_201Edition::V2021));
         assert_eq!(c.edition, St2067_3Edition::V2020);
-        assert!(c.assumed.unwrap().contains("ST 2067-201:2021, cites ST 2067-3:2020"));
+        assert!(c
+            .assumed
+            .unwrap()
+            .contains("ST 2067-201:2021, cites ST 2067-3:2020"));
 
         let bare = with_namespace(CplNamespace::Smpte2067_3_2016);
         let c = cpl_edition(&bare, Some(St2067_2Edition::V2016), None);
@@ -798,11 +796,12 @@ mod tests {
         let (one, four) = mxf_editions("f", St2067_2Edition::V2020, None);
         assert_eq!((one.edition, one.assumed), (St377_1Edition::V2011, None));
         assert_eq!((four.edition, four.assumed), (St377_4Edition::V2012, None));
-        // 2016 references "ST 377-4:2011", not an edition: newest, announced.
-        let (_, four) = mxf_editions("f", St2067_2Edition::V2016, None);
-        assert_eq!(four.edition, St377_4Edition::V2021);
-        let why = four.assumed.unwrap();
-        assert!(why.contains("it carries no namespace"), "{why}");
+        // 2013 and 2016 cite "ST 377-4:2011", read as ST 377-4:2012 (JP):
+        // determined, no notice.
+        for core in [St2067_2Edition::V2013, St2067_2Edition::V2016] {
+            let (_, four) = mxf_editions("f", core, None);
+            assert_eq!((four.edition, four.assumed), (St377_4Edition::V2012, None));
+        }
         // IAB 2026 references ST 377-1:2019 / 377-4:2021; with ST 2067-2's
         // 377-1:2011 that conflicts: newest, announced.
         let (one, four) = mxf_editions("f", St2067_2Edition::V2020, Some(Iab::V2026));

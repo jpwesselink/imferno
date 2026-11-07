@@ -93,6 +93,10 @@
     {
       "label": "#99 feat/fuzzing",
       "path": "/pr-99/"
+    },
+    {
+      "label": "#100 fix/napi-typescript-types",
+      "path": "/pr-100/"
     }
   ],
   "latest": "/v3.0.1/"

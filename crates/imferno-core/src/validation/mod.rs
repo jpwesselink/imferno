@@ -761,12 +761,47 @@ fn validate_core_structure(
     // Segment track duration consistency
     validate_segment_track_durations(cpl, issues);
 
-    // Digital Signatures (ST 2067-2 §8)
+    // Digital Signatures (ST 2067-2 §6.9)
     validate_digital_signature_notice(cpl, code, issues);
 
     // §6.4.2: Every EssenceDescriptor must be referenced by at least one Resource.
     // Applies to all spec versions (no-op when EDL is absent).
     validate_dangling_essence_descriptors(cpl, code, issues);
+
+    // Asset Identification: CPL Id vs the AssetMap asset Id it was loaded under.
+    validate_cpl_id_matches_assetmap(cpl, code, issues);
+}
+
+/// Asset Identification (ST 2067-2:2013 §7.2 Table 18; 2016 and 2020 §7.3.1
+/// Table 19): a CPL asset is identified by the Id element of the
+/// CompositionPlaylist, and ST 429-9 maps those asset Ids to files. When the
+/// AssetMap asset that locates the CPL file carries another Id, every lookup
+/// by Id resolves to the wrong composition. Runs only for CPLs loaded
+/// through a package (`assetmap_asset_id` set); the code carries the clause
+/// of the edition being validated against.
+/// https://github.com/Netflix/photon/issues/265
+fn validate_cpl_id_matches_assetmap(
+    cpl: &CompositionPlaylist,
+    code: fn(CoreConstraintsCode) -> &'static str,
+    issues: &mut Vec<ValidationIssue>,
+) {
+    let Some(asset_id) = cpl.assetmap_asset_id else {
+        return;
+    };
+    if asset_id != cpl.id {
+        issues.push(
+            ValidationIssue::new(
+                Severity::Error,
+                Category::Reference,
+                code(CoreConstraintsCode::CplIdAssetMapMismatch),
+                format!(
+                    "AssetMap asset {asset_id} points at a CPL file whose Id is {}",
+                    cpl.id
+                ),
+            )
+            .with_location(Location::new().with_cpl(cpl.id)),
+        );
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -2170,6 +2205,7 @@ mod tests {
             },
             has_signer: false,
             has_signature: false,
+            assetmap_asset_id: None,
             source_xml: None,
         }
     }
@@ -7538,6 +7574,54 @@ mod tests {
     }
 
     // ── #43: Digital Signatures notice ───────────────────────────────────
+
+    /// Asset Identification is ST 2067-2:2013 §7.2 (Table 18) and
+    /// ST 2067-2:2016/2020 §7.3.1 (Table 19). The CplIdAssetMapMismatch code
+    /// carries the clause of the edition validated against, and only fires
+    /// for a CPL loaded through an AssetMap under another Id.
+    /// https://github.com/jpwesselink/imferno/issues/81
+    #[test]
+    fn cpl_id_assetmap_mismatch_code_is_edition_exact() {
+        for (edition, expected) in [
+            (
+                &CoreConstraints2013 as &dyn ConstraintsValidator,
+                "ST2067-2:2013:7.2/CplIdAssetMapMismatch",
+            ),
+            (
+                &CoreConstraints2016,
+                "ST2067-2:2016:7.3.1/CplIdAssetMapMismatch",
+            ),
+            (
+                &CoreConstraints2020,
+                "ST2067-2:2020:7.3.1/CplIdAssetMapMismatch",
+            ),
+        ] {
+            let mismatches = |cpl: &CompositionPlaylist| {
+                edition
+                    .validate_cpl(cpl)
+                    .into_iter()
+                    .filter(|i| i.code.ends_with("/CplIdAssetMapMismatch"))
+                    .collect::<Vec<_>>()
+            };
+            let mut cpl = minimal_cpl();
+            assert!(
+                mismatches(&cpl).is_empty(),
+                "{}: standalone CPL",
+                edition.spec_id()
+            );
+            cpl.assetmap_asset_id = Some(cpl.id);
+            assert!(
+                mismatches(&cpl).is_empty(),
+                "{}: same Id",
+                edition.spec_id()
+            );
+            cpl.assetmap_asset_id = Some(uuid(200));
+            let found = mismatches(&cpl);
+            assert_eq!(found.len(), 1, "{}: {found:#?}", edition.spec_id());
+            assert_eq!(found[0].code, expected);
+            assert_eq!(found[0].severity, Severity::Error);
+        }
+    }
 
     /// A signed CPL in the 2013 namespace gets the notice too: ST 2067-2:2013
     /// §6.9 already constrains the CPL Signature element.

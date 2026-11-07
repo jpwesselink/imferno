@@ -36,7 +36,6 @@ export declare const codes: {
     readonly PklUnknownNamespace: "ST2067-2:2020:9/PklUnknownNamespace";
     readonly AssetMapHasNoPackingList: "ST429-9:2014:6.3/AssetMapHasNoPackingList";
     readonly PklIdNotInAssetMap: "ST429-9:2014:6.3/PklIdNotInAssetMap";
-    readonly CplIdAssetMapMismatch: "ST2067-2:2020:7.3.1/CplIdAssetMapMismatch";
   };
   readonly ST2067_2_2013_Core: {
     readonly ResourceListEmpty: "ST2067-2:2013:XSD/ResourceList-Empty";
@@ -76,6 +75,7 @@ export declare const codes: {
     readonly DigitalSignature: "ST2067-2:2013:6.9/DigitalSignature";
     readonly DanglingEssenceDescriptor: "ST2067-2:2013:6.4.2/DanglingEssenceDescriptor";
     readonly EssenceDescriptorList: "ST2067-2:2013:6.4.2/EssenceDescriptorList";
+    readonly CplIdAssetMapMismatch: "ST2067-2:2013:7.2/CplIdAssetMapMismatch";
   };
   readonly ST2067_2_2016_Core: {
     readonly ResourceListEmpty: "ST2067-2:2016:XSD/ResourceList-Empty";
@@ -115,6 +115,7 @@ export declare const codes: {
     readonly DigitalSignature: "ST2067-2:2016:6.9/DigitalSignature";
     readonly DanglingEssenceDescriptor: "ST2067-2:2016:6.4.2/DanglingEssenceDescriptor";
     readonly EssenceDescriptorList: "ST2067-2:2016:6.4.2/EssenceDescriptorList";
+    readonly CplIdAssetMapMismatch: "ST2067-2:2016:7.3.1/CplIdAssetMapMismatch";
   };
   readonly ST2067_2_2020_Core: {
     readonly ResourceListEmpty: "ST2067-2:2020:XSD/ResourceList-Empty";
@@ -154,6 +155,7 @@ export declare const codes: {
     readonly DigitalSignature: "ST2067-2:2020:6.9/DigitalSignature";
     readonly DanglingEssenceDescriptor: "ST2067-2:2020:6.4.2/DanglingEssenceDescriptor";
     readonly EssenceDescriptorList: "ST2067-2:2020:6.4.2/EssenceDescriptorList";
+    readonly CplIdAssetMapMismatch: "ST2067-2:2020:7.3.1/CplIdAssetMapMismatch";
   };
   readonly ST2067_3_2013: {
     readonly ContentKindUnknown: "ST2067-3:2013:5.5.1.2/ContentKindUnknown";

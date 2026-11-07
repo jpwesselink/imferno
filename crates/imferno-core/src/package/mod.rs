@@ -999,7 +999,8 @@ impl Imferno {
                     .unwrap_or(&chunk.path);
                 if let Some(xml) = find(basename) {
                     match crate::cpl::parse_cpl(xml) {
-                        Ok(cpl) => {
+                        Ok(mut cpl) => {
+                            cpl.assetmap_asset_id = Some(asset.id);
                             cpl_xml_content.insert(asset.id, xml.to_string());
                             composition_playlists.insert(asset.id, cpl);
                         }
@@ -1788,8 +1789,6 @@ impl Imferno {
             }
         }
 
-        self.validate_cpl_ids_match_assetmap(&mut report);
-
         // CPL TrackFileId → AssetMap cross-references
         let mut signature_notices = Vec::new();
         for cpl in self.composition_playlists.values() {
@@ -1878,8 +1877,6 @@ impl Imferno {
             report.add(issue);
         }
 
-        self.validate_cpl_ids_match_assetmap(&mut report);
-
         // CPL TrackFileId → AssetMap cross-references
         let mut signature_notices = Vec::new();
         for cpl in self.composition_playlists.values() {
@@ -1905,37 +1902,6 @@ impl Imferno {
         self.validate_mxf_headers(&mut report);
 
         report
-    }
-
-    /// ST 2067-2:2020 §7.3.1 Table 19: a CPL asset is identified by the
-    /// CompositionPlaylist Id, so the AssetMap asset that locates a CPL file
-    /// shall carry that Id. CPLs are loaded under their AssetMap asset Id,
-    /// which is the key of `composition_playlists`.
-    /// https://github.com/Netflix/photon/issues/265
-    fn validate_cpl_ids_match_assetmap(&self, report: &mut ValidationReport) {
-        let mut cpl_assets: Vec<_> = self.composition_playlists.iter().collect();
-        cpl_assets.sort_by_key(|(asset_id, _)| asset_id.to_string());
-        for (asset_id, cpl) in cpl_assets {
-            if *asset_id == cpl.id {
-                continue;
-            }
-            let path = self
-                .asset_paths
-                .get(asset_id)
-                .and_then(|p| p.file_name())
-                .map(|f| f.to_string_lossy().into_owned())
-                .unwrap_or_default();
-            report.add(
-                ValidationIssue::from_code(
-                    codes::St2067_2_2020::CplIdAssetMapMismatch,
-                    format!(
-                        "AssetMap asset {asset_id} points at CPL file '{path}', whose Id is {}",
-                        cpl.id
-                    ),
-                )
-                .with_location(Location::new().with_cpl(cpl.id)),
-            );
-        }
     }
 
     /// Validate Sidecar Composition Map references (ST 2067-9:2018).
@@ -3172,7 +3138,7 @@ mod tests {
             report
                 .errors
                 .iter()
-                .any(|i| i.code == St2067_2_2020::CplIdAssetMapMismatch.code()
+                .any(|i| i.code == "ST2067-2:2013:7.2/CplIdAssetMapMismatch"
                     && i.message.contains("0eb3d1b9-b77b-4d3f-bbe5-7c69b15dca84")),
             "{:#?}",
             report.errors
@@ -5021,15 +4987,17 @@ mod tests {
         assert_eq!(notices[0].instance_count(), 2, "{:#?}", notices[0]);
     }
 
-    /// ST 2067-2:2020 §7.3.1 Table 19: a CPL asset is identified by the Id
-    /// element of the CompositionPlaylist, and ST 429-9 maps those asset
-    /// Ids to files. An AssetMap entry whose file is a CPL with another Id
-    /// sends every lookup by Id to the wrong composition.
+    /// Asset Identification: a CPL asset is identified by the Id element of
+    /// the CompositionPlaylist, and ST 429-9 maps those asset Ids to files.
+    /// An AssetMap entry whose file is a CPL with another Id sends every
+    /// lookup by Id to the wrong composition. MERIDIAN is a 2013 CPL, so the
+    /// ST 2067-2:2013 code (§7.2, Table 18) fires; the per-edition codes are
+    /// tested in the validation module.
     /// https://github.com/jpwesselink/imferno/issues/81
     /// https://github.com/Netflix/photon/issues/265
     #[test]
     fn cpl_id_differing_from_assetmap_id_is_reported() {
-        let code = St2067_2_2020::CplIdAssetMapMismatch.code();
+        let code = "ST2067-2:2013:7.2/CplIdAssetMapMismatch";
 
         let clean = copy_xml_package("MERIDIAN_Netflix_Photon_161006");
         let package = Imferno::parse(read_dir(clean.path()).unwrap()).unwrap();

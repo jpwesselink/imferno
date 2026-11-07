@@ -68,13 +68,15 @@ fn imferno_internal_codes_infer_as_engine_internal() {
 /// Cross-edition annotation: when an enum's code set is bit-for-bit
 /// identical to its predecessor (verified by snapshot diff), it
 /// returns the predecessor's prefix from `previous_identical_edition`.
-/// Currently two pairs: ST 2067-2:2013↔2016, ST 2067-3:2013↔2016.
+/// Currently one pair: ST 2067-3:2013↔2016.
 /// ST 2067-201:2021 drops the 2019-only ChannelCountNotZero code, so it is
-/// no longer identical to 2019. All other enums default to `None`.
+/// no longer identical to 2019. ST 2067-2:2016 places Asset Identification
+/// in §7.3.1 where 2013 has §7.2, so its core catalogue is not identical to
+/// 2013 either. All other enums default to `None`.
 #[test]
 fn previous_identical_edition_is_set_for_known_identical_pairs() {
     let c1 = St2067_2_2016_Core::ALL[0];
-    assert_eq!(c1.previous_identical_edition(), Some("ST2067-2:2013"));
+    assert_eq!(c1.previous_identical_edition(), None);
 
     let c2 = St2067_3_2016::ALL[0];
     assert_eq!(c2.previous_identical_edition(), Some("ST2067-3:2013"));

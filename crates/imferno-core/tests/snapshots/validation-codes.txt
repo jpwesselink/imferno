@@ -279,6 +279,7 @@ ST2067-2:2013:6.4.2/EssenceDescriptorList
 ST2067-2:2013:6.9.3/VirtualTrackEditRate
 ST2067-2:2013:6.9/DigitalSignature
 ST2067-2:2013:6.9/VirtualTrackContinuity
+ST2067-2:2013:7.2/CplIdAssetMapMismatch
 ST2067-2:2013:ST377-4/AudioSampleRate
 ST2067-2:2013:ST377-4/ChannelCount
 ST2067-2:2013:ST377-4/MCASubDescriptors
@@ -316,6 +317,7 @@ ST2067-2:2016:6.4.2/EssenceDescriptorList
 ST2067-2:2016:6.9.3/VirtualTrackEditRate
 ST2067-2:2016:6.9/DigitalSignature
 ST2067-2:2016:6.9/VirtualTrackContinuity
+ST2067-2:2016:7.3.1/CplIdAssetMapMismatch
 ST2067-2:2016:ST377-4/AudioSampleRate
 ST2067-2:2016:ST377-4/ChannelCount
 ST2067-2:2016:ST377-4/MCASubDescriptors

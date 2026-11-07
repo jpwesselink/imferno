@@ -65,10 +65,6 @@ pub enum St2067_2_2020 {
     /// A PKL document was parsed but its Id is not declared in the
     /// AssetMap as a `PackingList`-flagged asset (ST 429-9 §6.3).
     PklIdNotInAssetMap,
-    /// An AssetMap asset points at a CPL file whose `<Id>` differs from
-    /// the asset Id (ST 2067-2:2020 §7.3.1 Table 19: a CPL asset is
-    /// identified by its CompositionPlaylist Id).
-    CplIdAssetMapMismatch,
 }
 
 impl ValidationCode for St2067_2_2020 {
@@ -89,7 +85,6 @@ impl ValidationCode for St2067_2_2020 {
             Self::PklUnknownNamespace => "ST2067-2:2020:9/PklUnknownNamespace",
             Self::AssetMapHasNoPackingList => "ST429-9:2014:6.3/AssetMapHasNoPackingList",
             Self::PklIdNotInAssetMap => "ST429-9:2014:6.3/PklIdNotInAssetMap",
-            Self::CplIdAssetMapMismatch => "ST2067-2:2020:7.3.1/CplIdAssetMapMismatch",
         }
     }
     fn description(&self) -> &'static str {
@@ -122,10 +117,6 @@ impl ValidationCode for St2067_2_2020 {
             Self::PklIdNotInAssetMap => {
                 "PKL document Id is not declared as a PackingList asset in the AssetMap."
             }
-            // https://github.com/Netflix/photon/issues/265
-            Self::CplIdAssetMapMismatch => {
-                "An AssetMap asset points at a CPL file whose Id differs from the asset Id."
-            }
         }
     }
     fn default_severity(&self) -> Severity {
@@ -152,8 +143,7 @@ impl ValidationCode for St2067_2_2020 {
             Self::UnresolvedUuid
             | Self::TrackFileNotInPackage
             | Self::DuplicateUuid
-            | Self::PklIdNotInAssetMap
-            | Self::CplIdAssetMapMismatch => Category::Reference,
+            | Self::PklIdNotInAssetMap => Category::Reference,
         }
     }
     fn example(&self) -> Option<&'static str> {
@@ -173,7 +163,6 @@ impl ValidationCode for St2067_2_2020 {
             Self::PklUnknownNamespace => "PKL with `xmlns=\"http://example.org/not-a-pkl-namespace\"`",
             Self::AssetMapHasNoPackingList => "AssetMap whose `<Asset>` entries all omit `<PackingList>true</PackingList>`",
             Self::PklIdNotInAssetMap => "PKL `<Id>urn:uuid:abc…</Id>` not present in the AssetMap as a packing-list asset",
-            Self::CplIdAssetMapMismatch => "AssetMap `<Id>urn:uuid:aaa…</Id>` with `<Path>CPL.xml</Path>`, but CPL.xml carries `<Id>urn:uuid:bbb…</Id>`",
         })
     }
 }
@@ -195,7 +184,6 @@ impl St2067_2_2020 {
         Self::PklUnknownNamespace,
         Self::AssetMapHasNoPackingList,
         Self::PklIdNotInAssetMap,
-        Self::CplIdAssetMapMismatch,
     ];
 }
 
@@ -252,18 +240,21 @@ pub enum CoreConstraintsCode {
     DigitalSignature,
     DanglingEssenceDescriptor,
     EssenceDescriptorList,
+    CplIdAssetMapMismatch,
 }
 
 macro_rules! define_core_constraints_enum {
     // No identical predecessor — trait default `None`.
-    ($name:ident, $prefix:literal) => {
-        define_core_constraints_enum!(@inner $name, $prefix, None);
+    // `$asset_id` is the edition's clause for Asset Identification (the
+    // table that identifies a CPL asset by its CompositionPlaylist Id).
+    ($name:ident, $prefix:literal, asset_id = $asset_id:literal) => {
+        define_core_constraints_enum!(@inner $name, $prefix, $asset_id, None);
     };
     // Identical to a prior edition (verified via snapshot diff).
-    ($name:ident, $prefix:literal, $previous:literal) => {
-        define_core_constraints_enum!(@inner $name, $prefix, Some($previous));
+    ($name:ident, $prefix:literal, asset_id = $asset_id:literal, $previous:literal) => {
+        define_core_constraints_enum!(@inner $name, $prefix, $asset_id, Some($previous));
     };
-    (@inner $name:ident, $prefix:literal, $previous:expr) => {
+    (@inner $name:ident, $prefix:literal, $asset_id:literal, $previous:expr) => {
         /// Validation codes for Core Constraints CPL checks, edition
         #[doc = $prefix]
         #[allow(non_camel_case_types)]
@@ -343,6 +334,9 @@ macro_rules! define_core_constraints_enum {
             DanglingEssenceDescriptor,
             /// EssenceDescriptorList is required per ST 2067-2 §6.4.2.
             EssenceDescriptorList,
+            /// The AssetMap asset that locates the CPL file carries an Id
+            /// other than the CPL's own Id (Asset Identification table).
+            CplIdAssetMapMismatch,
         }
 
         impl ValidationCode for $name {
@@ -385,6 +379,7 @@ macro_rules! define_core_constraints_enum {
                     Self::DigitalSignature                     => concat!($prefix, ":6.9/DigitalSignature"),
                     Self::DanglingEssenceDescriptor            => concat!($prefix, ":6.4.2/DanglingEssenceDescriptor"),
                     Self::EssenceDescriptorList                => concat!($prefix, ":6.4.2/EssenceDescriptorList"),
+                    Self::CplIdAssetMapMismatch                => concat!($prefix, ":", $asset_id, "/CplIdAssetMapMismatch"),
                 }
             }
             fn description(&self) -> &'static str {
@@ -426,6 +421,8 @@ macro_rules! define_core_constraints_enum {
                     Self::DigitalSignature                     => "The CPL carries a Signature (ST 2067-2 §6.9); signature verification is not performed.",
                     Self::DanglingEssenceDescriptor            => "EssenceDescriptor present in EssenceDescriptorList but not referenced by any Resource.",
                     Self::EssenceDescriptorList                => "EssenceDescriptorList is required per ST 2067-2 §6.4.2.",
+                    // https://github.com/Netflix/photon/issues/265
+                    Self::CplIdAssetMapMismatch                => "An AssetMap asset points at a CPL file whose Id differs from the asset Id.",
                 }
             }
             fn default_severity(&self) -> Severity {
@@ -474,7 +471,9 @@ macro_rules! define_core_constraints_enum {
                     | Self::MCATagSymbol
                     | Self::SoundfieldChannelCount => Category::Audio,
 
-                    Self::DanglingEssenceDescriptor | Self::TrackFileId => Category::Reference,
+                    Self::DanglingEssenceDescriptor
+                    | Self::TrackFileId
+                    | Self::CplIdAssetMapMismatch => Category::Reference,
 
                     Self::DigitalSignature => Category::Security,
 
@@ -523,6 +522,7 @@ macro_rules! define_core_constraints_enum {
                     Self::DigitalSignature                     => "CPL declares Signer/Signature but the engine does not yet verify them (info notice)",
                     Self::DanglingEssenceDescriptor            => "<EssenceDescriptor><Id>urn:uuid:abc…</Id></EssenceDescriptor>  <!-- no Resource references this Id -->",
                     Self::EssenceDescriptorList                => "CPL with `<SourceEncoding>` references but no top-level `<EssenceDescriptorList>` element",
+                    Self::CplIdAssetMapMismatch                => "AssetMap `<Id>urn:uuid:aaa…</Id>` with `<Path>CPL.xml</Path>`, but CPL.xml carries `<Id>urn:uuid:bbb…</Id>`",
                 })
             }
         }
@@ -566,6 +566,7 @@ macro_rules! define_core_constraints_enum {
                 Self::DigitalSignature,
                 Self::DanglingEssenceDescriptor,
                 Self::EssenceDescriptorList,
+                Self::CplIdAssetMapMismatch,
             ];
 
             /// Dispatch from the spec-agnostic [`CoreConstraintsCode`] to this
@@ -609,6 +610,7 @@ macro_rules! define_core_constraints_enum {
                     CoreConstraintsCode::DigitalSignature                     => concat!($prefix, ":6.9/DigitalSignature"),
                     CoreConstraintsCode::DanglingEssenceDescriptor            => concat!($prefix, ":6.4.2/DanglingEssenceDescriptor"),
                     CoreConstraintsCode::EssenceDescriptorList                => concat!($prefix, ":6.4.2/EssenceDescriptorList"),
+                    CoreConstraintsCode::CplIdAssetMapMismatch                => concat!($prefix, ":", $asset_id, "/CplIdAssetMapMismatch"),
                 }
             }
         }
@@ -621,7 +623,8 @@ macro_rules! define_core_constraints_enum {
     };
 }
 
-define_core_constraints_enum!(St2067_2_2013_Core, "ST2067-2:2013");
-// 2016 catalogue is bit-for-bit identical to 2013 (audit, 2026-06-04).
-define_core_constraints_enum!(St2067_2_2016_Core, "ST2067-2:2016", "ST2067-2:2013");
-define_core_constraints_enum!(St2067_2_2020_Core, "ST2067-2:2020");
+// Asset Identification: 2013 §7.2 (Table 18), 2016 and 2020 §7.3.1 (Table 19).
+define_core_constraints_enum!(St2067_2_2013_Core, "ST2067-2:2013", asset_id = "7.2");
+// 2016 differs from 2013 only in the Asset Identification clause.
+define_core_constraints_enum!(St2067_2_2016_Core, "ST2067-2:2016", asset_id = "7.3.1");
+define_core_constraints_enum!(St2067_2_2020_Core, "ST2067-2:2020", asset_id = "7.3.1");

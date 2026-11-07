@@ -36,7 +36,6 @@ export const codes = {
     PklUnknownNamespace: "ST2067-2:2020:9/PklUnknownNamespace",
     AssetMapHasNoPackingList: "ST429-9:2014:6.3/AssetMapHasNoPackingList",
     PklIdNotInAssetMap: "ST429-9:2014:6.3/PklIdNotInAssetMap",
-    CplIdAssetMapMismatch: "ST2067-2:2020:7.3.1/CplIdAssetMapMismatch",
   },
   ST2067_2_2013_Core: {
     ResourceListEmpty: "ST2067-2:2013:XSD/ResourceList-Empty",
@@ -76,6 +75,7 @@ export const codes = {
     DigitalSignature: "ST2067-2:2013:6.9/DigitalSignature",
     DanglingEssenceDescriptor: "ST2067-2:2013:6.4.2/DanglingEssenceDescriptor",
     EssenceDescriptorList: "ST2067-2:2013:6.4.2/EssenceDescriptorList",
+    CplIdAssetMapMismatch: "ST2067-2:2013:7.2/CplIdAssetMapMismatch",
   },
   ST2067_2_2016_Core: {
     ResourceListEmpty: "ST2067-2:2016:XSD/ResourceList-Empty",
@@ -115,6 +115,7 @@ export const codes = {
     DigitalSignature: "ST2067-2:2016:6.9/DigitalSignature",
     DanglingEssenceDescriptor: "ST2067-2:2016:6.4.2/DanglingEssenceDescriptor",
     EssenceDescriptorList: "ST2067-2:2016:6.4.2/EssenceDescriptorList",
+    CplIdAssetMapMismatch: "ST2067-2:2016:7.3.1/CplIdAssetMapMismatch",
   },
   ST2067_2_2020_Core: {
     ResourceListEmpty: "ST2067-2:2020:XSD/ResourceList-Empty",
@@ -154,6 +155,7 @@ export const codes = {
     DigitalSignature: "ST2067-2:2020:6.9/DigitalSignature",
     DanglingEssenceDescriptor: "ST2067-2:2020:6.4.2/DanglingEssenceDescriptor",
     EssenceDescriptorList: "ST2067-2:2020:6.4.2/EssenceDescriptorList",
+    CplIdAssetMapMismatch: "ST2067-2:2020:7.3.1/CplIdAssetMapMismatch",
   },
   ST2067_3_2013: {
     ContentKindUnknown: "ST2067-3:2013:5.5.1.2/ContentKindUnknown",

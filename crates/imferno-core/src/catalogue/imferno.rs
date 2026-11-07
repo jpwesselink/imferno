@@ -50,6 +50,16 @@ pub static RegXmlConversionFailed: Rule<E> = Rule {
     editions: &[row(E::Current, "Mxf", Severity::Warning)],
 };
 
+/// The MXF header partition could not be read by the package-level header
+/// reader (truncated or corrupt file).
+pub static MxfHeaderUnreadable: Rule<E> = Rule {
+    name: "MxfHeaderUnreadable",
+    category: Category::Asset,
+    description: "MXF file could not be parsed; it may be truncated or corrupt.",
+    example: Some("An MXF file that was truncated mid-transfer; the footer partition is missing or the RIP is unreadable."),
+    editions: &[row(E::Current, "Mxf", Severity::Warning)],
+};
+
 /// Informational trace of how many essence containers the MXF declares.
 pub static EssenceContainersDetected: Rule<E> = Rule {
     name: "EssenceContainersDetected",
@@ -220,6 +230,7 @@ pub static ALL: &[&dyn AnyRule] = &[
     &OpenFailed,
     &PartitionPackParseFailed,
     &RegXmlConversionFailed,
+    &MxfHeaderUnreadable,
     &EssenceContainersDetected,
     &IoError,
     &UnreferencedAsset,

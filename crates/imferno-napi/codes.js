@@ -3,9 +3,7 @@
 const codes = {
   ST377_1: {
     NotMxf: "ST377-1/NotMxf",
-    ParseError: "ST377-1/ParseError",
     NoEssenceContainers: "ST377-1/NoEssenceContainers",
-    Op1a: "ST377-1/Op1a",
     NonHeaderFirstPartition: "ST377-1/NonHeaderFirstPartition",
     HeaderPartitionOpen: "ST377-1/HeaderPartitionOpen",
     MissingHeaderMetadata: "ST377-1/MissingHeaderMetadata",
@@ -248,6 +246,7 @@ const codes = {
     OpenFailed: "IMFERNO/OpenFailed",
     PartitionPackParseFailed: "IMFERNO/PartitionPackParseFailed",
     RegXmlConversionFailed: "IMFERNO/RegXmlConversionFailed",
+    MxfHeaderUnreadable: "IMFERNO/MxfHeaderUnreadable",
     EssenceContainersDetected: "IMFERNO/EssenceContainersDetected",
     IoError: "IMFERNO/IoError",
     UnreferencedAsset: "IMFERNO/UnreferencedAsset",

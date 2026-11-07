@@ -307,7 +307,6 @@ impl ValidationReport {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::catalogue::imferno::{self, ImfernoEdition};
     use crate::catalogue::st2067_2::{self, St2067_2Edition};
     use crate::catalogue::st2067_3::{self, St2067_3Edition};
     use crate::catalogue::xsd::{self, XsdSchema};
@@ -388,16 +387,20 @@ mod tests {
 
     #[test]
     fn level3_name_in_any_spec() {
-        // `ParseError` exists in ST 377-1 and IMFERNO.
-        let r = rules(&[("ParseError", RuleSeverity::Info)]);
-        let engine = ValidationIssue::from_rule(&imferno::ParseError, ImfernoEdition::Current, "x");
-        assert_eq!(severity(engine, &r), Some(Severity::Info));
-        let mxf = ValidationIssue::from_rule(
-            &crate::catalogue::st377_1::ParseError,
-            crate::catalogue::st377_1::St377_1Edition::V2011,
+        // `SizeMismatch` exists in ST 429-8 and ST 2067-2.
+        let r = rules(&[("SizeMismatch", RuleSeverity::Info)]);
+        let pkl = ValidationIssue::from_rule(
+            &crate::catalogue::st429_8::SizeMismatch,
+            crate::catalogue::st429_8::St429_8Edition::V2007,
             "x",
         );
-        assert_eq!(severity(mxf, &r), Some(Severity::Info));
+        assert_eq!(severity(pkl, &r), Some(Severity::Info));
+        let core = ValidationIssue::from_rule(
+            &crate::catalogue::st2067_2::SizeMismatch,
+            crate::catalogue::st2067_2::St2067_2Edition::V2016,
+            "x",
+        );
+        assert_eq!(severity(core, &r), Some(Severity::Info));
     }
 
     #[test]

@@ -2362,15 +2362,12 @@ impl Imferno {
     ///
     /// For each MXF track file in the package:
     /// 1. Parse the MXF Header Partition Pack
-    /// 2. Check that the Operational Pattern is OP1a (required for IMF per ST 2067-2)
+    /// 2. Report an empty EssenceContainers batch (ST 377-1 §7.1)
     /// 3. Report parse failures as warnings (file may be unavailable or corrupt)
+    ///
+    /// The Operational Pattern is checked by `mxf::essence::validate_mxf_essence`.
     #[cfg_attr(target_arch = "wasm32", allow(unused_variables))]
     fn validate_mxf_headers(&self, report: &mut ValidationReport, spec_ed: St2067_2Edition) {
-        // OP1a UL prefix: 060e2b34.04010102.0d010201.0101__00
-        // Bytes 13-14 identify the OP variant: 01 01 = OP1a, 01 02 = OP1b, etc.
-        // Byte 15 encodes the qualifier (xxxx xxxx pattern). We ignore byte 8 (version).
-        const OP1A_BYTES_13_14: [u8; 2] = [0x01, 0x01];
-
         // Collect MXF asset UUIDs from PKLs
         for pkl in self.packing_lists.values() {
             for asset in &pkl.asset_list.assets {
@@ -2386,8 +2383,8 @@ impl Imferno {
                 }
 
                 // MXF essence checks via the `regxmllib-rs` family
-                // (smpte-mxf). Emits ST 2067-2 §5.2 / ST 377-1 §6.4
-                // and §8.3.3 diagnostics that the hand-rolled parser
+                // (smpte-mxf). Emits ST 2067-2 §5.1.1 / ST 377-1 §6.1.1, §6.2.4
+                // and §6.2.5 diagnostics that the hand-rolled parser
                 // below doesn't cover. Native-only — the wasm build
                 // doesn't link smpte-mxf, and browser callers don't
                 // see MXF binaries anyway (they upload XML only).
@@ -2461,34 +2458,10 @@ impl Imferno {
 
                 match crate::mxf::parse_mxf_header_info(path) {
                     Ok(info) => {
-                        // Parse the operational pattern UL back to bytes to check OP variant.
-                        // The UL format is: urn:smpte:ul:XXXXXXXX.XXXXXXXX.XXXXXXXX.XXXXXXXX
-                        // We need bytes 13-14 (1-indexed) to identify the OP.
-                        let op_bytes = parse_ul_bytes(&info.operational_pattern);
-                        if let Some(bytes) = op_bytes {
-                            // IMF requires OP1a: bytes 13-14 (0-indexed: 12-13) = 01 01
-                            if bytes[12] != OP1A_BYTES_13_14[0] || bytes[13] != OP1A_BYTES_13_14[1]
-                            {
-                                report.add(
-                                    ValidationIssue::from_rule(
-                                        &st377_1::Op1a,
-                                        St377_1Edition::V2011,
-                                        format!(
-                                            "MXF track file '{}' has Operational Pattern '{}' \
-                                             but IMF requires OP1a (ST 2067-2 §5.1)",
-                                            path.file_name()
-                                                .map(|n| n.to_string_lossy())
-                                                .unwrap_or_default(),
-                                            info.operational_pattern,
-                                        ),
-                                    )
-                                    .with_location(Location::new().with_file(path.clone()))
-                                    .with_context("asset_uuid", asset.id.to_string()),
-                                );
-                            }
-                        }
+                        // OP1a is checked by `mxf::essence::validate_mxf_essence`
+                        // (ST 2067-2 OperationalPatternNotOP1A).
 
-                        // ST 377-1: MXF track files should have at least one essence container
+                        // ST 377-1 §7.1: the header partition pack lists the essence containers
                         if info.essence_containers.is_empty() {
                             report.add(
                                 ValidationIssue::from_rule(&st377_1::NoEssenceContainers, St377_1Edition::V2011,
@@ -2521,8 +2494,8 @@ impl Imferno {
                     Err(e) => {
                         report.add(
                             ValidationIssue::from_rule(
-                                &st377_1::ParseError,
-                                St377_1Edition::V2011,
+                                &crate::catalogue::imferno::MxfHeaderUnreadable,
+                                crate::catalogue::imferno::ImfernoEdition::Current,
                                 format!(
                                     "Could not parse MXF header of '{}': {}",
                                     path.file_name()
@@ -2693,20 +2666,6 @@ impl Imferno {
             }
         }
     }
-}
-
-/// Parse a `urn:smpte:ul:XXXXXXXX.XXXXXXXX.XXXXXXXX.XXXXXXXX` string into 16 raw bytes.
-fn parse_ul_bytes(ul: &str) -> Option<[u8; 16]> {
-    let hex = ul.strip_prefix("urn:smpte:ul:")?;
-    let hex_clean: String = hex.chars().filter(|c| c.is_ascii_hexdigit()).collect();
-    if hex_clean.len() != 32 {
-        return None;
-    }
-    let mut bytes = [0u8; 16];
-    for i in 0..16 {
-        bytes[i] = u8::from_str_radix(&hex_clean[i * 2..i * 2 + 2], 16).ok()?;
-    }
-    Some(bytes)
 }
 
 #[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
@@ -4427,25 +4386,6 @@ mod tests {
         );
     }
 
-    // ── parse_ul_bytes ──────────────────────────────────────────────────────
-
-    #[test]
-    fn parse_ul_bytes_valid() {
-        let bytes = parse_ul_bytes("urn:smpte:ul:060e2b34.04010102.0d010201.01010900");
-        assert!(bytes.is_some());
-        let b = bytes.unwrap();
-        assert_eq!(b[0], 0x06);
-        assert_eq!(b[12], 0x01);
-        assert_eq!(b[13], 0x01); // OP1a
-        assert_eq!(b[14], 0x09);
-    }
-
-    #[test]
-    fn parse_ul_bytes_invalid() {
-        assert!(parse_ul_bytes("not-a-ul").is_none());
-        assert!(parse_ul_bytes("urn:smpte:ul:060e2b34").is_none());
-    }
-
     // ── MXF header cross-validation ─────────────────────────────────────────
 
     /// Build a minimal MXF byte stream with the given Operational Pattern UL.
@@ -4532,7 +4472,7 @@ mod tests {
             .chain(report.errors.iter())
             .chain(report.warnings.iter())
             .chain(report.info.iter())
-            .filter(|i| i.is(&st377_1::Op1a))
+            .filter(|i| i.is(&st2067_2::OperationalPatternNotOP1A))
             .collect();
         assert!(
             op_issues.is_empty(),
@@ -4599,7 +4539,7 @@ mod tests {
             .chain(report.errors.iter())
             .chain(report.warnings.iter())
             .chain(report.info.iter())
-            .filter(|i| i.is(&st377_1::Op1a))
+            .filter(|i| i.is(&st2067_2::OperationalPatternNotOP1A))
             .collect();
         assert_eq!(
             op_issues.len(),

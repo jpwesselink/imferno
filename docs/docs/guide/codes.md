@@ -33,14 +33,12 @@ Unmarked rows are carried over from earlier catalogues and not yet checked.
 
 | Rule | Description | Category | 2011 |
 |------|-------------|----------|------|
-| `ST377-1/NotMxf` | File is not a valid MXF container. | Asset | 5† warning |
-| `ST377-1/ParseError` | MXF file could not be parsed; it may be truncated or corrupt. | Asset | 5† warning |
-| `ST377-1/NoEssenceContainers` | MXF file contains no essence containers. | Encoding | 11† warning |
-| `ST377-1/Op1a` | MXF operational pattern must be OP1a for IMF packages. | Encoding | 7† error |
-| `ST377-1/NonHeaderFirstPartition` | The first partition in an MXF file must be the Header partition. | Container | 6.4† error |
-| `ST377-1/HeaderPartitionOpen` | The header partition is Open and no Closed footer partition carries header metadata, so the MXF file is Open. | Container | 8.3.3† warning |
-| `ST377-1/MissingHeaderMetadata` | The header partition must carry header metadata (HeaderByteCount > 0). | Container | 8.3.3† error |
-| `ST377-1/StructuralComponentDurationMissing` | A Structural Component on a Timeline Track has no Duration; it is a Best Effort property there and shall be encoded (-1 when unknown). | Container | B.8† error |
+| `ST377-1/NotMxf` | File is not a valid MXF container. | Asset | 6.1.1✓ error |
+| `ST377-1/NoEssenceContainers` | MXF file contains no essence containers. | Encoding | 7.1✓ warning |
+| `ST377-1/NonHeaderFirstPartition` | The first partition in an MXF file must be the Header partition. | Container | 6.2.5✓ error |
+| `ST377-1/HeaderPartitionOpen` | The header partition is Open and no Closed footer partition carries header metadata, so the MXF file is Open. | Container | 6.2.4✓ warning |
+| `ST377-1/MissingHeaderMetadata` | The header partition must carry header metadata (HeaderByteCount > 0). | Container | 6.1.1✓ error |
+| `ST377-1/StructuralComponentDurationMissing` | A Structural Component on a Timeline Track has no Duration; it is a Best Effort property there and shall be encoded (-1 when unknown). | Container | B.8✓ error |
 
 ## SMPTE ST 377-4 — MXF Multichannel Audio Labeling
 
@@ -312,6 +310,7 @@ Unmarked rows are carried over from earlier catalogues and not yet checked.
 | `IMFERNO/OpenFailed` | MXF file could not be opened for reading. | Container | Mxf critical |
 | `IMFERNO/PartitionPackParseFailed` | MXF header partition pack failed to parse. | Container | Mxf critical |
 | `IMFERNO/RegXmlConversionFailed` | MXF header metadata could not be converted to RegXML. | Container | Mxf warning |
+| `IMFERNO/MxfHeaderUnreadable` | MXF file could not be parsed; it may be truncated or corrupt. | Asset | Mxf warning |
 | `IMFERNO/EssenceContainersDetected` | Informational trace of how many essence containers the MXF declares. | Container | Mxf info |
 | `IMFERNO/IoError` | An I/O error prevented the asset from being read. | Asset | General error |
 | `IMFERNO/UnreferencedAsset` | Asset is present in the AssetMap but not referenced by any CPL Virtual Track and has no SCM declaration. Likely a sidecar essence without an SCM. | Structure | Package info |

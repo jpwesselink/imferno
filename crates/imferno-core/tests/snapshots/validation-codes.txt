@@ -1,11 +1,9 @@
-ST377-1/NotMxf | 2011 | ST377-1:2011:5/NotMxf | Warning | should | suspect
-ST377-1/ParseError | 2011 | ST377-1:2011:5/ParseError | Warning | should | suspect
-ST377-1/NoEssenceContainers | 2011 | ST377-1:2011:11/NoEssenceContainers | Warning | should | suspect
-ST377-1/Op1a | 2011 | ST377-1:2011:7/Op1a | Error | shall | suspect
-ST377-1/NonHeaderFirstPartition | 2011 | ST377-1:2011:6.4/NonHeaderFirstPartition | Error | shall | suspect
-ST377-1/HeaderPartitionOpen | 2011 | ST377-1:2011:8.3.3/HeaderPartitionOpen | Warning | should | suspect
-ST377-1/MissingHeaderMetadata | 2011 | ST377-1:2011:8.3.3/MissingHeaderMetadata | Error | shall | suspect
-ST377-1/StructuralComponentDurationMissing | 2011 | ST377-1:2011:B.8/StructuralComponentDurationMissing | Error | shall | suspect
+ST377-1/NotMxf | 2011 | ST377-1:2011:6.1.1/NotMxf | Error | shall | verified
+ST377-1/NoEssenceContainers | 2011 | ST377-1:2011:7.1/NoEssenceContainers | Warning | shall | verified
+ST377-1/NonHeaderFirstPartition | 2011 | ST377-1:2011:6.2.5/NonHeaderFirstPartition | Error | shall | verified
+ST377-1/HeaderPartitionOpen | 2011 | ST377-1:2011:6.2.4/HeaderPartitionOpen | Warning | shall | verified
+ST377-1/MissingHeaderMetadata | 2011 | ST377-1:2011:6.1.1/MissingHeaderMetadata | Error | shall | verified
+ST377-1/StructuralComponentDurationMissing | 2011 | ST377-1:2011:B.8/StructuralComponentDurationMissing | Error | shall | verified
 ST377-4/MCALinkIDMissing | 2012 | ST377-4:2012:6.3/MCALinkIDMissing | Error | shall | unverified
 ST377-4/SoundfieldGroupLinkIDMismatch | 2012 | ST377-4:2012:6.4.1/SoundfieldGroupLinkIDMismatch | Error | shall | unverified
 ST429-8/SizeMismatch | 2007 | ST429-8:2007:6.4/SizeMismatch | Error | shall | verified
@@ -733,6 +731,7 @@ IMFERNO/DeliveryNotChecked | - | IMFERNO:Package/DeliveryNotChecked | Info | may
 IMFERNO/OpenFailed | - | IMFERNO:Mxf/OpenFailed | Critical | shall | unverified
 IMFERNO/PartitionPackParseFailed | - | IMFERNO:Mxf/PartitionPackParseFailed | Critical | shall | unverified
 IMFERNO/RegXmlConversionFailed | - | IMFERNO:Mxf/RegXmlConversionFailed | Warning | should | unverified
+IMFERNO/MxfHeaderUnreadable | - | IMFERNO:Mxf/MxfHeaderUnreadable | Warning | should | unverified
 IMFERNO/EssenceContainersDetected | - | IMFERNO:Mxf/EssenceContainersDetected | Info | may | unverified
 IMFERNO/IoError | - | IMFERNO:General/IoError | Error | shall | unverified
 IMFERNO/UnreferencedAsset | - | IMFERNO:Package/UnreferencedAsset | Info | may | unverified

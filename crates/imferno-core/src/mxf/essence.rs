@@ -36,10 +36,12 @@ const OP1A_UL_BYTES: [u8; 16] = [
     0x06, 0x0e, 0x2b, 0x34, 0x04, 0x01, 0x01, 0x01, 0x0d, 0x01, 0x02, 0x01, 0x01, 0x01, 0x01, 0x00,
 ];
 
-/// Mask used when comparing the registry-byte (byte 7) and the version
-/// byte (byte 16) of an OP UL — both vary across SMPTE registry
-/// revisions but the operational-pattern identity is byte 13-14.
-const OP_UL_MATCH_MASK: u128 = 0xffff_ffff_ff00_ffff_ffff_ffff_ffff_ff00;
+/// Mask used when comparing an OP UL against OP1a. Ignored bytes (1-based):
+/// 6 (registry designator) and 8 (version) vary across SMPTE registry
+/// revisions; 15 carries the ST 378 qualifier bits (e.g. 0x09 for a
+/// stream file with internal essence) and 16 is reserved. The OP identity
+/// is bytes 13-14 (item and package complexity 01 01).
+const OP_UL_MATCH_MASK: u128 = 0xffff_ffff_ff00_ff00_ffff_ffff_ffff_0000;
 
 /// Validate an MXF file against the partition-pack-level rules of
 /// ST 2067-2 §5.2 and ST 377-1 §8.3.3. Returns a catalogue of
@@ -318,13 +320,13 @@ fn check_partition_pack(
 ) -> Vec<ValidationIssue> {
     let mut issues = Vec::new();
 
-    // ST 2067-5:2013 §5.1.5 / ST 377-1 §6.4: the header partition MUST
+    // ST 2067-5:2013 §5.1.5 / ST 377-1 §6.2.5: the header partition MUST
     // be the first partition in the file.
     if !matches!(pack.kind, PartitionKind::Header) {
         issues.push(
             ValidationIssue::from_rule(&st377_1::NonHeaderFirstPartition, St377_1Edition::V2011,
                 format!(
-                    "First partition in MXF file at {} is {:?}, not the Header partition required by ST 377-1 §6.4",
+                    "First partition in MXF file at {} is {:?}, not the Header partition required by ST 377-1 §6.2.5",
                     path.display(),
                     pack.kind,
                 ),
@@ -372,7 +374,7 @@ fn check_partition_pack(
         );
     }
 
-    // ST 377-1 §8.3.3: the IMF essence MXF MUST contain header
+    // ST 377-1 §6.1.1: the IMF essence MXF MUST contain header
     // metadata in its header partition (header_byte_count > 0).
     if pack.header_byte_count == 0 {
         issues.push(

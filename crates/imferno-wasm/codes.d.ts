@@ -3,9 +3,7 @@
 export declare const codes: {
   readonly ST377_1: {
     readonly NotMxf: "ST377-1/NotMxf";
-    readonly ParseError: "ST377-1/ParseError";
     readonly NoEssenceContainers: "ST377-1/NoEssenceContainers";
-    readonly Op1a: "ST377-1/Op1a";
     readonly NonHeaderFirstPartition: "ST377-1/NonHeaderFirstPartition";
     readonly HeaderPartitionOpen: "ST377-1/HeaderPartitionOpen";
     readonly MissingHeaderMetadata: "ST377-1/MissingHeaderMetadata";
@@ -248,6 +246,7 @@ export declare const codes: {
     readonly OpenFailed: "IMFERNO/OpenFailed";
     readonly PartitionPackParseFailed: "IMFERNO/PartitionPackParseFailed";
     readonly RegXmlConversionFailed: "IMFERNO/RegXmlConversionFailed";
+    readonly MxfHeaderUnreadable: "IMFERNO/MxfHeaderUnreadable";
     readonly EssenceContainersDetected: "IMFERNO/EssenceContainersDetected";
     readonly IoError: "IMFERNO/IoError";
     readonly UnreferencedAsset: "IMFERNO/UnreferencedAsset";

@@ -1,11 +1,12 @@
 //! Rule table: SMPTE ST 2067-201 (IAB Level 0 Plug-in).
 //!
-//! Generated from the pre-C0 per-edition code enums; edit by hand from now on.
+//! Every row checked against the text of its edition (C1/C4).
 
 #![allow(non_upper_case_globals)]
 
-use crate::diagnostics::rule::{absent, row, AnyRule, Rule, Spec};
-use crate::diagnostics::{Category, Severity};
+use crate::diagnostics::rule::Strength::{Shall, Should};
+use crate::diagnostics::rule::{absent, checked, AnyRule, Rule, Spec};
+use crate::diagnostics::Category;
 
 crate::diagnostics::rule::editions! {
     /// Editions of SMPTE ST 2067-201 (IAB Level 0 Plug-in) imferno knows.
@@ -27,9 +28,9 @@ pub static CodecForbidden: Rule<E> = Rule {
         "IABEssenceDescriptor with a non-empty Codec UL — ST 2067-201 forbids the item entirely.",
     ),
     editions: &[
-        row(E::V2019, "5.9", Severity::Error),
-        row(E::V2021, "5.9", Severity::Error),
-        row(E::V2026, "5.9", Severity::Error).verified(),
+        checked(E::V2019, "5.9", Shall),
+        checked(E::V2021, "5.9", Shall),
+        checked(E::V2026, "5.9", Shall),
     ],
 };
 
@@ -40,9 +41,9 @@ pub static ElectrospatialFormulationInvalid: Rule<E> = Rule {
     description: "IABEssenceDescriptor: ElectrospatialFormulation, if present, shall be 15 — multi-channel mode default (§5.9).",
     example: Some("IABEssenceDescriptor with ElectrospatialFormulation = 1 instead of 15 (multi-channel mode default)."),
     editions: &[
-        row(E::V2019, "5.9", Severity::Error),
-        row(E::V2021, "5.9", Severity::Error),
-        row(E::V2026, "5.9", Severity::Error).verified(),
+        checked(E::V2019, "5.9", Shall),
+        checked(E::V2021, "5.9", Shall),
+        checked(E::V2026, "5.9", Shall),
     ],
 };
 
@@ -53,9 +54,9 @@ pub static QuantizationBitsMissing: Rule<E> = Rule {
     description: "IABEssenceDescriptor: QuantizationBits is missing; shall be 24.",
     example: Some("IABEssenceDescriptor with no QuantizationBits item."),
     editions: &[
-        row(E::V2019, "5.9", Severity::Warning),
-        row(E::V2021, "5.9", Severity::Warning),
-        row(E::V2026, "5.9", Severity::Warning).verified(),
+        checked(E::V2019, "5.9", Shall),
+        checked(E::V2021, "5.9", Shall),
+        checked(E::V2026, "5.9", Shall),
     ],
 };
 
@@ -66,9 +67,9 @@ pub static QuantizationBitsInvalid: Rule<E> = Rule {
     description: "IABEssenceDescriptor: QuantizationBits shall be 24.",
     example: Some("IABEssenceDescriptor with QuantizationBits = 16 instead of 24."),
     editions: &[
-        row(E::V2019, "5.9", Severity::Error),
-        row(E::V2021, "5.9", Severity::Error),
-        row(E::V2026, "5.9", Severity::Error).verified(),
+        checked(E::V2019, "5.9", Shall).interpret("Quantization Bits shall match the bitstream BitDepth (5.9), which 5.6 requires to be 24 bits.", None),
+        checked(E::V2021, "5.9", Shall).interpret("Quantization Bits shall match the bitstream BitDepth (5.9), which 5.6 requires to be 24 bits.", None),
+        checked(E::V2026, "5.9", Shall).interpret("Quantization Bits shall match the bitstream BitDepth (5.9), which 5.6 requires to be 24 bits.", None),
     ],
 };
 
@@ -79,9 +80,9 @@ pub static ContainerFormatMissing: Rule<E> = Rule {
     description: "IABEssenceDescriptor: ContainerFormat is missing.",
     example: Some("IABEssenceDescriptor with no ContainerFormat (EssenceContainer) UL."),
     editions: &[
-        row(E::V2019, "5.9", Severity::Warning),
-        row(E::V2021, "5.9", Severity::Warning),
-        row(E::V2026, "5.9", Severity::Warning).verified(),
+        checked(E::V2019, "5.9", Shall),
+        checked(E::V2021, "5.9", Shall),
+        checked(E::V2026, "5.9", Shall),
     ],
 };
 
@@ -92,9 +93,9 @@ pub static EssenceContainerInvalid: Rule<E> = Rule {
     description: "IABEssenceDescriptor: ContainerFormat is not the required IAB container UL.",
     example: Some("IABEssenceDescriptor with ContainerFormat = `0d010301.020c0900` (WAV) instead of the IAB frame-wrapped UL."),
     editions: &[
-        row(E::V2019, "5.9", Severity::Error),
-        row(E::V2021, "5.9", Severity::Error),
-        row(E::V2026, "5.9", Severity::Error).verified(),
+        checked(E::V2019, "5.9", Shall),
+        checked(E::V2021, "5.9", Shall),
+        checked(E::V2026, "5.9", Shall),
     ],
 };
 
@@ -105,9 +106,9 @@ pub static AudioSamplingRateMissing: Rule<E> = Rule {
     description: "IABEssenceDescriptor: AudioSampleRate shall be present (§5.9).",
     example: Some("IABEssenceDescriptor with no AudioSampleRate."),
     editions: &[
-        row(E::V2019, "5.9", Severity::Error),
-        row(E::V2021, "5.9", Severity::Error),
-        row(E::V2026, "5.9", Severity::Error).verified(),
+        checked(E::V2019, "5.9", Shall),
+        checked(E::V2021, "5.9", Shall),
+        checked(E::V2026, "5.9", Shall),
     ],
 };
 
@@ -118,9 +119,9 @@ pub static AudioSamplingRateInvalid: Rule<E> = Rule {
     description: "IABEssenceDescriptor: AudioSampleRate shall match the bitstream SampleRate — 48 kHz or 96 kHz per ST 2098-2.",
     example: Some("IABEssenceDescriptor with AudioSampleRate = 44100/1 — not an ST 2098-2 sampling rate (48000/1 or 96000/1)."),
     editions: &[
-        row(E::V2019, "5.9", Severity::Error),
-        row(E::V2021, "5.9", Severity::Error),
-        row(E::V2026, "5.9", Severity::Error).verified(),
+        checked(E::V2019, "5.9", Shall),
+        checked(E::V2021, "5.9", Shall),
+        checked(E::V2026, "5.9", Shall),
     ],
 };
 
@@ -131,9 +132,9 @@ pub static SoundCompressionMissing: Rule<E> = Rule {
     description: "IABEssenceDescriptor: SoundCompression is missing.",
     example: Some("IABEssenceDescriptor with no SoundCompression UL."),
     editions: &[
-        row(E::V2019, "5.9", Severity::Warning),
-        row(E::V2021, "5.9", Severity::Warning),
-        row(E::V2026, "5.9", Severity::Warning).verified(),
+        checked(E::V2019, "5.9", Shall),
+        checked(E::V2021, "5.9", Shall),
+        checked(E::V2026, "5.9", Shall),
     ],
 };
 
@@ -144,9 +145,9 @@ pub static SoundCompressionInvalid: Rule<E> = Rule {
     description: "IABEssenceDescriptor: SoundCompression is not the required IAB compression UL.",
     example: Some("IABEssenceDescriptor with SoundCompression = uncompressed PCM UL instead of the IAB compression UL."),
     editions: &[
-        row(E::V2019, "5.9", Severity::Error),
-        row(E::V2021, "5.9", Severity::Error),
-        row(E::V2026, "5.9", Severity::Error).verified(),
+        checked(E::V2019, "5.9", Shall),
+        checked(E::V2021, "5.9", Shall),
+        checked(E::V2026, "5.9", Shall),
     ],
 };
 
@@ -157,8 +158,8 @@ pub static ChannelCountNotZero: Rule<E> = Rule {
     description: "IABEssenceDescriptor: ChannelCount shall be the distinguished value 0 (2019 edition).",
     example: Some("IABEssenceDescriptor with ChannelCount = 2 — the 2019 edition mandates the distinguished value 0."),
     editions: &[
-        row(E::V2019, "5.9", Severity::Error),
-        absent(E::V2021),
+        checked(E::V2019, "5.9", Shall),
+        absent(E::V2021).verified(),
         absent(E::V2026).verified(),
     ],
 };
@@ -170,9 +171,9 @@ pub static SubDescriptorMissing: Rule<E> = Rule {
     description: "IABEssenceDescriptor: IABSoundfieldLabelSubDescriptor shall be present.",
     example: Some("IABEssenceDescriptor with no IABSoundfieldLabelSubDescriptor in its SubDescriptors strong-ref list."),
     editions: &[
-        row(E::V2019, "5.10.2", Severity::Error),
-        row(E::V2021, "5.10.2", Severity::Error),
-        row(E::V2026, "5.10.2", Severity::Error).verified(),
+        checked(E::V2019, "5.10.2", Shall),
+        checked(E::V2021, "5.10.2", Shall),
+        checked(E::V2026, "5.10.2", Shall),
     ],
 };
 
@@ -183,9 +184,9 @@ pub static MCATagSymbolMissing: Rule<E> = Rule {
     description: "IABSoundfieldLabelSubDescriptor: MCATagSymbol is missing; shall be \"IAB\".",
     example: Some("IABSoundfieldLabelSubDescriptor with no MCATagSymbol item."),
     editions: &[
-        row(E::V2019, "5.10.4", Severity::Error),
-        row(E::V2021, "5.10.4", Severity::Error),
-        row(E::V2026, "5.10.4", Severity::Error).verified(),
+        checked(E::V2019, "5.10.4", Shall),
+        checked(E::V2021, "5.10.4", Shall),
+        checked(E::V2026, "5.10.4", Shall),
     ],
 };
 
@@ -196,9 +197,9 @@ pub static MCATagSymbolInvalid: Rule<E> = Rule {
     description: "IABSoundfieldLabelSubDescriptor: MCATagSymbol shall be \"IAB\".",
     example: Some("IABSoundfieldLabelSubDescriptor with MCATagSymbol = \"71\" instead of \"IAB\"."),
     editions: &[
-        row(E::V2019, "5.10.4", Severity::Error),
-        row(E::V2021, "5.10.4", Severity::Error),
-        row(E::V2026, "5.10.4", Severity::Error).verified(),
+        checked(E::V2019, "5.10.4", Shall),
+        checked(E::V2021, "5.10.4", Shall),
+        checked(E::V2026, "5.10.4", Shall),
     ],
 };
 
@@ -209,9 +210,9 @@ pub static MCATagNameMissing: Rule<E> = Rule {
     description: "IABSoundfieldLabelSubDescriptor: MCATagName is missing; shall be \"IAB\".",
     example: Some("IABSoundfieldLabelSubDescriptor with no MCATagName item."),
     editions: &[
-        row(E::V2019, "5.10.3", Severity::Error),
-        row(E::V2021, "5.10.3", Severity::Error),
-        row(E::V2026, "5.10.3", Severity::Error).verified(),
+        checked(E::V2019, "5.10.3", Shall),
+        checked(E::V2021, "5.10.3", Shall),
+        checked(E::V2026, "5.10.3", Shall),
     ],
 };
 
@@ -222,9 +223,9 @@ pub static MCATagNameInvalid: Rule<E> = Rule {
     description: "IABSoundfieldLabelSubDescriptor: MCATagName shall be \"IAB\".",
     example: Some("IABSoundfieldLabelSubDescriptor with MCATagName = \"Immersive Audio Bitstream\" instead of \"IAB\"."),
     editions: &[
-        row(E::V2019, "5.10.4", Severity::Error),
-        row(E::V2021, "5.10.4", Severity::Error),
-        row(E::V2026, "5.10.4", Severity::Error).verified(),
+        checked(E::V2019, "5.10.4", Shall),
+        checked(E::V2021, "5.10.4", Shall),
+        checked(E::V2026, "5.10.4", Shall),
     ],
 };
 
@@ -235,9 +236,9 @@ pub static MCALabelDictionaryIDMissing: Rule<E> = Rule {
     description: "IABSoundfieldLabelSubDescriptor: MCALabelDictionaryID is missing.",
     example: Some("IABSoundfieldLabelSubDescriptor with no MCALabelDictionaryID UL."),
     editions: &[
-        row(E::V2019, "5.10.4", Severity::Error),
-        row(E::V2021, "5.10.4", Severity::Error),
-        row(E::V2026, "5.10.4", Severity::Error).verified(),
+        checked(E::V2019, "5.10.4", Shall),
+        checked(E::V2021, "5.10.4", Shall),
+        checked(E::V2026, "5.10.4", Shall),
     ],
 };
 
@@ -248,9 +249,9 @@ pub static MCALabelDictionaryIDInvalid: Rule<E> = Rule {
     description: "IABSoundfieldLabelSubDescriptor: MCALabelDictionaryID is not the required IAB label UL.",
     example: Some("IABSoundfieldLabelSubDescriptor with MCALabelDictionaryID set to a 5.1 surround UL instead of the IAB label UL."),
     editions: &[
-        row(E::V2019, "5.10.4", Severity::Error),
-        row(E::V2021, "5.10.4", Severity::Error),
-        row(E::V2026, "5.10.4", Severity::Error).verified(),
+        checked(E::V2019, "5.10.4", Shall),
+        checked(E::V2021, "5.10.4", Shall),
+        checked(E::V2026, "5.10.4", Shall),
     ],
 };
 
@@ -261,9 +262,9 @@ pub static IABSequenceNoResources: Rule<E> = Rule {
     description: "IABSequence shall contain at least one Resource (§6.2).",
     example: Some("An IABSequence with an empty `<ResourceList>`."),
     editions: &[
-        row(E::V2019, "6.2", Severity::Error),
-        row(E::V2021, "6.2", Severity::Error),
-        row(E::V2026, "6.2.1", Severity::Error).verified(),
+        checked(E::V2019, "6.2", Shall),
+        checked(E::V2021, "6.2", Shall),
+        checked(E::V2026, "6.2.1", Shall),
     ],
 };
 
@@ -274,9 +275,9 @@ pub static IABSequenceSourceEncodingInvalid: Rule<E> = Rule {
     description: "IABSequence Resource.SourceEncoding does not reference an IABEssenceDescriptor (§6.2).",
     example: Some("An IABSequence Resource whose SourceEncoding references a WAVEPCMDescriptor instead of an IABEssenceDescriptor."),
     editions: &[
-        row(E::V2019, "6.2", Severity::Error),
-        row(E::V2021, "6.2", Severity::Error),
-        row(E::V2026, "6.2.1", Severity::Error).verified(),
+        checked(E::V2019, "6.2", Shall),
+        checked(E::V2021, "6.2", Shall),
+        checked(E::V2026, "6.2.1", Shall),
     ],
 };
 
@@ -287,9 +288,9 @@ pub static ForbiddenMCASubDescriptor: Rule<E> = Rule {
     description: "IAB Track File shall not contain AudioChannelLabel, SoundfieldGroupLabel or GroupOfSoundfieldGroupsLabel SubDescriptors (§5.10.2).",
     example: Some("IAB Track File header metadata carrying an AudioChannelLabelSubDescriptor alongside the IABSoundfieldLabelSubDescriptor."),
     editions: &[
-        row(E::V2019, "5.10.2", Severity::Error),
-        row(E::V2021, "5.10.2", Severity::Error),
-        row(E::V2026, "5.10.2", Severity::Error).verified(),
+        checked(E::V2019, "5.10.2", Shall),
+        checked(E::V2021, "5.10.2", Shall),
+        checked(E::V2026, "5.10.2", Shall),
     ],
 };
 
@@ -303,9 +304,9 @@ pub static SubDescriptorDuplicate: Rule<E> = Rule {
         "IAB Track File header metadata with two IABSoundfieldLabelSubDescriptor instances.",
     ),
     editions: &[
-        row(E::V2019, "5.10.2", Severity::Error),
-        row(E::V2021, "5.10.2", Severity::Error),
-        row(E::V2026, "5.10.2", Severity::Error).verified(),
+        checked(E::V2019, "5.10.2", Shall),
+        checked(E::V2021, "5.10.2", Shall),
+        checked(E::V2026, "5.10.2", Shall),
     ],
 };
 
@@ -316,9 +317,9 @@ pub static MCAChannelIDForbidden: Rule<E> = Rule {
     description: "MCAChannelID shall not be present in the IAB Soundfield Label SubDescriptor (Annex C.2).",
     example: Some("IABSoundfieldLabelSubDescriptor carrying <MCAChannelID>1</MCAChannelID> — the item is excluded by Annex C Table C.1."),
     editions: &[
-        row(E::V2019, "C.2", Severity::Error),
-        row(E::V2021, "C.2", Severity::Error),
-        row(E::V2026, "C.2", Severity::Error).verified(),
+        checked(E::V2019, "C.2", Shall),
+        checked(E::V2021, "C.2", Shall),
+        checked(E::V2026, "C.2", Shall),
     ],
 };
 
@@ -329,9 +330,9 @@ pub static EditRateNotIntegerMultiple: Rule<E> = Rule {
     description: "IAB Track File Edit Rate shall be an integer multiple of the Main Image Virtual Track Edit Rate (§6.2).",
     example: Some("IABSequence Resource with EditRate 25/1 against a 24/1 Main Image Virtual Track (25 is not an integer multiple of 24)."),
     editions: &[
-        row(E::V2019, "6.2", Severity::Error),
-        row(E::V2021, "6.2", Severity::Error),
-        row(E::V2026, "6.2.1", Severity::Error).verified(),
+        checked(E::V2019, "6.2", Shall),
+        checked(E::V2021, "6.2", Shall),
+        checked(E::V2026, "6.2.1", Shall),
     ],
 };
 
@@ -342,9 +343,9 @@ pub static IabChannelSubDescriptorRecommended: Rule<E> = Rule {
     description: "Track File should carry an IABChannelSubDescriptor for each channel of each BedDefinition (§5.10.2; set defined in Annex E).",
     example: Some("<IABEssenceDescriptor><SubDescriptors><IABSoundfieldLabelSubDescriptor/></SubDescriptors></IABEssenceDescriptor>  <!-- no <IABChannelSubDescriptor> entries -->"),
     editions: &[
-        absent(E::V2019),
-        absent(E::V2021),
-        row(E::V2026, "5.10.2", Severity::Warning),
+        absent(E::V2019).verified(),
+        absent(E::V2021).verified(),
+        checked(E::V2026, "5.10.2", Should),
     ],
 };
 

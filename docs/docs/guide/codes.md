@@ -250,31 +250,31 @@ Unmarked rows are carried over from earlier catalogues and not yet checked.
 
 | Rule | Description | Category | 2019 | 2021 | 2026 |
 |------|-------------|----------|------|------|------|
-| `ST2067-201/CodecForbidden` | IABEssenceDescriptor: Codec item shall not be present (§5.9). | Audio | 5.9 error | 5.9 error | 5.9✓ error |
-| `ST2067-201/ElectrospatialFormulationInvalid` | IABEssenceDescriptor: ElectrospatialFormulation, if present, shall be 15 — multi-channel mode default (§5.9). | Audio | 5.9 error | 5.9 error | 5.9✓ error |
-| `ST2067-201/QuantizationBitsMissing` | IABEssenceDescriptor: QuantizationBits is missing; shall be 24. | Audio | 5.9 warning | 5.9 warning | 5.9✓ warning |
-| `ST2067-201/QuantizationBitsInvalid` | IABEssenceDescriptor: QuantizationBits shall be 24. | Audio | 5.9 error | 5.9 error | 5.9✓ error |
-| `ST2067-201/ContainerFormatMissing` | IABEssenceDescriptor: ContainerFormat is missing. | Audio | 5.9 warning | 5.9 warning | 5.9✓ warning |
-| `ST2067-201/EssenceContainerInvalid` | IABEssenceDescriptor: ContainerFormat is not the required IAB container UL. | Audio | 5.9 error | 5.9 error | 5.9✓ error |
-| `ST2067-201/AudioSamplingRateMissing` | IABEssenceDescriptor: AudioSampleRate shall be present (§5.9). | Audio | 5.9 error | 5.9 error | 5.9✓ error |
-| `ST2067-201/AudioSamplingRateInvalid` | IABEssenceDescriptor: AudioSampleRate shall match the bitstream SampleRate — 48 kHz or 96 kHz per ST 2098-2. | Audio | 5.9 error | 5.9 error | 5.9✓ error |
-| `ST2067-201/SoundCompressionMissing` | IABEssenceDescriptor: SoundCompression is missing. | Audio | 5.9 warning | 5.9 warning | 5.9✓ warning |
-| `ST2067-201/SoundCompressionInvalid` | IABEssenceDescriptor: SoundCompression is not the required IAB compression UL. | Audio | 5.9 error | 5.9 error | 5.9✓ error |
-| `ST2067-201/ChannelCountNotZero` | IABEssenceDescriptor: ChannelCount shall be the distinguished value 0 (2019 edition). | Audio | 5.9 error | — | —✓ |
-| `ST2067-201/SubDescriptorMissing` | IABEssenceDescriptor: IABSoundfieldLabelSubDescriptor shall be present. | Audio | 5.10.2 error | 5.10.2 error | 5.10.2✓ error |
-| `ST2067-201/MCATagSymbolMissing` | IABSoundfieldLabelSubDescriptor: MCATagSymbol is missing; shall be "IAB". | Audio | 5.10.4 error | 5.10.4 error | 5.10.4✓ error |
-| `ST2067-201/MCATagSymbolInvalid` | IABSoundfieldLabelSubDescriptor: MCATagSymbol shall be "IAB". | Audio | 5.10.4 error | 5.10.4 error | 5.10.4✓ error |
-| `ST2067-201/MCATagNameMissing` | IABSoundfieldLabelSubDescriptor: MCATagName is missing; shall be "IAB". | Audio | 5.10.3 error | 5.10.3 error | 5.10.3✓ error |
-| `ST2067-201/MCATagNameInvalid` | IABSoundfieldLabelSubDescriptor: MCATagName shall be "IAB". | Audio | 5.10.4 error | 5.10.4 error | 5.10.4✓ error |
-| `ST2067-201/MCALabelDictionaryIDMissing` | IABSoundfieldLabelSubDescriptor: MCALabelDictionaryID is missing. | Audio | 5.10.4 error | 5.10.4 error | 5.10.4✓ error |
-| `ST2067-201/MCALabelDictionaryIDInvalid` | IABSoundfieldLabelSubDescriptor: MCALabelDictionaryID is not the required IAB label UL. | Audio | 5.10.4 error | 5.10.4 error | 5.10.4✓ error |
-| `ST2067-201/IABSequenceNoResources` | IABSequence shall contain at least one Resource (§6.2). | Audio | 6.2 error | 6.2 error | 6.2.1✓ error |
-| `ST2067-201/IABSequenceSourceEncodingInvalid` | IABSequence Resource.SourceEncoding does not reference an IABEssenceDescriptor (§6.2). | Audio | 6.2 error | 6.2 error | 6.2.1✓ error |
-| `ST2067-201/ForbiddenMCASubDescriptor` | IAB Track File shall not contain AudioChannelLabel, SoundfieldGroupLabel or GroupOfSoundfieldGroupsLabel SubDescriptors (§5.10.2). | Audio | 5.10.2 error | 5.10.2 error | 5.10.2✓ error |
-| `ST2067-201/SubDescriptorDuplicate` | IAB Track File shall contain exactly one IABSoundfieldLabelSubDescriptor (§5.10.2). | Audio | 5.10.2 error | 5.10.2 error | 5.10.2✓ error |
-| `ST2067-201/MCAChannelIDForbidden` | MCAChannelID shall not be present in the IAB Soundfield Label SubDescriptor (Annex C.2). | Audio | C.2 error | C.2 error | C.2✓ error |
-| `ST2067-201/EditRateNotIntegerMultiple` | IAB Track File Edit Rate shall be an integer multiple of the Main Image Virtual Track Edit Rate (§6.2). | Audio | 6.2 error | 6.2 error | 6.2.1✓ error |
-| `ST2067-201/IabChannelSubDescriptorRecommended` | Track File should carry an IABChannelSubDescriptor for each channel of each BedDefinition (§5.10.2; set defined in Annex E). | Audio | — | — | 5.10.2 warning |
+| `ST2067-201/CodecForbidden` | IABEssenceDescriptor: Codec item shall not be present (§5.9). | Audio | 5.9✓ error | 5.9✓ error | 5.9✓ error |
+| `ST2067-201/ElectrospatialFormulationInvalid` | IABEssenceDescriptor: ElectrospatialFormulation, if present, shall be 15 — multi-channel mode default (§5.9). | Audio | 5.9✓ error | 5.9✓ error | 5.9✓ error |
+| `ST2067-201/QuantizationBitsMissing` | IABEssenceDescriptor: QuantizationBits is missing; shall be 24. | Audio | 5.9✓ error | 5.9✓ error | 5.9✓ error |
+| `ST2067-201/QuantizationBitsInvalid` | IABEssenceDescriptor: QuantizationBits shall be 24. | Audio | 5.9✓ error | 5.9✓ error | 5.9✓ error |
+| `ST2067-201/ContainerFormatMissing` | IABEssenceDescriptor: ContainerFormat is missing. | Audio | 5.9✓ error | 5.9✓ error | 5.9✓ error |
+| `ST2067-201/EssenceContainerInvalid` | IABEssenceDescriptor: ContainerFormat is not the required IAB container UL. | Audio | 5.9✓ error | 5.9✓ error | 5.9✓ error |
+| `ST2067-201/AudioSamplingRateMissing` | IABEssenceDescriptor: AudioSampleRate shall be present (§5.9). | Audio | 5.9✓ error | 5.9✓ error | 5.9✓ error |
+| `ST2067-201/AudioSamplingRateInvalid` | IABEssenceDescriptor: AudioSampleRate shall match the bitstream SampleRate — 48 kHz or 96 kHz per ST 2098-2. | Audio | 5.9✓ error | 5.9✓ error | 5.9✓ error |
+| `ST2067-201/SoundCompressionMissing` | IABEssenceDescriptor: SoundCompression is missing. | Audio | 5.9✓ error | 5.9✓ error | 5.9✓ error |
+| `ST2067-201/SoundCompressionInvalid` | IABEssenceDescriptor: SoundCompression is not the required IAB compression UL. | Audio | 5.9✓ error | 5.9✓ error | 5.9✓ error |
+| `ST2067-201/ChannelCountNotZero` | IABEssenceDescriptor: ChannelCount shall be the distinguished value 0 (2019 edition). | Audio | 5.9✓ error | —✓ | —✓ |
+| `ST2067-201/SubDescriptorMissing` | IABEssenceDescriptor: IABSoundfieldLabelSubDescriptor shall be present. | Audio | 5.10.2✓ error | 5.10.2✓ error | 5.10.2✓ error |
+| `ST2067-201/MCATagSymbolMissing` | IABSoundfieldLabelSubDescriptor: MCATagSymbol is missing; shall be "IAB". | Audio | 5.10.4✓ error | 5.10.4✓ error | 5.10.4✓ error |
+| `ST2067-201/MCATagSymbolInvalid` | IABSoundfieldLabelSubDescriptor: MCATagSymbol shall be "IAB". | Audio | 5.10.4✓ error | 5.10.4✓ error | 5.10.4✓ error |
+| `ST2067-201/MCATagNameMissing` | IABSoundfieldLabelSubDescriptor: MCATagName is missing; shall be "IAB". | Audio | 5.10.3✓ error | 5.10.3✓ error | 5.10.3✓ error |
+| `ST2067-201/MCATagNameInvalid` | IABSoundfieldLabelSubDescriptor: MCATagName shall be "IAB". | Audio | 5.10.4✓ error | 5.10.4✓ error | 5.10.4✓ error |
+| `ST2067-201/MCALabelDictionaryIDMissing` | IABSoundfieldLabelSubDescriptor: MCALabelDictionaryID is missing. | Audio | 5.10.4✓ error | 5.10.4✓ error | 5.10.4✓ error |
+| `ST2067-201/MCALabelDictionaryIDInvalid` | IABSoundfieldLabelSubDescriptor: MCALabelDictionaryID is not the required IAB label UL. | Audio | 5.10.4✓ error | 5.10.4✓ error | 5.10.4✓ error |
+| `ST2067-201/IABSequenceNoResources` | IABSequence shall contain at least one Resource (§6.2). | Audio | 6.2✓ error | 6.2✓ error | 6.2.1✓ error |
+| `ST2067-201/IABSequenceSourceEncodingInvalid` | IABSequence Resource.SourceEncoding does not reference an IABEssenceDescriptor (§6.2). | Audio | 6.2✓ error | 6.2✓ error | 6.2.1✓ error |
+| `ST2067-201/ForbiddenMCASubDescriptor` | IAB Track File shall not contain AudioChannelLabel, SoundfieldGroupLabel or GroupOfSoundfieldGroupsLabel SubDescriptors (§5.10.2). | Audio | 5.10.2✓ error | 5.10.2✓ error | 5.10.2✓ error |
+| `ST2067-201/SubDescriptorDuplicate` | IAB Track File shall contain exactly one IABSoundfieldLabelSubDescriptor (§5.10.2). | Audio | 5.10.2✓ error | 5.10.2✓ error | 5.10.2✓ error |
+| `ST2067-201/MCAChannelIDForbidden` | MCAChannelID shall not be present in the IAB Soundfield Label SubDescriptor (Annex C.2). | Audio | C.2✓ error | C.2✓ error | C.2✓ error |
+| `ST2067-201/EditRateNotIntegerMultiple` | IAB Track File Edit Rate shall be an integer multiple of the Main Image Virtual Track Edit Rate (§6.2). | Audio | 6.2✓ error | 6.2✓ error | 6.2.1✓ error |
+| `ST2067-201/IabChannelSubDescriptorRecommended` | Track File should carry an IABChannelSubDescriptor for each channel of each BedDefinition (§5.10.2; set defined in Annex E). | Audio | —✓ | —✓ | 5.10.2✓ warning |
 
 ## SMPTE ST 2067-202 — ISXD Plug-in
 

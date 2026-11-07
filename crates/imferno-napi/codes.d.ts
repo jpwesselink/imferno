@@ -8,6 +8,7 @@ export declare const codes: {
     readonly PathTooLong: "ST429-9:2014:A.2/PathTooLong";
     readonly PathTooManySegments: "ST429-9:2014:A.2/PathTooManySegments";
     readonly PathDuplicate: "ST429-9:2014:A.2/PathDuplicate";
+    readonly AssetMapFileName: "ST429-9:2014:A.4/AssetMapFileName";
   };
   readonly ST377_1_2011: {
     readonly NotMxf: "ST377-1:2011:5/NotMxf";
@@ -35,6 +36,7 @@ export declare const codes: {
     readonly PklUnknownNamespace: "ST2067-2:2020:9/PklUnknownNamespace";
     readonly AssetMapHasNoPackingList: "ST429-9:2014:6.3/AssetMapHasNoPackingList";
     readonly PklIdNotInAssetMap: "ST429-9:2014:6.3/PklIdNotInAssetMap";
+    readonly CplIdAssetMapMismatch: "ST2067-2:2020:7.3.1/CplIdAssetMapMismatch";
   };
   readonly ST2067_2_2013_Core: {
     readonly ResourceListEmpty: "ST2067-2:2013:XSD/ResourceList-Empty";
@@ -57,7 +59,6 @@ export declare const codes: {
     readonly UniqueResourceId: "ST2067-2:2013:6.1/UniqueResourceId";
     readonly IntrinsicDuration: "ST2067-2:2013:6.10/IntrinsicDuration";
     readonly EntryPoint: "ST2067-2:2013:6.10/EntryPoint";
-    readonly SourceDuration: "ST2067-2:2013:6.10/SourceDuration";
     readonly ResourceDuration: "ST2067-2:2013:6.10/ResourceDuration";
     readonly RepeatCount: "ST2067-2:2013:6.10/RepeatCount";
     readonly TrackFileId: "ST2067-2:2013:6.10/TrackFileId";
@@ -72,7 +73,7 @@ export declare const codes: {
     readonly SoundfieldGroup: "ST2067-2:2013:ST377-4/SoundfieldGroup";
     readonly MCATagSymbol: "ST2067-2:2013:ST377-4/MCATagSymbol";
     readonly SoundfieldChannelCount: "ST2067-2:2013:ST377-4/SoundfieldChannelCount";
-    readonly DigitalSignature: "ST2067-2:2013:8/DigitalSignature";
+    readonly DigitalSignature: "ST2067-2:2013:6.9/DigitalSignature";
     readonly DanglingEssenceDescriptor: "ST2067-2:2013:6.4.2/DanglingEssenceDescriptor";
     readonly EssenceDescriptorList: "ST2067-2:2013:6.4.2/EssenceDescriptorList";
   };
@@ -97,7 +98,6 @@ export declare const codes: {
     readonly UniqueResourceId: "ST2067-2:2016:6.1/UniqueResourceId";
     readonly IntrinsicDuration: "ST2067-2:2016:6.10/IntrinsicDuration";
     readonly EntryPoint: "ST2067-2:2016:6.10/EntryPoint";
-    readonly SourceDuration: "ST2067-2:2016:6.10/SourceDuration";
     readonly ResourceDuration: "ST2067-2:2016:6.10/ResourceDuration";
     readonly RepeatCount: "ST2067-2:2016:6.10/RepeatCount";
     readonly TrackFileId: "ST2067-2:2016:6.10/TrackFileId";
@@ -112,7 +112,7 @@ export declare const codes: {
     readonly SoundfieldGroup: "ST2067-2:2016:ST377-4/SoundfieldGroup";
     readonly MCATagSymbol: "ST2067-2:2016:ST377-4/MCATagSymbol";
     readonly SoundfieldChannelCount: "ST2067-2:2016:ST377-4/SoundfieldChannelCount";
-    readonly DigitalSignature: "ST2067-2:2016:8/DigitalSignature";
+    readonly DigitalSignature: "ST2067-2:2016:6.9/DigitalSignature";
     readonly DanglingEssenceDescriptor: "ST2067-2:2016:6.4.2/DanglingEssenceDescriptor";
     readonly EssenceDescriptorList: "ST2067-2:2016:6.4.2/EssenceDescriptorList";
   };
@@ -137,7 +137,6 @@ export declare const codes: {
     readonly UniqueResourceId: "ST2067-2:2020:6.1/UniqueResourceId";
     readonly IntrinsicDuration: "ST2067-2:2020:6.10/IntrinsicDuration";
     readonly EntryPoint: "ST2067-2:2020:6.10/EntryPoint";
-    readonly SourceDuration: "ST2067-2:2020:6.10/SourceDuration";
     readonly ResourceDuration: "ST2067-2:2020:6.10/ResourceDuration";
     readonly RepeatCount: "ST2067-2:2020:6.10/RepeatCount";
     readonly TrackFileId: "ST2067-2:2020:6.10/TrackFileId";
@@ -152,7 +151,7 @@ export declare const codes: {
     readonly SoundfieldGroup: "ST2067-2:2020:ST377-4/SoundfieldGroup";
     readonly MCATagSymbol: "ST2067-2:2020:ST377-4/MCATagSymbol";
     readonly SoundfieldChannelCount: "ST2067-2:2020:ST377-4/SoundfieldChannelCount";
-    readonly DigitalSignature: "ST2067-2:2020:8/DigitalSignature";
+    readonly DigitalSignature: "ST2067-2:2020:6.9/DigitalSignature";
     readonly DanglingEssenceDescriptor: "ST2067-2:2020:6.4.2/DanglingEssenceDescriptor";
     readonly EssenceDescriptorList: "ST2067-2:2020:6.4.2/EssenceDescriptorList";
   };

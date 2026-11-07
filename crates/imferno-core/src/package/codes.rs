@@ -98,7 +98,9 @@ impl ValidationCode for ImfernoCode {
     fn default_severity(&self) -> Severity {
         match self {
             Self::UnreferencedAsset => Severity::Info,
-            Self::UnlistedEssence => Severity::Warning,
+            // ST 2067-2:2020 §8.3 Note 3: the delivery medium can hold
+            // files that are not ingested, so this is not a violation.
+            Self::UnlistedEssence => Severity::Info,
             Self::ParseError => Severity::Critical,
             Self::PklParseError => Severity::Error,
             Self::XmlAssetParseError => Severity::Warning,

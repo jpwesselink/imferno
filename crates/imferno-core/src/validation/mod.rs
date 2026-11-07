@@ -944,23 +944,10 @@ fn validate_resource_constraints(
                         );
                     }
 
-                    // A: SourceDuration > 0 (ST 2067-2 §6.10)
-                    // EntryPoint + SourceDuration <= IntrinsicDuration
+                    // A: EntryPoint + SourceDuration <= IntrinsicDuration
+                    // (ST 2067-3 §6.11.6). The lower bound is 0, inclusive:
+                    // a SourceDuration of 0 is allowed and not flagged.
                     if let Some(source_duration) = resource.source_duration {
-                        if source_duration == 0 {
-                            issues.push(
-                                ValidationIssue::new(
-                                    Severity::Error,
-                                    Category::Timing,
-                                    code(CoreConstraintsCode::SourceDuration),
-                                    format!(
-                                        "{} resource {}: SourceDuration shall be greater than 0",
-                                        track_type, resource.id,
-                                    ),
-                                )
-                                .with_location(res_loc.clone()),
-                            );
-                        }
                         if entry_point + source_duration > resource.intrinsic_duration {
                             issues.push(
                                 ValidationIssue::new(
@@ -1483,6 +1470,60 @@ fn validate_audio_mca_labels(
 fn validate_segment_track_durations(cpl: &CompositionPlaylist, issues: &mut Vec<ValidationIssue>) {
     use crate::cpl::SequenceAccess;
 
+    /// Exact sequence duration in Composition Edit Units, as a reduced
+    /// fraction (numerator, denominator). Each resource contributes
+    /// duration × RepeatCount × (CompositionEditRate / ResourceEditRate).
+    /// None without a usable Composition Edit Rate or Resource Edit Rate.
+    fn sequence_duration_ceu(
+        seq: &dyn SequenceAccess,
+        cpl_edit_rate: Option<&EditRate>,
+    ) -> Option<(i128, i128)> {
+        fn gcd(a: i128, b: i128) -> i128 {
+            if b == 0 {
+                a.abs()
+            } else {
+                gcd(b, a % b)
+            }
+        }
+        let cer = cpl_edit_rate?;
+        let (cn, cd) = (cer.numerator as i128, cer.denominator as i128);
+        if cn == 0 || cd == 0 {
+            return None;
+        }
+        let (mut num, mut den) = (0_i128, 1_i128);
+        for r in &seq.resource_list().resources {
+            let er = r.edit_rate.as_ref().unwrap_or(cer);
+            let (rn, rd) = (er.numerator as i128, er.denominator as i128);
+            if rn == 0 || rd == 0 {
+                return None;
+            }
+            let dur = match r.source_duration {
+                Some(d) => d as i128,
+                None => r.intrinsic_duration as i128 - r.entry_point.unwrap_or(0) as i128,
+            };
+            let repeat = r.repeat_count.unwrap_or(1).max(1) as i128;
+            // dur × repeat resource edit units = dur × repeat × rd/rn s
+            // = dur × repeat × rd × cn / (rn × cd) composition edit units.
+            let (n, d) = (dur * repeat * rd * cn, rn * cd);
+            num = num.checked_mul(d)?.checked_add(n.checked_mul(den)?)?;
+            den = den.checked_mul(d)?;
+            let g = gcd(num, den).max(1);
+            num /= g;
+            den /= g;
+        }
+        Some((num, den))
+    }
+
+    /// "96", or "96.5" for a fraction (at most 3 decimals).
+    fn fmt_eu((num, den): (i128, i128)) -> String {
+        if num % den == 0 {
+            (num / den).to_string()
+        } else {
+            let s = format!("{:.3}", num as f64 / den as f64);
+            s.trim_end_matches('0').trim_end_matches('.').to_string()
+        }
+    }
+
     /// Compute the total effective duration of a sequence in real seconds (f64).
     ///
     /// Each resource's frame count is divided by its edit rate (falling back to
@@ -1533,20 +1574,30 @@ fn validate_segment_track_durations(cpl: &CompositionPlaylist, issues: &mut Vec<
 
     for (seg_idx, segment) in cpl.segment_list.segments.iter().enumerate() {
         let sl = &segment.sequence_list;
-        let seg_loc = Location::new().with_cpl(cpl.id).with_segment(seg_idx);
+        let seg_urn = format!("urn:uuid:{}", segment.id);
+        let seg_loc = Location::new()
+            .with_cpl(cpl.id)
+            .with_segment(seg_idx)
+            .with_segment_id(seg_urn.clone());
 
         let er = cpl.edit_rate.as_ref();
 
-        // Collect (track_type, track_id, duration_seconds) for all non-marker sequences.
-        // Skip sequences where no edit rate is available to normalise with.
-        let mut track_durations: Vec<(&str, String, f64)> = Vec::new();
+        // Collect (track_type, track_id, duration_seconds, duration in
+        // Composition Edit Units) for all non-marker sequences. Skip
+        // sequences where no edit rate is available to normalise with.
+        type TrackDuration<'a> = (&'a str, String, f64, Option<(i128, i128)>);
+        let mut track_durations: Vec<TrackDuration> = Vec::new();
 
-        let push =
-            |v: &mut Vec<(&str, String, f64)>, label: &'static str, seq: &dyn SequenceAccess| {
-                if let Some(secs) = sequence_duration_seconds(seq, er) {
-                    v.push((label, seq.track_id().to_string(), secs));
-                }
-            };
+        let push = |v: &mut Vec<TrackDuration>, label: &'static str, seq: &dyn SequenceAccess| {
+            if let Some(secs) = sequence_duration_seconds(seq, er) {
+                v.push((
+                    label,
+                    seq.track_id().to_string(),
+                    secs,
+                    sequence_duration_ceu(seq, er),
+                ));
+            }
+        };
 
         for seq in &sl.main_image_sequences {
             push(&mut track_durations, "MainImage", seq);
@@ -1576,23 +1627,40 @@ fn validate_segment_track_durations(cpl: &CompositionPlaylist, issues: &mut Vec<
 
         // All tracks in a segment should have the same real-time duration
         let first_secs = track_durations[0].2;
-        for (track_type, track_id, duration_secs) in &track_durations[1..] {
+        let first_ceu = track_durations[0].3;
+        for (track_type, track_id, duration_secs, ceu) in &track_durations[1..] {
             if (duration_secs - first_secs).abs() > TOLERANCE_SECONDS {
+                // "151442 EU (6316.393 s)", or "6316.393 s" when the
+                // Composition Edit Rate is unknown.
+                let (this, first, delta) = match (ceu, first_ceu) {
+                    (Some((n, d)), Some((fn_, fd))) => (
+                        format!("{} EU ({:.3} s)", fmt_eu((*n, *d)), duration_secs),
+                        format!("{} EU ({:.3} s)", fmt_eu((fn_, fd)), first_secs),
+                        format!(", delta {} EU", fmt_eu((n * fd - fn_ * d, d * fd))),
+                    ),
+                    _ => (
+                        format!("{duration_secs:.3} s"),
+                        format!("{first_secs:.3} s"),
+                        String::new(),
+                    ),
+                };
                 issues.push(
                     ValidationIssue::new(
                         Severity::Error,
                         Category::Timing,
                         seg_dur_code,
                         format!(
-                            "Segment {} {} track {}: duration {:.3}s differs from {} track {}: duration {:.3}s — \
-                             all virtual tracks in a segment shall have equal duration",
+                            "Segment {} ({}) {} track {}: duration {} differs from {} track {}: \
+                             duration {}{} — all virtual tracks in a segment shall have equal duration",
                             seg_idx + 1,
+                            seg_urn,
                             track_type,
                             &track_id[..8.min(track_id.len())],
-                            duration_secs,
+                            this,
                             track_durations[0].0,
                             &track_durations[0].1[..8.min(track_durations[0].1.len())],
-                            first_secs,
+                            first,
+                            delta,
                         ),
                     )
                     .with_location(seg_loc.clone()),
@@ -1602,40 +1670,37 @@ fn validate_segment_track_durations(cpl: &CompositionPlaylist, issues: &mut Vec<
     }
 }
 
-/// ST 2067-2 §8: Digital signature notice.
+/// ST 2067-2 §6.9 (2013, 2016 and 2020): Digital signature notice.
 ///
-/// Digital signatures (XML-DSIG Signer/Signature elements) are not currently
-/// parsed or validated. This outputs an info-level notice for CPLs using spec
-/// versions that support digital signatures.
+/// Every edition constrains the Signature element of a CPL in §6.9, but the
+/// signature is not verified here. A CPL that carries a Signature gets an
+/// info-level notice saying so; an unsigned CPL has nothing to verify. The
+/// package validator collapses the notices to one per package.
 fn validate_digital_signature_notice(
     cpl: &CompositionPlaylist,
     code: fn(CoreConstraintsCode) -> &'static str,
     issues: &mut Vec<ValidationIssue>,
 ) {
-    // Digital signatures are supported from ST 2067-2:2016 onwards.
-    // Since we don't parse Signer/Signature XML elements, we cannot validate them.
-    // Output an info notice for awareness.
-    let supports_signatures = matches!(cpl.namespace, CplNamespace::Smpte2067_3_2016);
-    if supports_signatures {
+    if cpl.has_signature {
         issues.push(
             ValidationIssue::new(
                 Severity::Info,
                 Category::Security,
                 code(CoreConstraintsCode::DigitalSignature),
-                "Digital signature validation (ST 2067-2 §8) is not currently performed; \
-                 Signer/Signature XML elements are not parsed",
+                "The CPL carries a Signature (ST 2067-2 §6.9); signature verification \
+                 is not performed",
             )
             .with_location(Location::new().with_cpl(cpl.id)),
         );
     }
 }
 
-/// ST 2067-2 §6.4.2: Every EssenceDescriptor in the EssenceDescriptorList shall be
+/// ST 2067-3 §6.1.10.1 (2013, 2016, 2020): Every EssenceDescriptor in the EssenceDescriptorList shall be
 /// referenced by at least one Resource's SourceEncoding element.
 ///
 /// An ED that exists in the EDL but is not referenced by any Resource is a
 /// "dangling" descriptor — it occupies space and implies metadata but has no
-/// corresponding essence in the composition. This is rejected by ST 2067-2.
+/// corresponding essence in the composition. ST 2067-3 forbids it.
 fn validate_dangling_essence_descriptors(
     cpl: &CompositionPlaylist,
     code: fn(CoreConstraintsCode) -> &'static str,
@@ -1713,7 +1778,7 @@ fn validate_dangling_essence_descriptors(
                     code(CoreConstraintsCode::DanglingEssenceDescriptor),
                     format!(
                         "EssenceDescriptor {} is present in EssenceDescriptorList but not \
-                         referenced by any Resource's SourceEncoding (ST 2067-2 §6.4.2)",
+                         referenced by any Resource's SourceEncoding (ST 2067-3 §6.1.10.1)",
                         id
                     ),
                 )
@@ -3739,6 +3804,105 @@ mod tests {
         );
     }
 
+    // ── ST 2067-3 §7.2: Sequences in a Segment have the same duration ──────
+
+    /// Composition at 24/1 with one Segment (Id uuid(70)) holding a
+    /// MainImage resource of `image_eu` edit units at 24/1 and a MainAudio
+    /// resource of `audio_samples` samples at 48000/1.
+    fn cpl_with_image_and_audio(image_eu: u64, audio_samples: u64) -> CompositionPlaylist {
+        let resource = |id: u8, edit_rate: Option<EditRate>, dur: u64| Resource {
+            id: uuid(id),
+            annotation: None,
+            edit_rate,
+            intrinsic_duration: dur,
+            entry_point: None,
+            source_duration: Some(dur),
+            source_encoding: None,
+            track_file_id: Some(uuid(id + 10)),
+            repeat_count: None,
+            key_id: None,
+            hash: None,
+            markers: vec![],
+        };
+        let mut cpl = minimal_cpl();
+        cpl.edit_rate = Some(EditRate::new(24, 1));
+        let mut sl = empty_sequence_list();
+        sl.main_image_sequences.push(MainImageSequence {
+            id: uuid(30),
+            track_id: uuid(40),
+            resource_list: ResourceList {
+                resources: vec![resource(50, None, image_eu)],
+            },
+        });
+        sl.main_audio_sequences.push(MainAudioSequence {
+            id: uuid(31),
+            track_id: uuid(41),
+            resource_list: ResourceList {
+                resources: vec![resource(51, Some(EditRate::new(48000, 1)), audio_samples)],
+            },
+        });
+        cpl.segment_list = SegmentList {
+            segments: vec![Segment {
+                id: uuid(70),
+                sequence_list: sl,
+            }],
+        };
+        cpl
+    }
+
+    fn segment_duration_issues(cpl: &CompositionPlaylist) -> Vec<ValidationIssue> {
+        let mut issues = Vec::new();
+        validate_segment_track_durations(cpl, &mut issues);
+        issues
+            .into_iter()
+            .filter(|i| i.code.ends_with("/SegmentDuration"))
+            .collect()
+    }
+
+    /// The SegmentDuration finding names the Segment by its Id as well as
+    /// its ordinal, in the message and in the location.
+    /// https://github.com/jpwesselink/imferno/issues/86
+    #[test]
+    fn segment_duration_names_segment_id() {
+        let issues = segment_duration_issues(&cpl_with_image_and_audio(100, 192_000));
+        assert_eq!(issues.len(), 1, "{issues:#?}");
+        let seg_id = uuid(70).to_string();
+        assert!(
+            issues[0]
+                .message
+                .starts_with(&format!("Segment 1 (urn:uuid:{seg_id})")),
+            "{}",
+            issues[0].message
+        );
+        assert_eq!(issues[0].location.segment, Some(0));
+        assert_eq!(
+            issues[0].location.segment_id.as_deref(),
+            Some(format!("urn:uuid:{seg_id}").as_str())
+        );
+    }
+
+    /// The SegmentDuration finding gives both durations in Composition Edit
+    /// Units next to seconds, and the difference in edit units.
+    /// https://github.com/jpwesselink/imferno/issues/85
+    #[test]
+    fn segment_duration_reports_edit_units() {
+        // 192000 samples at 48 kHz = 4 s = 96 EU at 24/1, against 100 EU.
+        let issues = segment_duration_issues(&cpl_with_image_and_audio(100, 192_000));
+        assert_eq!(issues.len(), 1, "{issues:#?}");
+        let msg = &issues[0].message;
+        assert!(msg.contains("duration 96 EU (4.000 s)"), "{msg}");
+        assert!(msg.contains("duration 100 EU (4.167 s)"), "{msg}");
+        assert!(msg.contains("delta -4 EU"), "{msg}");
+
+        // 1000 samples = 0.5 EU: a non-integer count is shown as a decimal.
+        let issues = segment_duration_issues(&cpl_with_image_and_audio(100, 193_000));
+        assert!(
+            issues[0].message.contains("duration 96.5 EU"),
+            "{issues:#?}"
+        );
+        assert!(issues[0].message.contains("delta -3.5 EU"), "{issues:#?}");
+    }
+
     // ── §7.4 Segment Duration ──────────────────────────────────────────────
 
     /// Helper: build a CPL with audio at the given sample rate and composition edit rate,
@@ -4180,12 +4344,80 @@ mod tests {
         );
     }
 
-    // ── A: SourceDuration > 0 ────────────────────────────────────────────────
+    // ── A: SourceDuration 0 is permitted ─────────────────────────────────────
 
+    /// ST 2067-3 §6.11.6 (2013, 2016 and 2020 alike) allows SourceDuration
+    /// from 0 (zero) up to IntrinsicDuration - EntryPoint, and the XSD types
+    /// it as xs:nonNegativeInteger. ST 2067-2 adds no lower bound. A
+    /// zero-length Resource is therefore legal and must not be flagged.
+    /// https://github.com/jpwesselink/imferno/issues/89
     #[test]
-    fn core_rejects_zero_source_duration() {
+    fn core_accepts_zero_source_duration() {
+        for edition in [
+            &CoreConstraints2013 as &dyn ConstraintsValidator,
+            &CoreConstraints2016,
+            &CoreConstraints2020,
+        ] {
+            let mut cpl = minimal_cpl();
+            let ed_id = uuid(10);
+            cpl.segment_list.segments[0]
+                .sequence_list
+                .main_image_sequences
+                .push(MainImageSequence {
+                    id: uuid(3),
+                    track_id: uuid(4),
+                    resource_list: ResourceList {
+                        resources: vec![Resource {
+                            id: uuid(99),
+                            annotation: None,
+                            edit_rate: None,
+                            intrinsic_duration: 24,
+                            entry_point: None,
+                            source_duration: Some(0),
+                            source_encoding: Some(ed_id),
+                            track_file_id: Some(uuid(50)),
+                            repeat_count: None,
+                            key_id: None,
+                            hash: None,
+                            markers: vec![],
+                        }],
+                    },
+                });
+            let issues = edition.validate_cpl(&cpl);
+            assert!(
+                !issues
+                    .iter()
+                    .any(|i| i.code.contains("SourceDuration")
+                        || i.code.contains("ResourceDuration")),
+                "{}: SourceDuration 0 is allowed by ST 2067-3 6.11.6: {:#?}",
+                edition.spec_id(),
+                issues,
+            );
+        }
+    }
+
+    /// ST 2067-3 §6.1.10.1 requires each EssenceDescriptor to be referenced
+    /// through its Id by at least one TrackFileResource. A Resource with
+    /// SourceDuration 0 is still such a Resource, so the descriptor it
+    /// references is not dangling. A descriptor nobody references is.
+    /// https://github.com/jpwesselink/imferno/issues/82
+    #[test]
+    fn dangling_essence_descriptor_counts_zero_duration_resource_as_reference() {
+        let empty_ed = |id| EssenceDescriptor {
+            id,
+            rgba_descriptor: None,
+            cdci_descriptor: None,
+            wave_pcm_descriptor: None,
+            dc_timed_text_descriptor: None,
+            iab_essence_descriptor: None,
+            isxd_data_essence_descriptor: None,
+        };
+        let slate_ed = uuid(10);
+        let unused_ed = uuid(11);
         let mut cpl = minimal_cpl();
-        let ed_id = uuid(10);
+        cpl.essence_descriptor_list = Some(EssenceDescriptorList {
+            essence_descriptors: vec![empty_ed(slate_ed), empty_ed(unused_ed)],
+        });
         cpl.segment_list.segments[0]
             .sequence_list
             .main_image_sequences
@@ -4197,10 +4429,10 @@ mod tests {
                         id: uuid(99),
                         annotation: None,
                         edit_rate: None,
-                        intrinsic_duration: 100,
+                        intrinsic_duration: 24,
                         entry_point: None,
-                        source_duration: Some(0), // Invalid
-                        source_encoding: Some(ed_id),
+                        source_duration: Some(0),
+                        source_encoding: Some(slate_ed),
                         track_file_id: Some(uuid(50)),
                         repeat_count: None,
                         key_id: None,
@@ -4209,12 +4441,57 @@ mod tests {
                     }],
                 },
             });
-        let issues = CoreConstraints2020.validate_cpl(&cpl);
-        assert!(
-            issues.iter().any(|i| i.code.contains("SourceDuration")),
-            "Zero SourceDuration should be flagged: {:#?}",
-            issues,
-        );
+        for edition in [
+            &CoreConstraints2013 as &dyn ConstraintsValidator,
+            &CoreConstraints2016,
+            &CoreConstraints2020,
+        ] {
+            let dangling: Vec<_> = edition
+                .validate_cpl(&cpl)
+                .into_iter()
+                .filter(|i| i.code.ends_with("/DanglingEssenceDescriptor"))
+                .collect();
+            assert_eq!(dangling.len(), 1, "{}: {dangling:#?}", edition.spec_id());
+            assert!(
+                dangling[0].message.contains(&unused_ed.to_string()),
+                "{}: only the unreferenced descriptor is dangling: {dangling:#?}",
+                edition.spec_id(),
+            );
+        }
+    }
+
+    /// ST 2067-2 §6.9 (2013, 2016 and 2020) constrains the Signature element
+    /// of a CPL. imferno does not verify signatures, and says so, but only
+    /// for a CPL that carries a Signature: there is nothing to verify in an
+    /// unsigned CPL.
+    /// https://github.com/jpwesselink/imferno/issues/87
+    #[test]
+    fn digital_signature_notice_only_for_signed_cpls() {
+        for edition in [
+            &CoreConstraints2013 as &dyn ConstraintsValidator,
+            &CoreConstraints2016,
+            &CoreConstraints2020,
+        ] {
+            let mut cpl = minimal_cpl();
+            let notices = |cpl: &CompositionPlaylist| {
+                edition
+                    .validate_cpl(cpl)
+                    .into_iter()
+                    .filter(|i| i.code.ends_with("/DigitalSignature"))
+                    .collect::<Vec<_>>()
+            };
+            assert!(notices(&cpl).is_empty(), "{}: unsigned", edition.spec_id());
+            cpl.has_signature = true;
+            let found = notices(&cpl);
+            assert_eq!(found.len(), 1, "{}: {found:#?}", edition.spec_id());
+            assert!(
+                found[0].code.ends_with(":6.9/DigitalSignature"),
+                "{}: {}",
+                edition.spec_id(),
+                found[0].code
+            );
+            assert_eq!(found[0].severity, Severity::Info);
+        }
     }
 
     #[test]
@@ -7262,32 +7539,20 @@ mod tests {
 
     // ── #43: Digital Signatures notice ───────────────────────────────────
 
-    /// CPL with 2016+ namespace should emit digital signature info notice.
+    /// A signed CPL in the 2013 namespace gets the notice too: ST 2067-2:2013
+    /// §6.9 already constrains the CPL Signature element.
     #[test]
-    fn core_emits_digital_signature_notice_for_modern_cpl() {
-        let cpl = minimal_cpl(); // Uses Smpte2067_3_2016
-        let v = CoreConstraints2020;
-        let issues = v.validate_cpl(&cpl);
+    fn core_emits_digital_signature_notice_for_signed_2013_cpl() {
+        let mut cpl = minimal_cpl();
+        cpl.namespace = CplNamespace::Smpte2067_3_2013;
+        cpl.has_signature = true;
+        let issues = CoreConstraints2013.validate_cpl(&cpl);
         assert!(
             issues
                 .iter()
-                .any(|i| i.code.contains("DigitalSignature") && i.severity == Severity::Info),
-            "2020 CPL should emit digital signature info notice: {:#?}",
-            issues,
-        );
-    }
-
-    /// CPL with 2013 namespace should not emit digital signature notice.
-    #[test]
-    fn core_no_digital_signature_notice_for_2013_cpl() {
-        let mut cpl = minimal_cpl();
-        cpl.namespace = CplNamespace::Smpte2067_3_2013;
-        let v = CoreConstraints2013;
-        let issues = v.validate_cpl(&cpl);
-        assert!(
-            !issues.iter().any(|i| i.code.contains("DigitalSignature")),
-            "2013 CPL should not emit digital signature notice: {:#?}",
-            issues,
+                .any(|i| i.code == "ST2067-2:2013:6.9/DigitalSignature"
+                    && i.severity == Severity::Info),
+            "{issues:#?}",
         );
     }
 

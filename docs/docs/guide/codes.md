@@ -37,6 +37,7 @@ Each spec edition has its own codes, even when a rule is unchanged between editi
 | `ST429-9:2014:A.2/PathTooLong` | Asset Map Path or one of its segments is longer than 100 characters (Basic Map Profile v2). | ERROR | Structure |
 | `ST429-9:2014:A.2/PathTooManySegments` | Asset Map Path has more than 10 segments (Basic Map Profile v2). | ERROR | Structure |
 | `ST429-9:2014:A.2/PathDuplicate` | Two Asset Map Paths are identical regardless of case (Basic Map Profile v2). | ERROR | Structure |
+| `ST429-9:2014:A.4/AssetMapFileName` | The Asset Map file is not named exactly ASSETMAP.xml (Basic Map Profile v2). | ERROR | Structure |
 
 ## ST 377-1 — MXF File Format
 
@@ -79,6 +80,7 @@ Each spec edition has its own codes, even when a rule is unchanged between editi
 | `ST2067-2:2020:9/PklUnknownNamespace` | PKL document namespace is not one of the published SMPTE PKL namespaces. | ERROR | Structure |
 | `ST429-9:2014:6.3/AssetMapHasNoPackingList` | AssetMap declares no asset as a PackingList (ST 429-9 §6.3). | CRITICAL | Structure |
 | `ST429-9:2014:6.3/PklIdNotInAssetMap` | PKL document Id is not declared as a PackingList asset in the AssetMap. | ERROR | Reference |
+| `ST2067-2:2020:7.3.1/CplIdAssetMapMismatch` | An AssetMap asset points at a CPL file whose Id differs from the asset Id. | ERROR | Reference |
 
 ### Core Constraints — 2013
 
@@ -104,8 +106,7 @@ Each spec edition has its own codes, even when a rule is unchanged between editi
 | `ST2067-2:2013:6.1/UniqueResourceId` | Duplicate Resource Id within the CPL. | ERROR | Structure |
 | `ST2067-2:2013:6.10/IntrinsicDuration` | IntrinsicDuration shall be greater than 0. | ERROR | Timing |
 | `ST2067-2:2013:6.10/EntryPoint` | EntryPoint shall be less than IntrinsicDuration. | ERROR | Timing |
-| `ST2067-2:2013:6.10/SourceDuration` | EntryPoint + SourceDuration exceeds IntrinsicDuration. | ERROR | Timing |
-| `ST2067-2:2013:6.10/ResourceDuration` | SourceDuration shall be a positive integer. | ERROR | Timing |
+| `ST2067-2:2013:6.10/ResourceDuration` | EntryPoint + SourceDuration exceeds IntrinsicDuration. | ERROR | Timing |
 | `ST2067-2:2013:6.10/RepeatCount` | RepeatCount shall be a positive integer. | ERROR | Timing |
 | `ST2067-2:2013:6.10/TrackFileId` | A non-marker resource is missing a TrackFileId. | ERROR | Reference |
 | `ST2067-2:2013:6.9/VirtualTrackContinuity` | A virtual track is missing from one or more segments. | ERROR | Structure |
@@ -119,7 +120,7 @@ Each spec edition has its own codes, even when a rule is unchanged between editi
 | `ST2067-2:2013:ST377-4/SoundfieldGroup` | WAVEPCMDescriptor SubDescriptors missing SoundfieldGroupLabelSubDescriptor. | WARNING | Audio |
 | `ST2067-2:2013:ST377-4/MCATagSymbol` | SoundfieldGroupLabelSubDescriptor is missing MCATagSymbol. | WARNING | Audio |
 | `ST2067-2:2013:ST377-4/SoundfieldChannelCount` | Soundfield group channel count is inconsistent with WAVEPCMDescriptor.ChannelCount. | ERROR | Audio |
-| `ST2067-2:2013:8/DigitalSignature` | Digital signature validation (ST 2067-2 §8) is not currently performed. | INFO | Security |
+| `ST2067-2:2013:6.9/DigitalSignature` | The CPL carries a Signature (ST 2067-2 §6.9); signature verification is not performed. | INFO | Security |
 | `ST2067-2:2013:6.4.2/DanglingEssenceDescriptor` | EssenceDescriptor present in EssenceDescriptorList but not referenced by any Resource. | ERROR | Reference |
 | `ST2067-2:2013:6.4.2/EssenceDescriptorList` | EssenceDescriptorList is required per ST 2067-2 §6.4.2. | ERROR | Structure |
 
@@ -147,8 +148,7 @@ Each spec edition has its own codes, even when a rule is unchanged between editi
 | `ST2067-2:2016:6.1/UniqueResourceId` | Duplicate Resource Id within the CPL. | ERROR | Structure |
 | `ST2067-2:2016:6.10/IntrinsicDuration` | IntrinsicDuration shall be greater than 0. | ERROR | Timing |
 | `ST2067-2:2016:6.10/EntryPoint` | EntryPoint shall be less than IntrinsicDuration. | ERROR | Timing |
-| `ST2067-2:2016:6.10/SourceDuration` | EntryPoint + SourceDuration exceeds IntrinsicDuration. | ERROR | Timing |
-| `ST2067-2:2016:6.10/ResourceDuration` | SourceDuration shall be a positive integer. | ERROR | Timing |
+| `ST2067-2:2016:6.10/ResourceDuration` | EntryPoint + SourceDuration exceeds IntrinsicDuration. | ERROR | Timing |
 | `ST2067-2:2016:6.10/RepeatCount` | RepeatCount shall be a positive integer. | ERROR | Timing |
 | `ST2067-2:2016:6.10/TrackFileId` | A non-marker resource is missing a TrackFileId. | ERROR | Reference |
 | `ST2067-2:2016:6.9/VirtualTrackContinuity` | A virtual track is missing from one or more segments. | ERROR | Structure |
@@ -162,7 +162,7 @@ Each spec edition has its own codes, even when a rule is unchanged between editi
 | `ST2067-2:2016:ST377-4/SoundfieldGroup` | WAVEPCMDescriptor SubDescriptors missing SoundfieldGroupLabelSubDescriptor. | WARNING | Audio |
 | `ST2067-2:2016:ST377-4/MCATagSymbol` | SoundfieldGroupLabelSubDescriptor is missing MCATagSymbol. | WARNING | Audio |
 | `ST2067-2:2016:ST377-4/SoundfieldChannelCount` | Soundfield group channel count is inconsistent with WAVEPCMDescriptor.ChannelCount. | ERROR | Audio |
-| `ST2067-2:2016:8/DigitalSignature` | Digital signature validation (ST 2067-2 §8) is not currently performed. | INFO | Security |
+| `ST2067-2:2016:6.9/DigitalSignature` | The CPL carries a Signature (ST 2067-2 §6.9); signature verification is not performed. | INFO | Security |
 | `ST2067-2:2016:6.4.2/DanglingEssenceDescriptor` | EssenceDescriptor present in EssenceDescriptorList but not referenced by any Resource. | ERROR | Reference |
 | `ST2067-2:2016:6.4.2/EssenceDescriptorList` | EssenceDescriptorList is required per ST 2067-2 §6.4.2. | ERROR | Structure |
 
@@ -190,8 +190,7 @@ Each spec edition has its own codes, even when a rule is unchanged between editi
 | `ST2067-2:2020:6.1/UniqueResourceId` | Duplicate Resource Id within the CPL. | ERROR | Structure |
 | `ST2067-2:2020:6.10/IntrinsicDuration` | IntrinsicDuration shall be greater than 0. | ERROR | Timing |
 | `ST2067-2:2020:6.10/EntryPoint` | EntryPoint shall be less than IntrinsicDuration. | ERROR | Timing |
-| `ST2067-2:2020:6.10/SourceDuration` | EntryPoint + SourceDuration exceeds IntrinsicDuration. | ERROR | Timing |
-| `ST2067-2:2020:6.10/ResourceDuration` | SourceDuration shall be a positive integer. | ERROR | Timing |
+| `ST2067-2:2020:6.10/ResourceDuration` | EntryPoint + SourceDuration exceeds IntrinsicDuration. | ERROR | Timing |
 | `ST2067-2:2020:6.10/RepeatCount` | RepeatCount shall be a positive integer. | ERROR | Timing |
 | `ST2067-2:2020:6.10/TrackFileId` | A non-marker resource is missing a TrackFileId. | ERROR | Reference |
 | `ST2067-2:2020:6.9/VirtualTrackContinuity` | A virtual track is missing from one or more segments. | ERROR | Structure |
@@ -205,7 +204,7 @@ Each spec edition has its own codes, even when a rule is unchanged between editi
 | `ST2067-2:2020:ST377-4/SoundfieldGroup` | WAVEPCMDescriptor SubDescriptors missing SoundfieldGroupLabelSubDescriptor. | WARNING | Audio |
 | `ST2067-2:2020:ST377-4/MCATagSymbol` | SoundfieldGroupLabelSubDescriptor is missing MCATagSymbol. | WARNING | Audio |
 | `ST2067-2:2020:ST377-4/SoundfieldChannelCount` | Soundfield group channel count is inconsistent with WAVEPCMDescriptor.ChannelCount. | ERROR | Audio |
-| `ST2067-2:2020:8/DigitalSignature` | Digital signature validation (ST 2067-2 §8) is not currently performed. | INFO | Security |
+| `ST2067-2:2020:6.9/DigitalSignature` | The CPL carries a Signature (ST 2067-2 §6.9); signature verification is not performed. | INFO | Security |
 | `ST2067-2:2020:6.4.2/DanglingEssenceDescriptor` | EssenceDescriptor present in EssenceDescriptorList but not referenced by any Resource. | ERROR | Reference |
 | `ST2067-2:2020:6.4.2/EssenceDescriptorList` | EssenceDescriptorList is required per ST 2067-2 §6.4.2. | ERROR | Structure |
 
@@ -612,7 +611,7 @@ Codes emitted by imferno's package-level logic for conditions that don't map to 
 | Code | Description | Default Severity | Category |
 |------|-------------|-----------------|----------|
 | `IMFERNO:Package/UnreferencedAsset` | Asset is present in the AssetMap but not referenced by any CPL Virtual Track and has no SCM declaration. Likely a sidecar essence without an SCM. | INFO | Structure |
-| `IMFERNO:Package/UnlistedEssence` | File is present in the package directory but not listed in the AssetMap. The file is invisible to any conforming IMF reader. | WARNING | Structure |
+| `IMFERNO:Package/UnlistedEssence` | File is present in the package directory but not listed in the AssetMap. The file is invisible to any conforming IMF reader. | INFO | Structure |
 | `IMFERNO:Package/ParseError` | IMF package failed to parse due to a structural error. | CRITICAL | Structure |
 | `IMFERNO:Package/PklParseError` | A Packing List referenced by the AssetMap could not be parsed. | ERROR | Structure |
 | `IMFERNO:Package/XmlAssetParseError` | An XML asset could not be parsed as CPL, OPL, or SCM. | WARNING | Structure |

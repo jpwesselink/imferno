@@ -6,7 +6,7 @@
 //!    emitted by the package validator.
 //!
 //! 2. **Core Constraints CPL codes** (`St2067_2_2013_Core` / `St2067_2_2016_Core` /
-//!    `St2067_2_2020_Core`) — CPL structure rules (XSD, §6.1, §6.9, §6.10, §8, §10,
+//!    `St2067_2_2020_Core`) — CPL structure rules (XSD, §6.1, §6.9, §6.10, §10,
 //!    ST 377-4) shared across all three spec editions, emitted by the CoreConstraints
 //!    validators.  A `macro_rules!` generates the three enums from a
 //!    single source-of-truth variant list.  Each enum also exposes `for_code` so that
@@ -65,6 +65,10 @@ pub enum St2067_2_2020 {
     /// A PKL document was parsed but its Id is not declared in the
     /// AssetMap as a `PackingList`-flagged asset (ST 429-9 §6.3).
     PklIdNotInAssetMap,
+    /// An AssetMap asset points at a CPL file whose `<Id>` differs from
+    /// the asset Id (ST 2067-2:2020 §7.3.1 Table 19: a CPL asset is
+    /// identified by its CompositionPlaylist Id).
+    CplIdAssetMapMismatch,
 }
 
 impl ValidationCode for St2067_2_2020 {
@@ -85,6 +89,7 @@ impl ValidationCode for St2067_2_2020 {
             Self::PklUnknownNamespace => "ST2067-2:2020:9/PklUnknownNamespace",
             Self::AssetMapHasNoPackingList => "ST429-9:2014:6.3/AssetMapHasNoPackingList",
             Self::PklIdNotInAssetMap => "ST429-9:2014:6.3/PklIdNotInAssetMap",
+            Self::CplIdAssetMapMismatch => "ST2067-2:2020:7.3.1/CplIdAssetMapMismatch",
         }
     }
     fn description(&self) -> &'static str {
@@ -117,6 +122,10 @@ impl ValidationCode for St2067_2_2020 {
             Self::PklIdNotInAssetMap => {
                 "PKL document Id is not declared as a PackingList asset in the AssetMap."
             }
+            // https://github.com/Netflix/photon/issues/265
+            Self::CplIdAssetMapMismatch => {
+                "An AssetMap asset points at a CPL file whose Id differs from the asset Id."
+            }
         }
     }
     fn default_severity(&self) -> Severity {
@@ -143,7 +152,8 @@ impl ValidationCode for St2067_2_2020 {
             Self::UnresolvedUuid
             | Self::TrackFileNotInPackage
             | Self::DuplicateUuid
-            | Self::PklIdNotInAssetMap => Category::Reference,
+            | Self::PklIdNotInAssetMap
+            | Self::CplIdAssetMapMismatch => Category::Reference,
         }
     }
     fn example(&self) -> Option<&'static str> {
@@ -163,6 +173,7 @@ impl ValidationCode for St2067_2_2020 {
             Self::PklUnknownNamespace => "PKL with `xmlns=\"http://example.org/not-a-pkl-namespace\"`",
             Self::AssetMapHasNoPackingList => "AssetMap whose `<Asset>` entries all omit `<PackingList>true</PackingList>`",
             Self::PklIdNotInAssetMap => "PKL `<Id>urn:uuid:abc…</Id>` not present in the AssetMap as a packing-list asset",
+            Self::CplIdAssetMapMismatch => "AssetMap `<Id>urn:uuid:aaa…</Id>` with `<Path>CPL.xml</Path>`, but CPL.xml carries `<Id>urn:uuid:bbb…</Id>`",
         })
     }
 }
@@ -184,6 +195,7 @@ impl St2067_2_2020 {
         Self::PklUnknownNamespace,
         Self::AssetMapHasNoPackingList,
         Self::PklIdNotInAssetMap,
+        Self::CplIdAssetMapMismatch,
     ];
 }
 
@@ -223,7 +235,6 @@ pub enum CoreConstraintsCode {
     UniqueResourceId,
     IntrinsicDuration,
     EntryPoint,
-    SourceDuration,
     ResourceDuration,
     RepeatCount,
     TrackFileId,
@@ -299,8 +310,6 @@ macro_rules! define_core_constraints_enum {
             /// EntryPoint shall be less than IntrinsicDuration.
             EntryPoint,
             /// EntryPoint + SourceDuration exceeds IntrinsicDuration.
-            SourceDuration,
-            /// SourceDuration shall be a positive integer.
             ResourceDuration,
             /// RepeatCount shall be a positive integer.
             RepeatCount,
@@ -328,7 +337,7 @@ macro_rules! define_core_constraints_enum {
             MCATagSymbol,
             /// Soundfield group channel count is inconsistent with WAVEPCMDescriptor.ChannelCount.
             SoundfieldChannelCount,
-            /// Digital signature validation (ST 2067-2 §8) is not currently performed.
+            /// The CPL carries a Signature (ST 2067-2 §6.9), which is not verified.
             DigitalSignature,
             /// EssenceDescriptor present in EssenceDescriptorList but not referenced by any Resource.
             DanglingEssenceDescriptor,
@@ -359,7 +368,6 @@ macro_rules! define_core_constraints_enum {
                     Self::UniqueResourceId                     => concat!($prefix, ":6.1/UniqueResourceId"),
                     Self::IntrinsicDuration                    => concat!($prefix, ":6.10/IntrinsicDuration"),
                     Self::EntryPoint                           => concat!($prefix, ":6.10/EntryPoint"),
-                    Self::SourceDuration                       => concat!($prefix, ":6.10/SourceDuration"),
                     Self::ResourceDuration                     => concat!($prefix, ":6.10/ResourceDuration"),
                     Self::RepeatCount                          => concat!($prefix, ":6.10/RepeatCount"),
                     Self::TrackFileId                          => concat!($prefix, ":6.10/TrackFileId"),
@@ -374,7 +382,7 @@ macro_rules! define_core_constraints_enum {
                     Self::SoundfieldGroup                      => concat!($prefix, ":ST377-4/SoundfieldGroup"),
                     Self::MCATagSymbol                         => concat!($prefix, ":ST377-4/MCATagSymbol"),
                     Self::SoundfieldChannelCount               => concat!($prefix, ":ST377-4/SoundfieldChannelCount"),
-                    Self::DigitalSignature                     => concat!($prefix, ":8/DigitalSignature"),
+                    Self::DigitalSignature                     => concat!($prefix, ":6.9/DigitalSignature"),
                     Self::DanglingEssenceDescriptor            => concat!($prefix, ":6.4.2/DanglingEssenceDescriptor"),
                     Self::EssenceDescriptorList                => concat!($prefix, ":6.4.2/EssenceDescriptorList"),
                 }
@@ -401,8 +409,7 @@ macro_rules! define_core_constraints_enum {
                     Self::UniqueResourceId                     => "Duplicate Resource Id within the CPL.",
                     Self::IntrinsicDuration                    => "IntrinsicDuration shall be greater than 0.",
                     Self::EntryPoint                           => "EntryPoint shall be less than IntrinsicDuration.",
-                    Self::SourceDuration                       => "EntryPoint + SourceDuration exceeds IntrinsicDuration.",
-                    Self::ResourceDuration                     => "SourceDuration shall be a positive integer.",
+                    Self::ResourceDuration                     => "EntryPoint + SourceDuration exceeds IntrinsicDuration.",
                     Self::RepeatCount                          => "RepeatCount shall be a positive integer.",
                     Self::TrackFileId                          => "A non-marker resource is missing a TrackFileId.",
                     Self::VirtualTrackContinuity               => "A virtual track is missing from one or more segments.",
@@ -416,7 +423,7 @@ macro_rules! define_core_constraints_enum {
                     Self::SoundfieldGroup                      => "WAVEPCMDescriptor SubDescriptors missing SoundfieldGroupLabelSubDescriptor.",
                     Self::MCATagSymbol                         => "SoundfieldGroupLabelSubDescriptor is missing MCATagSymbol.",
                     Self::SoundfieldChannelCount               => "Soundfield group channel count is inconsistent with WAVEPCMDescriptor.ChannelCount.",
-                    Self::DigitalSignature                     => "Digital signature validation (ST 2067-2 §8) is not currently performed.",
+                    Self::DigitalSignature                     => "The CPL carries a Signature (ST 2067-2 §6.9); signature verification is not performed.",
                     Self::DanglingEssenceDescriptor            => "EssenceDescriptor present in EssenceDescriptorList but not referenced by any Resource.",
                     Self::EssenceDescriptorList                => "EssenceDescriptorList is required per ST 2067-2 §6.4.2.",
                 }
@@ -452,7 +459,6 @@ macro_rules! define_core_constraints_enum {
                     | Self::CompositionTimecodeStartAddressFormat
                     | Self::IntrinsicDuration
                     | Self::EntryPoint
-                    | Self::SourceDuration
                     | Self::ResourceDuration
                     | Self::RepeatCount
                     | Self::VirtualTrackEditRate => Category::Timing,
@@ -500,8 +506,7 @@ macro_rules! define_core_constraints_enum {
                     Self::UniqueResourceId                     => "Two <Resource><Id>urn:uuid:abc…</Id></Resource> with the same Id",
                     Self::IntrinsicDuration                    => "<IntrinsicDuration>0</IntrinsicDuration>",
                     Self::EntryPoint                           => "<IntrinsicDuration>100</IntrinsicDuration><EntryPoint>150</EntryPoint>",
-                    Self::SourceDuration                       => "<IntrinsicDuration>100</IntrinsicDuration><EntryPoint>50</EntryPoint><SourceDuration>80</SourceDuration>  <!-- 50+80 > 100 -->",
-                    Self::ResourceDuration                     => "<SourceDuration>-5</SourceDuration>",
+                    Self::ResourceDuration                     => "<IntrinsicDuration>100</IntrinsicDuration><EntryPoint>50</EntryPoint><SourceDuration>80</SourceDuration>  <!-- 50+80 > 100 -->",
                     Self::RepeatCount                          => "<RepeatCount>0</RepeatCount>",
                     Self::TrackFileId                          => "<Resource xsi:type=\"TrackFileResourceType\">…</Resource>  <!-- no <TrackFileId> child -->",
                     Self::VirtualTrackContinuity               => "Two <Segment> entries, MainAudio track present in segment 0 but absent from segment 1",
@@ -544,7 +549,6 @@ macro_rules! define_core_constraints_enum {
                 Self::UniqueResourceId,
                 Self::IntrinsicDuration,
                 Self::EntryPoint,
-                Self::SourceDuration,
                 Self::ResourceDuration,
                 Self::RepeatCount,
                 Self::TrackFileId,
@@ -588,7 +592,6 @@ macro_rules! define_core_constraints_enum {
                     CoreConstraintsCode::UniqueResourceId                     => concat!($prefix, ":6.1/UniqueResourceId"),
                     CoreConstraintsCode::IntrinsicDuration                    => concat!($prefix, ":6.10/IntrinsicDuration"),
                     CoreConstraintsCode::EntryPoint                           => concat!($prefix, ":6.10/EntryPoint"),
-                    CoreConstraintsCode::SourceDuration                       => concat!($prefix, ":6.10/SourceDuration"),
                     CoreConstraintsCode::ResourceDuration                     => concat!($prefix, ":6.10/ResourceDuration"),
                     CoreConstraintsCode::RepeatCount                          => concat!($prefix, ":6.10/RepeatCount"),
                     CoreConstraintsCode::TrackFileId                          => concat!($prefix, ":6.10/TrackFileId"),
@@ -603,7 +606,7 @@ macro_rules! define_core_constraints_enum {
                     CoreConstraintsCode::SoundfieldGroup                      => concat!($prefix, ":ST377-4/SoundfieldGroup"),
                     CoreConstraintsCode::MCATagSymbol                         => concat!($prefix, ":ST377-4/MCATagSymbol"),
                     CoreConstraintsCode::SoundfieldChannelCount               => concat!($prefix, ":ST377-4/SoundfieldChannelCount"),
-                    CoreConstraintsCode::DigitalSignature                     => concat!($prefix, ":8/DigitalSignature"),
+                    CoreConstraintsCode::DigitalSignature                     => concat!($prefix, ":6.9/DigitalSignature"),
                     CoreConstraintsCode::DanglingEssenceDescriptor            => concat!($prefix, ":6.4.2/DanglingEssenceDescriptor"),
                     CoreConstraintsCode::EssenceDescriptorList                => concat!($prefix, ":6.4.2/EssenceDescriptorList"),
                 }

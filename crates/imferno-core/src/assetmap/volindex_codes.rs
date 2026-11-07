@@ -23,6 +23,8 @@ pub enum St429_9_2014 {
     PathTooManySegments,
     /// Annex A.2: two Paths in the Asset Map are identical regardless of case.
     PathDuplicate,
+    /// Annex A.4: the Asset Map file is not named exactly "ASSETMAP.xml".
+    AssetMapFileName,
 }
 
 impl ValidationCode for St429_9_2014 {
@@ -35,6 +37,7 @@ impl ValidationCode for St429_9_2014 {
             Self::PathTooLong => "ST429-9:2014:A.2/PathTooLong",
             Self::PathTooManySegments => "ST429-9:2014:A.2/PathTooManySegments",
             Self::PathDuplicate => "ST429-9:2014:A.2/PathDuplicate",
+            Self::AssetMapFileName => "ST429-9:2014:A.4/AssetMapFileName",
         }
     }
     fn description(&self) -> &'static str {
@@ -49,6 +52,7 @@ impl ValidationCode for St429_9_2014 {
             Self::PathTooLong => "Asset Map Path or one of its segments is longer than 100 characters (Basic Map Profile v2).",
             Self::PathTooManySegments => "Asset Map Path has more than 10 segments (Basic Map Profile v2).",
             Self::PathDuplicate => "Two Asset Map Paths are identical regardless of case (Basic Map Profile v2).",
+            Self::AssetMapFileName => "The Asset Map file is not named exactly ASSETMAP.xml (Basic Map Profile v2).",
         }
     }
     fn default_severity(&self) -> Severity {
@@ -59,7 +63,8 @@ impl ValidationCode for St429_9_2014 {
             | Self::PathCharacters
             | Self::PathTooLong
             | Self::PathTooManySegments
-            | Self::PathDuplicate => Severity::Error,
+            | Self::PathDuplicate
+            | Self::AssetMapFileName => Severity::Error,
         }
     }
     fn category(&self) -> Category {
@@ -78,6 +83,7 @@ impl ValidationCode for St429_9_2014 {
             Self::PathTooLong => "<Path>…111-character file name….mxf</Path>",
             Self::PathTooManySegments => "<Path>a/b/c/d/e/f/g/h/i/j/k.mxf</Path>",
             Self::PathDuplicate => "<Path>Video.mxf</Path> and <Path>video.mxf</Path>",
+            Self::AssetMapFileName => "Package root holds assetmap.xml instead of ASSETMAP.xml",
         })
     }
 }
@@ -91,6 +97,7 @@ impl St429_9_2014 {
         Self::PathTooLong,
         Self::PathTooManySegments,
         Self::PathDuplicate,
+        Self::AssetMapFileName,
     ];
 }
 

@@ -18,8 +18,8 @@ use imferno_core::package::{
     ValidationOptions,
 };
 use imferno_core::validation::{
-    parse_app_spec_targets, parse_core_spec_target, parse_cpl_spec_target, AppSpecTarget,
-    CoreSpecTarget, CplSpecTarget,
+    parse_app_spec_targets, parse_core_spec_target, parse_cpl_spec_target, parse_iab_spec_target,
+    AppSpecTarget, CoreSpecTarget, CplSpecTarget, IabSpecTarget,
 };
 use napi_derive::napi;
 
@@ -56,7 +56,7 @@ pub fn list_rules_js() -> serde_json::Value {
 /// Disk checks are always skipped (there is no package on disk).
 ///
 /// @param files - A map of filename to XML content (e.g. `{ "ASSETMAP.xml": "..." }`)
-/// @param options - Optional validation options (`coreSpec`, `cplSpec`, `app2eSpec`, `rules`, `aggregateRepeats`)
+/// @param options - Optional validation options (`coreSpec`, `cplSpec`, `iabSpec`, `app2eSpec`, `rules`, `aggregateRepeats`)
 /// @returns An `ImfReport` with `package`, `cpls`, and `validation` fields.
 /// @throws If the package cannot be parsed or the options are invalid.
 #[allow(deprecated)]
@@ -74,6 +74,7 @@ pub fn build_report_js(
         rules: opts.rules,
         core_spec: opts.core_spec,
         cpl_spec: opts.cpl_spec,
+        iab_spec: opts.iab_spec,
         app_specs: opts.app_specs,
         aggregate_repeats: opts.aggregate_repeats,
         // Hash verification not yet exposed via NAPI; skip disk checks for in-memory files.
@@ -99,7 +100,7 @@ pub fn build_report_js(
 /// `ImfReport` summary. Prefer `validatePath` for new code.
 ///
 /// @param path - Path to the IMP directory
-/// @param options - Optional validation options (`coreSpec`, `cplSpec`, `app2eSpec`, `skipDiskChecks`, `rules`, `aggregateRepeats`)
+/// @param options - Optional validation options (`coreSpec`, `cplSpec`, `iabSpec`, `app2eSpec`, `skipDiskChecks`, `rules`, `aggregateRepeats`)
 /// @returns An `ImfReport` with `package`, `cpls`, and `validation` fields.
 /// @throws If the directory cannot be read, the package cannot be parsed, or the options are invalid.
 #[allow(deprecated)]
@@ -122,6 +123,7 @@ pub fn build_report_from_path(
         rules: opts.rules,
         core_spec: opts.core_spec,
         cpl_spec: opts.cpl_spec,
+        iab_spec: opts.iab_spec,
         app_specs: opts.app_specs,
         aggregate_repeats: opts.aggregate_repeats,
         // Hash verification not yet exposed via NAPI options.
@@ -244,6 +246,7 @@ pub fn validate_js(
         rules: opts.rules,
         core_spec: opts.core_spec,
         cpl_spec: opts.cpl_spec,
+        iab_spec: opts.iab_spec,
         app_specs: opts.app_specs,
         aggregate_repeats: opts.aggregate_repeats,
         verify_hashes: None,
@@ -279,6 +282,7 @@ pub fn validate_path_js(
         rules: opts.rules,
         core_spec: opts.core_spec,
         cpl_spec: opts.cpl_spec,
+        iab_spec: opts.iab_spec,
         app_specs: opts.app_specs,
         aggregate_repeats: opts.aggregate_repeats,
         // Hash verification not yet exposed via NAPI options.
@@ -319,6 +323,7 @@ pub fn build_report_from_uri(
         rules: opts.rules,
         core_spec: opts.core_spec,
         cpl_spec: opts.cpl_spec,
+        iab_spec: opts.iab_spec,
         app_specs: opts.app_specs,
         aggregate_repeats: opts.aggregate_repeats,
         verify_hashes: None,
@@ -360,6 +365,7 @@ pub fn validate_uri_js(
         rules: opts.rules,
         core_spec: opts.core_spec,
         cpl_spec: opts.cpl_spec,
+        iab_spec: opts.iab_spec,
         app_specs: opts.app_specs,
         aggregate_repeats: opts.aggregate_repeats,
         verify_hashes: None,
@@ -427,6 +433,7 @@ struct ParsedOptions {
     rules: RulesConfig,
     core_spec: Option<CoreSpecTarget>,
     cpl_spec: Option<CplSpecTarget>,
+    iab_spec: Option<IabSpecTarget>,
     app_specs: Option<Vec<AppSpecTarget>>,
     aggregate_repeats: bool,
     skip_disk_checks: bool,
@@ -449,6 +456,7 @@ fn parse_options(options: Option<&serde_json::Value>) -> napi::Result<ParsedOpti
             rules: Default::default(),
             core_spec: None,
             cpl_spec: None,
+            iab_spec: None,
             app_specs: None,
             aggregate_repeats: false,
             skip_disk_checks: false,
@@ -474,6 +482,12 @@ fn parse_options(options: Option<&serde_json::Value>) -> napi::Result<ParsedOpti
     let cpl_spec = match opts.get("cplSpec").and_then(|v| v.as_str()) {
         None => None,
         Some(s) => parse_cpl_spec_target(s).map_err(napi::Error::from_reason)?,
+    };
+
+    // IAB (ST 2067-201) spec
+    let iab_spec = match opts.get("iabSpec").and_then(|v| v.as_str()) {
+        None => None,
+        Some(s) => parse_iab_spec_target(s).map_err(napi::Error::from_reason)?,
     };
 
     // App2e spec
@@ -504,6 +518,7 @@ fn parse_options(options: Option<&serde_json::Value>) -> napi::Result<ParsedOpti
         rules,
         core_spec,
         cpl_spec,
+        iab_spec,
         app_specs,
         aggregate_repeats,
         skip_disk_checks,

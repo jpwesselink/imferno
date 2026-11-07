@@ -13,8 +13,8 @@ use imferno_core::package::{
     ValidationOptions,
 };
 use imferno_core::validation::{
-    parse_app_spec_targets, parse_core_spec_target, parse_cpl_spec_target, AppSpecTarget,
-    CoreSpecTarget, CplSpecTarget,
+    parse_app_spec_targets, parse_core_spec_target, parse_cpl_spec_target, parse_iab_spec_target,
+    AppSpecTarget, CoreSpecTarget, CplSpecTarget, IabSpecTarget,
 };
 use serde::Serialize;
 use wasm_bindgen::prelude::*;
@@ -56,6 +56,7 @@ pub fn get_version() -> String {
 /// Options (all optional):
 /// - `coreSpec`: `"auto"` | `"v2013"` | `"v2016"` | `"v2020"`
 /// - `cplSpec`: `"auto"` | `"v2013"` | `"v2016"` | `"v2020"` (ST 2067-3)
+/// - `iabSpec`: `"auto"` | `"v2019"` | `"v2021"` | `"v2026"` (ST 2067-201)
 /// - `app2eSpec`: `"auto"` | `"none"` | `"v2014"` | `"v2016"` | `"v2020"` | `"v2023"` | `"v2026"`
 /// - `rules`: ESLint-style rules configuration object
 #[allow(deprecated)]
@@ -67,12 +68,14 @@ pub fn build_report_js(
     let files: std::collections::HashMap<String, String> = serde_wasm_bindgen::from_value(files_js)
         .map_err(|e| JsValue::from_str(&format!("Invalid files argument: {}", e)))?;
 
-    let (rules, core_spec, cpl_spec, app_specs, aggregate_repeats) = parse_options(&options_js)?;
+    let (rules, core_spec, cpl_spec, iab_spec, app_specs, aggregate_repeats) =
+        parse_options(&options_js)?;
 
     let options = ValidationOptions {
         rules,
         core_spec,
         cpl_spec,
+        iab_spec,
         app_specs,
         aggregate_repeats,
         ..Default::default()
@@ -163,12 +166,14 @@ pub fn validate_js(
     let files: std::collections::HashMap<String, String> = serde_wasm_bindgen::from_value(files_js)
         .map_err(|e| JsValue::from_str(&format!("Invalid files argument: {}", e)))?;
 
-    let (rules, core_spec, cpl_spec, app_specs, aggregate_repeats) = parse_options(&options_js)?;
+    let (rules, core_spec, cpl_spec, iab_spec, app_specs, aggregate_repeats) =
+        parse_options(&options_js)?;
 
     let options = ValidationOptions {
         rules,
         core_spec,
         cpl_spec,
+        iab_spec,
         app_specs,
         aggregate_repeats,
         ..Default::default()
@@ -194,13 +199,14 @@ type ParsedOptions = (
     RulesConfig,
     Option<CoreSpecTarget>,
     Option<CplSpecTarget>,
+    Option<IabSpecTarget>,
     Option<Vec<AppSpecTarget>>,
     bool, // aggregate_repeats
 );
 
 fn parse_options(options_js: &JsValue) -> Result<ParsedOptions, JsValue> {
     if options_js.is_null() || options_js.is_undefined() {
-        return Ok((Default::default(), None, None, None, false));
+        return Ok((Default::default(), None, None, None, None, false));
     }
 
     let opts: serde_json::Value = serde_wasm_bindgen::from_value(options_js.clone())
@@ -226,6 +232,12 @@ fn parse_options(options_js: &JsValue) -> Result<ParsedOptions, JsValue> {
         Some(s) => parse_cpl_spec_target(s).map_err(|e| JsValue::from_str(&e))?,
     };
 
+    // IAB (ST 2067-201) spec
+    let iab_spec = match opts.get("iabSpec").and_then(|v| v.as_str()) {
+        None => None,
+        Some(s) => parse_iab_spec_target(s).map_err(|e| JsValue::from_str(&e))?,
+    };
+
     // App2e spec
     let app_specs = match opts.get("app2eSpec").and_then(|v| v.as_str()) {
         None => None,
@@ -237,5 +249,12 @@ fn parse_options(options_js: &JsValue) -> Result<ParsedOptions, JsValue> {
         .and_then(|v| v.as_bool())
         .unwrap_or(false);
 
-    Ok((rules, core_spec, cpl_spec, app_specs, aggregate_repeats))
+    Ok((
+        rules,
+        core_spec,
+        cpl_spec,
+        iab_spec,
+        app_specs,
+        aggregate_repeats,
+    ))
 }

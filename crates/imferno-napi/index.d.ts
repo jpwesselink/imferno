@@ -48,7 +48,7 @@ export interface SarifLog {
  * Disk checks are always skipped (there is no package on disk).
  *
  * @param files - A map of filename to XML content (e.g. `{ "ASSETMAP.xml": "..." }`)
- * @param options - Optional validation options (`coreSpec`, `cplSpec`, `app2eSpec`, `rules`, `aggregateRepeats`)
+ * @param options - Optional validation options (`coreSpec`, `cplSpec`, `iabSpec`, `app2eSpec`, `rules`, `aggregateRepeats`)
  * @returns An `ImfReport` with `package`, `cpls`, and `validation` fields.
  * @throws If the package cannot be parsed or the options are invalid.
  */
@@ -59,7 +59,7 @@ export declare function buildReport(files: Record<string, string>, options?: Val
  * `ImfReport` summary. Prefer `validatePath` for new code.
  *
  * @param path - Path to the IMP directory
- * @param options - Optional validation options (`coreSpec`, `cplSpec`, `app2eSpec`, `skipDiskChecks`, `rules`, `aggregateRepeats`)
+ * @param options - Optional validation options (`coreSpec`, `cplSpec`, `iabSpec`, `app2eSpec`, `skipDiskChecks`, `rules`, `aggregateRepeats`)
  * @returns An `ImfReport` with `package`, `cpls`, and `validation` fields.
  * @throws If the directory cannot be read, the package cannot be parsed, or the options are invalid.
  */

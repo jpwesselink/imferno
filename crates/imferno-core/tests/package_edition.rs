@@ -177,8 +177,9 @@ fn package_and_cpl_core_editions_agree() {
         .filter(|i| i.is(&imferno::EditionAssumed))
         .collect();
     // ST 2067-2: one for the package, one for its CPL; ST 2067-3: one for
-    // the CPL (2016 and 2020 share its namespace).
-    assert_eq!(notices.len(), 3, "{notices:#?}");
+    // the CPL (2016 and 2020 share its namespace); ST 2067-201: one for the
+    // CPL (every edition shares its namespace).
+    assert_eq!(notices.len(), 4, "{notices:#?}");
     assert_eq!(
         notices
             .iter()

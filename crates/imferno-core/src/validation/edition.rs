@@ -284,11 +284,28 @@ pub fn mxf_editions(
     (resolve(subject, "", St377_1Edition::ALL, &e1), four)
 }
 
-/// The ST 2067-201 edition whose rules the IAB plug-in validator applies to
-/// a CPL that does not pin one. Every edition (2019, 2021, 2026) reuses the
-/// 2019 namespace, so the CPL does not tell them apart; imferno applies 2021
-/// (see `push_sequence_presence_plugins`).
-pub const CPL_IAB_EDITION: St2067_201Edition = St2067_201Edition::V2021;
+/// The ST 2067-201 edition of the IAB rules applied to a CPL (and to the
+/// track files its IAB Virtual Tracks reference): `pin` when the caller
+/// gives one. Every edition (2019, 2021, 2026) uses the 2019 namespace, and
+/// no App #2E or ST 2067-2 edition references a dated ST 2067-201, so
+/// nothing in a CPL tells them apart: the newest is applied, announced.
+pub fn cpl_iab_edition(
+    cpl: &CompositionPlaylist,
+    pin: Option<St2067_201Edition>,
+) -> EditionChoice<St2067_201Edition> {
+    if let Some(edition) = pin {
+        return EditionChoice {
+            edition,
+            assumed: None,
+        };
+    }
+    resolve(
+        &format!("CPL {}", cpl.id),
+        "its IAB namespace http://www.smpte-ra.org/ns/2067-201/2019",
+        St2067_201Edition::ALL,
+        &[],
+    )
+}
 
 /// The ST 2067-2 editions a CPL namespace allows: ST 2067-2:2013 uses
 /// ST 2067-3:2013 (2013 §6.1); 2016 and 2020 both use the ST 2067-3:2016

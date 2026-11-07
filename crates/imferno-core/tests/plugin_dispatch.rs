@@ -152,3 +152,43 @@ fn pinned_app_uris_suppress_sequence_presence_auto_add() {
         "pinned app selection must suppress auto plug-in dispatch; got: {ids:?}"
     );
 }
+
+// ── IAB edition resolution ───────────────────────────────────────────────────
+
+/// Every ST 2067-201 edition (2019, 2021, 2026) uses the 2019 namespace and
+/// nothing in a CPL tells them apart: the newest is applied and announced,
+/// unless the caller pins one.
+#[test]
+fn iab_edition_is_the_newest_announced_unless_pinned() {
+    use imferno_core::catalogue::imferno::EditionAssumed;
+    use imferno_core::validation::IabSpecTarget;
+    let xml =
+        read_fixture("test-data/IAB/CompleteIMP/CPL_e0265fda-cb35-4e35-a4e4-4f44d82d2a52.xml");
+    let cpl = parse_cpl(&xml).expect("IAB CompleteIMP CPL should parse");
+
+    let validators = get_validators_for_cpl(&cpl);
+    let iab = validators
+        .iter()
+        .find(|v| v.spec_id().contains("2067-201"))
+        .expect("IAB plug-in");
+    assert_eq!(iab.spec_id(), "ST 2067-201:2026 (IAB Level 0 Plug-in)");
+    let notices: Vec<_> = iab
+        .validate_cpl(&cpl)
+        .into_iter()
+        .filter(|i| i.is(&EditionAssumed))
+        .collect();
+    assert_eq!(notices.len(), 1, "{notices:#?}");
+    assert!(notices[0].message.starts_with("ST 2067-201 edition of CPL"));
+
+    let registry = ConfigurableValidatorRegistry::new(ValidatorSelection {
+        iab_spec: Some(IabSpecTarget::St2067_201_2021),
+        ..Default::default()
+    });
+    let validators = registry.resolve_for_cpl(&cpl);
+    let iab = validators
+        .iter()
+        .find(|v| v.spec_id().contains("2067-201"))
+        .expect("IAB plug-in");
+    assert_eq!(iab.spec_id(), "ST 2067-201:2021 (IAB Level 0 Plug-in)");
+    assert!(!iab.validate_cpl(&cpl).iter().any(|i| i.is(&EditionAssumed)));
+}

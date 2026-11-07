@@ -37,8 +37,8 @@ pub mod isxd;
 pub use app2e::{App2E, App2E2014, App2E2016, App2E2020, App2E2023, App2E2026, App2EEdition};
 pub use edition::{
     application_identification_core_edition, cpl_core_edition, cpl_core_evidence, cpl_edition,
-    cpl_evidence, declared_core_constraints_editions, mxf_editions, resolve as resolve_edition,
-    EditionChoice, Evidence, CPL_IAB_EDITION,
+    cpl_evidence, cpl_iab_edition, declared_core_constraints_editions, mxf_editions,
+    resolve as resolve_edition, EditionChoice, Evidence,
 };
 pub use iab::{AppIabPlugin2019, AppIabPlugin2021, AppIabPlugin2026, URI_2019, URI_2019_SCHEMAS};
 pub use isxd::{AppIsxdPlugin2023, URI_2022};
@@ -47,6 +47,7 @@ use std::collections::{HashMap, HashSet};
 
 use crate::catalogue::imferno::{self, ImfernoEdition};
 use crate::catalogue::st2067_2::{self, St2067_2Edition};
+use crate::catalogue::st2067_201::St2067_201Edition;
 use crate::catalogue::st2067_3::{self, St2067_3Edition};
 use crate::cpl::CompositionPlaylist;
 use crate::cpl::{CodingEquations, ColorPrimaries, EditRate, TransferCharacteristic};
@@ -97,9 +98,14 @@ pub trait ValidatorRegistry {
             }
         }
 
-        push_application_validators(cpl, |uri| self.resolve_namespace(uri), &mut validators);
+        let iab_pin = None;
+        push_application_validators(
+            cpl,
+            |uri| resolve_in_cpl(cpl, uri, iab_pin, |u| self.resolve_namespace(u)),
+            &mut validators,
+        );
 
-        push_sequence_presence_plugins(cpl, &mut validators);
+        push_sequence_presence_plugins(cpl, iab_pin, &mut validators);
 
         validators
     }
@@ -267,6 +273,7 @@ impl ConstraintsValidator for ApplicationProfileNotValidated {
 /// sequences doesn't get validated twice.
 fn push_sequence_presence_plugins(
     cpl: &CompositionPlaylist,
+    iab_pin: Option<St2067_201Edition>,
     validators: &mut Vec<Box<dyn ConstraintsValidator>>,
 ) {
     let has_iab = cpl
@@ -293,14 +300,47 @@ fn push_sequence_presence_plugins(
     // shouldn't be warned about by default. Pin a different edition via
     // `ValidatorSelection::app_specs`.
     if has_iab && !already("2067-201", validators) {
-        debug_assert_eq!(
-            CPL_IAB_EDITION,
-            crate::catalogue::st2067_201::St2067_201Edition::V2021
-        );
-        validators.push(Box::new(AppIabPlugin2021));
+        validators.push(iab_for_cpl(cpl, iab_pin));
     }
     if has_isxd && !already("2067-202", validators) {
         validators.push(Box::new(AppIsxdPlugin2023));
+    }
+}
+
+/// The IAB plug-in validator of `edition`.
+pub fn iab_validator(edition: St2067_201Edition) -> Box<dyn ConstraintsValidator> {
+    match edition {
+        St2067_201Edition::V2019 => Box::new(AppIabPlugin2019),
+        St2067_201Edition::V2021 => Box::new(AppIabPlugin2021),
+        St2067_201Edition::V2026 => Box::new(AppIabPlugin2026),
+    }
+}
+
+/// The IAB plug-in validator for `cpl`, in the edition
+/// [`cpl_iab_edition`] chooses, announcing it when assumed.
+fn iab_for_cpl(
+    cpl: &CompositionPlaylist,
+    pin: Option<St2067_201Edition>,
+) -> Box<dyn ConstraintsValidator> {
+    let choice = cpl_iab_edition(cpl, pin);
+    EditionNotices::wrap(
+        iab_validator(choice.edition),
+        choice.assumed.into_iter().collect(),
+    )
+}
+
+/// Resolve an ApplicationIdentification URI of `cpl`: an IAB namespace URI
+/// gets the CPL's IAB edition ([`iab_for_cpl`]), anything else `resolve`.
+fn resolve_in_cpl(
+    cpl: &CompositionPlaylist,
+    uri: &str,
+    iab_pin: Option<St2067_201Edition>,
+    resolve: impl Fn(&str) -> Option<Box<dyn ConstraintsValidator>>,
+) -> Option<Box<dyn ConstraintsValidator>> {
+    if uri == iab::URI_2019 || uri == iab::URI_2019_SCHEMAS {
+        Some(iab_for_cpl(cpl, iab_pin))
+    } else {
+        resolve(uri)
     }
 }
 
@@ -326,7 +366,7 @@ impl ValidatorRegistry for BuiltinValidatorRegistry {
             // note above `iab::URI_2019` — so the URI resolves to the
             // 2021 rules (the current unconditional edition; 2026 adds
             // only an opt-in Annex E recommendation).
-            iab::URI_2019 | iab::URI_2019_SCHEMAS => Some(Box::new(AppIabPlugin2021)),
+            iab::URI_2019 | iab::URI_2019_SCHEMAS => Some(iab_validator(St2067_201Edition::V2026)),
             // ST 2067-202 ISXD plug-in.
             isxd::URI_2022 => Some(Box::new(AppIsxdPlugin2023)),
             _ => None,
@@ -456,6 +496,51 @@ pub fn parse_cpl_spec_target(s: &str) -> Result<Option<CplSpecTarget>, String> {
     }
 }
 
+/// An ST 2067-201 (IAB Level 0 plug-in) edition to validate against. Every
+/// edition uses the 2019 namespace, so a CPL does not tell them apart (see
+/// [`cpl_iab_edition`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum IabSpecTarget {
+    St2067_201_2019,
+    St2067_201_2021,
+    St2067_201_2026,
+}
+
+impl IabSpecTarget {
+    /// The edition this target selects.
+    pub fn edition(&self) -> St2067_201Edition {
+        match self {
+            Self::St2067_201_2019 => St2067_201Edition::V2019,
+            Self::St2067_201_2021 => St2067_201Edition::V2021,
+            Self::St2067_201_2026 => St2067_201Edition::V2026,
+        }
+    }
+}
+
+impl std::str::FromStr for IabSpecTarget {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "v2019" => Ok(Self::St2067_201_2019),
+            "v2021" => Ok(Self::St2067_201_2021),
+            "v2026" => Ok(Self::St2067_201_2026),
+            other => Err(format!(
+                "Unsupported iabSpec '{}'. Use auto|v2019|v2021|v2026",
+                other
+            )),
+        }
+    }
+}
+
+/// Parse an IAB spec string, handling `"auto"` as `None` (resolve per CPL).
+pub fn parse_iab_spec_target(s: &str) -> Result<Option<IabSpecTarget>, String> {
+    match s {
+        "auto" => Ok(None),
+        other => Ok(Some(other.parse()?)),
+    }
+}
+
 /// An ST 2067-21 (App #2E) edition to validate against.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AppSpecTarget {
@@ -530,6 +615,10 @@ pub struct ValidatorSelection {
     /// ([`cpl_edition`]).
     pub cpl_spec: Option<CplSpecTarget>,
 
+    /// ST 2067-201 edition for the IAB plug-in rules; `None` resolves it per
+    /// CPL ([`cpl_iab_edition`]).
+    pub iab_spec: Option<IabSpecTarget>,
+
     /// Preferred typed app profile selection.
     ///
     /// When set, these app specs are used instead of CPL `ApplicationIdentification`.
@@ -570,6 +659,7 @@ impl ValidatorRegistry for ConfigurableValidatorRegistry {
         let mut validators: Vec<Box<dyn ConstraintsValidator>> = Vec::new();
 
         let pinned_cpl = self.selection.cpl_spec.map(|t| t.edition());
+        let iab_pin = self.selection.iab_spec.map(|t| t.edition());
         let core_of = |edition| -> Box<dyn ConstraintsValidator> {
             Box::new(CoreConstraints {
                 edition,
@@ -607,8 +697,24 @@ impl ValidatorRegistry for ConfigurableValidatorRegistry {
             }
         } else if let Some(ref app_uris) = self.selection.application_identification_uris {
             for uri in app_uris {
-                if let Some(v) = self.resolve_namespace(uri) {
+                if let Some(v) = resolve_in_cpl(cpl, uri, iab_pin, |u| self.resolve_namespace(u)) {
                     validators.push(v);
+                }
+            }
+        }
+        if self.selection.app_specs.is_some()
+            || self.selection.application_identification_uris.is_some()
+        {
+            // A pinned app selection adds no plug-in by itself; a pinned IAB
+            // edition still applies to a CPL with IAB Virtual Tracks.
+            let has_iab = cpl
+                .segment_list
+                .segments
+                .iter()
+                .any(|s| !s.sequence_list.iab_sequences.is_empty());
+            if let Some(e) = iab_pin {
+                if has_iab && !validators.iter().any(|v| v.spec_id().contains("2067-201")) {
+                    validators.push(iab_validator(e));
                 }
             }
         } else {
@@ -617,8 +723,12 @@ impl ValidatorRegistry for ConfigurableValidatorRegistry {
             // signaled by sequence presence (IAB/ISXD). When the caller
             // pinned app_specs/app_uris above, we respect that pin and do
             // NOT auto-add plug-ins.
-            push_application_validators(cpl, |uri| self.resolve_namespace(uri), &mut validators);
-            push_sequence_presence_plugins(cpl, &mut validators);
+            push_application_validators(
+                cpl,
+                |uri| resolve_in_cpl(cpl, uri, iab_pin, |u| self.resolve_namespace(u)),
+                &mut validators,
+            );
+            push_sequence_presence_plugins(cpl, iab_pin, &mut validators);
         }
 
         validators

@@ -122,6 +122,12 @@ export type CoreSpec = "auto" | "v2013" | "v2016" | "v2020";
 export type CplSpec = "auto" | "v2013" | "v2016" | "v2020";
 
 /**
+ * IAB plug-in (ST 2067-201) edition to validate against. Every edition shares
+ * one namespace; \`"auto"\` applies the newest and reports the choice.
+ */
+export type IabSpec = "auto" | "v2019" | "v2021" | "v2026";
+
+/**
  * App #2E (ST 2067-21) edition to validate against. \`"auto"\` uses the CPL's
  * ApplicationIdentification; \`"none"\` skips application-profile validation.
  */
@@ -133,6 +139,8 @@ export interface ValidateOptions {
   coreSpec?: CoreSpec;
   /** Composition Playlist (ST 2067-3) edition. Default: \`"auto"\`. */
   cplSpec?: CplSpec;
+  /** IAB plug-in (ST 2067-201) edition. Default: \`"auto"\`. */
+  iabSpec?: IabSpec;
   /** App #2E edition. Default: \`"auto"\`. */
   app2eSpec?: App2eSpec;
   /** ESLint-style per-rule severity overrides, keyed by code, rule suffix, glob or \`source:<kind>\`. */

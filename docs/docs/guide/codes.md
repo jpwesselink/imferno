@@ -318,6 +318,4 @@ Unmarked rows are carried over from earlier catalogues and not yet checked.
 | `IMFERNO/PathTraversal` | An asset chunk path attempts to escape the package root directory (path traversal). | Structure | Package error |
 | `IMFERNO/ApplicationProfileNotValidated` | Application-profile validation was not performed for the CPL: ApplicationIdentification is absent or lists URIs imferno has no validator for. | Structure | Package warning |
 | `IMFERNO/RuleNotInEdition` | Internal: a check reported a rule against an edition whose table row says the edition does not contain it. The finding was dropped; please report this as an imferno bug. | Structure | Engine warning |
-| `IMFERNO/IntrinsicDurationZero` | A Resource has IntrinsicDuration 0, i.e. an empty underlying asset (allowed by ST 2067-3, flagged by imferno). | Timing | Cpl warning |
-| `IMFERNO/CompositionTimecodeRateMismatch` | CompositionTimecode.TimecodeRate does not match the rounded CPL EditRate (not required by ST 2067-3; flagged by imferno). | Metadata | Cpl warning |
 

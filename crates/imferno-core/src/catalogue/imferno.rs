@@ -223,26 +223,6 @@ pub static DeliveryNotChecked: Rule<E> = Rule {
     editions: &[row(E::Current, "Package", Severity::Info)],
 };
 
-/// A Resource has IntrinsicDuration 0. ST 2067-3 allows it
-/// (xs:nonNegativeInteger); imferno flags it because it means an empty asset.
-pub static IntrinsicDurationZero: Rule<E> = Rule {
-    name: "IntrinsicDurationZero",
-    category: Category::Timing,
-    description: "A Resource has IntrinsicDuration 0, i.e. an empty underlying asset (allowed by ST 2067-3, flagged by imferno).",
-    example: Some("<IntrinsicDuration>0</IntrinsicDuration>"),
-    editions: &[row(E::Current, "Cpl", Severity::Warning)],
-};
-
-/// CompositionTimecode.TimecodeRate does not match the CPL EditRate. No
-/// edition of ST 2067-3 requires them to match; imferno flags the mismatch.
-pub static CompositionTimecodeRateMismatch: Rule<E> = Rule {
-    name: "CompositionTimecodeRateMismatch",
-    category: Category::Metadata,
-    description: "CompositionTimecode.TimecodeRate does not match the rounded CPL EditRate (not required by ST 2067-3; flagged by imferno).",
-    example: Some("CPL <EditRate>24 1</EditRate> but <TimecodeRate>25</TimecodeRate>"),
-    editions: &[row(E::Current, "Cpl", Severity::Warning)],
-};
-
 /// Every rule of this spec.
 pub static ALL: &[&dyn AnyRule] = &[
     &EditionAssumed,
@@ -264,6 +244,4 @@ pub static ALL: &[&dyn AnyRule] = &[
     &PathTraversal,
     &ApplicationProfileNotValidated,
     &RuleNotInEdition,
-    &IntrinsicDurationZero,
-    &CompositionTimecodeRateMismatch,
 ];

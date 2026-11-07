@@ -698,5 +698,3 @@ IMFERNO/DirEntryError | - | IMFERNO:Package/DirEntryError | Info | may | unverif
 IMFERNO/PathTraversal | - | IMFERNO:Package/PathTraversal | Error | shall | unverified
 IMFERNO/ApplicationProfileNotValidated | - | IMFERNO:Package/ApplicationProfileNotValidated | Warning | should | unverified
 IMFERNO/RuleNotInEdition | - | IMFERNO:Engine/RuleNotInEdition | Warning | should | unverified
-IMFERNO/IntrinsicDurationZero | - | IMFERNO:Cpl/IntrinsicDurationZero | Warning | should | unverified
-IMFERNO/CompositionTimecodeRateMismatch | - | IMFERNO:Cpl/CompositionTimecodeRateMismatch | Warning | should | unverified

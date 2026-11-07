@@ -829,7 +829,6 @@ fn validate_core_structure(
     // tests rather than parsed from XML).
     issues.extend(crate::xsd::validate_parsed_cpl(cpl));
 
-    let loc = Location::new().with_cpl(cpl.id);
     // CPL-structure rules belong to ST 2067-3, in the edition of the CPL's namespace.
     let cpl_ed = crate::cpl::validate::st2067_3_edition(&cpl.namespace);
 
@@ -841,31 +840,8 @@ fn validate_core_structure(
     // constraints; their never-emitted ST 2067-2 rules were removed in C1.
     // ───────────────────────────────────────────────────────────────────────────
 
-    // Cross-field consistency check: TimecodeRate vs the rounded CPL EditRate.
-    // No edition of ST 2067-3 requires equality (§8 lets a TimecodeRate up to
-    // 60 increment once or twice per edit unit), so this is imferno's own
-    // Warning (IMFERNO/CompositionTimecodeRateMismatch).
-    if let (Some(ref tc), Some(ref er)) = (&cpl.composition_timecode, &cpl.edit_rate) {
-        if let Some(tc_rate) = tc.timecode_rate {
-            // EditRate as integer fps (for non-drop-frame comparison)
-            let edit_fps = if er.denominator > 0 {
-                (er.numerator as f64 / er.denominator as f64).round() as u32
-            } else {
-                0
-            };
-            if tc_rate != edit_fps {
-                issues.push(
-                    ValidationIssue::from_rule(&imferno::CompositionTimecodeRateMismatch, ImfernoEdition::Current,
-                        format!(
-                            "CompositionTimecode.TimecodeRate {} does not match CPL EditRate {}/{}  (≈{} fps)",
-                            tc_rate, er.numerator, er.denominator, edit_fps,
-                        ),
-                    )
-                    .with_location(loc.clone()),
-                );
-            }
-        }
-    }
+    // TimecodeRate is the timecode's own rate (ST 2067-3 §6.2.1.2) and may
+    // differ from the Composition EditRate (§8), so it is not compared.
 
     // ST 2067-3 constraints (see cpl::validate for the clauses)
     issues.extend(crate::cpl::validate_cpl_constraints(cpl));
@@ -1044,8 +1020,7 @@ fn validate_uuid_uniqueness(
 
 /// Validate individual resource constraints.
 ///
-/// ST 2067-3 §6.11 / §6.12 (and an imferno check on IntrinsicDuration):
-/// - IntrinsicDuration 0 (an empty asset) is flagged by imferno.
+/// ST 2067-3 §6.11 / §6.12:
 /// - If EntryPoint is present, EntryPoint + SourceDuration <= IntrinsicDuration.
 /// - If RepeatCount is present, it shall be greater than 0.
 /// - Non-marker resources shall have TrackFileId and SourceEncoding.
@@ -1068,21 +1043,6 @@ fn validate_resource_constraints(
                         .with_cpl(cpl.id)
                         .with_segment(seg_idx)
                         .with_resource(res_idx);
-
-                    // IntrinsicDuration > 0
-                    if resource.intrinsic_duration == 0 {
-                        issues.push(
-                            ValidationIssue::from_rule(
-                                &imferno::IntrinsicDurationZero,
-                                ImfernoEdition::Current,
-                                format!(
-                                    "{} resource {} has IntrinsicDuration 0 (empty asset)",
-                                    track_type, resource.id,
-                                ),
-                            )
-                            .with_location(res_loc.clone()),
-                        );
-                    }
 
                     // B: EntryPoint < IntrinsicDuration (ST 2067-3 §6.11.6)
                     let entry_point = resource.entry_point.unwrap_or(0);
@@ -4323,41 +4283,6 @@ mod tests {
     }
 
     #[test]
-    fn core_rejects_zero_intrinsic_duration() {
-        let mut cpl = minimal_cpl();
-        let ed_id = uuid(10);
-        cpl.segment_list.segments[0]
-            .sequence_list
-            .main_image_sequences
-            .push(MainImageSequence {
-                id: uuid(3),
-                track_id: uuid(4),
-                resource_list: ResourceList {
-                    resources: vec![Resource {
-                        id: uuid(99),
-                        annotation: None,
-                        edit_rate: None,
-                        intrinsic_duration: 0, // Invalid!
-                        entry_point: None,
-                        source_duration: None,
-                        source_encoding: Some(ed_id),
-                        track_file_id: Some(uuid(50)),
-                        repeat_count: None,
-                        key_id: None,
-                        hash: None,
-                        markers: vec![],
-                    }],
-                },
-            });
-        let issues = CoreConstraints2020.validate_cpl(&cpl);
-        assert!(
-            issues.iter().any(|i| mentions(i, "IntrinsicDuration")),
-            "Zero IntrinsicDuration should be flagged: {:#?}",
-            issues,
-        );
-    }
-
-    #[test]
     fn core_rejects_entry_plus_duration_exceeds_intrinsic() {
         let mut cpl = minimal_cpl();
         let ed_id = uuid(10);
@@ -6981,25 +6906,6 @@ mod tests {
         assert!(
             !issues.iter().any(|i| mentions(i, "RateMismatch")),
             "Matching TimecodeRate and EditRate should not be flagged: {:#?}",
-            issues,
-        );
-    }
-
-    /// CompositionTimecode.TimecodeRate not matching EditRate should be flagged.
-    #[test]
-    fn core_flags_mismatched_timecode_rate() {
-        let mut cpl = minimal_cpl();
-        cpl.edit_rate = Some(EditRate::new(24, 1));
-        cpl.composition_timecode = Some(CompositionTimecode {
-            timecode_drop_frame: Some(false),
-            timecode_rate: Some(25), // Mismatched!
-            timecode_start_address: Some("00:00:00:00".to_string()),
-        });
-        let v = CoreConstraints2020;
-        let issues = v.validate_cpl(&cpl);
-        assert!(
-            issues.iter().any(|i| mentions(i, "RateMismatch")),
-            "Mismatched TimecodeRate and EditRate should be flagged: {:#?}",
             issues,
         );
     }

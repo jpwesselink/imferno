@@ -251,7 +251,5 @@ export const codes = {
     PathTraversal: "IMFERNO/PathTraversal",
     ApplicationProfileNotValidated: "IMFERNO/ApplicationProfileNotValidated",
     RuleNotInEdition: "IMFERNO/RuleNotInEdition",
-    IntrinsicDurationZero: "IMFERNO/IntrinsicDurationZero",
-    CompositionTimecodeRateMismatch: "IMFERNO/CompositionTimecodeRateMismatch",
   }
 };

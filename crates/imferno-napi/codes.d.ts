@@ -251,7 +251,5 @@ export declare const codes: {
     readonly PathTraversal: "IMFERNO/PathTraversal";
     readonly ApplicationProfileNotValidated: "IMFERNO/ApplicationProfileNotValidated";
     readonly RuleNotInEdition: "IMFERNO/RuleNotInEdition";
-    readonly IntrinsicDurationZero: "IMFERNO/IntrinsicDurationZero";
-    readonly CompositionTimecodeRateMismatch: "IMFERNO/CompositionTimecodeRateMismatch";
   }
 };

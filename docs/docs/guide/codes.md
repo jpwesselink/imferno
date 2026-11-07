@@ -44,6 +44,7 @@ Each spec edition has its own codes, even when a rule is unchanged between editi
 | `ST377-1:2011:6.4/NonHeaderFirstPartition` | The first partition in an MXF file must be the Header partition. | ERROR | Container |
 | `ST377-1:2011:8.3.3/HeaderPartitionOpen` | The header partition is Open and no Closed footer partition carries header metadata, so the MXF file is Open. | WARNING | Container |
 | `ST377-1:2011:8.3.3/MissingHeaderMetadata` | The header partition must carry header metadata (HeaderByteCount > 0). | ERROR | Container |
+| `ST377-1:2011:B.8/StructuralComponentDurationMissing` | A Structural Component on a Timeline Track has no Duration; it is a Best Effort property there and shall be encoded (-1 when unknown). | ERROR | Container |
 
 ## ST 377-4 — MCA Sub-Descriptor Linkage
 

@@ -12,6 +12,7 @@ export declare const codes: {
     readonly NonHeaderFirstPartition: "ST377-1:2011:6.4/NonHeaderFirstPartition";
     readonly HeaderPartitionOpen: "ST377-1:2011:8.3.3/HeaderPartitionOpen";
     readonly MissingHeaderMetadata: "ST377-1:2011:8.3.3/MissingHeaderMetadata";
+    readonly StructuralComponentDurationMissing: "ST377-1:2011:B.8/StructuralComponentDurationMissing";
   };
   readonly ST2067_2_2020: {
     readonly AssetMap: "ST2067-2:2020:7/AssetMap";

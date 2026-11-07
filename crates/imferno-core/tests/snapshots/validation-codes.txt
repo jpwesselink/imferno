@@ -430,6 +430,7 @@ ST377-1:2011:6.4/NonHeaderFirstPartition
 ST377-1:2011:7/OP1a
 ST377-1:2011:8.3.3/HeaderPartitionOpen
 ST377-1:2011:8.3.3/MissingHeaderMetadata
+ST377-1:2011:B.8/StructuralComponentDurationMissing
 ST429-9:2014:6.3/AssetMapHasNoPackingList
 ST429-9:2014:6.3/PklIdNotInAssetMap
 ST429-9:2014:7/MalformedXml

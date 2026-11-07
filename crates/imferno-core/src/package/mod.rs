@@ -2050,6 +2050,14 @@ impl Imferno {
                                 let issue = issue.with_context("asset_uuid", asset.id.to_string());
                                 report.add(issue);
                             }
+                            // ST 377-1 Annex B.8: Duration on Timeline
+                            // Track components (ST377-1 issue 18).
+                            for issue in
+                                crate::mxf::structural::check_structural_components(&regxml, path)
+                            {
+                                let issue = issue.with_context("asset_uuid", asset.id.to_string());
+                                report.add(issue);
+                            }
                             // ST 2067-201 §5.10.2 / Annex C.2 IAB labeling
                             // rules (AUDIT-18) — no-op unless the file
                             // carries an IABEssenceDescriptor.

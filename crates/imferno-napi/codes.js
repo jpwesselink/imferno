@@ -12,6 +12,7 @@ const codes = {
     NonHeaderFirstPartition: "ST377-1:2011:6.4/NonHeaderFirstPartition",
     HeaderPartitionOpen: "ST377-1:2011:8.3.3/HeaderPartitionOpen",
     MissingHeaderMetadata: "ST377-1:2011:8.3.3/MissingHeaderMetadata",
+    StructuralComponentDurationMissing: "ST377-1:2011:B.8/StructuralComponentDurationMissing",
   },
   ST2067_2_2020: {
     AssetMap: "ST2067-2:2020:7/AssetMap",

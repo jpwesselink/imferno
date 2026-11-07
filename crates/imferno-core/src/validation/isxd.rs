@@ -55,10 +55,20 @@ const UTF8_TEXT_DATA_ESSENCE_CODING: &str = "urn:smpte:ul:060e2b34.04010105.0e09
 /// ST 336 §5.2.3), as in the CPL enum and IAB checks. Agreed for this
 /// UL at the IMF UG plugfest: https://github.com/Netflix/photon/issues/408
 fn is_utf8_text_data_essence_coding(ul: &str) -> bool {
-    if !ul.is_ascii() {
+    // Only the version byte is ignored. The value must still be the
+    // canonical URN form (`urn:smpte:ul:` and four dot-separated groups of
+    // eight hex digits); `SmpteUl::parse` alone is more lenient.
+    let ul = ul.to_ascii_lowercase();
+    let canonical = ul.strip_prefix("urn:smpte:ul:").is_some_and(|hex| {
+        let groups: Vec<&str> = hex.split('.').collect();
+        groups.len() == 4
+            && groups
+                .iter()
+                .all(|g| g.len() == 8 && g.bytes().all(|b| b.is_ascii_hexdigit()))
+    });
+    if !canonical {
         return false;
     }
-    let ul = ul.to_ascii_lowercase();
     match (
         SmpteUl::parse(&ul),
         SmpteUl::parse(UTF8_TEXT_DATA_ESSENCE_CODING),
@@ -367,5 +377,23 @@ mod tests {
         let issues = coding_issues("urn:smpte:ul:060e2b34.04010105.0e090607.01010103");
         assert_eq!(issues.len(), 1, "{issues:#?}");
         assert!(issues[0].code.ends_with("9.3/DataEssenceCodingInvalid"));
+    }
+
+    /// Only the version byte is ignored: a value that is not a canonical
+    /// `urn:smpte:ul:` URN (prefix, four dot-separated groups of eight hex
+    /// digits) is still invalid.
+    #[test]
+    fn malformed_urn_is_invalid() {
+        for ul in [
+            "060e2b34.04010105.0e090606.00000000",
+            "urn:smpte:ul:060e2b3404010105.0e090606.00000000",
+            "urn:smpte:ul:060e2b34.0401.0105.0e090606.00000000",
+            "urn:smpte:ul:060e2b34040101050e09060600000000",
+            "urn:smpte:ul:060e2b34.04010105.0e090606.0000000g",
+        ] {
+            let issues = coding_issues(ul);
+            assert_eq!(issues.len(), 1, "{ul}: {issues:#?}");
+            assert!(issues[0].code.ends_with("9.3/DataEssenceCodingInvalid"));
+        }
     }
 }

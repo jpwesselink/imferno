@@ -761,9 +761,19 @@ export interface RGBALayoutComponent {
  */
 export interface J2KExtendedCapabilities {
   /**
+   * Codestream capabilities (Ccap^i), one UInt16 per Pcap bit set, in increasing order of i (ISO/IEC 15444-1 CAP marker).
+   */
+  Ccapi?: J2KCcapi | null;
+  /**
    * Profile capabilities (Pcap)
    */
   Pcap?: number | null;
+}
+/**
+ * `Ccapi` array of `J2KExtendedCapabilities`.
+ */
+export interface J2KCcapi {
+  UInt16?: number[];
 }
 /**
  * Picture component sizing information

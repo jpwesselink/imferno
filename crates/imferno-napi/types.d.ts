@@ -39,9 +39,28 @@ export type Severity = "Info" | "Warning" | "Error" | "Critical";
  *
  * Encodes the "prose vs XSD" provenance distinction that SMPTE ST 2067-3 §5.1 calls out ("the prose document takes precedence on conflict"), so callers can filter, group, or apply per-source severity overrides without inspecting the code string.
  *
- * Currently *inferred* from the code prefix on a `ValidationIssue` (see `ValidationIssue::source`) — no engine code needs to set it explicitly. If inference ever becomes ambiguous (e.g. a non-XSD engine internal rule that wants the `XSD/` prefix for catalogue reasons), we can add a `with_source()` builder without changing the public shape.
+ * Derived from the rule's spec (`Spec::source`): `XSD` rules are `XsdLayer`, `IMFERNO` rules `EngineInternal`, SMPTE specs `ProseRule`.
  */
 export type IssueSource = "XsdLayer" | "ProseRule" | "EngineInternal";
+/**
+ * A document whose rules imferno checks.
+ */
+export type Spec =
+  | "ST377-1"
+  | "ST377-4"
+  | "ST429-9"
+  | "ST2067-2"
+  | "ST2067-3"
+  | "ST2067-9"
+  | "ST2067-21"
+  | "ST2067-201"
+  | "ST2067-202"
+  | "XSD"
+  | "IMFERNO";
+/**
+ * Normative strength of a rule in an edition's text.
+ */
+export type Strength = "shall" | "should" | "may" | "deprecated";
 /**
  * Validation profile determining strictness
  */
@@ -326,16 +345,22 @@ export interface ValidationReport {
   warnings: ValidationIssue[];
 }
 /**
- * A single validation issue
+ * A single validation finding.
+ *
+ * Created only through `ValidationIssue::from_rule`: severity, category, clause and display code all come from the rule table row of the edition that was applied.
  */
 export interface ValidationIssue {
   /**
-   * Other `Location`s when this issue represents an aggregation of multiple identical-code occurrences (see `ValidationReport::aggregate`). Empty for fresh, un-aggregated issues. Skipped during serialisation when empty so the on-wire shape stays back-compatible for callers that don't aggregate.
+   * Other `Location`s when this issue represents an aggregation of multiple identical-code occurrences (see `ValidationReport::aggregate`). Empty for fresh, un-aggregated issues. Skipped during serialisation when empty.
    */
   additional_instances?: Location[];
   category: Category;
   /**
-   * Error code (e.g., "ST2067-2:2020:8.3/FileNotFound")
+   * Clause of that edition the rule comes from (empty for pseudo-specs without clauses).
+   */
+  clause: string;
+  /**
+   * Display code: `SPEC:EDITION:CLAUSE/Name`, with the edition actually applied (e.g. `ST2067-3:2016:7.2.2/SegmentDuration`).
    */
   code: string;
   /**
@@ -344,13 +369,23 @@ export interface ValidationIssue {
   context: {
     [k: string]: string | undefined;
   };
+  /**
+   * Edition of the spec that was applied (`"2016"`; empty for single-edition pseudo-specs).
+   */
+  edition: string;
   location: Location;
   /**
    * Human-readable message
    */
   message: string;
+  /**
+   * Stable, edition-free rule id (`ST2067-3/SegmentDuration`).
+   */
+  rule: string;
   severity: Severity;
-  source?: IssueSource;
+  source: IssueSource;
+  spec: Spec;
+  strength: Strength;
   /**
    * Suggestion for how to fix
    */
@@ -1298,13 +1333,82 @@ export interface VolumeIndex {
   index: number;
 }
 /**
- * ESLint-style per-rule severity overrides.
- *
- * Keys are either: - A rule suffix — `"SegmentDuration"` — matched against the part of the issue code after the last `/`. - A full normalised code — `"ST2067-3:2020:7.2.2/SegmentDuration"`.
- *
- * Values are the desired `RuleSeverity`, or `RuleSeverity::Off` to suppress the rule entirely.
- *
- * An empty map (the default) is a no-op.
+ * Serializable rule description (`listRules()` entry).
+ */
+export interface RuleInfo {
+  category: Category;
+  /**
+   * What the rule checks.
+   */
+  description: string;
+  /**
+   * One row per edition of the spec imferno knows, oldest first.
+   */
+  editions: EditionInfo[];
+  /**
+   * A minimal illustration of a violation.
+   */
+  example?: string | null;
+  /**
+   * `<SPEC>/<Name>` — usable as a rules-config key (all editions).
+   */
+  id: string;
+  /**
+   * Name, unique within the spec; usable as a rules-config key (every rule with that name).
+   */
+  name: string;
+  spec: Spec;
+}
+/**
+ * Serializable edition row of a `RuleInfo`.
+ */
+export interface EditionInfo {
+  /**
+   * Clause in this edition; absent when the edition does not contain the rule.
+   */
+  clause?: string | null;
+  /**
+   * Display code findings carry for this edition (`SPEC:EDITION:CLAUSE/Name`); absent when the edition does not contain the rule.
+   */
+  code?: string | null;
+  defaultSeverity: Severity;
+  /**
+   * Edition label (`"2016"`; empty for single-edition pseudo-specs).
+   */
+  edition: string;
+  /**
+   * Interpretation the check follows.
+   */
+  interpretation?: InterpretationInfo | null;
+  /**
+   * Why the default severity differs from the strength's.
+   */
+  severityReason?: string | null;
+  strength: Strength;
+  /**
+   * `false` while the strength is derived from the default severity.
+   */
+  strengthVerified: boolean;
+  /**
+   * `false` when the clause is known or suspected wrong, or not yet checked against this edition's text.
+   */
+  verified: boolean;
+}
+/**
+ * Serializable `Interpretation`.
+ */
+export interface InterpretationInfo {
+  /**
+   * What imferno does and why.
+   */
+  text: string;
+  /**
+   * Link to the issue or finding.
+   */
+  url?: string | null;
+}
+/**
+ * ESLint-style per-rule severity overrides (see the module docs for the key forms and their precedence). An empty map (the default) is a no-op.
  */
 export interface RulesConfig {
   [k: string]: RuleSeverity | undefined;

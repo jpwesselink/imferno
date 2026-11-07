@@ -143,6 +143,36 @@ describe('formatReport', () => {
     });
 });
 
+// ─── SARIF + rule catalogue ──────────────────────────────────────────────────
+describe('toSarif', () => {
+    it('returns a SARIF 2.1.0 log with one result per finding', () => {
+        const result = wasm.validate(packageFiles);
+        const log = wasm.toSarif(result);
+        expect(log.version).toBe('2.1.0');
+        const v = result.validation;
+        const findings = ['critical', 'errors', 'warnings', 'info', 'suppressed']
+            .reduce((n, k) => n + (v[k]?.length ?? 0), 0);
+        expect(log.runs[0].results.length).toBe(findings);
+        for (const r of log.runs[0].results) {
+            expect(r.ruleId).toMatch(/^[A-Z0-9-]+\/[A-Za-z0-9]+$/);
+        }
+    });
+
+    it('rejects a non-report', () => {
+        expect(() => wasm.toSarif({ nope: true })).toThrow();
+    });
+});
+
+describe('listRules', () => {
+    it('returns every rule with its edition table', () => {
+        const rules = wasm.listRules();
+        expect(rules.length).toBeGreaterThan(100);
+        const seg = rules.find((r) => r.id === 'ST2067-3/SegmentDuration');
+        expect(seg.editions.map((e) => e.edition)).toEqual(['2013', '2016']);
+        expect(seg.editions[1].code).toBe('ST2067-3:2016:7.2.2/SegmentDuration');
+    });
+});
+
 // ─── Schema validation ──────────────────────────────────────────────────────
 describe('schema validation', () => {
     const schemasDir = path.resolve(__dirname, '../../imferno-core/npm/schema/schemas');

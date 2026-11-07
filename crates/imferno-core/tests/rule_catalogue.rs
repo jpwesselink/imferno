@@ -95,6 +95,15 @@ fn every_rule_has_an_example_and_the_source_of_its_spec() {
     }
 }
 
+/// The example `rules.json` at the repository root uses only valid keys.
+#[test]
+fn example_rules_json_keys_are_known() {
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../rules.json");
+    let rules: imferno_core::diagnostics::RulesConfig =
+        serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
+    assert_eq!(rules.validate(), vec![]);
+}
+
 #[test]
 fn rule_info_round_trips_through_json() {
     let infos = catalogue::rule_infos();

@@ -7,9 +7,11 @@ import type {
   Imferno,
   PathValidateOptions,
   RuleInfo,
+  SarifLog,
   UriValidateOptions,
   ValidateOptions,
   ValidationIssue,
+  ValidationReport,
   ValidationResult,
 } from "../index";
 
@@ -42,6 +44,8 @@ assert<Equals<ReturnType<typeof api.buildReportFromUri>, ImfReport>>();
 assert<Equals<ReturnType<typeof api.formatReport>, string>>();
 assert<Equals<Parameters<typeof api.formatReport>, [report: ValidationResult | ImfReport]>>();
 assert<Equals<ReturnType<typeof api.listRules>, RuleInfo[]>>();
+assert<Equals<ReturnType<typeof api.toSarif>, SarifLog>>();
+assert<Equals<Parameters<typeof api.toSarif>, [report: ValidationResult | ValidationReport]>>();
 assert<Equals<ReturnType<typeof api.getVersion>, string>>();
 
 // Option parameters.
@@ -76,5 +80,5 @@ api.validatePath("x", { coreSpec: "v2020", app2eSpec: "none", skipDiskChecks: tr
 api.validateUri("s3://b/p/", { credentials: { accessKeyId: "a", secretAccessKey: "s" } });
 
 // `codes` is re-exported from the main entry.
-const c: "ST2067-2:2020:8.3/FileNotFound" = api.codes.ST2067_2_2020.FileNotFound;
+const c: "ST2067-2/FileNotFound" = api.codes.ST2067_2.FileNotFound;
 void c;

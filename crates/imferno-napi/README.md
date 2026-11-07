@@ -64,7 +64,7 @@ const options: PathValidateOptions = {
   app2eSpec: "v2023",
   skipDiskChecks: true,
   rules: {
-    "ST2067-21:2023:7.1/AppIdMismatch": "error",
+    "ST2067-21:2023/AppIdMismatch": "error",
     "IMFERNO:Package/UnreferencedAsset": "off",
   },
 };
@@ -113,7 +113,8 @@ console.log(getVersion()); // e.g. "2.0.0"
 | `buildReportFromPath(path, options?)` | Legacy: validate from disk (returns `ImfReport`) |
 | `buildReportFromUri(uri, options?)` | Legacy: validate via URI (returns `ImfReport`) |
 | `formatReport(result)` | Pretty-print a `ValidationResult` (or legacy `ImfReport`) as text |
-| `listRules()` | Get the full catalogue of validation rule codes |
+| `listRules()` | Get the rule catalogue (one entry per rule, with its per-edition table) |
+| `toSarif(result)` | Convert a validation result to a SARIF 2.1.0 log |
 | `getVersion()` | Get the library version |
 
 ### Options

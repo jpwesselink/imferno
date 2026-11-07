@@ -222,7 +222,26 @@ describe("runtime outputs conform to their declared types", () => {
   });
 
   it("codes is exported from the main entry", () => {
-    expect(api.codes.ST2067_2_2020.FileNotFound).toBe("ST2067-2:2020:8.3/FileNotFound");
+    expect(api.codes.ST2067_2.FileNotFound).toBe("ST2067-2/FileNotFound");
+  });
+
+  it("rule ids from codes are rules keys and appear in listRules", () => {
+    const ids = new Set(api.listRules().map((r) => r.id));
+    for (const group of Object.values(api.codes)) {
+      for (const id of Object.values(group)) expect(ids.has(id)).toBe(true);
+    }
+  });
+
+  it("toSarif → a SARIF 2.1.0 log of the findings", () => {
+    const r = api.validatePath(join(testData, "MERIDIAN_Netflix_Photon_161006"));
+    const log = api.toSarif(r);
+    expect(log.version).toBe("2.1.0");
+    const results = log.runs[0].results;
+    const findings = ["critical", "errors", "warnings", "info", "suppressed"]
+      .reduce((n, k) => n + (r.validation[k]?.length ?? 0), 0);
+    expect(results.length).toBe(findings);
+    for (const res of results) expect(res.ruleId).toMatch(/^[A-Z0-9-]+\/[A-Za-z0-9]+$/);
+    expect(api.toSarif(r.validation)).toEqual(log);
   });
 });
 

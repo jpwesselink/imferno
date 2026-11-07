@@ -61,16 +61,16 @@ Unmarked rows are carried over from earlier catalogues and not yet checked.
 | Rule | Description | Category | 2014 |
 |------|-------------|----------|------|
 | `ST429-9/AssetListEmpty` | The Asset Map's AssetList contains no Asset element (the §11 schema requires one or more). | Structure | 11✓ critical |
-| `ST429-9/VolindexMissing` | No volume-index document found in the package root. | Structure | 7† info |
-| `ST429-9/MalformedXml` | The VOLINDEX.xml document is not well-formed XML. | Structure | 7 error |
-| `ST429-9/PathNotRelative` | Asset Map Path is not a relative-path reference without query or fragment (Basic Map Profile v2). | Structure | A.2 error |
-| `ST429-9/PathCharacters` | Asset Map Path segment uses characters other than a-z, A-Z, 0-9, dash, underscore and period (Basic Map Profile v2). | Structure | A.2 error |
-| `ST429-9/PathTooLong` | Asset Map Path or one of its segments is longer than 100 characters (Basic Map Profile v2). | Structure | A.2 error |
-| `ST429-9/PathTooManySegments` | Asset Map Path has more than 10 segments (Basic Map Profile v2). | Structure | A.2 error |
-| `ST429-9/PathDuplicate` | Two Asset Map Paths are identical regardless of case (Basic Map Profile v2). | Structure | A.2 error |
-| `ST429-9/AssetMapFileName` | The Asset Map file is not named exactly ASSETMAP.xml (Basic Map Profile v2). | Structure | A.4 error |
-| `ST429-9/AssetMapHasNoPackingList` | AssetMap declares no asset as a PackingList (ST 429-9 §6.3). | Structure | 6.3 critical |
-| `ST429-9/PklIdNotInAssetMap` | PKL document Id is not declared as a PackingList asset in the AssetMap. | Reference | 6.3 error |
+| `ST429-9/VolindexMissing` | No volume-index document found in the package root. | Structure | 8✓ info |
+| `ST429-9/MalformedXml` | The VOLINDEX.xml document is not well-formed XML. | Structure | 8✓ warning |
+| `ST429-9/PathNotRelative` | Asset Map Path is not a relative-path reference without query or fragment (Basic Map Profile v2). | Structure | A.2✓ error |
+| `ST429-9/PathCharacters` | Asset Map Path segment uses characters other than a-z, A-Z, 0-9, dash, underscore and period (Basic Map Profile v2). | Structure | A.2✓ error |
+| `ST429-9/PathTooLong` | Asset Map Path or one of its segments is longer than 100 characters (Basic Map Profile v2). | Structure | A.2✓ error |
+| `ST429-9/PathTooManySegments` | Asset Map Path has more than 10 segments (Basic Map Profile v2). | Structure | A.2✓ error |
+| `ST429-9/PathDuplicate` | Two Asset Map Paths are identical regardless of case (Basic Map Profile v2). | Structure | A.2✓ error |
+| `ST429-9/AssetMapFileName` | The Asset Map file is not named exactly ASSETMAP.xml (Basic Map Profile v2). | Structure | A.4✓ error |
+| `ST429-9/AssetMapHasNoPackingList` | AssetMap declares no asset as a PackingList (ST 429-9 §6.3). | Structure | 6.3✓ critical |
+| `ST429-9/PklIdNotInAssetMap` | PKL document Id is not declared as a PackingList asset in the AssetMap. | Reference | 6.3✓ error |
 
 ## SMPTE ST 2067-2 — Core Constraints
 

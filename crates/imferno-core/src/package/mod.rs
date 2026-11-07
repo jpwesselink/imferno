@@ -4847,7 +4847,8 @@ mod tests {
   <Index>1</Index>
 </VolumeIndex>"#;
 
-    /// ST 429-9 §7: absent VOLINDEX.xml emits VolindexMissing (Info severity).
+    /// ST 429-9:2014 §8 (VolumeIndex deprecated): absent VOLINDEX.xml emits
+    /// VolindexMissing (Info severity).
     #[test]
     fn volindex_missing_emits_info() {
         let mut files = HashMap::new();
@@ -4863,9 +4864,10 @@ mod tests {
         );
     }
 
-    /// ST 429-9 §7: malformed VOLINDEX.xml emits MalformedXml (Error severity).
+    /// ST 429-9:2014 §8 (VolumeIndex deprecated): malformed VOLINDEX.xml
+    /// emits MalformedXml (Warning severity).
     #[test]
-    fn volindex_malformed_emits_error() {
+    fn volindex_malformed_emits_warning() {
         let mut files = HashMap::new();
         files.insert("ASSETMAP.xml".to_string(), MINIMAL_ASSETMAP.to_string());
         files.insert(
@@ -4878,15 +4880,15 @@ mod tests {
 
         assert!(
             report
-                .errors
+                .warnings
                 .iter()
                 .any(|i| i.code.contains("MalformedXml")),
-            "expected MalformedXml error, got: {:?}",
-            report.errors,
+            "expected MalformedXml warning, got: {:?}",
+            report.warnings,
         );
     }
 
-    /// ST 429-9 §7: valid VOLINDEX.xml produces no VOLINDEX diagnostic.
+    /// ST 429-9:2014 §8: valid VOLINDEX.xml produces no VOLINDEX diagnostic.
     #[test]
     fn volindex_valid_no_issue() {
         let mut files = HashMap::new();

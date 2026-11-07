@@ -23,6 +23,7 @@ export declare const codes: {
     readonly FileNotFound: "ST2067-2:2020:8.3/FileNotFound";
     readonly ChecksumMismatch: "ST2067-2:2020:8.3/ChecksumMismatch";
     readonly UnresolvedUuid: "ST2067-2:2020:7/UnresolvedUuid";
+    readonly TrackFileNotInPackage: "ST2067-2:2020:7.1/TrackFileNotInPackage";
     readonly DuplicateUuid: "ST2067-2:2020:7/DuplicateUuid";
     readonly IoError: "IMF:General/IoError";
     readonly EssenceDescriptorList: "ST2067-2:2020:6.4.2/EssenceDescriptorList";

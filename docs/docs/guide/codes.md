@@ -66,7 +66,8 @@ Each spec edition has its own codes, even when a rule is unchanged between editi
 | `ST2067-2:2020:8.3/SizeMismatch` | Declared file size does not match the on-disk size. | ERROR | Asset |
 | `ST2067-2:2020:8.3/FileNotFound` | A referenced asset file is not present at the declared path. | ERROR | Asset |
 | `ST2067-2:2020:8.3/ChecksumMismatch` | File hash does not match the declared SHA-1/SHA-256 checksum. | ERROR | Asset |
-| `ST2067-2:2020:7/UnresolvedUuid` | UUID referenced in the CPL does not resolve to a known asset. | ERROR | Reference |
+| `ST2067-2:2020:7/UnresolvedUuid` | An asset listed in the Packing List is not in the AssetMap. | ERROR | Reference |
+| `ST2067-2:2020:7.1/TrackFileNotInPackage` | A CPL track file is not in this package; an IMP need not contain complete compositions (e.g. a supplemental package referring to the original version). | INFO | Reference |
 | `ST2067-2:2020:7/DuplicateUuid` | Two or more assets within the package share the same UUID. | ERROR | Reference |
 | `IMF:General/IoError` | An I/O error prevented the asset from being read. | ERROR | Asset |
 | `ST2067-2:2020:6.4.2/EssenceDescriptorList` | EssenceDescriptorList element is required per ST 2067-2:2020 §6.4.2. | ERROR | Structure |

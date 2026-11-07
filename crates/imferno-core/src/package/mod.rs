@@ -2238,9 +2238,9 @@ impl Imferno {
 
     /// Accumulating version of CPL asset reference validation.
     ///
-    /// Per SMPTE ST 2067-2 §7, every TrackFileId in a CPL Resource must correspond
-    /// to an asset UUID in the AssetMap. Reports each missing reference as a separate
-    /// `ValidationIssue` rather than failing on the first one.
+    /// Reports each CPL TrackFileId that is not an asset of this package as
+    /// info. ST 2067-2:2020 §7.1: an IMP need not contain complete
+    /// compositions, so this is not an error.
     fn validate_cpl_asset_references_accumulating(
         &self,
         cpl: &crate::cpl::CompositionPlaylist,
@@ -2274,13 +2274,16 @@ impl Imferno {
                 for (res_idx, resource) in seq.resource_list().resources.iter().enumerate() {
                     if let Some(ref track_file_id) = resource.track_file_id {
                         if !assetmap_ids.contains(track_file_id) {
+                            // ST 2067-2:2020 §7.1: an IMP need not contain
+                            // complete compositions, so this is legal (e.g. a
+                            // supplemental package referring to the OV).
+                            // https://github.com/Netflix/photon/issues/337
                             report.add(
-                                ValidationIssue::new(
-                                    Severity::Error,
-                                    Category::Reference,
-                                    codes::St2067_2_2020::UnresolvedUuid,
+                                ValidationIssue::from_code(
+                                    codes::St2067_2_2020::TrackFileNotInPackage,
                                     format!(
-                                        "{} TrackFileId {} not found in AssetMap",
+                                        "{} TrackFileId {} is not in this package \
+                                         (supplemental package?); it was not validated",
                                         track_type, track_file_id
                                     ),
                                 )
@@ -3657,6 +3660,39 @@ mod tests {
             "MERIDIAN should have no errors: {}",
             report.summary()
         );
+    }
+
+    /// ST 2067-2:2020 §7.1: an IMP need not contain complete compositions,
+    /// so a CPL track file that is not in this package (e.g. a supplemental
+    /// package referring to the OV) is reported as info, not an error.
+    /// https://github.com/Netflix/photon/issues/337
+    #[test]
+    fn cpl_track_file_outside_package_is_info_not_error() {
+        let test_path = test_data("MERIDIAN_Netflix_Photon_161006");
+        let package = Imferno::parse(read_dir(test_path).unwrap()).expect("parse");
+        let cpl_xml = std::fs::read_to_string(
+            test_data("MERIDIAN_Netflix_Photon_161006")
+                .join("CPL_0eb3d1b9-b77b-4d3f-bbe5-7c69b15dca85.xml"),
+        )
+        .unwrap();
+        let mut cpl = crate::cpl::parse_cpl(&cpl_xml).expect("CPL");
+        let outside = ImfUuid::parse("urn:uuid:0f0f0f0f-1111-2222-3333-444444444444").unwrap();
+        let seq = &mut cpl.segment_list.segments[0].sequence_list;
+        let resource = &mut seq.main_image_sequences[0].resource_list.resources[0];
+        resource.track_file_id = Some(outside);
+
+        let mut report = ValidationReport::default();
+        package.validate_cpl_asset_references_accumulating(&cpl, &mut report);
+
+        assert!(report.errors.is_empty(), "{:#?}", report.errors);
+        let info: Vec<_> = report
+            .info
+            .iter()
+            .filter(|i| i.code == codes::St2067_2_2020::TrackFileNotInPackage.code())
+            .collect();
+        assert_eq!(info.len(), 1, "{:#?}", report.info);
+        assert!(info[0].message.contains("not in this package"));
+        assert!(info[0].message.contains(&outside.to_string()));
     }
 
     /// FileValidationError::NotInAssetMap converts to REF_UNRESOLVED_UUID.

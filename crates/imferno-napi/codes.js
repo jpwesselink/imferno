@@ -23,6 +23,7 @@ const codes = {
     FileNotFound: "ST2067-2:2020:8.3/FileNotFound",
     ChecksumMismatch: "ST2067-2:2020:8.3/ChecksumMismatch",
     UnresolvedUuid: "ST2067-2:2020:7/UnresolvedUuid",
+    TrackFileNotInPackage: "ST2067-2:2020:7.1/TrackFileNotInPackage",
     DuplicateUuid: "ST2067-2:2020:7/DuplicateUuid",
     IoError: "IMF:General/IoError",
     EssenceDescriptorList: "ST2067-2:2020:6.4.2/EssenceDescriptorList",

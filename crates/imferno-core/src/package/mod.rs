@@ -838,16 +838,45 @@ impl Imferno {
             }
         };
 
-        // ASSETMAP.xml — required
-        let assetmap_xml = find("ASSETMAP.xml")
-            .ok_or_else(|| ImfError::MissingFile("ASSETMAP.xml".to_string()))?;
+        // ASSETMAP.xml — required. ST 429-9:2014 Annex A.4: the file shall be
+        // named exactly "ASSETMAP.xml". Prefer that name; fall back to a
+        // case-insensitive match so the rest of the validation still runs,
+        // and report the wrong name.
+        let mut parse_issues: Vec<ValidationIssue> = Vec::new();
+        let basename_of = |k: &str| -> String {
+            std::path::Path::new(k)
+                .file_name()
+                .and_then(|f| f.to_str())
+                .unwrap_or(k)
+                .to_string()
+        };
+        let assetmap_xml = match files.iter().find(|(k, _)| basename_of(k) == "ASSETMAP.xml") {
+            Some((_, v)) => v.as_str(),
+            None => {
+                let (key, xml) = files
+                    .iter()
+                    .find(|(k, _)| basename_of(k).eq_ignore_ascii_case("ASSETMAP.xml"))
+                    .ok_or_else(|| ImfError::MissingFile("ASSETMAP.xml".to_string()))?;
+                let name = basename_of(key);
+                parse_issues.push(
+                    ValidationIssue::from_code(
+                        codes::St429_9_2014::AssetMapFileName,
+                        format!(
+                            "Asset Map file is named '{name}'; ST 429-9 A.4 requires \
+                             'ASSETMAP.xml' (a case-sensitive reader finds no Asset Map)"
+                        ),
+                    )
+                    .with_context("file", name),
+                );
+                xml.as_str()
+            }
+        };
         let asset_map = crate::assetmap::parse_assetmap(assetmap_xml)?;
 
         // Asset UUID → path mapping.
         // When root_path is known (native disk load), build absolute paths
         // with path traversal protection. Otherwise keep relative paths (WASM).
         let mut asset_paths: HashMap<ImfUuid, PathBuf> = HashMap::new();
-        let mut parse_issues: Vec<ValidationIssue> = Vec::new();
         for asset in &asset_map.asset_list.assets {
             for chunk in &asset.chunk_list.chunks {
                 let path = if root_path.as_os_str().is_empty() {
@@ -4828,6 +4857,40 @@ mod tests {
         assert!(dangling[0]
             .message
             .contains("11111111-2222-4333-8444-555555555555"));
+    }
+
+    /// ST 429-9:2014 Annex A.4: each Asset Map document shall be a file
+    /// named exactly "ASSETMAP.xml". A lower-case `assetmap.xml` is still
+    /// read, so the rest of the validation runs, but it is reported: on a
+    /// case-sensitive filesystem a conforming reader finds no Asset Map.
+    /// https://github.com/jpwesselink/imferno/issues/80
+    #[test]
+    fn assetmap_file_name_must_be_exact() {
+        use crate::assetmap::volindex_codes::St429_9_2014;
+        let code = St429_9_2014::AssetMapFileName.code();
+
+        let clean = copy_xml_package("MERIDIAN_Netflix_Photon_161006");
+        let package = Imferno::parse(read_dir(clean.path()).unwrap()).unwrap();
+        let report = package.validate(&skip_disk_options());
+        assert!(
+            !report.errors.iter().any(|i| i.code == code),
+            "{:#?}",
+            report.errors
+        );
+
+        let dir = copy_xml_package("MERIDIAN_Netflix_Photon_161006");
+        std::fs::rename(
+            dir.path().join("ASSETMAP.xml"),
+            dir.path().join("assetmap.xml"),
+        )
+        .unwrap();
+        let package = Imferno::parse(read_dir(dir.path()).unwrap()).unwrap();
+        // Still parsed: the CPL is found through the Asset Map.
+        assert_eq!(package.composition_playlists.len(), 1);
+        let report = package.validate(&skip_disk_options());
+        let found: Vec<_> = report.errors.iter().filter(|i| i.code == code).collect();
+        assert_eq!(found.len(), 1, "{:#?}", report.errors);
+        assert!(found[0].message.contains("'assetmap.xml'"));
     }
 
     /// ST 2067-2:2020 §7.3.1 Table 19: a CPL asset is identified by the Id

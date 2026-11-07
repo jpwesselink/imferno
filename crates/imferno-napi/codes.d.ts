@@ -8,6 +8,7 @@ export declare const codes: {
     readonly PathTooLong: "ST429-9:2014:A.2/PathTooLong";
     readonly PathTooManySegments: "ST429-9:2014:A.2/PathTooManySegments";
     readonly PathDuplicate: "ST429-9:2014:A.2/PathDuplicate";
+    readonly AssetMapFileName: "ST429-9:2014:A.4/AssetMapFileName";
   };
   readonly ST377_1_2011: {
     readonly NotMxf: "ST377-1:2011:5/NotMxf";

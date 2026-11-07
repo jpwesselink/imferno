@@ -37,6 +37,7 @@ Each spec edition has its own codes, even when a rule is unchanged between editi
 | `ST429-9:2014:A.2/PathTooLong` | Asset Map Path or one of its segments is longer than 100 characters (Basic Map Profile v2). | ERROR | Structure |
 | `ST429-9:2014:A.2/PathTooManySegments` | Asset Map Path has more than 10 segments (Basic Map Profile v2). | ERROR | Structure |
 | `ST429-9:2014:A.2/PathDuplicate` | Two Asset Map Paths are identical regardless of case (Basic Map Profile v2). | ERROR | Structure |
+| `ST429-9:2014:A.4/AssetMapFileName` | The Asset Map file is not named exactly ASSETMAP.xml (Basic Map Profile v2). | ERROR | Structure |
 
 ## ST 377-1 — MXF File Format
 

@@ -8,6 +8,7 @@ const codes = {
     PathTooLong: "ST429-9:2014:A.2/PathTooLong",
     PathTooManySegments: "ST429-9:2014:A.2/PathTooManySegments",
     PathDuplicate: "ST429-9:2014:A.2/PathDuplicate",
+    AssetMapFileName: "ST429-9:2014:A.4/AssetMapFileName",
   },
   ST377_1_2011: {
     NotMxf: "ST377-1:2011:5/NotMxf",

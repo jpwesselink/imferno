@@ -440,3 +440,4 @@ ST429-9:2014:A.2/PathDuplicate
 ST429-9:2014:A.2/PathNotRelative
 ST429-9:2014:A.2/PathTooLong
 ST429-9:2014:A.2/PathTooManySegments
+ST429-9:2014:A.4/AssetMapFileName

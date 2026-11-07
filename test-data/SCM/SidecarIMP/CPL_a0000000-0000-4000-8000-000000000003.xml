@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CompositionPlaylist xmlns="http://www.smpte-ra.org/schemas/2067-3/2016">
+  <Id>urn:uuid:a0000000-0000-4000-8000-000000000003</Id>
+  <IssueDate>2026-01-01T00:00:00Z</IssueDate>
+  <ContentTitle>Synthetic SCM fixture</ContentTitle>
+  <ContentKind>test</ContentKind>
+  <EditRate>24 1</EditRate>
+  <SegmentList>
+    <Segment>
+      <Id>urn:uuid:a0000000-0000-4000-8000-000000000006</Id>
+      <SequenceList></SequenceList>
+    </Segment>
+  </SegmentList>
+</CompositionPlaylist>

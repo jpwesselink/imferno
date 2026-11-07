@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<SidecarCompositionMap xmlns="http://www.smpte-ra.org/ns/2067-9/2018">
+  <Id>urn:uuid:a0000000-0000-4000-8000-000000000004</Id>
+  <Properties>
+    <Annotation>Synthetic SCM fixture</Annotation>
+    <IssueDate>2026-01-01T00:00:00Z</IssueDate>
+    <Issuer>imferno test-data</Issuer>
+  </Properties>
+  <SidecarAssetList>
+    <SidecarAsset>
+      <Id>urn:uuid:a0000000-0000-4000-8000-000000000005</Id>
+      <AssociatedCPLList>
+        <CPLId>urn:uuid:a0000000-0000-4000-8000-000000000003</CPLId>
+      </AssociatedCPLList>
+    </SidecarAsset>
+  </SidecarAssetList>
+</SidecarCompositionMap>

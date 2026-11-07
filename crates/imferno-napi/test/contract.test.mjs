@@ -203,6 +203,14 @@ describe("runtime outputs conform to their declared types", () => {
     expect(r.validation.suppressed?.length ?? 0).toBeGreaterThan(0);
   });
 
+  it("the SCM fixture exercises the SidecarCompositionMap shape", () => {
+    const r = api.validatePath(join(testData, "SCM/SidecarIMP"));
+    check("ValidationResult", r, "validatePath(SCM)");
+    const scms = Object.values(r.package.sidecarCompositionMaps);
+    expect(scms).toHaveLength(1);
+    expect(scms[0].sidecarAssets[0].cplIds).toHaveLength(1);
+  });
+
   it("listRules → RuleInfo[]", () => {
     const rules = api.listRules();
     expect(rules.length).toBeGreaterThan(100);

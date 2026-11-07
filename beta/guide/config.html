@@ -6,12 +6,12 @@
 <script src="/imferno/beta/version-switcher.js" defer>
   <script>{;const saved = localStorage.getItem('rspress-theme-appearance');const preferDark = window.matchMedia('(prefers-color-scheme: dark)').matches;const defaultTheme = 'auto';const theme = saved === 'light' || saved === 'dark' || saved === 'auto' ? saved : defaultTheme;const isDark = theme === 'auto' ? preferDark : theme === 'dark';document.documentElement.classList.toggle('dark', isDark);document.documentElement.classList.toggle('rp-dark', isDark);document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';}</script>
 <link href="/imferno/beta/static/css/styles.b7bd2309ad.css" rel="stylesheet">
-<link rel="preload" href="/imferno/beta/static/js/async/route-efdf754be49d.662b3a7c51.js" as="script">
+<link rel="preload" href="/imferno/beta/static/js/async/route-efdf754be49d.6f53663722.js" as="script">
 <script defer src="/imferno/beta/static/js/styles.d57284674d.js"></script>
 <script defer src="/imferno/beta/static/js/lib-react.49ca540f5b.js"></script>
 <script defer src="/imferno/beta/static/js/lib-router.e520f21483.js"></script>
 <script defer src="/imferno/beta/static/js/z.c3732eae2a.js"></script>
-<script defer src="/imferno/beta/static/js/index.0e41b26ef6.js"></script>
+<script defer src="/imferno/beta/static/js/index.3e682b2c82.js"></script>
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="generator" content="Rspress v2.1.1">
 <link rel="alternate" type="text/markdown" href="/imferno/beta/guide/config.md">
@@ -27,9 +27,9 @@
 <div class="rp-table-scroll-container rp-scrollbar"><table><thead><tr><th>Severity</th><th>Meaning</th></tr></thead><tbody><tr><td><code>off</code></td><td>Rule is disabled entirely</td></tr><tr><td><code>info</code></td><td>Informational — logged but does not affect compliance</td></tr><tr><td><code>warn</code></td><td>Spec deviation that may still work in practice</td></tr><tr><td><code>error</code></td><td>Spec non-conformance</td></tr><tr><td><code>critical</code></td><td>Package cannot be used</td></tr></tbody></table></div>
 <h2 class="rp-toc-include" id="rules-config"><a href="#rules-config" class="rp-header-anchor rp-link" aria-hidden="true" tabindex="-1">#</a>Rules config</h2>
 <p>Every finding names a rule and the edition of the spec that was applied
-(<code>ST2067-3:2016:7.2.2/SegmentDuration</code>). A rules config maps keys to
+(<code>ST2067-3:2016:7.2/SegmentDuration</code>). A rules config maps keys to
 severities; when several keys match a finding, the most specific wins:</p>
-<div class="rp-table-scroll-container rp-scrollbar"><table><thead><tr><th>Key</th><th>Selects</th></tr></thead><tbody><tr><td><code>ST2067-3:2016/SegmentDuration</code></td><td>the rule in one edition (a full code such as <code>ST2067-3:2016:7.2.2/SegmentDuration</code>, copied from a report, works too)</td></tr><tr><td><code>ST2067-3/SegmentDuration</code></td><td>the rule in every edition (the rule id)</td></tr><tr><td><code>SegmentDuration</code></td><td>every rule with that name, in any spec</td></tr><tr><td><code>ST2067-3:2016:*</code></td><td>every rule of one spec edition</td></tr><tr><td><code>ST2067-3:*</code></td><td>every rule of a spec</td></tr><tr><td><code>source:XsdLayer</code></td><td>every finding of a source (<code>XsdLayer</code>, <code>ProseRule</code>, <code>EngineInternal</code>)</td></tr></tbody></table></div>
+<div class="rp-table-scroll-container rp-scrollbar"><table><thead><tr><th>Key</th><th>Selects</th></tr></thead><tbody><tr><td><code>ST2067-3:2016/SegmentDuration</code></td><td>the rule in one edition (a full code such as <code>ST2067-3:2016:7.2/SegmentDuration</code>, copied from a report, works too)</td></tr><tr><td><code>ST2067-3/SegmentDuration</code></td><td>the rule in every edition (the rule id)</td></tr><tr><td><code>SegmentDuration</code></td><td>every rule with that name, in any spec</td></tr><tr><td><code>ST2067-3:2016:*</code></td><td>every rule of one spec edition</td></tr><tr><td><code>ST2067-3:*</code></td><td>every rule of a spec</td></tr><tr><td><code>source:XsdLayer</code></td><td>every finding of a source (<code>XsdLayer</code>, <code>ProseRule</code>, <code>EngineInternal</code>)</td></tr></tbody></table></div>
 <p>No other wildcards are supported. Keys that select nothing (typos, an edition
 the rule does not have) are reported: as a warning on stderr by the CLI, and
 in <code>rule_warnings</code> of the <code>validate*</code> result. A package is compliant when no finding has

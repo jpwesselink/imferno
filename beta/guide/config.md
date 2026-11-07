@@ -17,17 +17,17 @@ imferno validates with sensible defaults, but every rule can be tuned via a rule
 ## Rules config
 
 Every finding names a rule and the edition of the spec that was applied
-(`ST2067-3:2016:7.2.2/SegmentDuration`). A rules config maps keys to
+(`ST2067-3:2016:7.2/SegmentDuration`). A rules config maps keys to
 severities; when several keys match a finding, the most specific wins:
 
-| Key                             | Selects                                                                                                              |
-| ------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `ST2067-3:2016/SegmentDuration` | the rule in one edition (a full code such as `ST2067-3:2016:7.2.2/SegmentDuration`, copied from a report, works too) |
-| `ST2067-3/SegmentDuration`      | the rule in every edition (the rule id)                                                                              |
-| `SegmentDuration`               | every rule with that name, in any spec                                                                               |
-| `ST2067-3:2016:*`               | every rule of one spec edition                                                                                       |
-| `ST2067-3:*`                    | every rule of a spec                                                                                                 |
-| `source:XsdLayer`               | every finding of a source (`XsdLayer`, `ProseRule`, `EngineInternal`)                                                |
+| Key                             | Selects                                                                                                            |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `ST2067-3:2016/SegmentDuration` | the rule in one edition (a full code such as `ST2067-3:2016:7.2/SegmentDuration`, copied from a report, works too) |
+| `ST2067-3/SegmentDuration`      | the rule in every edition (the rule id)                                                                            |
+| `SegmentDuration`               | every rule with that name, in any spec                                                                             |
+| `ST2067-3:2016:*`               | every rule of one spec edition                                                                                     |
+| `ST2067-3:*`                    | every rule of a spec                                                                                               |
+| `source:XsdLayer`               | every finding of a source (`XsdLayer`, `ProseRule`, `EngineInternal`)                                              |
 
 No other wildcards are supported. Keys that select nothing (typos, an edition
 the rule does not have) are reported: as a warning on stderr by the CLI, and

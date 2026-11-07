@@ -89,10 +89,6 @@
     {
       "label": "#96 feat/docs-sample-imp-browser",
       "path": "/pr-96/"
-    },
-    {
-      "label": "#102 fix/real-world-findings",
-      "path": "/pr-102/"
     }
   ],
   "latest": "/v3.0.1/"

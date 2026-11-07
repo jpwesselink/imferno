@@ -1470,6 +1470,60 @@ fn validate_audio_mca_labels(
 fn validate_segment_track_durations(cpl: &CompositionPlaylist, issues: &mut Vec<ValidationIssue>) {
     use crate::cpl::SequenceAccess;
 
+    /// Exact sequence duration in Composition Edit Units, as a reduced
+    /// fraction (numerator, denominator). Each resource contributes
+    /// duration × RepeatCount × (CompositionEditRate / ResourceEditRate).
+    /// None without a usable Composition Edit Rate or Resource Edit Rate.
+    fn sequence_duration_ceu(
+        seq: &dyn SequenceAccess,
+        cpl_edit_rate: Option<&EditRate>,
+    ) -> Option<(i128, i128)> {
+        fn gcd(a: i128, b: i128) -> i128 {
+            if b == 0 {
+                a.abs()
+            } else {
+                gcd(b, a % b)
+            }
+        }
+        let cer = cpl_edit_rate?;
+        let (cn, cd) = (cer.numerator as i128, cer.denominator as i128);
+        if cn == 0 || cd == 0 {
+            return None;
+        }
+        let (mut num, mut den) = (0_i128, 1_i128);
+        for r in &seq.resource_list().resources {
+            let er = r.edit_rate.as_ref().unwrap_or(cer);
+            let (rn, rd) = (er.numerator as i128, er.denominator as i128);
+            if rn == 0 || rd == 0 {
+                return None;
+            }
+            let dur = match r.source_duration {
+                Some(d) => d as i128,
+                None => r.intrinsic_duration as i128 - r.entry_point.unwrap_or(0) as i128,
+            };
+            let repeat = r.repeat_count.unwrap_or(1).max(1) as i128;
+            // dur × repeat resource edit units = dur × repeat × rd/rn s
+            // = dur × repeat × rd × cn / (rn × cd) composition edit units.
+            let (n, d) = (dur * repeat * rd * cn, rn * cd);
+            num = num.checked_mul(d)?.checked_add(n.checked_mul(den)?)?;
+            den = den.checked_mul(d)?;
+            let g = gcd(num, den).max(1);
+            num /= g;
+            den /= g;
+        }
+        Some((num, den))
+    }
+
+    /// "96", or "96.5" for a fraction (at most 3 decimals).
+    fn fmt_eu((num, den): (i128, i128)) -> String {
+        if num % den == 0 {
+            (num / den).to_string()
+        } else {
+            let s = format!("{:.3}", num as f64 / den as f64);
+            s.trim_end_matches('0').trim_end_matches('.').to_string()
+        }
+    }
+
     /// Compute the total effective duration of a sequence in real seconds (f64).
     ///
     /// Each resource's frame count is divided by its edit rate (falling back to
@@ -1528,16 +1582,22 @@ fn validate_segment_track_durations(cpl: &CompositionPlaylist, issues: &mut Vec<
 
         let er = cpl.edit_rate.as_ref();
 
-        // Collect (track_type, track_id, duration_seconds) for all non-marker sequences.
-        // Skip sequences where no edit rate is available to normalise with.
-        let mut track_durations: Vec<(&str, String, f64)> = Vec::new();
+        // Collect (track_type, track_id, duration_seconds, duration in
+        // Composition Edit Units) for all non-marker sequences. Skip
+        // sequences where no edit rate is available to normalise with.
+        type TrackDuration<'a> = (&'a str, String, f64, Option<(i128, i128)>);
+        let mut track_durations: Vec<TrackDuration> = Vec::new();
 
-        let push =
-            |v: &mut Vec<(&str, String, f64)>, label: &'static str, seq: &dyn SequenceAccess| {
-                if let Some(secs) = sequence_duration_seconds(seq, er) {
-                    v.push((label, seq.track_id().to_string(), secs));
-                }
-            };
+        let push = |v: &mut Vec<TrackDuration>, label: &'static str, seq: &dyn SequenceAccess| {
+            if let Some(secs) = sequence_duration_seconds(seq, er) {
+                v.push((
+                    label,
+                    seq.track_id().to_string(),
+                    secs,
+                    sequence_duration_ceu(seq, er),
+                ));
+            }
+        };
 
         for seq in &sl.main_image_sequences {
             push(&mut track_durations, "MainImage", seq);
@@ -1567,24 +1627,40 @@ fn validate_segment_track_durations(cpl: &CompositionPlaylist, issues: &mut Vec<
 
         // All tracks in a segment should have the same real-time duration
         let first_secs = track_durations[0].2;
-        for (track_type, track_id, duration_secs) in &track_durations[1..] {
+        let first_ceu = track_durations[0].3;
+        for (track_type, track_id, duration_secs, ceu) in &track_durations[1..] {
             if (duration_secs - first_secs).abs() > TOLERANCE_SECONDS {
+                // "151442 EU (6316.393 s)", or "6316.393 s" when the
+                // Composition Edit Rate is unknown.
+                let (this, first, delta) = match (ceu, first_ceu) {
+                    (Some((n, d)), Some((fn_, fd))) => (
+                        format!("{} EU ({:.3} s)", fmt_eu((*n, *d)), duration_secs),
+                        format!("{} EU ({:.3} s)", fmt_eu((fn_, fd)), first_secs),
+                        format!(", delta {} EU", fmt_eu((n * fd - fn_ * d, d * fd))),
+                    ),
+                    _ => (
+                        format!("{duration_secs:.3} s"),
+                        format!("{first_secs:.3} s"),
+                        String::new(),
+                    ),
+                };
                 issues.push(
                     ValidationIssue::new(
                         Severity::Error,
                         Category::Timing,
                         seg_dur_code,
                         format!(
-                            "Segment {} ({}) {} track {}: duration {:.3}s differs from {} track {}: duration {:.3}s — \
-                             all virtual tracks in a segment shall have equal duration",
+                            "Segment {} ({}) {} track {}: duration {} differs from {} track {}: \
+                             duration {}{} — all virtual tracks in a segment shall have equal duration",
                             seg_idx + 1,
                             seg_urn,
                             track_type,
                             &track_id[..8.min(track_id.len())],
-                            duration_secs,
+                            this,
                             track_durations[0].0,
                             &track_durations[0].1[..8.min(track_durations[0].1.len())],
-                            first_secs,
+                            first,
+                            delta,
                         ),
                     )
                     .with_location(seg_loc.clone()),
@@ -3806,6 +3882,28 @@ mod tests {
             issues[0].location.segment_id.as_deref(),
             Some(format!("urn:uuid:{seg_id}").as_str())
         );
+    }
+
+    /// The SegmentDuration finding gives both durations in Composition Edit
+    /// Units next to seconds, and the difference in edit units.
+    /// https://github.com/jpwesselink/imferno/issues/85
+    #[test]
+    fn segment_duration_reports_edit_units() {
+        // 192000 samples at 48 kHz = 4 s = 96 EU at 24/1, against 100 EU.
+        let issues = segment_duration_issues(&cpl_with_image_and_audio(100, 192_000));
+        assert_eq!(issues.len(), 1, "{issues:#?}");
+        let msg = &issues[0].message;
+        assert!(msg.contains("duration 96 EU (4.000 s)"), "{msg}");
+        assert!(msg.contains("duration 100 EU (4.167 s)"), "{msg}");
+        assert!(msg.contains("delta -4 EU"), "{msg}");
+
+        // 1000 samples = 0.5 EU: a non-integer count is shown as a decimal.
+        let issues = segment_duration_issues(&cpl_with_image_and_audio(100, 193_000));
+        assert!(
+            issues[0].message.contains("duration 96.5 EU"),
+            "{issues:#?}"
+        );
+        assert!(issues[0].message.contains("delta -3.5 EU"), "{issues:#?}");
     }
 
     // ── §7.4 Segment Duration ──────────────────────────────────────────────

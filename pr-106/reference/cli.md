@@ -39,18 +39,19 @@ imferno validate file:///abs/path/to/my-imp
 imferno validate s3://my-bucket/path/to/imp/
 ```
 
-| Option                   | Description                                                                                      |
-| ------------------------ | ------------------------------------------------------------------------------------------------ |
-| `--skip-hashes`          | Skip SHA-1/SHA-256 hash verification (hashes are verified by default)                            |
-| `--hash-concurrency <N>` | Number of files to hash in parallel (default: 8)                                                 |
-| `--rule <RULE=SEVERITY>` | Inline rule severity override (repeatable). Severity: `off`, `info`, `warn`, `error`, `critical` |
-| `--format <FORMAT>`      | Output format: `summary` (default), `markdown`, `csv`, `json`                                    |
-| `--core-spec <SPEC>`     | Core spec version: `auto` (default), `v2013`, `v2016`, `v2020`                                   |
-| `--cpl-spec <SPEC>`      | Composition Playlist (ST 2067-3) edition: `auto` (default), `v2013`, `v2016`, `v2020`            |
-| `--app2e-spec <SPEC>`    | App profile: `auto` (default), `none`, `v2014`, `v2016`, `v2020`, `v2023`, `v2026`               |
-| `--skip-disk-checks`     | Skip file manifest and MXF header checks (validates XML structure only)                          |
-| `--exit-zero`            | Always exit 0, even on validation errors (useful for CI)                                         |
-| `--rules-config <PATH>`  | Path to a JSON rules config file                                                                 |
+| Option                   | Description                                                                                       |
+| ------------------------ | ------------------------------------------------------------------------------------------------- |
+| `--skip-hashes`          | Skip SHA-1/SHA-256 hash verification (hashes are verified by default)                             |
+| `--hash-concurrency <N>` | Number of files to hash in parallel (default: 8)                                                  |
+| `--rule <RULE=SEVERITY>` | Inline rule severity override (repeatable). Severity: `off`, `info`, `warn`, `error`, `critical`  |
+| `--format <FORMAT>`      | Output format: `summary` (default), `markdown`, `csv`, `json`                                     |
+| `--core-spec <SPEC>`     | Core spec version: `auto` (default), `v2013`, `v2016`, `v2020`                                    |
+| `--cpl-spec <SPEC>`      | Composition Playlist (ST 2067-3) edition: `auto` (default), `v2013`, `v2016`, `v2020`             |
+| `--iab-spec <SPEC>`      | IAB plug-in (ST 2067-201) edition: `auto` (default, newest, announced), `v2019`, `v2021`, `v2026` |
+| `--app2e-spec <SPEC>`    | App profile: `auto` (default), `none`, `v2014`, `v2016`, `v2020`, `v2023`, `v2026`                |
+| `--skip-disk-checks`     | Skip file manifest and MXF header checks (validates XML structure only)                           |
+| `--exit-zero`            | Always exit 0, even on validation errors (useful for CI)                                          |
+| `--rules-config <PATH>`  | Path to a JSON rules config file                                                                  |
 
 ### Examples
 

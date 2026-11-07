@@ -347,53 +347,54 @@ Unmarked rows are carried over from earlier catalogues and not yet checked.
 
 ## SMPTE ST 2067-2 — Core Constraints
 
-| Rule                                                 | Description                                                                                                                                             | Category  | 2013             | 2016             | 2020             |
-| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | ---------------- | ---------------- | ---------------- |
-| `ST2067-2/PklMalformedXml`                           | A Packing List document is not well-formed XML.                                                                                                         | Structure | 7.1✓ error       | K✓ error         | J✓ error         |
-| `ST2067-2/NoCpls`                                    | No CPL assets found in the AssetMap.                                                                                                                    | Structure | —✓               | 7.2.1✓ info      | 7.2✓ info        |
-| `ST2067-2/SizeMismatch`                              | Declared file size does not match the on-disk size.                                                                                                     | Asset     | —✓               | K✓ error         | J✓ error         |
-| `ST2067-2/FileNotFound`                              | A referenced asset file is not present at the declared path.                                                                                            | Asset     | 7.1✓ error       | 7.2.1✓ error     | 7.2✓ error       |
-| `ST2067-2/ChecksumMismatch`                          | File hash does not match the declared SHA-1/SHA-256 checksum.                                                                                           | Asset     | —✓               | K✓ error         | J✓ error         |
-| `ST2067-2/UnresolvedUuid`                            | An asset listed in the Packing List is not in the AssetMap.                                                                                             | Reference | —✓               | 8.3✓ warning     | 8.3✓ warning     |
-| `ST2067-2/TrackFileNotInPackage`                     | A CPL track file is not in this package; an IMP need not contain complete compositions (e.g. a supplemental package referring to the original version). | Reference | 7.6✓ info        | 7.2.3✓ info      | 7.2✓ info        |
-| `ST2067-2/DuplicateUuid`                             | Two or more assets within the package share the same UUID.                                                                                              | Reference | 7.2✓ error       | 7.3.1✓ error     | 7.3.1✓ error     |
-| `ST2067-2/PklUnknownNamespace`                       | PKL document namespace is not one of the published SMPTE PKL namespaces.                                                                                | Structure | 7.1✓ error       | K✓ error         | J✓ error         |
-| `ST2067-2/VirtualTrackEditRate`                      | All resources in a virtual track shall have the same edit rate.                                                                                         | Timing    | 6.3✓ error       | 6.3✓ error       | 6.3✓ error       |
-| `ST2067-2/TimedTextSampleRate`                       | DCTimedTextDescriptor SampleRate is missing.                                                                                                            | Subtitle  | 5.4.2✓ error     | 5.4.2✓ error     | 5.4.2✓ error     |
-| `ST2067-2/TimedTextEmptyLanguageTag`                 | Empty language tag in RFC5646LanguageTagList.                                                                                                           | Subtitle  | 5.4.4✓ error     | 5.4.4✓ error     | 5.4.4✓ error     |
-| `ST2067-2/TimedTextMalformedLanguageTag`             | Language tag does not start with an ASCII letter (RFC 5646 primary subtag).                                                                             | Subtitle  | 5.4.4✓ error     | 5.4.4✓ error     | 5.4.4✓ error     |
-| `ST2067-2/AudioSampleRate`                           | WAVEPCMDescriptor has no AudioSampleRate or SampleRate.                                                                                                 | Audio     | 5.3.4.1✓ error   | 5.3.4.1✓ error   | 5.3.4.1✓ error   |
-| `ST2067-2/ChannelCount`                              | WAVEPCMDescriptor ChannelCount is missing.                                                                                                              | Audio     | 5.3.4.1✓ error   | 5.3.4.1✓ error   | 5.3.4.1✓ error   |
-| `ST2067-2/ChannelCountZero`                          | WAVEPCMDescriptor ChannelCount is zero.                                                                                                                 | Audio     | 5.3.2.1✓ error   | 5.3.2.1✓ error   | 5.3.2.1✓ error   |
-| `ST2067-2/MCASubDescriptors`                         | WAVEPCMDescriptor has no MCA SubDescriptors.                                                                                                            | Audio     | 5.3.6.2✓ error   | 5.3.6.2✓ error   | 5.3.6.2✓ error   |
-| `ST2067-2/SoundfieldGroup`                           | WAVEPCMDescriptor SubDescriptors missing SoundfieldGroupLabelSubDescriptor.                                                                             | Audio     | 5.3.6.3✓ error   | 5.3.6.3✓ error   | 5.3.6.3✓ error   |
-| `ST2067-2/MCATagSymbol`                              | SoundfieldGroupLabelSubDescriptor is missing MCATagSymbol.                                                                                              | Audio     | 5.3.6.1✓ error   | 5.3.6.1✓ error   | 5.3.6.1✓ error   |
-| `ST2067-2/SoundfieldChannelCount`                    | WAVEPCMDescriptor.ChannelCount exceeds the number of channels of its soundfield group (a subset is allowed).                                            | Audio     | 5.3.6.6✓ error   | 5.3.6.6✓ error   | 5.3.6.6✓ error   |
-| `ST2067-2/DigitalSignature`                          | The CPL carries a Signature (ST 2067-2 §6.9); signature verification is not performed.                                                                  | Security  | 6.9✓ info        | 6.9✓ info        | 6.9✓ info        |
-| `ST2067-2/EssenceDescriptorList`                     | EssenceDescriptorList is absent: the File Descriptor of every Track File the CPL references shall be mapped to an EssenceDescriptor (§6.8).             | Structure | 6.8✓ error       | 6.8✓ error       | 6.8✓ error       |
-| `ST2067-2/CplIdAssetMapMismatch`                     | An AssetMap asset points at a CPL file whose Id differs from the asset Id.                                                                              | Reference | 7.2✓ error       | 7.3.1✓ error     | 7.3.1✓ error     |
-| `ST2067-2/OperationalPatternNotOP1A`                 | MXF essence Operational Pattern UL is not OP1a (ST 378:2004).                                                                                           | Container | 5.1.1✓ error     | 5.1.1✓ error     | 5.1.1✓ error     |
-| `ST2067-2/SoundDescriptorNotWAVEPCM`                 | Audio essence descriptor must be WAVEPCMDescriptor.                                                                                                     | Audio     | 5.3.4.1✓ error   | 5.3.4.1✓ error   | 5.3.4.1✓ error   |
-| `ST2067-2/AudioSampleRateUnsupported`                | AudioSampleRate must be 48000 Hz or 96000 Hz.                                                                                                           | Audio     | 5.3.2.2✓ error   | 5.3.2.2✓ error   | 5.3.2.2✓ error   |
-| `ST2067-2/QuantizationBitsNot24`                     | QuantizationBits must be 24.                                                                                                                            | Audio     | 5.3.2.3✓ error   | 5.3.2.3✓ error   | 5.3.2.3✓ error   |
-| `ST2067-2/ChannelLabelCountMismatch`                 | Number of AudioChannelLabelSubDescriptors must equal ChannelCount.                                                                                      | Audio     | 5.3.6.2✓ error   | 5.3.6.2✓ error   | 5.3.6.2✓ error   |
-| `ST2067-2/MCAChannelIDMissing`                       | MCAChannelID shall be present per channel (channel 1 may omit it) — §5.3.6.5 Table 7.                                                                   | Audio     | —✓               | 5.3.6.5✓ error   | 5.3.6.5✓ error   |
-| `ST2067-2/SoundFieldGroupLabelCount`                 | Exactly one SoundfieldGroupLabelSubDescriptor is required per WAVEPCMDescriptor.                                                                        | Audio     | 5.3.6.3✓ error   | 5.3.6.3✓ error   | 5.3.6.3✓ error   |
-| `ST2067-2/SoundfieldGroupLinkIDMissing`              | Every AudioChannelLabelSubDescriptor shall carry a SoundfieldGroupLinkID (§5.3.6.5 Table 7).                                                            | Audio     | 5.3.6.5✓ error   | 5.3.6.5✓ error   | 5.3.6.5✓ error   |
-| `ST2067-2/AudioNotClipWrapped`                       | Audio essence must be Wave Clip-Wrapped (ST 382 §10).                                                                                                   | Container | 5.3.3✓ error     | 5.3.3✓ error     | 5.3.3✓ error     |
-| `ST2067-2/RFC5646SpokenLanguageMissing`              | Audio descriptor should carry an RFC-5646 spoken language tag.                                                                                          | Audio     | 5.3.6.5✓ warning | 5.3.6.5✓ warning | 5.3.6.5✓ warning |
-| `ST2067-2/ChannelAssignmentMissing`                  | ChannelAssignment shall be present on the audio essence descriptor (§5.3.4.2).                                                                          | Audio     | 5.3.4.2✓ error   | 5.3.4.2✓ error   | 5.3.4.2✓ error   |
-| `ST2067-2/ChannelAssignmentNotMCA`                   | ChannelAssignment shall equal the ST 2067-2 Table 5 channel-assignment label UL.                                                                        | Audio     | 5.3.4.2✓ error   | 5.3.4.2✓ error   | 5.3.4.2✓ error   |
-| `ST2067-2/SoundfieldGroupMissingMCATitle`            | SoundfieldGroupLabelSubDescriptor shall carry MCATitle (§5.3.6.5 Table 7).                                                                              | Audio     | 5.3.6.5✓ error   | 5.3.6.5✓ error   | 5.3.6.5✓ error   |
-| `ST2067-2/SoundfieldGroupMissingMCATitleVersion`     | SoundfieldGroupLabelSubDescriptor shall carry MCATitleVersion (§5.3.6.5 Table 7).                                                                       | Audio     | 5.3.6.5✓ error   | 5.3.6.5✓ error   | 5.3.6.5✓ error   |
-| `ST2067-2/SoundfieldGroupMissingMCAAudioContentKind` | SoundfieldGroupLabelSubDescriptor shall carry MCAAudioContentKind (§5.3.6.5 Table 7).                                                                   | Audio     | 5.3.6.5✓ error   | 5.3.6.5✓ error   | 5.3.6.5✓ error   |
-| `ST2067-2/SoundfieldGroupMissingMCAAudioElementKind` | SoundfieldGroupLabelSubDescriptor shall carry MCAAudioElementKind (§5.3.6.5 Table 7).                                                                   | Audio     | 5.3.6.5✓ error   | 5.3.6.5✓ error   | 5.3.6.5✓ error   |
-| `ST2067-2/TimedTextUCSEncodingNotUTF8`               | TimedTextDescriptor UCSEncoding must be UTF-8.                                                                                                          | Subtitle  | 5.4.2✓ error     | 4.3✓ error       | 4.3✓ error       |
-| `ST2067-2/TimedTextNamespaceNotIMSC`                 | TimedTextDescriptor NamespaceURI must be one of the IMSC1 profile namespaces.                                                                           | Subtitle  | —✓               | 5.4.2✓ error     | 5.4.2✓ error     |
-| `ST2067-2/TimedTextResourceMIMETypeUnsupported`      | TimeTextResourceSubDescriptor MIMEType must be image/png, font/otf (2020) or application/x-font-opentype.                                               | Subtitle  | 5.4.5✓ error     | 5.4.5✓ error     | 5.4.5✓ error     |
-| `ST2067-2/TimedTextMappingKindNot0x13`               | Timed-text Essence Container UL Mapping Kind byte (byte 14) must be 13h, Timed Text (ST 429-5 Annex A Table A.1).                                       | Container | 5.4.2✓ error     | 5.4.2✓ error     | 5.4.2✓ error     |
-| `ST2067-2/MainImageVirtualTrackCount`                | A Composition shall contain exactly one Main Image Virtual Track.                                                                                       | Structure | 6.3.1✓ error     | 6.3.1✓ error     | 6.3.1✓ error     |
-| `ST2067-2/AudioVirtualTrackMissing`                  | A Composition shall contain one or more Audio Virtual Tracks (ST 2067-2:2013 and 2016; 2020 allows zero).                                               | Structure | 6.3.2✓ error     | 6.3.2✓ error     | —✓               |
+| Rule                                                 | Description                                                                                                                                                                                    | Category  | 2013             | 2016             | 2020             |
+| ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | ---------------- | ---------------- | ---------------- |
+| `ST2067-2/NotImfCompositionPlaylist`                 | The CPL is not an IMF Composition Playlist: its namespace is not an ST 2067-3 namespace (e.g. a D-Cinema ST 429-7 CPL). No ST 2067-3, Core Constraints or application rules are applied to it. | Structure | 6✓ error         | 6.11✓ error      | 6.11✓ error      |
+| `ST2067-2/PklMalformedXml`                           | A Packing List document is not well-formed XML.                                                                                                                                                | Structure | 7.1✓ error       | K✓ error         | J✓ error         |
+| `ST2067-2/NoCpls`                                    | No CPL assets found in the AssetMap.                                                                                                                                                           | Structure | —✓               | 7.2.1✓ info      | 7.2✓ info        |
+| `ST2067-2/SizeMismatch`                              | Declared file size does not match the on-disk size.                                                                                                                                            | Asset     | —✓               | K✓ error         | J✓ error         |
+| `ST2067-2/FileNotFound`                              | A referenced asset file is not present at the declared path.                                                                                                                                   | Asset     | 7.1✓ error       | 7.2.1✓ error     | 7.2✓ error       |
+| `ST2067-2/ChecksumMismatch`                          | File hash does not match the declared SHA-1/SHA-256 checksum.                                                                                                                                  | Asset     | —✓               | K✓ error         | J✓ error         |
+| `ST2067-2/UnresolvedUuid`                            | An asset listed in the Packing List is not in the AssetMap.                                                                                                                                    | Reference | —✓               | 8.3✓ warning     | 8.3✓ warning     |
+| `ST2067-2/TrackFileNotInPackage`                     | A CPL track file is not in this package; an IMP need not contain complete compositions (e.g. a supplemental package referring to the original version).                                        | Reference | 7.6✓ info        | 7.2.3✓ info      | 7.2✓ info        |
+| `ST2067-2/DuplicateUuid`                             | Two or more assets within the package share the same UUID.                                                                                                                                     | Reference | 7.2✓ error       | 7.3.1✓ error     | 7.3.1✓ error     |
+| `ST2067-2/PklUnknownNamespace`                       | PKL document namespace is not one of the published SMPTE PKL namespaces.                                                                                                                       | Structure | 7.1✓ error       | K✓ error         | J✓ error         |
+| `ST2067-2/VirtualTrackEditRate`                      | All resources in a virtual track shall have the same edit rate.                                                                                                                                | Timing    | 6.3✓ error       | 6.3✓ error       | 6.3✓ error       |
+| `ST2067-2/TimedTextSampleRate`                       | DCTimedTextDescriptor SampleRate is missing.                                                                                                                                                   | Subtitle  | 5.4.2✓ error     | 5.4.2✓ error     | 5.4.2✓ error     |
+| `ST2067-2/TimedTextEmptyLanguageTag`                 | Empty language tag in RFC5646LanguageTagList.                                                                                                                                                  | Subtitle  | 5.4.4✓ error     | 5.4.4✓ error     | 5.4.4✓ error     |
+| `ST2067-2/TimedTextMalformedLanguageTag`             | Language tag does not start with an ASCII letter (RFC 5646 primary subtag).                                                                                                                    | Subtitle  | 5.4.4✓ error     | 5.4.4✓ error     | 5.4.4✓ error     |
+| `ST2067-2/AudioSampleRate`                           | WAVEPCMDescriptor has no AudioSampleRate or SampleRate.                                                                                                                                        | Audio     | 5.3.4.1✓ error   | 5.3.4.1✓ error   | 5.3.4.1✓ error   |
+| `ST2067-2/ChannelCount`                              | WAVEPCMDescriptor ChannelCount is missing.                                                                                                                                                     | Audio     | 5.3.4.1✓ error   | 5.3.4.1✓ error   | 5.3.4.1✓ error   |
+| `ST2067-2/ChannelCountZero`                          | WAVEPCMDescriptor ChannelCount is zero.                                                                                                                                                        | Audio     | 5.3.2.1✓ error   | 5.3.2.1✓ error   | 5.3.2.1✓ error   |
+| `ST2067-2/MCASubDescriptors`                         | WAVEPCMDescriptor has no MCA SubDescriptors.                                                                                                                                                   | Audio     | 5.3.6.2✓ error   | 5.3.6.2✓ error   | 5.3.6.2✓ error   |
+| `ST2067-2/SoundfieldGroup`                           | WAVEPCMDescriptor SubDescriptors missing SoundfieldGroupLabelSubDescriptor.                                                                                                                    | Audio     | 5.3.6.3✓ error   | 5.3.6.3✓ error   | 5.3.6.3✓ error   |
+| `ST2067-2/MCATagSymbol`                              | SoundfieldGroupLabelSubDescriptor is missing MCATagSymbol.                                                                                                                                     | Audio     | 5.3.6.1✓ error   | 5.3.6.1✓ error   | 5.3.6.1✓ error   |
+| `ST2067-2/SoundfieldChannelCount`                    | WAVEPCMDescriptor.ChannelCount exceeds the number of channels of its soundfield group (a subset is allowed).                                                                                   | Audio     | 5.3.6.6✓ error   | 5.3.6.6✓ error   | 5.3.6.6✓ error   |
+| `ST2067-2/DigitalSignature`                          | The CPL carries a Signature (ST 2067-2 §6.9); signature verification is not performed.                                                                                                         | Security  | 6.9✓ info        | 6.9✓ info        | 6.9✓ info        |
+| `ST2067-2/EssenceDescriptorList`                     | EssenceDescriptorList is absent: the File Descriptor of every Track File the CPL references shall be mapped to an EssenceDescriptor (§6.8).                                                    | Structure | 6.8✓ error       | 6.8✓ error       | 6.8✓ error       |
+| `ST2067-2/CplIdAssetMapMismatch`                     | An AssetMap asset points at a CPL file whose Id differs from the asset Id.                                                                                                                     | Reference | 7.2✓ error       | 7.3.1✓ error     | 7.3.1✓ error     |
+| `ST2067-2/OperationalPatternNotOP1A`                 | MXF essence Operational Pattern UL is not OP1a (ST 378:2004).                                                                                                                                  | Container | 5.1.1✓ error     | 5.1.1✓ error     | 5.1.1✓ error     |
+| `ST2067-2/SoundDescriptorNotWAVEPCM`                 | Audio essence descriptor must be WAVEPCMDescriptor.                                                                                                                                            | Audio     | 5.3.4.1✓ error   | 5.3.4.1✓ error   | 5.3.4.1✓ error   |
+| `ST2067-2/AudioSampleRateUnsupported`                | AudioSampleRate must be 48000 Hz or 96000 Hz.                                                                                                                                                  | Audio     | 5.3.2.2✓ error   | 5.3.2.2✓ error   | 5.3.2.2✓ error   |
+| `ST2067-2/QuantizationBitsNot24`                     | QuantizationBits must be 24.                                                                                                                                                                   | Audio     | 5.3.2.3✓ error   | 5.3.2.3✓ error   | 5.3.2.3✓ error   |
+| `ST2067-2/ChannelLabelCountMismatch`                 | Number of AudioChannelLabelSubDescriptors must equal ChannelCount.                                                                                                                             | Audio     | 5.3.6.2✓ error   | 5.3.6.2✓ error   | 5.3.6.2✓ error   |
+| `ST2067-2/MCAChannelIDMissing`                       | MCAChannelID shall be present per channel (channel 1 may omit it) — §5.3.6.5 Table 7.                                                                                                          | Audio     | —✓               | 5.3.6.5✓ error   | 5.3.6.5✓ error   |
+| `ST2067-2/SoundFieldGroupLabelCount`                 | Exactly one SoundfieldGroupLabelSubDescriptor is required per WAVEPCMDescriptor.                                                                                                               | Audio     | 5.3.6.3✓ error   | 5.3.6.3✓ error   | 5.3.6.3✓ error   |
+| `ST2067-2/SoundfieldGroupLinkIDMissing`              | Every AudioChannelLabelSubDescriptor shall carry a SoundfieldGroupLinkID (§5.3.6.5 Table 7).                                                                                                   | Audio     | 5.3.6.5✓ error   | 5.3.6.5✓ error   | 5.3.6.5✓ error   |
+| `ST2067-2/AudioNotClipWrapped`                       | Audio essence must be Wave Clip-Wrapped (ST 382 §10).                                                                                                                                          | Container | 5.3.3✓ error     | 5.3.3✓ error     | 5.3.3✓ error     |
+| `ST2067-2/RFC5646SpokenLanguageMissing`              | Audio descriptor should carry an RFC-5646 spoken language tag.                                                                                                                                 | Audio     | 5.3.6.5✓ warning | 5.3.6.5✓ warning | 5.3.6.5✓ warning |
+| `ST2067-2/ChannelAssignmentMissing`                  | ChannelAssignment shall be present on the audio essence descriptor (§5.3.4.2).                                                                                                                 | Audio     | 5.3.4.2✓ error   | 5.3.4.2✓ error   | 5.3.4.2✓ error   |
+| `ST2067-2/ChannelAssignmentNotMCA`                   | ChannelAssignment shall equal the ST 2067-2 Table 5 channel-assignment label UL.                                                                                                               | Audio     | 5.3.4.2✓ error   | 5.3.4.2✓ error   | 5.3.4.2✓ error   |
+| `ST2067-2/SoundfieldGroupMissingMCATitle`            | SoundfieldGroupLabelSubDescriptor shall carry MCATitle (§5.3.6.5 Table 7).                                                                                                                     | Audio     | 5.3.6.5✓ error   | 5.3.6.5✓ error   | 5.3.6.5✓ error   |
+| `ST2067-2/SoundfieldGroupMissingMCATitleVersion`     | SoundfieldGroupLabelSubDescriptor shall carry MCATitleVersion (§5.3.6.5 Table 7).                                                                                                              | Audio     | 5.3.6.5✓ error   | 5.3.6.5✓ error   | 5.3.6.5✓ error   |
+| `ST2067-2/SoundfieldGroupMissingMCAAudioContentKind` | SoundfieldGroupLabelSubDescriptor shall carry MCAAudioContentKind (§5.3.6.5 Table 7).                                                                                                          | Audio     | 5.3.6.5✓ error   | 5.3.6.5✓ error   | 5.3.6.5✓ error   |
+| `ST2067-2/SoundfieldGroupMissingMCAAudioElementKind` | SoundfieldGroupLabelSubDescriptor shall carry MCAAudioElementKind (§5.3.6.5 Table 7).                                                                                                          | Audio     | 5.3.6.5✓ error   | 5.3.6.5✓ error   | 5.3.6.5✓ error   |
+| `ST2067-2/TimedTextUCSEncodingNotUTF8`               | TimedTextDescriptor UCSEncoding must be UTF-8.                                                                                                                                                 | Subtitle  | 5.4.2✓ error     | 4.3✓ error       | 4.3✓ error       |
+| `ST2067-2/TimedTextNamespaceNotIMSC`                 | TimedTextDescriptor NamespaceURI must be one of the IMSC1 profile namespaces.                                                                                                                  | Subtitle  | —✓               | 5.4.2✓ error     | 5.4.2✓ error     |
+| `ST2067-2/TimedTextResourceMIMETypeUnsupported`      | TimeTextResourceSubDescriptor MIMEType must be image/png, font/otf (2020) or application/x-font-opentype.                                                                                      | Subtitle  | 5.4.5✓ error     | 5.4.5✓ error     | 5.4.5✓ error     |
+| `ST2067-2/TimedTextMappingKindNot0x13`               | Timed-text Essence Container UL Mapping Kind byte (byte 14) must be 13h, Timed Text (ST 429-5 Annex A Table A.1).                                                                              | Container | 5.4.2✓ error     | 5.4.2✓ error     | 5.4.2✓ error     |
+| `ST2067-2/MainImageVirtualTrackCount`                | A Composition shall contain exactly one Main Image Virtual Track.                                                                                                                              | Structure | 6.3.1✓ error     | 6.3.1✓ error     | 6.3.1✓ error     |
+| `ST2067-2/AudioVirtualTrackMissing`                  | A Composition shall contain one or more Audio Virtual Tracks (ST 2067-2:2013 and 2016; 2020 allows zero).                                                                                      | Structure | 6.3.2✓ error     | 6.3.2✓ error     | —✓               |
 
 ## SMPTE ST 2067-3 — Composition Playlist
 
@@ -411,7 +412,7 @@ Unmarked rows are carried over from earlier catalogues and not yet checked.
 | `ST2067-3/LocaleLanguageTagInvalid`              | Locale language tag does not conform to RFC 5646.                                                     | Metadata  | 6.5.2✓ error    | 6.5.2✓ error    | 6.5.2✓ error    |
 | `ST2067-3/TrackIdNotUnique`                      | TrackId is not unique within a segment.                                                               | Structure | 6.9.3✓ error    | 6.9.3✓ error    | 6.9.3✓ error    |
 | `ST2067-3/MarkerOffsetOutOfRange`                | Marker offset exceeds the resource IntrinsicDuration.                                                 | Timing    | 6.13✓ error     | 6.13✓ error     | 6.13✓ error     |
-| `ST2067-3/MarkerLabelUnknown`                    | Marker label is not a recognized SMPTE standard value.                                                | Metadata  | 6.14.2✓ error   | 6.14.1.2✓ info  | 6.14.1.2✓ info  |
+| `ST2067-3/MarkerLabelUnknown`                    | Marker label is not a recognized SMPTE standard value.                                                | Metadata  | 6.14.2✓ error   | 6.14.1.2✓ error | 6.14.1.2✓ error |
 | `ST2067-3/SegmentDuration`                       | All virtual tracks in a segment must span the same number of edit units.                              | Timing    | 7.2✓ error      | 7.2✓ error      | 7.2✓ error      |
 | `ST2067-3/ContentVersionIdDuplicate`             | No two ContentVersion elements shall have identical Id values.                                        | Structure | 6.1.9✓ error    | 6.1.9✓ error    | 6.1.9✓ error    |
 | `ST2067-3/SegmentDurationIntegerEditUnits`       | Sequence duration shall be an integer number of Composition Edit Units.                               | Timing    | 7.3✓ error      | 7.3✓ error      | 7.3✓ error      |
@@ -720,6 +721,9 @@ imferno validate ./my-package --core-spec v2020
 # Force the Composition Playlist (ST 2067-3) edition
 imferno validate ./my-package --cpl-spec v2016
 
+# Force the IAB plug-in (ST 2067-201) edition
+imferno validate ./my-package --iab-spec v2021
+
 # Force a specific application profile
 imferno validate ./my-package --app2e-spec v2023
 
@@ -744,6 +748,8 @@ let options = ValidationOptions {
 
 **`CplSpecTarget`** (`cpl_spec`): `St2067_3_2013`, `St2067_3_2016`, `St2067_3_2020`
 
+**`IabSpecTarget`** (`iab_spec`): `St2067_201_2019`, `St2067_201_2021`, `St2067_201_2026`
+
 **`AppSpecTarget`**: `St2067_21_2014`, `St2067_21_2016`, `St2067_21_2020`, `St2067_21_2023`, `St2067_21_2026`
 
 ### WASM
@@ -757,6 +763,7 @@ const result = await validate(files, {
 
 - `coreSpec`: `"auto"` | `"v2013"` | `"v2016"` | `"v2020"`
 - `cplSpec`: `"auto"` | `"v2013"` | `"v2016"` | `"v2020"` (ST 2067-3)
+- `iabSpec`: `"auto"` | `"v2019"` | `"v2021"` | `"v2026"` (ST 2067-201)
 - `app2eSpec`: `"auto"` | `"none"` | `"v2014"` | `"v2016"` | `"v2020"` | `"v2023"` | `"v2026"`
 
 ### Node.js
@@ -772,6 +779,7 @@ const result = validatePath('./my-imp', {
 
 - `coreSpec`: `"auto"` | `"v2013"` | `"v2016"` | `"v2020"`
 - `cplSpec`: `"auto"` | `"v2013"` | `"v2016"` | `"v2020"` (ST 2067-3)
+- `iabSpec`: `"auto"` | `"v2019"` | `"v2021"` | `"v2026"` (ST 2067-201)
 - `app2eSpec`: `"auto"` | `"none"` | `"v2014"` | `"v2016"` | `"v2020"` | `"v2023"` | `"v2026"`
 
 `listRules()` (Node and WASM) returns the catalogue with each rule's edition table.
@@ -819,12 +827,18 @@ edition used (one per package, and per CPL).
 - **ST 2067-3, CPL** (`--cpl-spec` / `cplSpec`): the 2013 namespace means 2013;
   2016 and 2020 share the 2016 namespace, and the only evidence is a Marker
   Label in the `2020#standard-markers` scope, which only 2020 defines. An
-  ST 429-7 (DCI) or unknown namespace is not an ST 2067-3 namespace: the newest
-  edition is applied and announced.
+  ST 429-7 (D-Cinema) or unknown namespace is not an IMF Composition Playlist:
+  it gets `ST2067-2/NotImfCompositionPlaylist` (Error) naming the namespace,
+  and no ST 2067-3, Core Constraints or application rules.
+- **ST 2067-201, CPL with IAB** (`--iab-spec` / `iabSpec`): every edition
+  (2019, 2021, 2026) uses the 2019 namespace and nothing in a CPL tells them
+  apart, so the newest is applied and announced. The track files its IAB
+  Virtual Tracks reference get the same edition.
 - **ST 377-1 / ST 377-4, MXF track file**: MXF has no namespace; the dated
   normative references of the specs that apply to the file decide. Every
   ST 2067-2 edition references ST 377-1:2011; ST 2067-2:2020 references
-  ST 377-4:2012 (2013 and 2016 cite "ST 377-4:2011", which is not an edition).
+  ST 377-4:2012 (2013 and 2016 cite "ST 377-4:2011", which never existed; it is read as
+  ST 377-4:2012, the only edition then).
   For a track file a CPL IAB Virtual Track references, ST 2067-201 adds its
   references (2021: ST 377-1:2019; 2026: ST 377-1:2019 and ST 377-4:2021).
   When these do not leave one edition, the newest is applied, announced for
@@ -1575,18 +1589,19 @@ imferno validate file:///abs/path/to/my-imp
 imferno validate s3://my-bucket/path/to/imp/
 ```
 
-| Option                   | Description                                                                                      |
-| ------------------------ | ------------------------------------------------------------------------------------------------ |
-| `--skip-hashes`          | Skip SHA-1/SHA-256 hash verification (hashes are verified by default)                            |
-| `--hash-concurrency <N>` | Number of files to hash in parallel (default: 8)                                                 |
-| `--rule <RULE=SEVERITY>` | Inline rule severity override (repeatable). Severity: `off`, `info`, `warn`, `error`, `critical` |
-| `--format <FORMAT>`      | Output format: `summary` (default), `markdown`, `csv`, `json`                                    |
-| `--core-spec <SPEC>`     | Core spec version: `auto` (default), `v2013`, `v2016`, `v2020`                                   |
-| `--cpl-spec <SPEC>`      | Composition Playlist (ST 2067-3) edition: `auto` (default), `v2013`, `v2016`, `v2020`            |
-| `--app2e-spec <SPEC>`    | App profile: `auto` (default), `none`, `v2014`, `v2016`, `v2020`, `v2023`, `v2026`               |
-| `--skip-disk-checks`     | Skip file manifest and MXF header checks (validates XML structure only)                          |
-| `--exit-zero`            | Always exit 0, even on validation errors (useful for CI)                                         |
-| `--rules-config <PATH>`  | Path to a JSON rules config file                                                                 |
+| Option                   | Description                                                                                       |
+| ------------------------ | ------------------------------------------------------------------------------------------------- |
+| `--skip-hashes`          | Skip SHA-1/SHA-256 hash verification (hashes are verified by default)                             |
+| `--hash-concurrency <N>` | Number of files to hash in parallel (default: 8)                                                  |
+| `--rule <RULE=SEVERITY>` | Inline rule severity override (repeatable). Severity: `off`, `info`, `warn`, `error`, `critical`  |
+| `--format <FORMAT>`      | Output format: `summary` (default), `markdown`, `csv`, `json`                                     |
+| `--core-spec <SPEC>`     | Core spec version: `auto` (default), `v2013`, `v2016`, `v2020`                                    |
+| `--cpl-spec <SPEC>`      | Composition Playlist (ST 2067-3) edition: `auto` (default), `v2013`, `v2016`, `v2020`             |
+| `--iab-spec <SPEC>`      | IAB plug-in (ST 2067-201) edition: `auto` (default, newest, announced), `v2019`, `v2021`, `v2026` |
+| `--app2e-spec <SPEC>`    | App profile: `auto` (default), `none`, `v2014`, `v2016`, `v2020`, `v2023`, `v2026`                |
+| `--skip-disk-checks`     | Skip file manifest and MXF header checks (validates XML structure only)                           |
+| `--exit-zero`            | Always exit 0, even on validation errors (useful for CI)                                          |
+| `--rules-config <PATH>`  | Path to a JSON rules config file                                                                  |
 
 ### Examples
 
@@ -1806,6 +1821,7 @@ const result = validatePath('./my-imp', {
 | ---------------- | ------------------------------------------------------------------------- | -------- | ---------------------------------------------- |
 | `coreSpec`       | `"auto" \| "v2013" \| "v2016" \| "v2020"`                                 | `"auto"` | Core constraints spec version                  |
 | `cplSpec`        | `"auto" \| "v2013" \| "v2016" \| "v2020"`                                 | `"auto"` | Composition Playlist (ST 2067-3) edition       |
+| `iabSpec`        | `"auto" \| "v2019" \| "v2021" \| "v2026"`                                 | `"auto"` | IAB plug-in (ST 2067-201) edition              |
 | `app2eSpec`      | `"auto" \| "none" \| "v2014" \| "v2016" \| "v2020" \| "v2023" \| "v2026"` | `"auto"` | Application profile version                    |
 | `skipDiskChecks` | `boolean`                                                                 | `false`  | Skip file existence/size and MXF header checks |
 | `rules`          | `Record<string, string>`                                                  | `{}`     | ESLint-style severity overrides                |
@@ -2089,6 +2105,7 @@ const result = await validate(files, {
 | ----------- | ------------------------------------------------------------------------- | -------- | ---------------------------------------- |
 | `coreSpec`  | `"auto" \| "v2013" \| "v2016" \| "v2020"`                                 | `"auto"` | Core constraints spec version            |
 | `cplSpec`   | `"auto" \| "v2013" \| "v2016" \| "v2020"`                                 | `"auto"` | Composition Playlist (ST 2067-3) edition |
+| `iabSpec`   | `"auto" \| "v2019" \| "v2021" \| "v2026"`                                 | `"auto"` | IAB plug-in (ST 2067-201) edition        |
 | `app2eSpec` | `"auto" \| "none" \| "v2014" \| "v2016" \| "v2020" \| "v2023" \| "v2026"` | `"auto"` | Application profile version              |
 | `rules`     | `Record<string, string>`                                                  | `{}`     | ESLint-style severity overrides          |
 

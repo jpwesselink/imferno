@@ -119,6 +119,9 @@ imferno validate ./my-package --core-spec v2020
 # Force the Composition Playlist (ST 2067-3) edition
 imferno validate ./my-package --cpl-spec v2016
 
+# Force the IAB plug-in (ST 2067-201) edition
+imferno validate ./my-package --iab-spec v2021
+
 # Force a specific application profile
 imferno validate ./my-package --app2e-spec v2023
 
@@ -143,6 +146,8 @@ let options = ValidationOptions {
 
 **`CplSpecTarget`** (`cpl_spec`): `St2067_3_2013`, `St2067_3_2016`, `St2067_3_2020`
 
+**`IabSpecTarget`** (`iab_spec`): `St2067_201_2019`, `St2067_201_2021`, `St2067_201_2026`
+
 **`AppSpecTarget`**: `St2067_21_2014`, `St2067_21_2016`, `St2067_21_2020`, `St2067_21_2023`, `St2067_21_2026`
 
 ### WASM
@@ -156,6 +161,7 @@ const result = await validate(files, {
 
 - `coreSpec`: `"auto"` | `"v2013"` | `"v2016"` | `"v2020"`
 - `cplSpec`: `"auto"` | `"v2013"` | `"v2016"` | `"v2020"` (ST 2067-3)
+- `iabSpec`: `"auto"` | `"v2019"` | `"v2021"` | `"v2026"` (ST 2067-201)
 - `app2eSpec`: `"auto"` | `"none"` | `"v2014"` | `"v2016"` | `"v2020"` | `"v2023"` | `"v2026"`
 
 ### Node.js
@@ -171,6 +177,7 @@ const result = validatePath('./my-imp', {
 
 - `coreSpec`: `"auto"` | `"v2013"` | `"v2016"` | `"v2020"`
 - `cplSpec`: `"auto"` | `"v2013"` | `"v2016"` | `"v2020"` (ST 2067-3)
+- `iabSpec`: `"auto"` | `"v2019"` | `"v2021"` | `"v2026"` (ST 2067-201)
 - `app2eSpec`: `"auto"` | `"none"` | `"v2014"` | `"v2016"` | `"v2020"` | `"v2023"` | `"v2026"`
 
 `listRules()` (Node and WASM) returns the catalogue with each rule's edition table.
@@ -218,12 +225,18 @@ edition used (one per package, and per CPL).
 - **ST 2067-3, CPL** (`--cpl-spec` / `cplSpec`): the 2013 namespace means 2013;
   2016 and 2020 share the 2016 namespace, and the only evidence is a Marker
   Label in the `2020#standard-markers` scope, which only 2020 defines. An
-  ST 429-7 (DCI) or unknown namespace is not an ST 2067-3 namespace: the newest
-  edition is applied and announced.
+  ST 429-7 (D-Cinema) or unknown namespace is not an IMF Composition Playlist:
+  it gets `ST2067-2/NotImfCompositionPlaylist` (Error) naming the namespace,
+  and no ST 2067-3, Core Constraints or application rules.
+- **ST 2067-201, CPL with IAB** (`--iab-spec` / `iabSpec`): every edition
+  (2019, 2021, 2026) uses the 2019 namespace and nothing in a CPL tells them
+  apart, so the newest is applied and announced. The track files its IAB
+  Virtual Tracks reference get the same edition.
 - **ST 377-1 / ST 377-4, MXF track file**: MXF has no namespace; the dated
   normative references of the specs that apply to the file decide. Every
   ST 2067-2 edition references ST 377-1:2011; ST 2067-2:2020 references
-  ST 377-4:2012 (2013 and 2016 cite "ST 377-4:2011", which is not an edition).
+  ST 377-4:2012 (2013 and 2016 cite "ST 377-4:2011", which never existed; it is read as
+  ST 377-4:2012, the only edition then).
   For a track file a CPL IAB Virtual Track references, ST 2067-201 adds its
   references (2021: ST 377-1:2019; 2026: ST 377-1:2019 and ST 377-4:2021).
   When these do not leave one edition, the newest is applied, announced for

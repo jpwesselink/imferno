@@ -393,6 +393,10 @@ export interface Location {
    */
   segment?: number | null;
   /**
+   * Segment Id (`urn:uuid:…`) if applicable
+   */
+  segment_id?: string | null;
+  /**
    * Sequence UUID if applicable
    */
   sequence_id?: string | null;

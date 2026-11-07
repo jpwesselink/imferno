@@ -3,8 +3,9 @@
 //! Implements the IAB (Immersive Audio Bitstream) plug-in constraints for
 //! SMPTE ST 2067-201:2019 and ST 2067-201:2021.
 //!
-//! Both plug-in validators run App2E base validation (ST 2067-21) internally,
-//! then apply IAB-specific descriptor and sequence constraints.
+//! The plug-in validators apply only IAB constraints. ST 2067-201 does not
+//! reference ST 2067-21; App #2E rules come from the App #2E validator the
+//! CPL's ApplicationIdentification selects, in that edition.
 
 // codes live in iab_codes.rs (declared from validation/mod.rs)
 
@@ -12,7 +13,7 @@ use std::collections::HashSet;
 
 use crate::cpl::{CompositionPlaylist, McaTagSymbol};
 use crate::diagnostics::{Category, Location, Severity, ValidationIssue};
-use crate::validation::{App2E2021, ConstraintsValidator};
+use crate::validation::ConstraintsValidator;
 
 use crate::diagnostics::codes::ValidationCode;
 use crate::validation::iab_codes::{self as iab_codes, IabCode};
@@ -21,7 +22,7 @@ use crate::validation::iab_codes::{self as iab_codes, IabCode};
 
 /// ST 2067-201:2019 IAB Level 0 Plug-in validator.
 ///
-/// Runs App2E base validation plus ST 2067-201:2019-specific IAB constraints.
+/// Applies the ST 2067-201:2019 IAB constraints.
 /// In the 2019 edition ChannelCount shall be the distinguished value 0.
 pub struct AppIabPlugin2019;
 
@@ -32,7 +33,6 @@ impl ConstraintsValidator for AppIabPlugin2019 {
 
     fn validate_cpl(&self, cpl: &CompositionPlaylist) -> Vec<ValidationIssue> {
         let mut issues = Vec::new();
-        App2E2021.validate_all(cpl, true, &mut issues);
         validate_iab_descriptors(cpl, iab_codes::St2067_201_2019::for_code, true, &mut issues);
         validate_iab_sequences(cpl, iab_codes::St2067_201_2019::for_code, &mut issues);
         issues
@@ -41,7 +41,7 @@ impl ConstraintsValidator for AppIabPlugin2019 {
 
 /// ST 2067-201:2021 IAB Level 0 Plug-in validator.
 ///
-/// Runs App2E base validation plus ST 2067-201:2021-specific IAB constraints.
+/// Applies the ST 2067-201:2021 IAB constraints.
 /// In the 2021 edition ChannelCount is ignored (not checked).
 ///
 /// **Selected by explicit caller request, not by document namespace.**
@@ -61,7 +61,6 @@ impl ConstraintsValidator for AppIabPlugin2021 {
 
     fn validate_cpl(&self, cpl: &CompositionPlaylist) -> Vec<ValidationIssue> {
         let mut issues = Vec::new();
-        App2E2021.validate_all(cpl, true, &mut issues);
         validate_iab_descriptors(
             cpl,
             iab_codes::St2067_201_2021::for_code,

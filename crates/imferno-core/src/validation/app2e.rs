@@ -2275,17 +2275,32 @@ impl App2E {
         }
 
         // Constraint applies: each segment's duration (in edit units) must be divisible by 5.
-        // Segment duration = sum of effective durations of resources in the main image track.
+        // The rule is about the Segment, not individual resources
+        // (https://github.com/Netflix/photon/issues/160, /209). ST 2067-3:
+        // all Sequences of a Segment have the Segment's duration, and a
+        // Sequence lasts the sum over its resources of SourceDuration
+        // (default IntrinsicDuration - EntryPoint) x RepeatCount (default 1).
+        // The first MainImageSequence is used; its edit rate is the
+        // Composition Edit Rate.
         for (seg_idx, segment) in cpl.segment_list.segments.iter().enumerate() {
-            let mut segment_duration: u64 = 0;
-            for seq in &segment.sequence_list.main_image_sequences {
-                for resource in &seq.resource_list.resources {
-                    let effective = resource
-                        .source_duration
-                        .unwrap_or(resource.intrinsic_duration);
-                    segment_duration += effective;
-                }
-            }
+            let segment_duration: u64 = segment
+                .sequence_list
+                .main_image_sequences
+                .first()
+                .map(|seq| {
+                    seq.resource_list
+                        .resources
+                        .iter()
+                        .map(|r| {
+                            let source = r.source_duration.unwrap_or_else(|| {
+                                r.intrinsic_duration
+                                    .saturating_sub(r.entry_point.unwrap_or(0))
+                            });
+                            source.saturating_mul(r.repeat_count.unwrap_or(1))
+                        })
+                        .fold(0u64, u64::saturating_add)
+                })
+                .unwrap_or(0);
 
             if segment_duration > 0 && !segment_duration.is_multiple_of(5) {
                 issues.push(

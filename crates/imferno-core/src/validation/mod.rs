@@ -3630,6 +3630,78 @@ mod tests {
         );
     }
 
+    /// Segment duration is the Sequence duration: per resource SourceDuration
+    /// (default IntrinsicDuration - EntryPoint) x RepeatCount, summed
+    /// (https://github.com/Netflix/photon/issues/160, /209).
+    fn segment_issues_for_resource(
+        intrinsic: u64,
+        entry_point: Option<u64>,
+        source_duration: Option<u64>,
+        repeat_count: Option<u64>,
+    ) -> usize {
+        let mut cpl = cpl_with_audio_and_segment_duration(
+            EditRate::new(48000, 1),
+            EditRate::new(30000, 1001),
+            &[intrinsic],
+        );
+        let r = &mut cpl.segment_list.segments[0]
+            .sequence_list
+            .main_image_sequences[0]
+            .resource_list
+            .resources[0];
+        r.entry_point = entry_point;
+        r.source_duration = source_duration;
+        r.repeat_count = repeat_count;
+        App2E2023
+            .validate_cpl(&cpl)
+            .iter()
+            .filter(|i| i.code.contains("SegmentDurationMultiple"))
+            .count()
+    }
+
+    #[test]
+    fn app2e_segment_duration_subtracts_entry_point() {
+        // Intrinsic 12, EntryPoint 2, no SourceDuration: 10 edit units.
+        assert_eq!(segment_issues_for_resource(12, Some(2), None, None), 0);
+        // Intrinsic 10, EntryPoint 2: 8 edit units.
+        assert_eq!(segment_issues_for_resource(10, Some(2), None, None), 1);
+    }
+
+    #[test]
+    fn app2e_segment_duration_multiplies_repeat_count() {
+        // SourceDuration 3 x RepeatCount 5 = 15.
+        assert_eq!(segment_issues_for_resource(3, None, Some(3), Some(5)), 0);
+        // SourceDuration 5 x RepeatCount 2 = 10, EntryPoint ignored when
+        // SourceDuration is present.
+        assert_eq!(segment_issues_for_resource(9, Some(4), Some(5), Some(2)), 0);
+        // SourceDuration 4 x RepeatCount 2 = 8.
+        assert_eq!(segment_issues_for_resource(4, None, Some(4), Some(2)), 1);
+    }
+
+    #[test]
+    fn app2e_segment_duration_uses_one_sequence_not_the_sum() {
+        // ST 2067-3: Sequences in a Segment share its duration, so the
+        // Segment duration is one Sequence's, not the sum over Sequences.
+        // Sequences of 6 and 4 sum to 10, but the Segment is 6 long.
+        let mut cpl = cpl_with_audio_and_segment_duration(
+            EditRate::new(48000, 1),
+            EditRate::new(30000, 1001),
+            &[6, 4],
+        );
+        let second = cpl.segment_list.segments.remove(1);
+        let seq = second.sequence_list.main_image_sequences.into_iter().next();
+        cpl.segment_list.segments[0]
+            .sequence_list
+            .main_image_sequences
+            .extend(seq);
+        let n = App2E2023
+            .validate_cpl(&cpl)
+            .iter()
+            .filter(|i| i.code.contains("SegmentDurationMultiple"))
+            .count();
+        assert_eq!(n, 1);
+    }
+
     /// §7.4: Same non-integer sample rate, but segment duration is 10 (multiple of 5) → pass.
     #[test]
     fn app2e_allows_segment_duration_multiple_of_5() {

@@ -1,11 +1,12 @@
 //! Rule table: SMPTE ST 2067-202 (ISXD Plug-in).
 //!
-//! Generated from the pre-C0 per-edition code enums; edit by hand from now on.
+//! Every row checked against the text of its edition (C1/C4).
 
 #![allow(non_upper_case_globals)]
 
-use crate::diagnostics::rule::{row, AnyRule, Rule, Spec};
-use crate::diagnostics::{Category, Severity};
+use crate::diagnostics::rule::Strength::Shall;
+use crate::diagnostics::rule::{checked, AnyRule, Rule, Spec};
+use crate::diagnostics::Category;
 
 crate::diagnostics::rule::editions! {
     /// Editions of SMPTE ST 2067-202 (ISXD Plug-in) imferno knows.
@@ -23,7 +24,7 @@ pub static NamespaceUriMissing: Rule<E> = Rule {
     description: "ISXDDataEssenceDescriptor: NamespaceURI shall be present (§9.2 Table 5, Req).",
     example: Some("<ISXDDataEssenceDescriptor>  <!-- missing required <NamespaceURI>… --> </ISXDDataEssenceDescriptor>"),
     editions: &[
-        row(E::V2023, "9.2", Severity::Error),
+        checked(E::V2023, "9.2", Shall),
     ],
 };
 
@@ -33,7 +34,7 @@ pub static ISXDSequenceNoResources: Rule<E> = Rule {
     category: Category::Data,
     description: "ISXDSequence shall contain at least one Resource.",
     example: Some("<ISXDSequence><ResourceList/></ISXDSequence>"),
-    editions: &[row(E::V2023, "6", Severity::Error)],
+    editions: &[checked(E::V2023, "6", Shall)],
 };
 
 /// ISXDSequence Resource.SourceEncoding does not reference an ISXDDataEssenceDescriptor.
@@ -43,7 +44,7 @@ pub static ISXDSequenceSourceEncodingInvalid: Rule<E> = Rule {
     description: "ISXDSequence Resource.SourceEncoding does not reference an ISXDDataEssenceDescriptor.",
     example: Some("<ISXDSequence>…<SourceEncoding>urn:uuid:…</SourceEncoding></ISXDSequence>  <!-- UUID doesn't resolve to an ISXDDataEssenceDescriptor -->"),
     editions: &[
-        row(E::V2023, "6", Severity::Error),
+        checked(E::V2023, "6", Shall).interpret("Each Resource of an ISXDSequence shall reference a single ISXD Track File; imferno checks this through the Resource's SourceEncoding, which must resolve to an ISXDDataEssenceDescriptor.", None),
     ],
 };
 
@@ -54,7 +55,7 @@ pub static NamespaceUriMismatch: Rule<E> = Rule {
     description: "All ISXD Track Files referenced by an ISXD Virtual Track shall have an identical NamespaceURI value (§6).",
     example: Some("Two ISXDSequences with the same TrackId point at descriptors whose <NamespaceURI> differs."),
     editions: &[
-        row(E::V2023, "6", Severity::Error),
+        checked(E::V2023, "6", Shall),
     ],
 };
 
@@ -65,7 +66,7 @@ pub static EditRateMismatch: Rule<E> = Rule {
     description: "The Edit Rate of an ISXD Virtual Track shall be equal to the Edit Rate of the Main Image Virtual Track (§6).",
     example: Some("ISXDSequence Resource with <EditRate>48 1</EditRate> in a Composition whose Main Image Virtual Track runs at 24000/1001."),
     editions: &[
-        row(E::V2023, "6", Severity::Error),
+        checked(E::V2023, "6", Shall),
     ],
 };
 
@@ -76,7 +77,7 @@ pub static ISXDVirtualTrackMissing: Rule<E> = Rule {
     description: "A Composition that references an ISXD Track File shall contain one or more ISXD Virtual Tracks (§6).",
     example: Some("A MainImageSequence Resource whose SourceEncoding resolves to an ISXDDataEssenceDescriptor, in a CPL with no ISXDSequence."),
     editions: &[
-        row(E::V2023, "6", Severity::Error),
+        checked(E::V2023, "6", Shall),
     ],
 };
 
@@ -87,7 +88,7 @@ pub static DataEssenceCodingMissing: Rule<E> = Rule {
     description: "ISXDDataEssenceDescriptor: DataEssenceCoding shall be present (§9.3).",
     example: Some("<ISXDDataEssenceDescriptor>  <!-- no <DataEssenceCoding> UL --> </ISXDDataEssenceDescriptor>"),
     editions: &[
-        row(E::V2023, "9.3", Severity::Error),
+        checked(E::V2023, "9.3", Shall),
     ],
 };
 
@@ -98,7 +99,7 @@ pub static DataEssenceCodingInvalid: Rule<E> = Rule {
     description: "ISXDDataEssenceDescriptor: DataEssenceCoding shall be the UTF-8 Text Data Essence Coding UL (§9.3 Table 6).",
     example: Some("<DataEssenceCoding>urn:smpte:ul:060e2b34.04010105.0e090607.01010103</DataEssenceCoding>  <!-- container UL instead of 0e090606 coding UL -->"),
     editions: &[
-        row(E::V2023, "9.3", Severity::Error),
+        checked(E::V2023, "9.3", Shall).interpret("The UL is compared ignoring its version byte (byte 8).", Some("https://github.com/Netflix/photon/issues/408")),
     ],
 };
 

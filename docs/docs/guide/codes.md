@@ -280,14 +280,14 @@ Unmarked rows are carried over from earlier catalogues and not yet checked.
 
 | Rule | Description | Category | 2023 |
 |------|-------------|----------|------|
-| `ST2067-202/NamespaceUriMissing` | ISXDDataEssenceDescriptor: NamespaceURI shall be present (§9.2 Table 5, Req). | Data | 9.2 error |
-| `ST2067-202/ISXDSequenceNoResources` | ISXDSequence shall contain at least one Resource. | Data | 6 error |
-| `ST2067-202/ISXDSequenceSourceEncodingInvalid` | ISXDSequence Resource.SourceEncoding does not reference an ISXDDataEssenceDescriptor. | Data | 6 error |
-| `ST2067-202/NamespaceUriMismatch` | All ISXD Track Files referenced by an ISXD Virtual Track shall have an identical NamespaceURI value (§6). | Data | 6 error |
-| `ST2067-202/EditRateMismatch` | The Edit Rate of an ISXD Virtual Track shall be equal to the Edit Rate of the Main Image Virtual Track (§6). | Data | 6 error |
-| `ST2067-202/ISXDVirtualTrackMissing` | A Composition that references an ISXD Track File shall contain one or more ISXD Virtual Tracks (§6). | Data | 6 error |
-| `ST2067-202/DataEssenceCodingMissing` | ISXDDataEssenceDescriptor: DataEssenceCoding shall be present (§9.3). | Data | 9.3 error |
-| `ST2067-202/DataEssenceCodingInvalid` | ISXDDataEssenceDescriptor: DataEssenceCoding shall be the UTF-8 Text Data Essence Coding UL (§9.3 Table 6). | Data | 9.3 error |
+| `ST2067-202/NamespaceUriMissing` | ISXDDataEssenceDescriptor: NamespaceURI shall be present (§9.2 Table 5, Req). | Data | 9.2✓ error |
+| `ST2067-202/ISXDSequenceNoResources` | ISXDSequence shall contain at least one Resource. | Data | 6✓ error |
+| `ST2067-202/ISXDSequenceSourceEncodingInvalid` | ISXDSequence Resource.SourceEncoding does not reference an ISXDDataEssenceDescriptor. | Data | 6✓ error |
+| `ST2067-202/NamespaceUriMismatch` | All ISXD Track Files referenced by an ISXD Virtual Track shall have an identical NamespaceURI value (§6). | Data | 6✓ error |
+| `ST2067-202/EditRateMismatch` | The Edit Rate of an ISXD Virtual Track shall be equal to the Edit Rate of the Main Image Virtual Track (§6). | Data | 6✓ error |
+| `ST2067-202/ISXDVirtualTrackMissing` | A Composition that references an ISXD Track File shall contain one or more ISXD Virtual Tracks (§6). | Data | 6✓ error |
+| `ST2067-202/DataEssenceCodingMissing` | ISXDDataEssenceDescriptor: DataEssenceCoding shall be present (§9.3). | Data | 9.3✓ error |
+| `ST2067-202/DataEssenceCodingInvalid` | ISXDDataEssenceDescriptor: DataEssenceCoding shall be the UTF-8 Text Data Essence Coding UL (§9.3 Table 6). | Data | 9.3✓ error |
 
 ## XML Schema validation
 

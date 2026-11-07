@@ -662,14 +662,14 @@ ST2067-201/EditRateNotIntegerMultiple | 2026 | ST2067-201:2026:6.2.1/EditRateNot
 ST2067-201/IabChannelSubDescriptorRecommended | 2019 | absent
 ST2067-201/IabChannelSubDescriptorRecommended | 2021 | absent
 ST2067-201/IabChannelSubDescriptorRecommended | 2026 | ST2067-201:2026:5.10.2/IabChannelSubDescriptorRecommended | Warning | should | unverified
-ST2067-202/NamespaceUriMissing | 2023 | ST2067-202:2023:9.2/NamespaceUriMissing | Error | shall | unverified
-ST2067-202/ISXDSequenceNoResources | 2023 | ST2067-202:2023:6/ISXDSequenceNoResources | Error | shall | unverified
-ST2067-202/ISXDSequenceSourceEncodingInvalid | 2023 | ST2067-202:2023:6/ISXDSequenceSourceEncodingInvalid | Error | shall | unverified
-ST2067-202/NamespaceUriMismatch | 2023 | ST2067-202:2023:6/NamespaceUriMismatch | Error | shall | unverified
-ST2067-202/EditRateMismatch | 2023 | ST2067-202:2023:6/EditRateMismatch | Error | shall | unverified
-ST2067-202/ISXDVirtualTrackMissing | 2023 | ST2067-202:2023:6/ISXDVirtualTrackMissing | Error | shall | unverified
-ST2067-202/DataEssenceCodingMissing | 2023 | ST2067-202:2023:9.3/DataEssenceCodingMissing | Error | shall | unverified
-ST2067-202/DataEssenceCodingInvalid | 2023 | ST2067-202:2023:9.3/DataEssenceCodingInvalid | Error | shall | unverified
+ST2067-202/NamespaceUriMissing | 2023 | ST2067-202:2023:9.2/NamespaceUriMissing | Error | shall | verified
+ST2067-202/ISXDSequenceNoResources | 2023 | ST2067-202:2023:6/ISXDSequenceNoResources | Error | shall | verified
+ST2067-202/ISXDSequenceSourceEncodingInvalid | 2023 | ST2067-202:2023:6/ISXDSequenceSourceEncodingInvalid | Error | shall | verified
+ST2067-202/NamespaceUriMismatch | 2023 | ST2067-202:2023:6/NamespaceUriMismatch | Error | shall | verified
+ST2067-202/EditRateMismatch | 2023 | ST2067-202:2023:6/EditRateMismatch | Error | shall | verified
+ST2067-202/ISXDVirtualTrackMissing | 2023 | ST2067-202:2023:6/ISXDVirtualTrackMissing | Error | shall | verified
+ST2067-202/DataEssenceCodingMissing | 2023 | ST2067-202:2023:9.3/DataEssenceCodingMissing | Error | shall | verified
+ST2067-202/DataEssenceCodingInvalid | 2023 | ST2067-202:2023:9.3/DataEssenceCodingInvalid | Error | shall | verified
 XSD/ElementMissing | CPL-2013 | XSD:CPL-2013/ElementMissing | Error | shall | unverified
 XSD/ElementMissing | CPL-2016 | XSD:CPL-2016/ElementMissing | Error | shall | unverified
 XSD/ElementMissing | PKL-2016 | XSD:PKL-2016/ElementMissing | Error | shall | unverified

@@ -4732,4 +4732,55 @@ mod tests {
             }
         }
     }
+
+    /// Copy the XML documents (not the MXFs) of a test-data package into a
+    /// fresh temporary directory, so a test can edit them.
+    fn copy_xml_package(name: &str) -> tempfile::TempDir {
+        let dir = tempfile::TempDir::new().unwrap();
+        for entry in std::fs::read_dir(test_data(name)).unwrap() {
+            let path = entry.unwrap().path();
+            if path.extension().and_then(|e| e.to_str()) == Some("xml") {
+                std::fs::copy(&path, dir.path().join(path.file_name().unwrap())).unwrap();
+            }
+        }
+        dir
+    }
+
+    fn skip_disk_options() -> ValidationOptions {
+        ValidationOptions {
+            skip_disk_checks: true,
+            ..meridian_test_options()
+        }
+    }
+
+    /// The MERIDIAN CPL file in a copied package.
+    const MERIDIAN_CPL: &str = "CPL_0eb3d1b9-b77b-4d3f-bbe5-7c69b15dca85.xml";
+
+    /// DanglingEssenceDescriptor also runs at package level with
+    /// `skip_disk_checks` (the CLI's `--skip-disk-checks`, formerly
+    /// `--xml-only`): it needs only the CPL XML.
+    /// https://github.com/jpwesselink/imferno/issues/82
+    #[test]
+    fn dangling_essence_descriptor_reported_with_skip_disk_checks() {
+        let dir = copy_xml_package("MERIDIAN_Netflix_Photon_161006");
+        let cpl_path = dir.path().join(MERIDIAN_CPL);
+        let xml = std::fs::read_to_string(&cpl_path).unwrap().replacen(
+            "</EssenceDescriptorList>",
+            "<EssenceDescriptor><Id>urn:uuid:11111111-2222-4333-8444-555555555555</Id>\
+             </EssenceDescriptor></EssenceDescriptorList>",
+            1,
+        );
+        std::fs::write(&cpl_path, xml).unwrap();
+        let package = Imferno::parse(read_dir(dir.path()).unwrap()).unwrap();
+        let report = package.validate(&skip_disk_options());
+        let dangling: Vec<_> = report
+            .errors
+            .iter()
+            .filter(|i| i.code.ends_with("/DanglingEssenceDescriptor"))
+            .collect();
+        assert_eq!(dangling.len(), 1, "{:#?}", report.errors);
+        assert!(dangling[0]
+            .message
+            .contains("11111111-2222-4333-8444-555555555555"));
+    }
 }

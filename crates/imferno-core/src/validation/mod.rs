@@ -1617,12 +1617,12 @@ fn validate_digital_signature_notice(
     }
 }
 
-/// ST 2067-2 §6.4.2: Every EssenceDescriptor in the EssenceDescriptorList shall be
+/// ST 2067-3 §6.1.10.1 (2013, 2016, 2020): Every EssenceDescriptor in the EssenceDescriptorList shall be
 /// referenced by at least one Resource's SourceEncoding element.
 ///
 /// An ED that exists in the EDL but is not referenced by any Resource is a
 /// "dangling" descriptor — it occupies space and implies metadata but has no
-/// corresponding essence in the composition. This is rejected by ST 2067-2.
+/// corresponding essence in the composition. ST 2067-3 forbids it.
 fn validate_dangling_essence_descriptors(
     cpl: &CompositionPlaylist,
     code: fn(CoreConstraintsCode) -> &'static str,
@@ -1700,7 +1700,7 @@ fn validate_dangling_essence_descriptors(
                     code(CoreConstraintsCode::DanglingEssenceDescriptor),
                     format!(
                         "EssenceDescriptor {} is present in EssenceDescriptorList but not \
-                         referenced by any Resource's SourceEncoding (ST 2067-2 §6.4.2)",
+                         referenced by any Resource's SourceEncoding (ST 2067-3 §6.1.10.1)",
                         id
                     ),
                 )
@@ -4215,6 +4215,70 @@ mod tests {
                 "{}: SourceDuration 0 is allowed by ST 2067-3 6.11.6: {:#?}",
                 edition.spec_id(),
                 issues,
+            );
+        }
+    }
+
+    /// ST 2067-3 §6.1.10.1 requires each EssenceDescriptor to be referenced
+    /// through its Id by at least one TrackFileResource. A Resource with
+    /// SourceDuration 0 is still such a Resource, so the descriptor it
+    /// references is not dangling. A descriptor nobody references is.
+    /// https://github.com/jpwesselink/imferno/issues/82
+    #[test]
+    fn dangling_essence_descriptor_counts_zero_duration_resource_as_reference() {
+        let empty_ed = |id| EssenceDescriptor {
+            id,
+            rgba_descriptor: None,
+            cdci_descriptor: None,
+            wave_pcm_descriptor: None,
+            dc_timed_text_descriptor: None,
+            iab_essence_descriptor: None,
+            isxd_data_essence_descriptor: None,
+        };
+        let slate_ed = uuid(10);
+        let unused_ed = uuid(11);
+        let mut cpl = minimal_cpl();
+        cpl.essence_descriptor_list = Some(EssenceDescriptorList {
+            essence_descriptors: vec![empty_ed(slate_ed), empty_ed(unused_ed)],
+        });
+        cpl.segment_list.segments[0]
+            .sequence_list
+            .main_image_sequences
+            .push(MainImageSequence {
+                id: uuid(3),
+                track_id: uuid(4),
+                resource_list: ResourceList {
+                    resources: vec![Resource {
+                        id: uuid(99),
+                        annotation: None,
+                        edit_rate: None,
+                        intrinsic_duration: 24,
+                        entry_point: None,
+                        source_duration: Some(0),
+                        source_encoding: Some(slate_ed),
+                        track_file_id: Some(uuid(50)),
+                        repeat_count: None,
+                        key_id: None,
+                        hash: None,
+                        markers: vec![],
+                    }],
+                },
+            });
+        for edition in [
+            &CoreConstraints2013 as &dyn ConstraintsValidator,
+            &CoreConstraints2016,
+            &CoreConstraints2020,
+        ] {
+            let dangling: Vec<_> = edition
+                .validate_cpl(&cpl)
+                .into_iter()
+                .filter(|i| i.code.ends_with("/DanglingEssenceDescriptor"))
+                .collect();
+            assert_eq!(dangling.len(), 1, "{}: {dangling:#?}", edition.spec_id());
+            assert!(
+                dangling[0].message.contains(&unused_ed.to_string()),
+                "{}: only the unreferenced descriptor is dangling: {dangling:#?}",
+                edition.spec_id(),
             );
         }
     }

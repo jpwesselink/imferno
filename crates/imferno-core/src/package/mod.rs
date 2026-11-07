@@ -3129,6 +3129,12 @@ mod tests {
             "SoundfieldGroupLinkIDMismatch".to_string(),
             crate::diagnostics::rules::RuleSeverity::Off,
         );
+        // MERIDIAN's ContentKind "Test" is not a Table 3 value (Table 3
+        // lists lowercase "test"; ST 2067-3 §6.1.8 match is exact).
+        rules.set_raw(
+            "ContentKindUnknown".to_string(),
+            crate::diagnostics::rules::RuleSeverity::Off,
+        );
         ValidationOptions {
             rules,
             ..ValidationOptions::default()

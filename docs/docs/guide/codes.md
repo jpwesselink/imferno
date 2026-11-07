@@ -127,7 +127,7 @@ Unmarked rows are carried over from earlier catalogues and not yet checked.
 |------|-------------|----------|------|------|
 | `ST2067-3/ContentTitleEmpty` | ContentTitle is empty; it shall contain a human-readable title. | Metadata | 6.1.7✓ error | 6.1.7✓ error |
 | `ST2067-3/ResourceListEmpty` | A Sequence has an empty ResourceList; the SequenceType schema requires one or more Resource elements. | Structure | 6.10✓ error | 6.10✓ error |
-| `ST2067-3/ContentKindUnknown` | ContentKind uses an unrecognized value under the SMPTE scope. | Metadata | 6.1.8✓ warning | 6.1.8✓ warning |
+| `ST2067-3/ContentKindUnknown` | ContentKind uses an unrecognized value under the SMPTE scope. | Metadata | 6.1.8✓ error | 6.1.8✓ error |
 | `ST2067-3/SourceEncodingNoEssenceDescriptorList` | SourceEncoding present but EssenceDescriptorList absent. | Reference | 6.12.1✓ error | 6.12.1✓ error |
 | `ST2067-3/SourceEncodingUnresolved` | SourceEncoding does not match any EssenceDescriptor Id. | Reference | 6.12.1✓ error | 6.12.1✓ error |
 | `ST2067-3/EssenceDescriptorListEmpty` | EssenceDescriptorList present but contains no descriptors. | Structure | 6.1✓ error | 6.1✓ error |

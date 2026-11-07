@@ -1204,6 +1204,27 @@ mod tests {
         assert!(has_content_kind_unknown(&cpl));
     }
 
+    /// ST 2067-3 §6.1.8: a case-only difference is not a match. MERIDIAN's
+    /// "Test" is not Table 3's "test"; it is an Error in both editions.
+    #[test]
+    fn content_kind_case_only_difference_is_an_error() {
+        for ns in [
+            CplNamespace::Smpte2067_3_2013,
+            CplNamespace::Smpte2067_3_2016,
+        ] {
+            let cpl = cpl_with_content_kind(ns.clone(), None, "Test");
+            let issues = validate_cpl(&cpl);
+            let ck: Vec<_> = issues
+                .iter()
+                .filter(|i| i.code.contains("ContentKindUnknown"))
+                .collect();
+            assert_eq!(ck.len(), 1, "'Test' ({ns:?}) must be flagged: {issues:#?}");
+            assert_eq!(ck[0].severity, crate::diagnostics::Severity::Error);
+            let ok = cpl_with_content_kind(ns.clone(), None, "test");
+            assert!(!has_content_kind_unknown(&ok), "'test' is a Table 3 value");
+        }
+    }
+
     /// ST 2067-3 §6.1.8: the value "shall match" a Table 3 value (2013 p11,
     /// 2016 p10). Matching is exact, so case variants and synonyms that the
     /// parser used to fold are not Table 3 values.

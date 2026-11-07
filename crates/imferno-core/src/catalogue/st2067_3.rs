@@ -6,10 +6,7 @@
 
 use crate::diagnostics::rule::Strength::{May, Shall};
 use crate::diagnostics::rule::{checked, AnyRule, Rule, Spec};
-use crate::diagnostics::{Category, Severity};
-
-/// Kept below the strength's Error: see the C1 report.
-const CONTENT_KIND_REASON: &str = "Kept at Warning: widely exchanged packages, including the Netflix Meridian reference IMP, carry capitalised values such as \"Test\"; an Error would fail them on a display-only field.";
+use crate::diagnostics::Category;
 
 crate::diagnostics::rule::editions! {
     /// Editions of SMPTE ST 2067-3 (Composition Playlist) imferno knows.
@@ -28,8 +25,8 @@ pub static ContentKindUnknown: Rule<E> = Rule {
     description: "ContentKind uses an unrecognized value under the SMPTE scope.",
     example: Some("<ContentKind>Banana</ContentKind>  <!-- default scope: Table 3 values only -->"),
     editions: &[
-        checked(E::V2013, "6.1.8", Shall).severity(Severity::Warning).reason(CONTENT_KIND_REASON).interpret("Exact, case-sensitive match against Table 3 under the default scope; other scopes are out of scope.", Some("https://github.com/Netflix/photon/issues/361")),
-        checked(E::V2016, "6.1.8", Shall).severity(Severity::Warning).reason(CONTENT_KIND_REASON).interpret("Exact, case-sensitive match against Table 3 (default scope) or Table 4 (2016#content-kind scope); other scopes are out of scope.", Some("https://github.com/Netflix/photon/issues/361")),
+        checked(E::V2013, "6.1.8", Shall).interpret("'match' read as exact, case-sensitive comparison against the Table 3/4 tokens (the text does not define case-insensitive matching). Netflix Photon (d5fe149) does not check ContentKind values at all.", None),
+        checked(E::V2016, "6.1.8", Shall).interpret("'match' read as exact, case-sensitive comparison against the Table 3/4 tokens (the text does not define case-insensitive matching). Netflix Photon (d5fe149) does not check ContentKind values at all.", None),
     ],
 };
 

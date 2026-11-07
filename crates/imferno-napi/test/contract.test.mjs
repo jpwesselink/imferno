@@ -19,6 +19,8 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { createGenerator } from "ts-json-schema-generator";
 import Ajv from "ajv";
+import ts from "typescript";
+import { inspectDeclarations } from "../../../scripts/dts-contract.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const pkgDir = resolve(here, "..");
@@ -89,13 +91,14 @@ describe("declarations", () => {
     execFileSync(process.execPath, [tsc, "-p", join(here, "tsconfig.json")], { stdio: "pipe" });
   }, 120_000);
 
-  it("contain no `any`", () => {
-    for (const f of ["index.d.ts", "types.d.ts", "../imferno-wasm/index.d.ts", "../imferno-wasm/types.d.ts"]) {
-      const code = readFileSync(join(pkgDir, f), "utf-8")
-        .replace(/\/\*[\s\S]*?\*\//g, "")
-        .replace(/\/\/.*$/gm, "");
-      expect(code, f).not.toMatch(/\bany\b/);
-    }
+  it("reach no `any` from any export (functions, properties, nested types)", () => {
+    const { anyPaths } = inspectDeclarations(ts, join(pkgDir, "index.d.ts"));
+    expect(anyPaths).toEqual([]);
+  });
+
+  it("declare exactly the values the module exports", () => {
+    const { valueExports } = inspectDeclarations(ts, join(pkgDir, "index.d.ts"));
+    expect(valueExports).toEqual(Object.keys(api).sort());
   });
 
 });

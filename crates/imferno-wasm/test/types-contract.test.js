@@ -8,6 +8,11 @@ import { fileURLToPath } from 'url';
 import path from 'path';
 import Ajv from 'ajv';
 import { createGenerator } from 'ts-json-schema-generator';
+import { execFileSync } from 'child_process';
+import { createRequire } from 'module';
+import ts from 'typescript';
+import { inspectDeclarations } from '../../../scripts/dts-contract.mjs';
+import * as api from '../index.js';
 
 import wasmInit, * as wasm from '../imferno_wasm.js';
 
@@ -63,6 +68,23 @@ beforeAll(async () => {
         if (!validators[t]) throw new Error(`type ${t} not found in types.d.ts`);
     }
 }, 120_000);
+
+describe('declarations', () => {
+    const entry = path.join(__dirname, '..', 'index.d.ts');
+
+    it('type-check (tsc, strict) including the type-level contract', () => {
+        const tsc = createRequire(import.meta.url).resolve('typescript/bin/tsc');
+        execFileSync(process.execPath, [tsc, '-p', path.join(__dirname, 'tsconfig.json')], { stdio: 'pipe' });
+    }, 120_000);
+
+    it('reach no `any` from any export (functions, properties, nested types)', () => {
+        expect(inspectDeclarations(ts, entry).anyPaths).toEqual([]);
+    });
+
+    it('declare exactly the values index.js exports', () => {
+        expect(inspectDeclarations(ts, entry).valueExports).toEqual(Object.keys(api).sort());
+    });
+});
 
 describe('WASM outputs conform to types.d.ts', () => {
     it('finds the test-data packages', () => {

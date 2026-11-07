@@ -641,6 +641,10 @@ impl fmt::Display for ValidationProfile {
 /// the full API.
 pub mod codes;
 
+/// Per-edition rule model (rules, edition tables, strength).
+pub mod rule;
+pub use rule::{RuleId, Spec, Strength};
+
 /// ESLint-style per-rule severity overrides for `ValidationReport`.
 pub mod rules;
 pub use rules::{RuleSeverity, RulesConfig};

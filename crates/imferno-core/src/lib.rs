@@ -1,6 +1,7 @@
 //! imferno-core — SMPTE ST 2067 IMF parser and validator.
 
 pub mod assetmap;
+pub mod catalogue;
 pub mod cpl;
 pub mod diagnostics;
 pub mod mxf;

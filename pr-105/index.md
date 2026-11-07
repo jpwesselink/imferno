@@ -5,11 +5,11 @@
 [SMPTE ST-2067](https://www.smpte.org/standards/st2067)
 for Rust and JavaScript.
 
-Parse, validate, and inspect IMF packages. CLI, Rust, Node.js, and WebAssembly for the browser.
+Parse and validate IMF packages. CLI, Rust, Node.js, and WebAssembly for the browser.
 
 [### Validates locally
 
-The WebAssembly build validates entirely in the browser. Nothing is uploaded, there is no server, and no log of anyone's titles — so you stay inside your confidentiality agreements with studios.
+The WebAssembly build validates entirely in the browser. Nothing is uploaded, there is no server and no log of anyone's titles — honoring confidentiality.
 
 ](/imferno/pr-105/reference/wasm)[### Strict, and yours to tune
 

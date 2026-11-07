@@ -30,7 +30,9 @@ severities; when several keys match a finding, the most specific wins:
 | `ST2067-3:*` | every rule of a spec |
 | `source:XsdLayer` | every finding of a source (`XsdLayer`, `ProseRule`, `EngineInternal`) |
 
-No other wildcards are supported. A package is compliant when no finding has
+No other wildcards are supported. Keys that select nothing (typos, an edition
+the rule does not have) are reported: as a warning on stderr by the CLI, and
+in `rule_warnings` of the `validate*` result. A package is compliant when no finding has
 an effective severity of `error` or above, so lowering a rule to `warn` makes
 validation looser on purpose.
 
@@ -183,4 +185,19 @@ const log = toSarif(validatePath('./my-imp'));
 
 Each rule is a SARIF rule (`ruleId` = `ST2067-3/SegmentDuration`); each spec
 edition is a taxonomy (`ST2067-3:2016`) whose taxa are its clauses, and every
-result points at the clause of the edition that was applied.
+result points at the clause of the edition that was applied. Artifact URIs are
+relative to the package root (`uriBaseId` `PKGROOT`, resolved in
+`originalUriBaseIds`). Findings switched off by a rules config are included
+with a suppression, at their original level.
+
+## Which edition is applied
+
+Package-level rules (Packing List, Asset Map, ingest) are checked against the
+ST 2067-2 edition of the package: `--core-spec` / `coreSpec` when given;
+else an ST 429-8 Packing List means ST 2067-2:2013, and the
+`.../2067-2/2016/PKL` namespace (shared by 2016 and 2020) is resolved by the
+Core Constraints namespace the CPLs declare. When that is not conclusive the
+newest edition is used and an `IMFERNO:Package/EditionAssumed` notice says so.
+ST 2067-2:2013 defines no delivery requirements, so for a 2013 package the
+delivery rules of later editions are not checked and
+`IMFERNO:Package/DeliveryNotChecked` is reported instead.

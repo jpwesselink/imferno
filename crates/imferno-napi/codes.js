@@ -16,6 +16,7 @@ const codes = {
     SoundfieldGroupLinkIDMismatch: "ST377-4/SoundfieldGroupLinkIDMismatch",
   },
   ST429_9: {
+    AssetListEmpty: "ST429-9/AssetListEmpty",
     VolindexMissing: "ST429-9/VolindexMissing",
     MalformedXml: "ST429-9/MalformedXml",
     PathNotRelative: "ST429-9/PathNotRelative",
@@ -28,7 +29,6 @@ const codes = {
     PklIdNotInAssetMap: "ST429-9/PklIdNotInAssetMap",
   },
   ST2067_2: {
-    AssetMap: "ST2067-2/AssetMap",
     AssetMapMalformedXml: "ST2067-2/AssetMapMalformedXml",
     PklMalformedXml: "ST2067-2/PklMalformedXml",
     NoCpls: "ST2067-2/NoCpls",
@@ -239,6 +239,8 @@ const codes = {
     NotValidated: "XSD/NotValidated",
   },
   IMFERNO: {
+    EditionAssumed: "IMFERNO/EditionAssumed",
+    DeliveryNotChecked: "IMFERNO/DeliveryNotChecked",
     OpenFailed: "IMFERNO/OpenFailed",
     PartitionPackParseFailed: "IMFERNO/PartitionPackParseFailed",
     RegXmlConversionFailed: "IMFERNO/RegXmlConversionFailed",

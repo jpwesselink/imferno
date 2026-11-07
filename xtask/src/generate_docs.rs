@@ -48,8 +48,9 @@ that does not change when a clause is corrected; the clause and severity of
 each edition live in the rule's edition table below.
 
 In the tables, each edition column shows the clause and default severity.
-`—` means the edition does not contain the rule. `†` marks a clause that is
-known or suspected to be wrong, or not yet checked against that edition's text.
+`—` means the edition does not contain the rule. `✓` marks a row checked
+against that edition's text; `†` a clause known or suspected to be wrong.
+Unmarked rows are carried over from earlier catalogues and not yet checked.
 
 "#;
 
@@ -90,13 +91,20 @@ fn spec_table(rules: &[&'static dyn AnyRule]) -> String {
         ));
         for row in r.edition_rows() {
             let cell = match &row.clause {
+                None if row.verified => "—✓".to_string(),
                 None => "—".to_string(),
                 Some(c) => {
                     let clause = if c.is_empty() { "·" } else { c.as_str() };
                     format!(
                         "{}{} {}",
                         clause,
-                        if row.verified { "" } else { "†" },
+                        if row.suspect {
+                            "†"
+                        } else if row.verified {
+                            "✓"
+                        } else {
+                            ""
+                        },
                         severity_short(row.default_severity)
                     )
                 }

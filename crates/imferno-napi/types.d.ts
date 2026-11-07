@@ -204,6 +204,18 @@ export type MimeType =
  * Mirrors ESLint's `"off"` / `"warn"` / `"error"` vocabulary, extended with the two IMF severity levels.
  */
 export type RuleSeverity = "off" | "info" | "warn" | "error" | "critical";
+export type RuleValidationReason =
+  | {
+      kind: "unknown_source";
+      variant: string;
+    }
+  | {
+      kind: "matches_nothing";
+    }
+  | {
+      hint: string;
+      kind: "unsupported_pattern";
+    };
 
 /**
  * @deprecated
@@ -1390,7 +1402,11 @@ export interface EditionInfo {
    */
   strengthVerified: boolean;
   /**
-   * `false` when the clause is known or suspected wrong, or not yet checked against this edition's text.
+   * The clause is known or suspected to be wrong.
+   */
+  suspect: boolean;
+  /**
+   * `true` only when the row was checked against this edition's text.
    */
   verified: boolean;
 }
@@ -1420,7 +1436,23 @@ export interface RulesConfig {
  */
 export interface ValidationResult {
   package: Imferno;
+  /**
+   * Keys of the `rules` option that select no rule (typos, unknown editions); they were ignored. Absent when every key matched.
+   */
+  rule_warnings?: RuleValidationWarning[];
   validation: ValidationReport;
+}
+/**
+ * A diagnostic about a `RulesConfig` key that the engine couldn't match.
+ *
+ * Produced by `RulesConfig::validate`. Operators can use these at config-load time to catch typos before any validation work runs.
+ */
+export interface RuleValidationWarning {
+  /**
+   * The configured key that triggered the warning.
+   */
+  key: string;
+  reason: RuleValidationReason;
 }
 
 /** Core constraints (ST 2067-2) edition to validate against. `"auto"` detects it from the CPL. */

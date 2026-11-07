@@ -16,6 +16,7 @@ export declare const codes: {
     readonly SoundfieldGroupLinkIDMismatch: "ST377-4/SoundfieldGroupLinkIDMismatch";
   };
   readonly ST429_9: {
+    readonly AssetListEmpty: "ST429-9/AssetListEmpty";
     readonly VolindexMissing: "ST429-9/VolindexMissing";
     readonly MalformedXml: "ST429-9/MalformedXml";
     readonly PathNotRelative: "ST429-9/PathNotRelative";
@@ -28,7 +29,6 @@ export declare const codes: {
     readonly PklIdNotInAssetMap: "ST429-9/PklIdNotInAssetMap";
   };
   readonly ST2067_2: {
-    readonly AssetMap: "ST2067-2/AssetMap";
     readonly AssetMapMalformedXml: "ST2067-2/AssetMapMalformedXml";
     readonly PklMalformedXml: "ST2067-2/PklMalformedXml";
     readonly NoCpls: "ST2067-2/NoCpls";
@@ -239,6 +239,8 @@ export declare const codes: {
     readonly NotValidated: "XSD/NotValidated";
   };
   readonly IMFERNO: {
+    readonly EditionAssumed: "IMFERNO/EditionAssumed";
+    readonly DeliveryNotChecked: "IMFERNO/DeliveryNotChecked";
     readonly OpenFailed: "IMFERNO/OpenFailed";
     readonly PartitionPackParseFailed: "IMFERNO/PartitionPackParseFailed";
     readonly RegXmlConversionFailed: "IMFERNO/RegXmlConversionFailed";

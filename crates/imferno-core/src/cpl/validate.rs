@@ -87,7 +87,7 @@ const CONTENT_KIND_SCOPE_2016: &str = "http://www.smpte-ra.org/schemas/2067-3/20
 
 /// The CompositionPlaylist's top-level `ContentKind` element in the source XML.
 enum RawContentKind {
-    /// Element present; its text, trimmed.
+    /// Element present; its text exactly as written (xs:string, untrimmed).
     Present(String),
     /// The root element closed without a `ContentKind` child.
     Absent,
@@ -115,7 +115,7 @@ fn raw_content_kind_text(xml: &str) -> Option<RawContentKind> {
             }
             Event::End(_) => {
                 if in_content_kind && depth == 2 {
-                    return Some(RawContentKind::Present(text.trim().to_string()));
+                    return Some(RawContentKind::Present(text));
                 }
                 if depth == 1 {
                     return Some(RawContentKind::Absent);
@@ -170,7 +170,8 @@ fn validate_content_kind_vocabulary(
     // "shall match" is an exact, case-sensitive comparison. `ContentKind::parse`
     // folds case variants and synonyms ("Feature", "PSA", ...) into named
     // variants, so compare the raw element text from the source XML when
-    // it is available. Leading/trailing whitespace is ignored.
+    // it is available. ContentKindType extends xs:string, so leading and
+    // trailing whitespace is part of the value and is not trimmed.
     let raw = cpl
         .source_xml
         .as_deref()
@@ -211,9 +212,9 @@ fn validate_content_kind_vocabulary(
                 Category::Metadata,
                 code(St2067_3Code::ContentKindUnknown),
                 format!(
-                    "ContentKind '{}' is not a recognized value under scope {scope} \
+                    "ContentKind {:?} is not a recognized value under scope {scope} \
                      (expected one of {table}: {})",
-                    cpl.content_kind.kind,
+                    value,
                     allowed.join(", "),
                 ),
             )
@@ -1128,6 +1129,31 @@ mod tests {
                 );
             }
         }
+    }
+
+    /// ContentKindType is an extension of xs:string (ST 2067-3:2013 and 2016
+    /// schema), so whitespace is part of the value and " feature " does not
+    /// "match" the Table 3 value "feature".
+    #[test]
+    fn content_kind_with_surrounding_whitespace_is_flagged() {
+        for ns in [
+            CplNamespace::Smpte2067_3_2013,
+            CplNamespace::Smpte2067_3_2016,
+        ] {
+            for value in [" feature ", "feature ", " feature", "\nfeature\n"] {
+                let cpl = cpl_with_content_kind(ns.clone(), None, value);
+                assert!(
+                    has_content_kind_unknown(&cpl),
+                    "{value:?} ({ns:?}) is not exactly a Table 3 value and must be flagged",
+                );
+            }
+        }
+        let cpl = cpl_with_content_kind(
+            CplNamespace::Smpte2067_3_2016,
+            Some(CK_SCOPE_2016),
+            " documentary",
+        );
+        assert!(has_content_kind_unknown(&cpl));
     }
 
     /// ST 2067-3 §6.1.8: the value "shall match" a Table 3 value (2013 p11,

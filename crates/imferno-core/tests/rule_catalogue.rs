@@ -37,7 +37,9 @@ fn snapshot() -> String {
                     code,
                     row.default_severity,
                     row.strength,
-                    if row.verified {
+                    if row.suspect {
+                        "suspect"
+                    } else if row.verified {
                         "verified"
                     } else {
                         "unverified"

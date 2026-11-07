@@ -220,6 +220,20 @@ fn parse_rule_severity(s: &str) -> Result<imferno_core::diagnostics::rules::Rule
     }
 }
 
+/// Why a rules-config key was flagged by `RulesConfig::validate`.
+fn describe_rule_warning(
+    reason: &imferno_core::diagnostics::rules::RuleValidationReason,
+) -> String {
+    use imferno_core::diagnostics::rules::RuleValidationReason as R;
+    match reason {
+        R::UnknownSource { variant } => format!(
+            "names unknown source `{variant}` (use XsdLayer, ProseRule or EngineInternal); ignored"
+        ),
+        R::MatchesNothing => "matches no rule, edition or spec; ignored".to_string(),
+        R::UnsupportedPattern { hint } => format!("is not supported ({hint}); ignored"),
+    }
+}
+
 fn parse_rules(path: Option<&std::path::Path>, inline: &[String]) -> Result<RulesConfig> {
     let mut rules: RulesConfig = match path {
         Some(p) => {
@@ -294,6 +308,13 @@ async fn cmd_validate(
         "--hash-concurrency must be at least 1"
     );
     let rules = parse_rules(rules_config_path, inline_rules)?;
+    for w in rules.validate() {
+        eprintln!(
+            "warning: rules key `{}` {}",
+            w.key,
+            describe_rule_warning(&w.reason)
+        );
+    }
     let options = make_options(core_spec, app2e_spec, skip_disk_checks, rules);
     let color = use_color() && !matches!(format, OutputFormat::Json | OutputFormat::Sarif);
 
@@ -314,7 +335,10 @@ async fn cmd_validate(
                     ),
                 );
                 let out = if matches!(format, OutputFormat::Sarif) {
-                    imferno_core::diagnostics::to_sarif_json(&validation)
+                    serde_json::to_value(imferno_core::diagnostics::to_sarif_with_root(
+                        &validation,
+                        Some(path),
+                    ))?
                 } else {
                     serde_json::to_value(&validation)?
                 };
@@ -576,9 +600,9 @@ async fn cmd_validate(
                 println!("  FAIL  {}/{} verified, {} failed", verified, total, failed);
             }
         }
-        let spec_ed = result.package.package_edition();
+        let spec_ed = result.package.package_edition(options.core_spec).edition;
         for err in &hash_errs {
-            result.validation.add(err.to_issue(spec_ed));
+            result.validation.extend(err.to_issue(spec_ed));
         }
     }
 
@@ -588,7 +612,10 @@ async fn cmd_validate(
             println!("{}", serde_json::to_string_pretty(&result)?);
         }
         OutputFormat::Sarif => {
-            let log = imferno_core::diagnostics::to_sarif_json(&result.validation);
+            let log = imferno_core::diagnostics::to_sarif_with_root(
+                &result.validation,
+                Some(&result.package.root_path),
+            );
             println!("{}", serde_json::to_string_pretty(&log)?);
         }
         OutputFormat::Summary | OutputFormat::Markdown | OutputFormat::Csv => {

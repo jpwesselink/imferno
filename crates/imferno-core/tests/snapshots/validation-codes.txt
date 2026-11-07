@@ -1,724 +1,722 @@
-ST377-1/NotMxf | 2011 | ST377-1:2011:5/NotMxf | Warning | should | unverified
-ST377-1/ParseError | 2011 | ST377-1:2011:5/ParseError | Warning | should | unverified
-ST377-1/NoEssenceContainers | 2011 | ST377-1:2011:11/NoEssenceContainers | Warning | should | unverified
-ST377-1/Op1a | 2011 | ST377-1:2011:7/Op1a | Error | shall | unverified
-ST377-1/NonHeaderFirstPartition | 2011 | ST377-1:2011:6.4/NonHeaderFirstPartition | Error | shall | unverified
-ST377-1/HeaderPartitionOpen | 2011 | ST377-1:2011:8.3.3/HeaderPartitionOpen | Warning | should | unverified
-ST377-1/MissingHeaderMetadata | 2011 | ST377-1:2011:8.3.3/MissingHeaderMetadata | Error | shall | unverified
-ST377-1/StructuralComponentDurationMissing | 2011 | ST377-1:2011:B.8/StructuralComponentDurationMissing | Error | shall | unverified
-ST377-4/MCALinkIDMissing | 2012 | ST377-4:2012:6.3/MCALinkIDMissing | Error | shall | verified
-ST377-4/SoundfieldGroupLinkIDMismatch | 2012 | ST377-4:2012:6.4.1/SoundfieldGroupLinkIDMismatch | Error | shall | verified
-ST429-9/VolindexMissing | 2014 | ST429-9:2014:7/VolindexMissing | Info | may | unverified
-ST429-9/MalformedXml | 2014 | ST429-9:2014:7/MalformedXml | Error | shall | verified
-ST429-9/PathNotRelative | 2014 | ST429-9:2014:A.2/PathNotRelative | Error | shall | verified
-ST429-9/PathCharacters | 2014 | ST429-9:2014:A.2/PathCharacters | Error | shall | verified
-ST429-9/PathTooLong | 2014 | ST429-9:2014:A.2/PathTooLong | Error | shall | verified
-ST429-9/PathTooManySegments | 2014 | ST429-9:2014:A.2/PathTooManySegments | Error | shall | verified
-ST429-9/PathDuplicate | 2014 | ST429-9:2014:A.2/PathDuplicate | Error | shall | verified
-ST429-9/AssetMapFileName | 2014 | ST429-9:2014:A.4/AssetMapFileName | Error | shall | verified
-ST429-9/AssetMapHasNoPackingList | 2014 | ST429-9:2014:6.3/AssetMapHasNoPackingList | Critical | shall | verified
-ST429-9/PklIdNotInAssetMap | 2014 | ST429-9:2014:6.3/PklIdNotInAssetMap | Error | shall | verified
-ST2067-2/AssetMap | 2013 | absent
-ST2067-2/AssetMap | 2016 | ST2067-2:2016:8.1/AssetMap | Critical | shall | verified
-ST2067-2/AssetMap | 2020 | ST2067-2:2020:7/AssetMap | Critical | shall | verified
+ST377-1/NotMxf | 2011 | ST377-1:2011:5/NotMxf | Warning | should | suspect
+ST377-1/ParseError | 2011 | ST377-1:2011:5/ParseError | Warning | should | suspect
+ST377-1/NoEssenceContainers | 2011 | ST377-1:2011:11/NoEssenceContainers | Warning | should | suspect
+ST377-1/Op1a | 2011 | ST377-1:2011:7/Op1a | Error | shall | suspect
+ST377-1/NonHeaderFirstPartition | 2011 | ST377-1:2011:6.4/NonHeaderFirstPartition | Error | shall | suspect
+ST377-1/HeaderPartitionOpen | 2011 | ST377-1:2011:8.3.3/HeaderPartitionOpen | Warning | should | suspect
+ST377-1/MissingHeaderMetadata | 2011 | ST377-1:2011:8.3.3/MissingHeaderMetadata | Error | shall | suspect
+ST377-1/StructuralComponentDurationMissing | 2011 | ST377-1:2011:B.8/StructuralComponentDurationMissing | Error | shall | suspect
+ST377-4/MCALinkIDMissing | 2012 | ST377-4:2012:6.3/MCALinkIDMissing | Error | shall | unverified
+ST377-4/SoundfieldGroupLinkIDMismatch | 2012 | ST377-4:2012:6.4.1/SoundfieldGroupLinkIDMismatch | Error | shall | unverified
+ST429-9/AssetListEmpty | 2014 | ST429-9:2014:11/AssetListEmpty | Critical | shall | verified
+ST429-9/VolindexMissing | 2014 | ST429-9:2014:7/VolindexMissing | Info | may | suspect
+ST429-9/MalformedXml | 2014 | ST429-9:2014:7/MalformedXml | Error | shall | unverified
+ST429-9/PathNotRelative | 2014 | ST429-9:2014:A.2/PathNotRelative | Error | shall | unverified
+ST429-9/PathCharacters | 2014 | ST429-9:2014:A.2/PathCharacters | Error | shall | unverified
+ST429-9/PathTooLong | 2014 | ST429-9:2014:A.2/PathTooLong | Error | shall | unverified
+ST429-9/PathTooManySegments | 2014 | ST429-9:2014:A.2/PathTooManySegments | Error | shall | unverified
+ST429-9/PathDuplicate | 2014 | ST429-9:2014:A.2/PathDuplicate | Error | shall | unverified
+ST429-9/AssetMapFileName | 2014 | ST429-9:2014:A.4/AssetMapFileName | Error | shall | unverified
+ST429-9/AssetMapHasNoPackingList | 2014 | ST429-9:2014:6.3/AssetMapHasNoPackingList | Critical | shall | unverified
+ST429-9/PklIdNotInAssetMap | 2014 | ST429-9:2014:6.3/PklIdNotInAssetMap | Error | shall | unverified
 ST2067-2/AssetMapMalformedXml | 2013 | absent
 ST2067-2/AssetMapMalformedXml | 2016 | ST2067-2:2016:8.1/AssetMapMalformedXml | Error | shall | verified
-ST2067-2/AssetMapMalformedXml | 2020 | ST2067-2:2020:7/AssetMapMalformedXml | Error | shall | verified
+ST2067-2/AssetMapMalformedXml | 2020 | ST2067-2:2020:7/AssetMapMalformedXml | Error | shall | unverified
 ST2067-2/PklMalformedXml | 2013 | ST2067-2:2013:7.1/PklMalformedXml | Error | shall | verified
 ST2067-2/PklMalformedXml | 2016 | ST2067-2:2016:K/PklMalformedXml | Error | shall | verified
-ST2067-2/PklMalformedXml | 2020 | ST2067-2:2020:9/PklMalformedXml | Error | shall | unverified
+ST2067-2/PklMalformedXml | 2020 | ST2067-2:2020:9/PklMalformedXml | Error | shall | suspect
 ST2067-2/NoCpls | 2013 | absent
 ST2067-2/NoCpls | 2016 | ST2067-2:2016:7.1/NoCpls | Info | may | verified
-ST2067-2/NoCpls | 2020 | ST2067-2:2020:7/NoCpls | Info | may | verified
+ST2067-2/NoCpls | 2020 | ST2067-2:2020:7/NoCpls | Info | may | unverified
 ST2067-2/SizeMismatch | 2013 | absent
 ST2067-2/SizeMismatch | 2016 | ST2067-2:2016:8.3/SizeMismatch | Error | shall | verified
-ST2067-2/SizeMismatch | 2020 | ST2067-2:2020:8.3/SizeMismatch | Error | shall | verified
+ST2067-2/SizeMismatch | 2020 | ST2067-2:2020:8.3/SizeMismatch | Error | shall | unverified
 ST2067-2/FileNotFound | 2013 | ST2067-2:2013:7.1/FileNotFound | Error | shall | verified
 ST2067-2/FileNotFound | 2016 | ST2067-2:2016:8.3/FileNotFound | Error | shall | verified
-ST2067-2/FileNotFound | 2020 | ST2067-2:2020:8.3/FileNotFound | Error | shall | verified
+ST2067-2/FileNotFound | 2020 | ST2067-2:2020:8.3/FileNotFound | Error | shall | unverified
 ST2067-2/ChecksumMismatch | 2013 | absent
 ST2067-2/ChecksumMismatch | 2016 | ST2067-2:2016:8.3/ChecksumMismatch | Error | shall | verified
-ST2067-2/ChecksumMismatch | 2020 | ST2067-2:2020:8.3/ChecksumMismatch | Error | shall | verified
+ST2067-2/ChecksumMismatch | 2020 | ST2067-2:2020:8.3/ChecksumMismatch | Error | shall | unverified
 ST2067-2/UnresolvedUuid | 2013 | absent
 ST2067-2/UnresolvedUuid | 2016 | ST2067-2:2016:8.3/UnresolvedUuid | Error | shall | verified
-ST2067-2/UnresolvedUuid | 2020 | ST2067-2:2020:7/UnresolvedUuid | Error | shall | verified
+ST2067-2/UnresolvedUuid | 2020 | ST2067-2:2020:7/UnresolvedUuid | Error | shall | unverified
 ST2067-2/TrackFileNotInPackage | 2013 | ST2067-2:2013:7.6/TrackFileNotInPackage | Info | may | verified
 ST2067-2/TrackFileNotInPackage | 2016 | ST2067-2:2016:7.1/TrackFileNotInPackage | Info | may | verified
-ST2067-2/TrackFileNotInPackage | 2020 | ST2067-2:2020:7.1/TrackFileNotInPackage | Info | may | verified
+ST2067-2/TrackFileNotInPackage | 2020 | ST2067-2:2020:7.1/TrackFileNotInPackage | Info | may | unverified
 ST2067-2/DuplicateUuid | 2013 | ST2067-2:2013:7.2/DuplicateUuid | Error | shall | verified
 ST2067-2/DuplicateUuid | 2016 | ST2067-2:2016:7.3.1/DuplicateUuid | Error | shall | verified
-ST2067-2/DuplicateUuid | 2020 | ST2067-2:2020:7/DuplicateUuid | Error | shall | verified
+ST2067-2/DuplicateUuid | 2020 | ST2067-2:2020:7/DuplicateUuid | Error | shall | unverified
 ST2067-2/PklUnknownNamespace | 2013 | ST2067-2:2013:7.1/PklUnknownNamespace | Error | shall | verified
 ST2067-2/PklUnknownNamespace | 2016 | ST2067-2:2016:K/PklUnknownNamespace | Error | shall | verified
-ST2067-2/PklUnknownNamespace | 2020 | ST2067-2:2020:9/PklUnknownNamespace | Error | shall | unverified
-ST2067-2/ResourceListEmpty | 2013 | ST2067-2:2013:XSD/ResourceListEmpty | Error | shall | unverified
-ST2067-2/ResourceListEmpty | 2016 | ST2067-2:2016:XSD/ResourceListEmpty | Error | shall | unverified
-ST2067-2/ResourceListEmpty | 2020 | ST2067-2:2020:XSD/ResourceListEmpty | Error | shall | unverified
-ST2067-2/ContentTitle | 2013 | ST2067-2:2013:XSD/ContentTitle | Error | shall | unverified
-ST2067-2/ContentTitle | 2016 | ST2067-2:2016:XSD/ContentTitle | Error | shall | unverified
-ST2067-2/ContentTitle | 2020 | ST2067-2:2020:XSD/ContentTitle | Error | shall | unverified
-ST2067-2/TotalRunningTimeFormat | 2013 | ST2067-2:2013:XSD/TotalRunningTimeFormat | Error | shall | unverified
-ST2067-2/TotalRunningTimeFormat | 2016 | ST2067-2:2016:XSD/TotalRunningTimeFormat | Error | shall | unverified
-ST2067-2/TotalRunningTimeFormat | 2020 | ST2067-2:2020:XSD/TotalRunningTimeFormat | Error | shall | unverified
-ST2067-2/SegmentList | 2013 | ST2067-2:2013:XSD/SegmentList | Critical | shall | unverified
-ST2067-2/SegmentList | 2016 | ST2067-2:2016:XSD/SegmentList | Critical | shall | unverified
-ST2067-2/SegmentList | 2020 | ST2067-2:2020:XSD/SegmentList | Critical | shall | unverified
-ST2067-2/Segment | 2013 | ST2067-2:2013:XSD/Segment | Error | shall | unverified
-ST2067-2/Segment | 2016 | ST2067-2:2016:XSD/Segment | Error | shall | unverified
-ST2067-2/Segment | 2020 | ST2067-2:2020:XSD/Segment | Error | shall | unverified
-ST2067-2/EditRate | 2013 | ST2067-2:2013:XSD/EditRate | Error | shall | unverified
-ST2067-2/EditRate | 2016 | ST2067-2:2016:XSD/EditRate | Error | shall | unverified
-ST2067-2/EditRate | 2020 | ST2067-2:2020:XSD/EditRate | Error | shall | unverified
-ST2067-2/IssueDate | 2013 | ST2067-2:2013:XSD/IssueDate | Error | shall | unverified
-ST2067-2/IssueDate | 2016 | ST2067-2:2016:XSD/IssueDate | Error | shall | unverified
-ST2067-2/IssueDate | 2020 | ST2067-2:2020:XSD/IssueDate | Error | shall | unverified
-ST2067-2/IssueDateFormat | 2013 | ST2067-2:2013:XSD/IssueDateFormat | Warning | should | unverified
-ST2067-2/IssueDateFormat | 2016 | ST2067-2:2016:XSD/IssueDateFormat | Warning | should | unverified
-ST2067-2/IssueDateFormat | 2020 | ST2067-2:2020:XSD/IssueDateFormat | Warning | should | unverified
-ST2067-2/CompositionTimecodeDropFrame | 2013 | ST2067-2:2013:XSD/CompositionTimecodeDropFrame | Error | shall | unverified
-ST2067-2/CompositionTimecodeDropFrame | 2016 | ST2067-2:2016:XSD/CompositionTimecodeDropFrame | Error | shall | unverified
-ST2067-2/CompositionTimecodeDropFrame | 2020 | ST2067-2:2020:XSD/CompositionTimecodeDropFrame | Error | shall | unverified
-ST2067-2/CompositionTimecodeRate | 2013 | ST2067-2:2013:XSD/CompositionTimecodeRate | Error | shall | unverified
-ST2067-2/CompositionTimecodeRate | 2016 | ST2067-2:2016:XSD/CompositionTimecodeRate | Error | shall | unverified
-ST2067-2/CompositionTimecodeRate | 2020 | ST2067-2:2020:XSD/CompositionTimecodeRate | Error | shall | unverified
-ST2067-2/CompositionTimecodeStartAddress | 2013 | ST2067-2:2013:XSD/CompositionTimecodeStartAddress | Error | shall | unverified
-ST2067-2/CompositionTimecodeStartAddress | 2016 | ST2067-2:2016:XSD/CompositionTimecodeStartAddress | Error | shall | unverified
-ST2067-2/CompositionTimecodeStartAddress | 2020 | ST2067-2:2020:XSD/CompositionTimecodeStartAddress | Error | shall | unverified
-ST2067-2/CompositionTimecodeRateZero | 2013 | ST2067-2:2013:XSD/CompositionTimecodeRateZero | Error | shall | unverified
-ST2067-2/CompositionTimecodeRateZero | 2016 | ST2067-2:2016:XSD/CompositionTimecodeRateZero | Error | shall | unverified
-ST2067-2/CompositionTimecodeRateZero | 2020 | ST2067-2:2020:XSD/CompositionTimecodeRateZero | Error | shall | unverified
-ST2067-2/CompositionTimecodeStartAddressFormat | 2013 | ST2067-2:2013:XSD/CompositionTimecodeStartAddressFormat | Error | shall | unverified
-ST2067-2/CompositionTimecodeStartAddressFormat | 2016 | ST2067-2:2016:XSD/CompositionTimecodeStartAddressFormat | Error | shall | unverified
-ST2067-2/CompositionTimecodeStartAddressFormat | 2020 | ST2067-2:2020:XSD/CompositionTimecodeStartAddressFormat | Error | shall | unverified
-ST2067-2/CompositionTimecodeRateMismatch | 2013 | ST2067-2:2013:XSD/CompositionTimecodeRateMismatch | Warning | should | unverified
-ST2067-2/CompositionTimecodeRateMismatch | 2016 | ST2067-2:2016:XSD/CompositionTimecodeRateMismatch | Warning | should | unverified
-ST2067-2/CompositionTimecodeRateMismatch | 2020 | ST2067-2:2020:XSD/CompositionTimecodeRateMismatch | Warning | should | unverified
-ST2067-2/LocaleListNonEmpty | 2013 | ST2067-2:2013:XSD/LocaleListNonEmpty | Error | shall | unverified
-ST2067-2/LocaleListNonEmpty | 2016 | ST2067-2:2016:XSD/LocaleListNonEmpty | Error | shall | unverified
-ST2067-2/LocaleListNonEmpty | 2020 | ST2067-2:2020:XSD/LocaleListNonEmpty | Error | shall | unverified
-ST2067-2/UniqueSegmentId | 2013 | ST2067-2:2013:6.1/UniqueSegmentId | Error | shall | unverified
-ST2067-2/UniqueSegmentId | 2016 | ST2067-2:2016:6.1/UniqueSegmentId | Error | shall | unverified
-ST2067-2/UniqueSegmentId | 2020 | ST2067-2:2020:6.1/UniqueSegmentId | Error | shall | unverified
-ST2067-2/UniqueEssenceDescriptorId | 2013 | ST2067-2:2013:6.1/UniqueEssenceDescriptorId | Error | shall | unverified
-ST2067-2/UniqueEssenceDescriptorId | 2016 | ST2067-2:2016:6.1/UniqueEssenceDescriptorId | Error | shall | unverified
-ST2067-2/UniqueEssenceDescriptorId | 2020 | ST2067-2:2020:6.1/UniqueEssenceDescriptorId | Error | shall | unverified
-ST2067-2/UniqueResourceId | 2013 | ST2067-2:2013:6.1/UniqueResourceId | Error | shall | unverified
-ST2067-2/UniqueResourceId | 2016 | ST2067-2:2016:6.1/UniqueResourceId | Error | shall | unverified
-ST2067-2/UniqueResourceId | 2020 | ST2067-2:2020:6.1/UniqueResourceId | Error | shall | unverified
-ST2067-2/IntrinsicDuration | 2013 | ST2067-2:2013:6.10/IntrinsicDuration | Error | shall | unverified
-ST2067-2/IntrinsicDuration | 2016 | ST2067-2:2016:6.10/IntrinsicDuration | Error | shall | unverified
-ST2067-2/IntrinsicDuration | 2020 | ST2067-2:2020:6.10/IntrinsicDuration | Error | shall | unverified
-ST2067-2/EntryPoint | 2013 | ST2067-2:2013:6.10/EntryPoint | Error | shall | unverified
-ST2067-2/EntryPoint | 2016 | ST2067-2:2016:6.10/EntryPoint | Error | shall | unverified
-ST2067-2/EntryPoint | 2020 | ST2067-2:2020:6.10/EntryPoint | Error | shall | unverified
-ST2067-2/ResourceDuration | 2013 | ST2067-2:2013:6.10/ResourceDuration | Error | shall | unverified
-ST2067-2/ResourceDuration | 2016 | ST2067-2:2016:6.10/ResourceDuration | Error | shall | unverified
-ST2067-2/ResourceDuration | 2020 | ST2067-2:2020:6.10/ResourceDuration | Error | shall | unverified
-ST2067-2/RepeatCount | 2013 | ST2067-2:2013:6.10/RepeatCount | Error | shall | unverified
-ST2067-2/RepeatCount | 2016 | ST2067-2:2016:6.10/RepeatCount | Error | shall | unverified
-ST2067-2/RepeatCount | 2020 | ST2067-2:2020:6.10/RepeatCount | Error | shall | unverified
-ST2067-2/TrackFileId | 2013 | ST2067-2:2013:6.10/TrackFileId | Error | shall | unverified
-ST2067-2/TrackFileId | 2016 | ST2067-2:2016:6.10/TrackFileId | Error | shall | unverified
-ST2067-2/TrackFileId | 2020 | ST2067-2:2020:6.10/TrackFileId | Error | shall | unverified
-ST2067-2/VirtualTrackContinuity | 2013 | ST2067-2:2013:6.9/VirtualTrackContinuity | Error | shall | unverified
-ST2067-2/VirtualTrackContinuity | 2016 | ST2067-2:2016:6.9/VirtualTrackContinuity | Error | shall | unverified
-ST2067-2/VirtualTrackContinuity | 2020 | ST2067-2:2020:6.9/VirtualTrackContinuity | Error | shall | unverified
-ST2067-2/VirtualTrackEditRate | 2013 | ST2067-2:2013:6.9.3/VirtualTrackEditRate | Error | shall | unverified
-ST2067-2/VirtualTrackEditRate | 2016 | ST2067-2:2016:6.9.3/VirtualTrackEditRate | Error | shall | unverified
-ST2067-2/VirtualTrackEditRate | 2020 | ST2067-2:2020:6.9.3/VirtualTrackEditRate | Error | shall | unverified
-ST2067-2/TimedTextSampleRate | 2013 | ST2067-2:2013:10/TimedTextSampleRate | Warning | should | unverified
-ST2067-2/TimedTextSampleRate | 2016 | ST2067-2:2016:10/TimedTextSampleRate | Warning | should | unverified
-ST2067-2/TimedTextSampleRate | 2020 | ST2067-2:2020:10/TimedTextSampleRate | Warning | should | unverified
-ST2067-2/TimedTextEmptyLanguageTag | 2013 | ST2067-2:2013:10/TimedTextEmptyLanguageTag | Warning | should | unverified
-ST2067-2/TimedTextEmptyLanguageTag | 2016 | ST2067-2:2016:10/TimedTextEmptyLanguageTag | Warning | should | unverified
-ST2067-2/TimedTextEmptyLanguageTag | 2020 | ST2067-2:2020:10/TimedTextEmptyLanguageTag | Warning | should | unverified
-ST2067-2/TimedTextMalformedLanguageTag | 2013 | ST2067-2:2013:10/TimedTextMalformedLanguageTag | Warning | should | unverified
-ST2067-2/TimedTextMalformedLanguageTag | 2016 | ST2067-2:2016:10/TimedTextMalformedLanguageTag | Warning | should | unverified
-ST2067-2/TimedTextMalformedLanguageTag | 2020 | ST2067-2:2020:10/TimedTextMalformedLanguageTag | Warning | should | unverified
-ST2067-2/AudioSampleRate | 2013 | ST2067-2:2013:ST377-4/AudioSampleRate | Warning | should | unverified
-ST2067-2/AudioSampleRate | 2016 | ST2067-2:2016:ST377-4/AudioSampleRate | Warning | should | unverified
-ST2067-2/AudioSampleRate | 2020 | ST2067-2:2020:ST377-4/AudioSampleRate | Warning | should | unverified
-ST2067-2/ChannelCount | 2013 | ST2067-2:2013:ST377-4/ChannelCount | Warning | should | unverified
-ST2067-2/ChannelCount | 2016 | ST2067-2:2016:ST377-4/ChannelCount | Warning | should | unverified
-ST2067-2/ChannelCount | 2020 | ST2067-2:2020:ST377-4/ChannelCount | Warning | should | unverified
-ST2067-2/ChannelCountZero | 2013 | ST2067-2:2013:ST377-4/ChannelCountZero | Error | shall | unverified
-ST2067-2/ChannelCountZero | 2016 | ST2067-2:2016:ST377-4/ChannelCountZero | Error | shall | unverified
-ST2067-2/ChannelCountZero | 2020 | ST2067-2:2020:ST377-4/ChannelCountZero | Error | shall | unverified
-ST2067-2/MCASubDescriptors | 2013 | ST2067-2:2013:ST377-4/MCASubDescriptors | Warning | should | unverified
-ST2067-2/MCASubDescriptors | 2016 | ST2067-2:2016:ST377-4/MCASubDescriptors | Warning | should | unverified
-ST2067-2/MCASubDescriptors | 2020 | ST2067-2:2020:ST377-4/MCASubDescriptors | Warning | should | unverified
-ST2067-2/SoundfieldGroup | 2013 | ST2067-2:2013:ST377-4/SoundfieldGroup | Warning | should | unverified
-ST2067-2/SoundfieldGroup | 2016 | ST2067-2:2016:ST377-4/SoundfieldGroup | Warning | should | unverified
-ST2067-2/SoundfieldGroup | 2020 | ST2067-2:2020:ST377-4/SoundfieldGroup | Warning | should | unverified
-ST2067-2/MCATagSymbol | 2013 | ST2067-2:2013:ST377-4/MCATagSymbol | Warning | should | unverified
-ST2067-2/MCATagSymbol | 2016 | ST2067-2:2016:ST377-4/MCATagSymbol | Warning | should | unverified
-ST2067-2/MCATagSymbol | 2020 | ST2067-2:2020:ST377-4/MCATagSymbol | Warning | should | unverified
-ST2067-2/SoundfieldChannelCount | 2013 | ST2067-2:2013:ST377-4/SoundfieldChannelCount | Error | shall | unverified
-ST2067-2/SoundfieldChannelCount | 2016 | ST2067-2:2016:ST377-4/SoundfieldChannelCount | Error | shall | unverified
-ST2067-2/SoundfieldChannelCount | 2020 | ST2067-2:2020:ST377-4/SoundfieldChannelCount | Error | shall | unverified
-ST2067-2/DigitalSignature | 2013 | ST2067-2:2013:6.9/DigitalSignature | Info | may | unverified
-ST2067-2/DigitalSignature | 2016 | ST2067-2:2016:6.9/DigitalSignature | Info | may | unverified
-ST2067-2/DigitalSignature | 2020 | ST2067-2:2020:6.9/DigitalSignature | Info | may | unverified
-ST2067-2/DanglingEssenceDescriptor | 2013 | ST2067-2:2013:6.4.2/DanglingEssenceDescriptor | Error | shall | unverified
-ST2067-2/DanglingEssenceDescriptor | 2016 | ST2067-2:2016:6.4.2/DanglingEssenceDescriptor | Error | shall | unverified
-ST2067-2/DanglingEssenceDescriptor | 2020 | ST2067-2:2020:6.4.2/DanglingEssenceDescriptor | Error | shall | unverified
-ST2067-2/EssenceDescriptorList | 2013 | ST2067-2:2013:6.4.2/EssenceDescriptorList | Error | shall | unverified
-ST2067-2/EssenceDescriptorList | 2016 | ST2067-2:2016:6.4.2/EssenceDescriptorList | Error | shall | unverified
-ST2067-2/EssenceDescriptorList | 2020 | ST2067-2:2020:6.4.2/EssenceDescriptorList | Error | shall | unverified
-ST2067-2/CplIdAssetMapMismatch | 2013 | ST2067-2:2013:7.2/CplIdAssetMapMismatch | Error | shall | unverified
-ST2067-2/CplIdAssetMapMismatch | 2016 | ST2067-2:2016:7.3.1/CplIdAssetMapMismatch | Error | shall | unverified
-ST2067-2/CplIdAssetMapMismatch | 2020 | ST2067-2:2020:7.3.1/CplIdAssetMapMismatch | Error | shall | unverified
+ST2067-2/PklUnknownNamespace | 2020 | ST2067-2:2020:9/PklUnknownNamespace | Error | shall | suspect
+ST2067-2/ResourceListEmpty | 2013 | ST2067-2:2013:XSD/ResourceListEmpty | Error | shall | suspect
+ST2067-2/ResourceListEmpty | 2016 | ST2067-2:2016:XSD/ResourceListEmpty | Error | shall | suspect
+ST2067-2/ResourceListEmpty | 2020 | ST2067-2:2020:XSD/ResourceListEmpty | Error | shall | suspect
+ST2067-2/ContentTitle | 2013 | ST2067-2:2013:XSD/ContentTitle | Error | shall | suspect
+ST2067-2/ContentTitle | 2016 | ST2067-2:2016:XSD/ContentTitle | Error | shall | suspect
+ST2067-2/ContentTitle | 2020 | ST2067-2:2020:XSD/ContentTitle | Error | shall | suspect
+ST2067-2/TotalRunningTimeFormat | 2013 | ST2067-2:2013:XSD/TotalRunningTimeFormat | Error | shall | suspect
+ST2067-2/TotalRunningTimeFormat | 2016 | ST2067-2:2016:XSD/TotalRunningTimeFormat | Error | shall | suspect
+ST2067-2/TotalRunningTimeFormat | 2020 | ST2067-2:2020:XSD/TotalRunningTimeFormat | Error | shall | suspect
+ST2067-2/SegmentList | 2013 | ST2067-2:2013:XSD/SegmentList | Critical | shall | suspect
+ST2067-2/SegmentList | 2016 | ST2067-2:2016:XSD/SegmentList | Critical | shall | suspect
+ST2067-2/SegmentList | 2020 | ST2067-2:2020:XSD/SegmentList | Critical | shall | suspect
+ST2067-2/Segment | 2013 | ST2067-2:2013:XSD/Segment | Error | shall | suspect
+ST2067-2/Segment | 2016 | ST2067-2:2016:XSD/Segment | Error | shall | suspect
+ST2067-2/Segment | 2020 | ST2067-2:2020:XSD/Segment | Error | shall | suspect
+ST2067-2/EditRate | 2013 | ST2067-2:2013:XSD/EditRate | Error | shall | suspect
+ST2067-2/EditRate | 2016 | ST2067-2:2016:XSD/EditRate | Error | shall | suspect
+ST2067-2/EditRate | 2020 | ST2067-2:2020:XSD/EditRate | Error | shall | suspect
+ST2067-2/IssueDate | 2013 | ST2067-2:2013:XSD/IssueDate | Error | shall | suspect
+ST2067-2/IssueDate | 2016 | ST2067-2:2016:XSD/IssueDate | Error | shall | suspect
+ST2067-2/IssueDate | 2020 | ST2067-2:2020:XSD/IssueDate | Error | shall | suspect
+ST2067-2/IssueDateFormat | 2013 | ST2067-2:2013:XSD/IssueDateFormat | Warning | should | suspect
+ST2067-2/IssueDateFormat | 2016 | ST2067-2:2016:XSD/IssueDateFormat | Warning | should | suspect
+ST2067-2/IssueDateFormat | 2020 | ST2067-2:2020:XSD/IssueDateFormat | Warning | should | suspect
+ST2067-2/CompositionTimecodeDropFrame | 2013 | ST2067-2:2013:XSD/CompositionTimecodeDropFrame | Error | shall | suspect
+ST2067-2/CompositionTimecodeDropFrame | 2016 | ST2067-2:2016:XSD/CompositionTimecodeDropFrame | Error | shall | suspect
+ST2067-2/CompositionTimecodeDropFrame | 2020 | ST2067-2:2020:XSD/CompositionTimecodeDropFrame | Error | shall | suspect
+ST2067-2/CompositionTimecodeRate | 2013 | ST2067-2:2013:XSD/CompositionTimecodeRate | Error | shall | suspect
+ST2067-2/CompositionTimecodeRate | 2016 | ST2067-2:2016:XSD/CompositionTimecodeRate | Error | shall | suspect
+ST2067-2/CompositionTimecodeRate | 2020 | ST2067-2:2020:XSD/CompositionTimecodeRate | Error | shall | suspect
+ST2067-2/CompositionTimecodeStartAddress | 2013 | ST2067-2:2013:XSD/CompositionTimecodeStartAddress | Error | shall | suspect
+ST2067-2/CompositionTimecodeStartAddress | 2016 | ST2067-2:2016:XSD/CompositionTimecodeStartAddress | Error | shall | suspect
+ST2067-2/CompositionTimecodeStartAddress | 2020 | ST2067-2:2020:XSD/CompositionTimecodeStartAddress | Error | shall | suspect
+ST2067-2/CompositionTimecodeRateZero | 2013 | ST2067-2:2013:XSD/CompositionTimecodeRateZero | Error | shall | suspect
+ST2067-2/CompositionTimecodeRateZero | 2016 | ST2067-2:2016:XSD/CompositionTimecodeRateZero | Error | shall | suspect
+ST2067-2/CompositionTimecodeRateZero | 2020 | ST2067-2:2020:XSD/CompositionTimecodeRateZero | Error | shall | suspect
+ST2067-2/CompositionTimecodeStartAddressFormat | 2013 | ST2067-2:2013:XSD/CompositionTimecodeStartAddressFormat | Error | shall | suspect
+ST2067-2/CompositionTimecodeStartAddressFormat | 2016 | ST2067-2:2016:XSD/CompositionTimecodeStartAddressFormat | Error | shall | suspect
+ST2067-2/CompositionTimecodeStartAddressFormat | 2020 | ST2067-2:2020:XSD/CompositionTimecodeStartAddressFormat | Error | shall | suspect
+ST2067-2/CompositionTimecodeRateMismatch | 2013 | ST2067-2:2013:XSD/CompositionTimecodeRateMismatch | Warning | should | suspect
+ST2067-2/CompositionTimecodeRateMismatch | 2016 | ST2067-2:2016:XSD/CompositionTimecodeRateMismatch | Warning | should | suspect
+ST2067-2/CompositionTimecodeRateMismatch | 2020 | ST2067-2:2020:XSD/CompositionTimecodeRateMismatch | Warning | should | suspect
+ST2067-2/LocaleListNonEmpty | 2013 | ST2067-2:2013:XSD/LocaleListNonEmpty | Error | shall | suspect
+ST2067-2/LocaleListNonEmpty | 2016 | ST2067-2:2016:XSD/LocaleListNonEmpty | Error | shall | suspect
+ST2067-2/LocaleListNonEmpty | 2020 | ST2067-2:2020:XSD/LocaleListNonEmpty | Error | shall | suspect
+ST2067-2/UniqueSegmentId | 2013 | ST2067-2:2013:6.1/UniqueSegmentId | Error | shall | suspect
+ST2067-2/UniqueSegmentId | 2016 | ST2067-2:2016:6.1/UniqueSegmentId | Error | shall | suspect
+ST2067-2/UniqueSegmentId | 2020 | ST2067-2:2020:6.1/UniqueSegmentId | Error | shall | suspect
+ST2067-2/UniqueEssenceDescriptorId | 2013 | ST2067-2:2013:6.1/UniqueEssenceDescriptorId | Error | shall | suspect
+ST2067-2/UniqueEssenceDescriptorId | 2016 | ST2067-2:2016:6.1/UniqueEssenceDescriptorId | Error | shall | suspect
+ST2067-2/UniqueEssenceDescriptorId | 2020 | ST2067-2:2020:6.1/UniqueEssenceDescriptorId | Error | shall | suspect
+ST2067-2/UniqueResourceId | 2013 | ST2067-2:2013:6.1/UniqueResourceId | Error | shall | suspect
+ST2067-2/UniqueResourceId | 2016 | ST2067-2:2016:6.1/UniqueResourceId | Error | shall | suspect
+ST2067-2/UniqueResourceId | 2020 | ST2067-2:2020:6.1/UniqueResourceId | Error | shall | suspect
+ST2067-2/IntrinsicDuration | 2013 | ST2067-2:2013:6.10/IntrinsicDuration | Error | shall | suspect
+ST2067-2/IntrinsicDuration | 2016 | ST2067-2:2016:6.10/IntrinsicDuration | Error | shall | suspect
+ST2067-2/IntrinsicDuration | 2020 | ST2067-2:2020:6.10/IntrinsicDuration | Error | shall | suspect
+ST2067-2/EntryPoint | 2013 | ST2067-2:2013:6.10/EntryPoint | Error | shall | suspect
+ST2067-2/EntryPoint | 2016 | ST2067-2:2016:6.10/EntryPoint | Error | shall | suspect
+ST2067-2/EntryPoint | 2020 | ST2067-2:2020:6.10/EntryPoint | Error | shall | suspect
+ST2067-2/ResourceDuration | 2013 | ST2067-2:2013:6.10/ResourceDuration | Error | shall | suspect
+ST2067-2/ResourceDuration | 2016 | ST2067-2:2016:6.10/ResourceDuration | Error | shall | suspect
+ST2067-2/ResourceDuration | 2020 | ST2067-2:2020:6.10/ResourceDuration | Error | shall | suspect
+ST2067-2/RepeatCount | 2013 | ST2067-2:2013:6.10/RepeatCount | Error | shall | suspect
+ST2067-2/RepeatCount | 2016 | ST2067-2:2016:6.10/RepeatCount | Error | shall | suspect
+ST2067-2/RepeatCount | 2020 | ST2067-2:2020:6.10/RepeatCount | Error | shall | suspect
+ST2067-2/TrackFileId | 2013 | ST2067-2:2013:6.10/TrackFileId | Error | shall | suspect
+ST2067-2/TrackFileId | 2016 | ST2067-2:2016:6.10/TrackFileId | Error | shall | suspect
+ST2067-2/TrackFileId | 2020 | ST2067-2:2020:6.10/TrackFileId | Error | shall | suspect
+ST2067-2/VirtualTrackContinuity | 2013 | ST2067-2:2013:6.9/VirtualTrackContinuity | Error | shall | suspect
+ST2067-2/VirtualTrackContinuity | 2016 | ST2067-2:2016:6.9/VirtualTrackContinuity | Error | shall | suspect
+ST2067-2/VirtualTrackContinuity | 2020 | ST2067-2:2020:6.9/VirtualTrackContinuity | Error | shall | suspect
+ST2067-2/VirtualTrackEditRate | 2013 | ST2067-2:2013:6.9.3/VirtualTrackEditRate | Error | shall | suspect
+ST2067-2/VirtualTrackEditRate | 2016 | ST2067-2:2016:6.9.3/VirtualTrackEditRate | Error | shall | suspect
+ST2067-2/VirtualTrackEditRate | 2020 | ST2067-2:2020:6.9.3/VirtualTrackEditRate | Error | shall | suspect
+ST2067-2/TimedTextSampleRate | 2013 | ST2067-2:2013:10/TimedTextSampleRate | Warning | should | suspect
+ST2067-2/TimedTextSampleRate | 2016 | ST2067-2:2016:10/TimedTextSampleRate | Warning | should | suspect
+ST2067-2/TimedTextSampleRate | 2020 | ST2067-2:2020:10/TimedTextSampleRate | Warning | should | suspect
+ST2067-2/TimedTextEmptyLanguageTag | 2013 | ST2067-2:2013:10/TimedTextEmptyLanguageTag | Warning | should | suspect
+ST2067-2/TimedTextEmptyLanguageTag | 2016 | ST2067-2:2016:10/TimedTextEmptyLanguageTag | Warning | should | suspect
+ST2067-2/TimedTextEmptyLanguageTag | 2020 | ST2067-2:2020:10/TimedTextEmptyLanguageTag | Warning | should | suspect
+ST2067-2/TimedTextMalformedLanguageTag | 2013 | ST2067-2:2013:10/TimedTextMalformedLanguageTag | Warning | should | suspect
+ST2067-2/TimedTextMalformedLanguageTag | 2016 | ST2067-2:2016:10/TimedTextMalformedLanguageTag | Warning | should | suspect
+ST2067-2/TimedTextMalformedLanguageTag | 2020 | ST2067-2:2020:10/TimedTextMalformedLanguageTag | Warning | should | suspect
+ST2067-2/AudioSampleRate | 2013 | ST2067-2:2013:ST377-4/AudioSampleRate | Warning | should | suspect
+ST2067-2/AudioSampleRate | 2016 | ST2067-2:2016:ST377-4/AudioSampleRate | Warning | should | suspect
+ST2067-2/AudioSampleRate | 2020 | ST2067-2:2020:ST377-4/AudioSampleRate | Warning | should | suspect
+ST2067-2/ChannelCount | 2013 | ST2067-2:2013:ST377-4/ChannelCount | Warning | should | suspect
+ST2067-2/ChannelCount | 2016 | ST2067-2:2016:ST377-4/ChannelCount | Warning | should | suspect
+ST2067-2/ChannelCount | 2020 | ST2067-2:2020:ST377-4/ChannelCount | Warning | should | suspect
+ST2067-2/ChannelCountZero | 2013 | ST2067-2:2013:ST377-4/ChannelCountZero | Error | shall | suspect
+ST2067-2/ChannelCountZero | 2016 | ST2067-2:2016:ST377-4/ChannelCountZero | Error | shall | suspect
+ST2067-2/ChannelCountZero | 2020 | ST2067-2:2020:ST377-4/ChannelCountZero | Error | shall | suspect
+ST2067-2/MCASubDescriptors | 2013 | ST2067-2:2013:ST377-4/MCASubDescriptors | Warning | should | suspect
+ST2067-2/MCASubDescriptors | 2016 | ST2067-2:2016:ST377-4/MCASubDescriptors | Warning | should | suspect
+ST2067-2/MCASubDescriptors | 2020 | ST2067-2:2020:ST377-4/MCASubDescriptors | Warning | should | suspect
+ST2067-2/SoundfieldGroup | 2013 | ST2067-2:2013:ST377-4/SoundfieldGroup | Warning | should | suspect
+ST2067-2/SoundfieldGroup | 2016 | ST2067-2:2016:ST377-4/SoundfieldGroup | Warning | should | suspect
+ST2067-2/SoundfieldGroup | 2020 | ST2067-2:2020:ST377-4/SoundfieldGroup | Warning | should | suspect
+ST2067-2/MCATagSymbol | 2013 | ST2067-2:2013:ST377-4/MCATagSymbol | Warning | should | suspect
+ST2067-2/MCATagSymbol | 2016 | ST2067-2:2016:ST377-4/MCATagSymbol | Warning | should | suspect
+ST2067-2/MCATagSymbol | 2020 | ST2067-2:2020:ST377-4/MCATagSymbol | Warning | should | suspect
+ST2067-2/SoundfieldChannelCount | 2013 | ST2067-2:2013:ST377-4/SoundfieldChannelCount | Error | shall | suspect
+ST2067-2/SoundfieldChannelCount | 2016 | ST2067-2:2016:ST377-4/SoundfieldChannelCount | Error | shall | suspect
+ST2067-2/SoundfieldChannelCount | 2020 | ST2067-2:2020:ST377-4/SoundfieldChannelCount | Error | shall | suspect
+ST2067-2/DigitalSignature | 2013 | ST2067-2:2013:6.9/DigitalSignature | Info | may | suspect
+ST2067-2/DigitalSignature | 2016 | ST2067-2:2016:6.9/DigitalSignature | Info | may | suspect
+ST2067-2/DigitalSignature | 2020 | ST2067-2:2020:6.9/DigitalSignature | Info | may | suspect
+ST2067-2/DanglingEssenceDescriptor | 2013 | ST2067-2:2013:6.4.2/DanglingEssenceDescriptor | Error | shall | suspect
+ST2067-2/DanglingEssenceDescriptor | 2016 | ST2067-2:2016:6.4.2/DanglingEssenceDescriptor | Error | shall | suspect
+ST2067-2/DanglingEssenceDescriptor | 2020 | ST2067-2:2020:6.4.2/DanglingEssenceDescriptor | Error | shall | suspect
+ST2067-2/EssenceDescriptorList | 2013 | ST2067-2:2013:6.4.2/EssenceDescriptorList | Error | shall | suspect
+ST2067-2/EssenceDescriptorList | 2016 | ST2067-2:2016:6.4.2/EssenceDescriptorList | Error | shall | suspect
+ST2067-2/EssenceDescriptorList | 2020 | ST2067-2:2020:6.4.2/EssenceDescriptorList | Error | shall | suspect
+ST2067-2/CplIdAssetMapMismatch | 2013 | ST2067-2:2013:7.2/CplIdAssetMapMismatch | Error | shall | suspect
+ST2067-2/CplIdAssetMapMismatch | 2016 | ST2067-2:2016:7.3.1/CplIdAssetMapMismatch | Error | shall | suspect
+ST2067-2/CplIdAssetMapMismatch | 2020 | ST2067-2:2020:7.3.1/CplIdAssetMapMismatch | Error | shall | suspect
 ST2067-2/OperationalPatternNotOP1A | 2013 | ST2067-2:2013:5.1.1/OperationalPatternNotOP1A | Error | shall | verified
-ST2067-2/OperationalPatternNotOP1A | 2016 | ST2067-2:2016:5.2/OperationalPatternNotOP1A | Error | shall | unverified
+ST2067-2/OperationalPatternNotOP1A | 2016 | ST2067-2:2016:5.2/OperationalPatternNotOP1A | Error | shall | suspect
 ST2067-2/OperationalPatternNotOP1A | 2020 | ST2067-2:2020:5.1.1/OperationalPatternNotOP1A | Error | shall | verified
 ST2067-2/SoundDescriptorNotWAVEPCM | 2013 | ST2067-2:2013:5.3.4.1/SoundDescriptorNotWAVEPCM | Error | shall | verified
-ST2067-2/SoundDescriptorNotWAVEPCM | 2016 | ST2067-2:2016:5.3.4.1/SoundDescriptorNotWAVEPCM | Error | shall | verified
+ST2067-2/SoundDescriptorNotWAVEPCM | 2016 | ST2067-2:2016:5.3.4.1/SoundDescriptorNotWAVEPCM | Error | shall | unverified
 ST2067-2/SoundDescriptorNotWAVEPCM | 2020 | ST2067-2:2020:5.3.4.1/SoundDescriptorNotWAVEPCM | Error | shall | verified
 ST2067-2/AudioSampleRateUnsupported | 2013 | ST2067-2:2013:5.3.2.2/AudioSampleRateUnsupported | Error | shall | verified
-ST2067-2/AudioSampleRateUnsupported | 2016 | ST2067-2:2016:5.3.2.2/AudioSampleRateUnsupported | Error | shall | verified
+ST2067-2/AudioSampleRateUnsupported | 2016 | ST2067-2:2016:5.3.2.2/AudioSampleRateUnsupported | Error | shall | unverified
 ST2067-2/AudioSampleRateUnsupported | 2020 | ST2067-2:2020:5.3.2.2/AudioSampleRateUnsupported | Error | shall | verified
 ST2067-2/QuantizationBitsNot24 | 2013 | ST2067-2:2013:5.3.2.3/QuantizationBitsNot24 | Error | shall | verified
-ST2067-2/QuantizationBitsNot24 | 2016 | ST2067-2:2016:5.3.2.3/QuantizationBitsNot24 | Error | shall | verified
+ST2067-2/QuantizationBitsNot24 | 2016 | ST2067-2:2016:5.3.2.3/QuantizationBitsNot24 | Error | shall | unverified
 ST2067-2/QuantizationBitsNot24 | 2020 | ST2067-2:2020:5.3.2.3/QuantizationBitsNot24 | Error | shall | verified
 ST2067-2/ChannelLabelCountMismatch | 2013 | ST2067-2:2013:5.3.6.2/ChannelLabelCountMismatch | Error | shall | verified
-ST2067-2/ChannelLabelCountMismatch | 2016 | ST2067-2:2016:5.3.6.2/ChannelLabelCountMismatch | Error | shall | verified
+ST2067-2/ChannelLabelCountMismatch | 2016 | ST2067-2:2016:5.3.6.2/ChannelLabelCountMismatch | Error | shall | unverified
 ST2067-2/ChannelLabelCountMismatch | 2020 | ST2067-2:2020:5.3.6.2/ChannelLabelCountMismatch | Error | shall | verified
 ST2067-2/MCAChannelIDMissing | 2013 | absent
-ST2067-2/MCAChannelIDMissing | 2016 | ST2067-2:2016:5.3.6.5/MCAChannelIDMissing | Error | shall | verified
+ST2067-2/MCAChannelIDMissing | 2016 | ST2067-2:2016:5.3.6.5/MCAChannelIDMissing | Error | shall | unverified
 ST2067-2/MCAChannelIDMissing | 2020 | ST2067-2:2020:5.3.6.5/MCAChannelIDMissing | Error | shall | verified
 ST2067-2/SoundFieldGroupLabelCount | 2013 | ST2067-2:2013:5.3.6.3/SoundFieldGroupLabelCount | Error | shall | verified
-ST2067-2/SoundFieldGroupLabelCount | 2016 | ST2067-2:2016:5.3.6.3/SoundFieldGroupLabelCount | Error | shall | verified
+ST2067-2/SoundFieldGroupLabelCount | 2016 | ST2067-2:2016:5.3.6.3/SoundFieldGroupLabelCount | Error | shall | unverified
 ST2067-2/SoundFieldGroupLabelCount | 2020 | ST2067-2:2020:5.3.6.3/SoundFieldGroupLabelCount | Error | shall | verified
 ST2067-2/SoundfieldGroupLinkIDMissing | 2013 | ST2067-2:2013:5.3.6.5/SoundfieldGroupLinkIDMissing | Error | shall | verified
-ST2067-2/SoundfieldGroupLinkIDMissing | 2016 | ST2067-2:2016:5.3.6.5/SoundfieldGroupLinkIDMissing | Error | shall | verified
+ST2067-2/SoundfieldGroupLinkIDMissing | 2016 | ST2067-2:2016:5.3.6.5/SoundfieldGroupLinkIDMissing | Error | shall | unverified
 ST2067-2/SoundfieldGroupLinkIDMissing | 2020 | ST2067-2:2020:5.3.6.5/SoundfieldGroupLinkIDMissing | Error | shall | verified
 ST2067-2/AudioNotClipWrapped | 2013 | ST2067-2:2013:5.3.3/AudioNotClipWrapped | Error | shall | verified
-ST2067-2/AudioNotClipWrapped | 2016 | ST2067-2:2016:5.3.3/AudioNotClipWrapped | Error | shall | verified
+ST2067-2/AudioNotClipWrapped | 2016 | ST2067-2:2016:5.3.3/AudioNotClipWrapped | Error | shall | unverified
 ST2067-2/AudioNotClipWrapped | 2020 | ST2067-2:2020:5.3.3/AudioNotClipWrapped | Error | shall | verified
 ST2067-2/RFC5646SpokenLanguageMissing | 2013 | ST2067-2:2013:5.3.6.5/RFC5646SpokenLanguageMissing | Warning | should | verified
-ST2067-2/RFC5646SpokenLanguageMissing | 2016 | ST2067-2:2016:5.3/RFC5646SpokenLanguageMissing | Warning | should | verified
+ST2067-2/RFC5646SpokenLanguageMissing | 2016 | ST2067-2:2016:5.3/RFC5646SpokenLanguageMissing | Warning | should | unverified
 ST2067-2/RFC5646SpokenLanguageMissing | 2020 | ST2067-2:2020:5.3.6.5/RFC5646SpokenLanguageMissing | Warning | should | verified
 ST2067-2/ChannelAssignmentMissing | 2013 | ST2067-2:2013:5.3.4.2/ChannelAssignmentMissing | Error | shall | verified
-ST2067-2/ChannelAssignmentMissing | 2016 | ST2067-2:2016:5.3.4.2/ChannelAssignmentMissing | Error | shall | verified
+ST2067-2/ChannelAssignmentMissing | 2016 | ST2067-2:2016:5.3.4.2/ChannelAssignmentMissing | Error | shall | unverified
 ST2067-2/ChannelAssignmentMissing | 2020 | ST2067-2:2020:5.3.4.2/ChannelAssignmentMissing | Error | shall | verified
 ST2067-2/ChannelAssignmentNotMCA | 2013 | ST2067-2:2013:5.3.4.2/ChannelAssignmentNotMCA | Error | shall | verified
-ST2067-2/ChannelAssignmentNotMCA | 2016 | ST2067-2:2016:5.3.4.2/ChannelAssignmentNotMCA | Error | shall | verified
+ST2067-2/ChannelAssignmentNotMCA | 2016 | ST2067-2:2016:5.3.4.2/ChannelAssignmentNotMCA | Error | shall | unverified
 ST2067-2/ChannelAssignmentNotMCA | 2020 | ST2067-2:2020:5.3.4.2/ChannelAssignmentNotMCA | Error | shall | verified
 ST2067-2/SoundfieldGroupMissingMCATitle | 2013 | ST2067-2:2013:5.3.6.5/SoundfieldGroupMissingMCATitle | Error | shall | verified
-ST2067-2/SoundfieldGroupMissingMCATitle | 2016 | ST2067-2:2016:5.3.6.5/SoundfieldGroupMissingMCATitle | Error | shall | verified
+ST2067-2/SoundfieldGroupMissingMCATitle | 2016 | ST2067-2:2016:5.3.6.5/SoundfieldGroupMissingMCATitle | Error | shall | unverified
 ST2067-2/SoundfieldGroupMissingMCATitle | 2020 | ST2067-2:2020:5.3.6.5/SoundfieldGroupMissingMCATitle | Error | shall | verified
 ST2067-2/SoundfieldGroupMissingMCATitleVersion | 2013 | ST2067-2:2013:5.3.6.5/SoundfieldGroupMissingMCATitleVersion | Error | shall | verified
-ST2067-2/SoundfieldGroupMissingMCATitleVersion | 2016 | ST2067-2:2016:5.3.6.5/SoundfieldGroupMissingMCATitleVersion | Error | shall | verified
+ST2067-2/SoundfieldGroupMissingMCATitleVersion | 2016 | ST2067-2:2016:5.3.6.5/SoundfieldGroupMissingMCATitleVersion | Error | shall | unverified
 ST2067-2/SoundfieldGroupMissingMCATitleVersion | 2020 | ST2067-2:2020:5.3.6.5/SoundfieldGroupMissingMCATitleVersion | Error | shall | verified
 ST2067-2/SoundfieldGroupMissingMCAAudioContentKind | 2013 | ST2067-2:2013:5.3.6.5/SoundfieldGroupMissingMCAAudioContentKind | Error | shall | verified
-ST2067-2/SoundfieldGroupMissingMCAAudioContentKind | 2016 | ST2067-2:2016:5.3.6.5/SoundfieldGroupMissingMCAAudioContentKind | Error | shall | verified
+ST2067-2/SoundfieldGroupMissingMCAAudioContentKind | 2016 | ST2067-2:2016:5.3.6.5/SoundfieldGroupMissingMCAAudioContentKind | Error | shall | unverified
 ST2067-2/SoundfieldGroupMissingMCAAudioContentKind | 2020 | ST2067-2:2020:5.3.6.5/SoundfieldGroupMissingMCAAudioContentKind | Error | shall | verified
 ST2067-2/SoundfieldGroupMissingMCAAudioElementKind | 2013 | ST2067-2:2013:5.3.6.5/SoundfieldGroupMissingMCAAudioElementKind | Error | shall | verified
-ST2067-2/SoundfieldGroupMissingMCAAudioElementKind | 2016 | ST2067-2:2016:5.3.6.5/SoundfieldGroupMissingMCAAudioElementKind | Error | shall | verified
+ST2067-2/SoundfieldGroupMissingMCAAudioElementKind | 2016 | ST2067-2:2016:5.3.6.5/SoundfieldGroupMissingMCAAudioElementKind | Error | shall | unverified
 ST2067-2/SoundfieldGroupMissingMCAAudioElementKind | 2020 | ST2067-2:2020:5.3.6.5/SoundfieldGroupMissingMCAAudioElementKind | Error | shall | verified
 ST2067-2/TimedTextUCSEncodingNotUTF8 | 2013 | ST2067-2:2013:5.4.2/TimedTextUCSEncodingNotUTF8 | Error | shall | verified
-ST2067-2/TimedTextUCSEncodingNotUTF8 | 2016 | ST2067-2:2016:5.4/TimedTextUCSEncodingNotUTF8 | Error | shall | verified
+ST2067-2/TimedTextUCSEncodingNotUTF8 | 2016 | ST2067-2:2016:5.4/TimedTextUCSEncodingNotUTF8 | Error | shall | unverified
 ST2067-2/TimedTextUCSEncodingNotUTF8 | 2020 | ST2067-2:2020:4.3/TimedTextUCSEncodingNotUTF8 | Error | shall | verified
 ST2067-2/TimedTextNamespaceNotIMSC | 2013 | absent
-ST2067-2/TimedTextNamespaceNotIMSC | 2016 | ST2067-2:2016:5.4/TimedTextNamespaceNotIMSC | Error | shall | verified
+ST2067-2/TimedTextNamespaceNotIMSC | 2016 | ST2067-2:2016:5.4/TimedTextNamespaceNotIMSC | Error | shall | unverified
 ST2067-2/TimedTextNamespaceNotIMSC | 2020 | ST2067-2:2020:5.4.2/TimedTextNamespaceNotIMSC | Error | shall | verified
 ST2067-2/TimedTextResourceMIMETypeUnsupported | 2013 | ST2067-2:2013:5.4.5/TimedTextResourceMIMETypeUnsupported | Error | shall | verified
-ST2067-2/TimedTextResourceMIMETypeUnsupported | 2016 | ST2067-2:2016:5.4.5/TimedTextResourceMIMETypeUnsupported | Error | shall | verified
+ST2067-2/TimedTextResourceMIMETypeUnsupported | 2016 | ST2067-2:2016:5.4.5/TimedTextResourceMIMETypeUnsupported | Error | shall | unverified
 ST2067-2/TimedTextResourceMIMETypeUnsupported | 2020 | ST2067-2:2020:5.4.5/TimedTextResourceMIMETypeUnsupported | Error | shall | verified
 ST2067-2/TimedTextMappingKindNot0x13 | 2013 | ST2067-2:2013:5.4.2/TimedTextMappingKindNot0x13 | Error | shall | unverified
-ST2067-2/TimedTextMappingKindNot0x13 | 2016 | ST2067-2:2016:5.4/TimedTextMappingKindNot0x13 | Error | shall | verified
+ST2067-2/TimedTextMappingKindNot0x13 | 2016 | ST2067-2:2016:5.4/TimedTextMappingKindNot0x13 | Error | shall | unverified
 ST2067-2/TimedTextMappingKindNot0x13 | 2020 | ST2067-2:2020:5.4.2/TimedTextMappingKindNot0x13 | Error | shall | verified
-ST2067-3/ContentKindUnknown | 2013 | ST2067-3:2013:5.5.1.2/ContentKindUnknown | Warning | should | unverified
-ST2067-3/ContentKindUnknown | 2016 | ST2067-3:2016:5.5.1.2/ContentKindUnknown | Warning | should | unverified
-ST2067-3/SourceEncodingNoEssenceDescriptorList | 2013 | ST2067-3:2013:6.4.2/SourceEncodingNoEssenceDescriptorList | Error | shall | verified
-ST2067-3/SourceEncodingNoEssenceDescriptorList | 2016 | ST2067-3:2016:6.4.2/SourceEncodingNoEssenceDescriptorList | Error | shall | verified
-ST2067-3/SourceEncodingUnresolved | 2013 | ST2067-3:2013:6.4.2/SourceEncodingUnresolved | Error | shall | verified
-ST2067-3/SourceEncodingUnresolved | 2016 | ST2067-3:2016:6.4.2/SourceEncodingUnresolved | Error | shall | verified
-ST2067-3/EssenceDescriptorListEmpty | 2013 | ST2067-3:2013:6.4.2/EssenceDescriptorListEmpty | Error | shall | verified
-ST2067-3/EssenceDescriptorListEmpty | 2016 | ST2067-3:2016:6.4.2/EssenceDescriptorListEmpty | Error | shall | verified
-ST2067-3/ContentVersionListEmpty | 2013 | ST2067-3:2013:6.11/ContentVersionListEmpty | Error | shall | verified
-ST2067-3/ContentVersionListEmpty | 2016 | ST2067-3:2016:6.11/ContentVersionListEmpty | Error | shall | verified
-ST2067-3/ContentVersionIdInvalid | 2013 | ST2067-3:2013:6.11/ContentVersionIdInvalid | Error | shall | verified
-ST2067-3/ContentVersionIdInvalid | 2016 | ST2067-3:2016:6.11/ContentVersionIdInvalid | Error | shall | verified
-ST2067-3/ContentVersionLabelTextMissing | 2013 | ST2067-3:2013:6.11/ContentVersionLabelTextMissing | Warning | should | verified
-ST2067-3/ContentVersionLabelTextMissing | 2016 | ST2067-3:2016:6.11/ContentVersionLabelTextMissing | Warning | should | verified
-ST2067-3/LocaleLanguageTagInvalid | 2013 | ST2067-3:2013:6.12/LocaleLanguageTagInvalid | Warning | should | verified
-ST2067-3/LocaleLanguageTagInvalid | 2016 | ST2067-3:2016:6.12/LocaleLanguageTagInvalid | Warning | should | verified
-ST2067-3/TrackIdNotUnique | 2013 | ST2067-3:2013:7.3/TrackIdNotUnique | Error | shall | verified
-ST2067-3/TrackIdNotUnique | 2016 | ST2067-3:2016:7.3/TrackIdNotUnique | Error | shall | verified
-ST2067-3/MarkerOffsetOutOfRange | 2013 | ST2067-3:2013:7.4/MarkerOffsetOutOfRange | Error | shall | unverified
-ST2067-3/MarkerOffsetOutOfRange | 2016 | ST2067-3:2016:7.4/MarkerOffsetOutOfRange | Error | shall | unverified
-ST2067-3/MarkerLabelUnknown | 2013 | ST2067-3:2013:7.4/MarkerLabelUnknown | Warning | should | unverified
-ST2067-3/MarkerLabelUnknown | 2016 | ST2067-3:2016:7.4/MarkerLabelUnknown | Warning | should | unverified
-ST2067-3/SegmentDuration | 2013 | ST2067-3:2013:7.2.2/SegmentDuration | Error | shall | verified
-ST2067-3/SegmentDuration | 2016 | ST2067-3:2016:7.2.2/SegmentDuration | Error | shall | unverified
-ST2067-3/ContentVersionIdDuplicate | 2013 | ST2067-3:2013:6.1.9/ContentVersionIdDuplicate | Error | shall | verified
-ST2067-3/ContentVersionIdDuplicate | 2016 | ST2067-3:2016:6.1.9/ContentVersionIdDuplicate | Error | shall | verified
-ST2067-3/SegmentDurationIntegerEditUnits | 2013 | ST2067-3:2013:7.3/SegmentDurationIntegerEditUnits | Error | shall | verified
-ST2067-3/SegmentDurationIntegerEditUnits | 2016 | ST2067-3:2016:7.3/SegmentDurationIntegerEditUnits | Error | shall | verified
-ST2067-9/MalformedXml | 2018 | ST2067-9:2018:6.1/MalformedXml | Critical | shall | verified
-ST2067-9/SidecarAssetReferencedByVirtualTrack | 2018 | ST2067-9:2018:5/SidecarAssetReferencedByVirtualTrack | Error | shall | verified
-ST2067-9/DuplicateAssetId | 2018 | ST2067-9:2018:7.2.3/DuplicateAssetId | Error | shall | verified
-ST2067-9/SignerWithoutSignature | 2018 | ST2067-9:2018:7.2.4/SignerWithoutSignature | Error | shall | verified
-ST2067-9/SignatureWithoutSigner | 2018 | ST2067-9:2018:7.2.5/SignatureWithoutSigner | Error | shall | verified
-ST2067-9/SidecarAssetNotFound | 2018 | ST2067-9:2018:7.3.1/SidecarAssetNotFound | Error | shall | verified
-ST2067-9/CplNotFound | 2018 | ST2067-9:2018:7.3.1.1/CplNotFound | Warning | should | verified
-ST2067-9/DuplicateCplId | 2018 | ST2067-9:2018:7.3.1.1/DuplicateCplId | Error | shall | verified
-ST2067-21/ColorSystem | 2014 | ST2067-21:2014:6.1/ColorSystem | Error | shall | verified
-ST2067-21/ColorSystem | 2016 | ST2067-21:2016:6.1/ColorSystem | Error | shall | verified
-ST2067-21/ColorSystem | 2020 | ST2067-21:2020:6.2/ColorSystem | Error | shall | verified
-ST2067-21/ColorSystem | 2023 | ST2067-21:2023:6.2/ColorSystem | Error | shall | verified
-ST2067-21/ColorSystem | 2026 | ST2067-21:2026:7.2/ColorSystem | Error | shall | verified
-ST2067-21/BlackRefLevel | 2014 | ST2067-21:2014:6.1.4/BlackRefLevel | Error | shall | verified
-ST2067-21/BlackRefLevel | 2016 | ST2067-21:2016:6.3/BlackRefLevel | Error | shall | verified
-ST2067-21/BlackRefLevel | 2020 | ST2067-21:2020:6.4.3/BlackRefLevel | Error | shall | verified
-ST2067-21/BlackRefLevel | 2023 | ST2067-21:2023:6.4.3/BlackRefLevel | Error | shall | verified
-ST2067-21/BlackRefLevel | 2026 | ST2067-21:2026:7.4.3/BlackRefLevel | Error | shall | verified
-ST2067-21/WhiteRefLevel | 2014 | ST2067-21:2014:6.1.4/WhiteRefLevel | Error | shall | verified
-ST2067-21/WhiteRefLevel | 2016 | ST2067-21:2016:6.3/WhiteRefLevel | Error | shall | verified
-ST2067-21/WhiteRefLevel | 2020 | ST2067-21:2020:6.4.3/WhiteRefLevel | Error | shall | verified
-ST2067-21/WhiteRefLevel | 2023 | ST2067-21:2023:6.4.3/WhiteRefLevel | Error | shall | verified
-ST2067-21/WhiteRefLevel | 2026 | ST2067-21:2026:7.4.3/WhiteRefLevel | Error | shall | verified
-ST2067-21/ColorRange | 2014 | ST2067-21:2014:6.1.4/ColorRange | Error | shall | verified
-ST2067-21/ColorRange | 2016 | ST2067-21:2016:6.3/ColorRange | Error | shall | verified
-ST2067-21/ColorRange | 2020 | ST2067-21:2020:6.4.3/ColorRange | Error | shall | verified
-ST2067-21/ColorRange | 2023 | ST2067-21:2023:6.4.3/ColorRange | Error | shall | verified
-ST2067-21/ColorRange | 2026 | ST2067-21:2026:7.4.3/ColorRange | Error | shall | verified
-ST2067-21/ApplicationIdentification | 2014 | ST2067-21:2014:7/ApplicationIdentification | Error | shall | verified
-ST2067-21/ApplicationIdentification | 2016 | ST2067-21:2016:7.1/ApplicationIdentification | Error | shall | verified
-ST2067-21/ApplicationIdentification | 2020 | ST2067-21:2020:7.1/ApplicationIdentification | Error | shall | verified
-ST2067-21/ApplicationIdentification | 2023 | ST2067-21:2023:7.1/ApplicationIdentification | Error | shall | verified
-ST2067-21/ApplicationIdentification | 2026 | ST2067-21:2026:8.1/ApplicationIdentification | Error | shall | verified
-ST2067-21/AppIdMismatch | 2014 | ST2067-21:2014:7/AppIdMismatch | Warning | should | verified
-ST2067-21/AppIdMismatch | 2016 | ST2067-21:2016:7.1/AppIdMismatch | Warning | should | verified
-ST2067-21/AppIdMismatch | 2020 | ST2067-21:2020:7.1/AppIdMismatch | Warning | should | verified
-ST2067-21/AppIdMismatch | 2023 | ST2067-21:2023:7.1/AppIdMismatch | Warning | should | verified
-ST2067-21/AppIdMismatch | 2026 | ST2067-21:2026:8.1/AppIdMismatch | Warning | should | verified
+ST2067-3/ContentKindUnknown | 2013 | ST2067-3:2013:5.5.1.2/ContentKindUnknown | Warning | should | suspect
+ST2067-3/ContentKindUnknown | 2016 | ST2067-3:2016:5.5.1.2/ContentKindUnknown | Warning | should | suspect
+ST2067-3/SourceEncodingNoEssenceDescriptorList | 2013 | ST2067-3:2013:6.4.2/SourceEncodingNoEssenceDescriptorList | Error | shall | unverified
+ST2067-3/SourceEncodingNoEssenceDescriptorList | 2016 | ST2067-3:2016:6.4.2/SourceEncodingNoEssenceDescriptorList | Error | shall | unverified
+ST2067-3/SourceEncodingUnresolved | 2013 | ST2067-3:2013:6.4.2/SourceEncodingUnresolved | Error | shall | unverified
+ST2067-3/SourceEncodingUnresolved | 2016 | ST2067-3:2016:6.4.2/SourceEncodingUnresolved | Error | shall | unverified
+ST2067-3/EssenceDescriptorListEmpty | 2013 | ST2067-3:2013:6.4.2/EssenceDescriptorListEmpty | Error | shall | unverified
+ST2067-3/EssenceDescriptorListEmpty | 2016 | ST2067-3:2016:6.4.2/EssenceDescriptorListEmpty | Error | shall | unverified
+ST2067-3/ContentVersionListEmpty | 2013 | ST2067-3:2013:6.11/ContentVersionListEmpty | Error | shall | unverified
+ST2067-3/ContentVersionListEmpty | 2016 | ST2067-3:2016:6.11/ContentVersionListEmpty | Error | shall | unverified
+ST2067-3/ContentVersionIdInvalid | 2013 | ST2067-3:2013:6.11/ContentVersionIdInvalid | Error | shall | unverified
+ST2067-3/ContentVersionIdInvalid | 2016 | ST2067-3:2016:6.11/ContentVersionIdInvalid | Error | shall | unverified
+ST2067-3/ContentVersionLabelTextMissing | 2013 | ST2067-3:2013:6.11/ContentVersionLabelTextMissing | Warning | should | unverified
+ST2067-3/ContentVersionLabelTextMissing | 2016 | ST2067-3:2016:6.11/ContentVersionLabelTextMissing | Warning | should | unverified
+ST2067-3/LocaleLanguageTagInvalid | 2013 | ST2067-3:2013:6.12/LocaleLanguageTagInvalid | Warning | should | unverified
+ST2067-3/LocaleLanguageTagInvalid | 2016 | ST2067-3:2016:6.12/LocaleLanguageTagInvalid | Warning | should | unverified
+ST2067-3/TrackIdNotUnique | 2013 | ST2067-3:2013:7.3/TrackIdNotUnique | Error | shall | unverified
+ST2067-3/TrackIdNotUnique | 2016 | ST2067-3:2016:7.3/TrackIdNotUnique | Error | shall | unverified
+ST2067-3/MarkerOffsetOutOfRange | 2013 | ST2067-3:2013:7.4/MarkerOffsetOutOfRange | Error | shall | suspect
+ST2067-3/MarkerOffsetOutOfRange | 2016 | ST2067-3:2016:7.4/MarkerOffsetOutOfRange | Error | shall | suspect
+ST2067-3/MarkerLabelUnknown | 2013 | ST2067-3:2013:7.4/MarkerLabelUnknown | Warning | should | suspect
+ST2067-3/MarkerLabelUnknown | 2016 | ST2067-3:2016:7.4/MarkerLabelUnknown | Warning | should | suspect
+ST2067-3/SegmentDuration | 2013 | ST2067-3:2013:7.2.2/SegmentDuration | Error | shall | unverified
+ST2067-3/SegmentDuration | 2016 | ST2067-3:2016:7.2.2/SegmentDuration | Error | shall | suspect
+ST2067-3/ContentVersionIdDuplicate | 2013 | ST2067-3:2013:6.1.9/ContentVersionIdDuplicate | Error | shall | unverified
+ST2067-3/ContentVersionIdDuplicate | 2016 | ST2067-3:2016:6.1.9/ContentVersionIdDuplicate | Error | shall | unverified
+ST2067-3/SegmentDurationIntegerEditUnits | 2013 | ST2067-3:2013:7.3/SegmentDurationIntegerEditUnits | Error | shall | unverified
+ST2067-3/SegmentDurationIntegerEditUnits | 2016 | ST2067-3:2016:7.3/SegmentDurationIntegerEditUnits | Error | shall | unverified
+ST2067-9/MalformedXml | 2018 | ST2067-9:2018:6.1/MalformedXml | Critical | shall | unverified
+ST2067-9/SidecarAssetReferencedByVirtualTrack | 2018 | ST2067-9:2018:5/SidecarAssetReferencedByVirtualTrack | Error | shall | unverified
+ST2067-9/DuplicateAssetId | 2018 | ST2067-9:2018:7.2.3/DuplicateAssetId | Error | shall | unverified
+ST2067-9/SignerWithoutSignature | 2018 | ST2067-9:2018:7.2.4/SignerWithoutSignature | Error | shall | unverified
+ST2067-9/SignatureWithoutSigner | 2018 | ST2067-9:2018:7.2.5/SignatureWithoutSigner | Error | shall | unverified
+ST2067-9/SidecarAssetNotFound | 2018 | ST2067-9:2018:7.3.1/SidecarAssetNotFound | Error | shall | unverified
+ST2067-9/CplNotFound | 2018 | ST2067-9:2018:7.3.1.1/CplNotFound | Warning | should | unverified
+ST2067-9/DuplicateCplId | 2018 | ST2067-9:2018:7.3.1.1/DuplicateCplId | Error | shall | unverified
+ST2067-21/ColorSystem | 2014 | ST2067-21:2014:6.1/ColorSystem | Error | shall | unverified
+ST2067-21/ColorSystem | 2016 | ST2067-21:2016:6.1/ColorSystem | Error | shall | unverified
+ST2067-21/ColorSystem | 2020 | ST2067-21:2020:6.2/ColorSystem | Error | shall | unverified
+ST2067-21/ColorSystem | 2023 | ST2067-21:2023:6.2/ColorSystem | Error | shall | unverified
+ST2067-21/ColorSystem | 2026 | ST2067-21:2026:7.2/ColorSystem | Error | shall | unverified
+ST2067-21/BlackRefLevel | 2014 | ST2067-21:2014:6.1.4/BlackRefLevel | Error | shall | unverified
+ST2067-21/BlackRefLevel | 2016 | ST2067-21:2016:6.3/BlackRefLevel | Error | shall | unverified
+ST2067-21/BlackRefLevel | 2020 | ST2067-21:2020:6.4.3/BlackRefLevel | Error | shall | unverified
+ST2067-21/BlackRefLevel | 2023 | ST2067-21:2023:6.4.3/BlackRefLevel | Error | shall | unverified
+ST2067-21/BlackRefLevel | 2026 | ST2067-21:2026:7.4.3/BlackRefLevel | Error | shall | unverified
+ST2067-21/WhiteRefLevel | 2014 | ST2067-21:2014:6.1.4/WhiteRefLevel | Error | shall | unverified
+ST2067-21/WhiteRefLevel | 2016 | ST2067-21:2016:6.3/WhiteRefLevel | Error | shall | unverified
+ST2067-21/WhiteRefLevel | 2020 | ST2067-21:2020:6.4.3/WhiteRefLevel | Error | shall | unverified
+ST2067-21/WhiteRefLevel | 2023 | ST2067-21:2023:6.4.3/WhiteRefLevel | Error | shall | unverified
+ST2067-21/WhiteRefLevel | 2026 | ST2067-21:2026:7.4.3/WhiteRefLevel | Error | shall | unverified
+ST2067-21/ColorRange | 2014 | ST2067-21:2014:6.1.4/ColorRange | Error | shall | unverified
+ST2067-21/ColorRange | 2016 | ST2067-21:2016:6.3/ColorRange | Error | shall | unverified
+ST2067-21/ColorRange | 2020 | ST2067-21:2020:6.4.3/ColorRange | Error | shall | unverified
+ST2067-21/ColorRange | 2023 | ST2067-21:2023:6.4.3/ColorRange | Error | shall | unverified
+ST2067-21/ColorRange | 2026 | ST2067-21:2026:7.4.3/ColorRange | Error | shall | unverified
+ST2067-21/ApplicationIdentification | 2014 | ST2067-21:2014:7/ApplicationIdentification | Error | shall | unverified
+ST2067-21/ApplicationIdentification | 2016 | ST2067-21:2016:7.1/ApplicationIdentification | Error | shall | unverified
+ST2067-21/ApplicationIdentification | 2020 | ST2067-21:2020:7.1/ApplicationIdentification | Error | shall | unverified
+ST2067-21/ApplicationIdentification | 2023 | ST2067-21:2023:7.1/ApplicationIdentification | Error | shall | unverified
+ST2067-21/ApplicationIdentification | 2026 | ST2067-21:2026:8.1/ApplicationIdentification | Error | shall | unverified
+ST2067-21/AppIdMismatch | 2014 | ST2067-21:2014:7/AppIdMismatch | Warning | should | unverified
+ST2067-21/AppIdMismatch | 2016 | ST2067-21:2016:7.1/AppIdMismatch | Warning | should | unverified
+ST2067-21/AppIdMismatch | 2020 | ST2067-21:2020:7.1/AppIdMismatch | Warning | should | unverified
+ST2067-21/AppIdMismatch | 2023 | ST2067-21:2023:7.1/AppIdMismatch | Warning | should | unverified
+ST2067-21/AppIdMismatch | 2026 | ST2067-21:2026:8.1/AppIdMismatch | Warning | should | unverified
 ST2067-21/ComponentRefValues | 2014 | absent
-ST2067-21/ComponentRefValues | 2016 | ST2067-21:2016:6.2/ComponentRefValues | Error | shall | verified
-ST2067-21/ComponentRefValues | 2020 | ST2067-21:2020:6.3.2/ComponentRefValues | Error | shall | verified
-ST2067-21/ComponentRefValues | 2023 | ST2067-21:2023:6.3.2/ComponentRefValues | Error | shall | verified
-ST2067-21/ComponentRefValues | 2026 | ST2067-21:2026:7.3.2/ComponentRefValues | Error | shall | verified
+ST2067-21/ComponentRefValues | 2016 | ST2067-21:2016:6.2/ComponentRefValues | Error | shall | unverified
+ST2067-21/ComponentRefValues | 2020 | ST2067-21:2020:6.3.2/ComponentRefValues | Error | shall | unverified
+ST2067-21/ComponentRefValues | 2023 | ST2067-21:2023:6.3.2/ComponentRefValues | Error | shall | unverified
+ST2067-21/ComponentRefValues | 2026 | ST2067-21:2026:7.3.2/ComponentRefValues | Error | shall | unverified
 ST2067-21/MaxCLLMaxFALL | 2014 | absent
-ST2067-21/MaxCLLMaxFALL | 2016 | ST2067-21:2016:7.2/MaxCLLMaxFALL | Info | may | verified
-ST2067-21/MaxCLLMaxFALL | 2020 | ST2067-21:2020:7.5/MaxCLLMaxFALL | Info | may | verified
-ST2067-21/MaxCLLMaxFALL | 2023 | ST2067-21:2023:7.5/MaxCLLMaxFALL | Info | may | verified
-ST2067-21/MaxCLLMaxFALL | 2026 | ST2067-21:2026:8.3.3/MaxCLLMaxFALL | Info | may | verified
+ST2067-21/MaxCLLMaxFALL | 2016 | ST2067-21:2016:7.2/MaxCLLMaxFALL | Info | may | unverified
+ST2067-21/MaxCLLMaxFALL | 2020 | ST2067-21:2020:7.5/MaxCLLMaxFALL | Info | may | unverified
+ST2067-21/MaxCLLMaxFALL | 2023 | ST2067-21:2023:7.5/MaxCLLMaxFALL | Info | may | unverified
+ST2067-21/MaxCLLMaxFALL | 2026 | ST2067-21:2026:8.3.3/MaxCLLMaxFALL | Info | may | unverified
 ST2067-21/FrameRate | 2014 | absent
 ST2067-21/FrameRate | 2016 | absent
-ST2067-21/FrameRate | 2020 | ST2067-21:2020:5.2/FrameRate | Error | shall | verified
-ST2067-21/FrameRate | 2023 | ST2067-21:2023:5.2/FrameRate | Error | shall | verified
-ST2067-21/FrameRate | 2026 | ST2067-21:2026:6.2.1/FrameRate | Error | shall | verified
+ST2067-21/FrameRate | 2020 | ST2067-21:2020:5.2/FrameRate | Error | shall | unverified
+ST2067-21/FrameRate | 2023 | ST2067-21:2023:5.2/FrameRate | Error | shall | unverified
+ST2067-21/FrameRate | 2026 | ST2067-21:2026:6.2.1/FrameRate | Error | shall | unverified
 ST2067-21/Resolution | 2014 | absent
 ST2067-21/Resolution | 2016 | absent
-ST2067-21/Resolution | 2020 | ST2067-21:2020:5.2/Resolution | Error | shall | verified
-ST2067-21/Resolution | 2023 | ST2067-21:2023:5.2/Resolution | Error | shall | verified
-ST2067-21/Resolution | 2026 | ST2067-21:2026:6.2.1/Resolution | Error | shall | verified
+ST2067-21/Resolution | 2020 | ST2067-21:2020:5.2/Resolution | Error | shall | unverified
+ST2067-21/Resolution | 2023 | ST2067-21:2023:5.2/Resolution | Error | shall | unverified
+ST2067-21/Resolution | 2026 | ST2067-21:2026:6.2.1/Resolution | Error | shall | unverified
 ST2067-21/RequiredStoredWidth | 2014 | absent
 ST2067-21/RequiredStoredWidth | 2016 | absent
-ST2067-21/RequiredStoredWidth | 2020 | ST2067-21:2020:6.2/RequiredStoredWidth | Error | shall | verified
-ST2067-21/RequiredStoredWidth | 2023 | ST2067-21:2023:6.2/RequiredStoredWidth | Error | shall | verified
-ST2067-21/RequiredStoredWidth | 2026 | ST2067-21:2026:7.2.1.1/RequiredStoredWidth | Error | shall | verified
+ST2067-21/RequiredStoredWidth | 2020 | ST2067-21:2020:6.2/RequiredStoredWidth | Error | shall | unverified
+ST2067-21/RequiredStoredWidth | 2023 | ST2067-21:2023:6.2/RequiredStoredWidth | Error | shall | unverified
+ST2067-21/RequiredStoredWidth | 2026 | ST2067-21:2026:7.2.1.1/RequiredStoredWidth | Error | shall | unverified
 ST2067-21/RequiredStoredHeight | 2014 | absent
 ST2067-21/RequiredStoredHeight | 2016 | absent
-ST2067-21/RequiredStoredHeight | 2020 | ST2067-21:2020:6.2/RequiredStoredHeight | Error | shall | verified
-ST2067-21/RequiredStoredHeight | 2023 | ST2067-21:2023:6.2/RequiredStoredHeight | Error | shall | verified
-ST2067-21/RequiredStoredHeight | 2026 | ST2067-21:2026:7.2.1.1/RequiredStoredHeight | Error | shall | verified
+ST2067-21/RequiredStoredHeight | 2020 | ST2067-21:2020:6.2/RequiredStoredHeight | Error | shall | unverified
+ST2067-21/RequiredStoredHeight | 2023 | ST2067-21:2023:6.2/RequiredStoredHeight | Error | shall | unverified
+ST2067-21/RequiredStoredHeight | 2026 | ST2067-21:2026:7.2.1.1/RequiredStoredHeight | Error | shall | unverified
 ST2067-21/RequiredSampleRate | 2014 | absent
 ST2067-21/RequiredSampleRate | 2016 | absent
-ST2067-21/RequiredSampleRate | 2020 | ST2067-21:2020:6.2/RequiredSampleRate | Error | shall | verified
-ST2067-21/RequiredSampleRate | 2023 | ST2067-21:2023:6.2/RequiredSampleRate | Error | shall | verified
-ST2067-21/RequiredSampleRate | 2026 | ST2067-21:2026:7.2.1.1/RequiredSampleRate | Error | shall | verified
+ST2067-21/RequiredSampleRate | 2020 | ST2067-21:2020:6.2/RequiredSampleRate | Error | shall | unverified
+ST2067-21/RequiredSampleRate | 2023 | ST2067-21:2023:6.2/RequiredSampleRate | Error | shall | unverified
+ST2067-21/RequiredSampleRate | 2026 | ST2067-21:2026:7.2.1.1/RequiredSampleRate | Error | shall | unverified
 ST2067-21/RequiredFrameLayout | 2014 | absent
 ST2067-21/RequiredFrameLayout | 2016 | absent
-ST2067-21/RequiredFrameLayout | 2020 | ST2067-21:2020:6.2/RequiredFrameLayout | Error | shall | verified
-ST2067-21/RequiredFrameLayout | 2023 | ST2067-21:2023:6.2/RequiredFrameLayout | Error | shall | verified
-ST2067-21/RequiredFrameLayout | 2026 | ST2067-21:2026:7.2.1.1/RequiredFrameLayout | Error | shall | verified
+ST2067-21/RequiredFrameLayout | 2020 | ST2067-21:2020:6.2/RequiredFrameLayout | Error | shall | unverified
+ST2067-21/RequiredFrameLayout | 2023 | ST2067-21:2023:6.2/RequiredFrameLayout | Error | shall | unverified
+ST2067-21/RequiredFrameLayout | 2026 | ST2067-21:2026:7.2.1.1/RequiredFrameLayout | Error | shall | unverified
 ST2067-21/RequiredColorPrimaries | 2014 | absent
 ST2067-21/RequiredColorPrimaries | 2016 | absent
-ST2067-21/RequiredColorPrimaries | 2020 | ST2067-21:2020:6.2/RequiredColorPrimaries | Error | shall | verified
-ST2067-21/RequiredColorPrimaries | 2023 | ST2067-21:2023:6.2/RequiredColorPrimaries | Error | shall | verified
-ST2067-21/RequiredColorPrimaries | 2026 | ST2067-21:2026:7.2.1.1/RequiredColorPrimaries | Error | shall | verified
+ST2067-21/RequiredColorPrimaries | 2020 | ST2067-21:2020:6.2/RequiredColorPrimaries | Error | shall | unverified
+ST2067-21/RequiredColorPrimaries | 2023 | ST2067-21:2023:6.2/RequiredColorPrimaries | Error | shall | unverified
+ST2067-21/RequiredColorPrimaries | 2026 | ST2067-21:2026:7.2.1.1/RequiredColorPrimaries | Error | shall | unverified
 ST2067-21/RequiredTransferCharacteristic | 2014 | absent
 ST2067-21/RequiredTransferCharacteristic | 2016 | absent
-ST2067-21/RequiredTransferCharacteristic | 2020 | ST2067-21:2020:6.2/RequiredTransferCharacteristic | Error | shall | verified
-ST2067-21/RequiredTransferCharacteristic | 2023 | ST2067-21:2023:6.2/RequiredTransferCharacteristic | Error | shall | verified
-ST2067-21/RequiredTransferCharacteristic | 2026 | ST2067-21:2026:7.2.1.1/RequiredTransferCharacteristic | Error | shall | verified
+ST2067-21/RequiredTransferCharacteristic | 2020 | ST2067-21:2020:6.2/RequiredTransferCharacteristic | Error | shall | unverified
+ST2067-21/RequiredTransferCharacteristic | 2023 | ST2067-21:2023:6.2/RequiredTransferCharacteristic | Error | shall | unverified
+ST2067-21/RequiredTransferCharacteristic | 2026 | ST2067-21:2026:7.2.1.1/RequiredTransferCharacteristic | Error | shall | unverified
 ST2067-21/RequiredPictureCompression | 2014 | absent
 ST2067-21/RequiredPictureCompression | 2016 | absent
-ST2067-21/RequiredPictureCompression | 2020 | ST2067-21:2020:6.2/RequiredPictureCompression | Error | shall | verified
-ST2067-21/RequiredPictureCompression | 2023 | ST2067-21:2023:6.2/RequiredPictureCompression | Error | shall | verified
-ST2067-21/RequiredPictureCompression | 2026 | ST2067-21:2026:7.2.1.1/RequiredPictureCompression | Error | shall | verified
+ST2067-21/RequiredPictureCompression | 2020 | ST2067-21:2020:6.2/RequiredPictureCompression | Error | shall | unverified
+ST2067-21/RequiredPictureCompression | 2023 | ST2067-21:2023:6.2/RequiredPictureCompression | Error | shall | unverified
+ST2067-21/RequiredPictureCompression | 2026 | ST2067-21:2026:7.2.1.1/RequiredPictureCompression | Error | shall | unverified
 ST2067-21/RequiredComponentDepth | 2014 | absent
 ST2067-21/RequiredComponentDepth | 2016 | absent
-ST2067-21/RequiredComponentDepth | 2020 | ST2067-21:2020:6.2/RequiredComponentDepth | Error | shall | unverified
-ST2067-21/RequiredComponentDepth | 2023 | ST2067-21:2023:6.2/RequiredComponentDepth | Error | shall | unverified
-ST2067-21/RequiredComponentDepth | 2026 | ST2067-21:2026:7.4.1/RequiredComponentDepth | Error | shall | verified
+ST2067-21/RequiredComponentDepth | 2020 | ST2067-21:2020:6.2/RequiredComponentDepth | Error | shall | suspect
+ST2067-21/RequiredComponentDepth | 2023 | ST2067-21:2023:6.2/RequiredComponentDepth | Error | shall | suspect
+ST2067-21/RequiredComponentDepth | 2026 | ST2067-21:2026:7.4.1/RequiredComponentDepth | Error | shall | unverified
 ST2067-21/AlphaTransparency | 2014 | absent
 ST2067-21/AlphaTransparency | 2016 | absent
-ST2067-21/AlphaTransparency | 2020 | ST2067-21:2020:6.2.1/AlphaTransparency | Error | shall | verified
-ST2067-21/AlphaTransparency | 2023 | ST2067-21:2023:6.2.1/AlphaTransparency | Error | shall | verified
+ST2067-21/AlphaTransparency | 2020 | ST2067-21:2020:6.2.1/AlphaTransparency | Error | shall | unverified
+ST2067-21/AlphaTransparency | 2023 | ST2067-21:2023:6.2.1/AlphaTransparency | Error | shall | unverified
 ST2067-21/AlphaTransparency | 2026 | absent
 ST2067-21/CodingEquationsMissing | 2014 | absent
 ST2067-21/CodingEquationsMissing | 2016 | absent
-ST2067-21/CodingEquationsMissing | 2020 | ST2067-21:2020:6.2.1/CodingEquationsMissing | Error | shall | verified
-ST2067-21/CodingEquationsMissing | 2023 | ST2067-21:2023:6.2.1/CodingEquationsMissing | Error | shall | verified
-ST2067-21/CodingEquationsMissing | 2026 | ST2067-21:2026:7.2.1.1/CodingEquationsMissing | Error | shall | verified
+ST2067-21/CodingEquationsMissing | 2020 | ST2067-21:2020:6.2.1/CodingEquationsMissing | Error | shall | unverified
+ST2067-21/CodingEquationsMissing | 2023 | ST2067-21:2023:6.2.1/CodingEquationsMissing | Error | shall | unverified
+ST2067-21/CodingEquationsMissing | 2026 | ST2067-21:2026:7.2.1.1/CodingEquationsMissing | Error | shall | unverified
 ST2067-21/ColorPrimariesMissing | 2014 | absent
 ST2067-21/ColorPrimariesMissing | 2016 | absent
-ST2067-21/ColorPrimariesMissing | 2020 | ST2067-21:2020:6.2.1/ColorPrimariesMissing | Error | shall | verified
-ST2067-21/ColorPrimariesMissing | 2023 | ST2067-21:2023:6.2.1/ColorPrimariesMissing | Error | shall | verified
-ST2067-21/ColorPrimariesMissing | 2026 | ST2067-21:2026:7.2.1.1/ColorPrimariesMissing | Error | shall | verified
+ST2067-21/ColorPrimariesMissing | 2020 | ST2067-21:2020:6.2.1/ColorPrimariesMissing | Error | shall | unverified
+ST2067-21/ColorPrimariesMissing | 2023 | ST2067-21:2023:6.2.1/ColorPrimariesMissing | Error | shall | unverified
+ST2067-21/ColorPrimariesMissing | 2026 | ST2067-21:2026:7.2.1.1/ColorPrimariesMissing | Error | shall | unverified
 ST2067-21/FieldDominance | 2014 | absent
 ST2067-21/FieldDominance | 2016 | absent
-ST2067-21/FieldDominance | 2020 | ST2067-21:2020:6.2.1/FieldDominance | Error | shall | verified
-ST2067-21/FieldDominance | 2023 | ST2067-21:2023:6.2.1/FieldDominance | Error | shall | verified
-ST2067-21/FieldDominance | 2026 | ST2067-21:2026:7.2.1.1/FieldDominance | Error | shall | verified
+ST2067-21/FieldDominance | 2020 | ST2067-21:2020:6.2.1/FieldDominance | Error | shall | unverified
+ST2067-21/FieldDominance | 2023 | ST2067-21:2023:6.2.1/FieldDominance | Error | shall | unverified
+ST2067-21/FieldDominance | 2026 | ST2067-21:2026:7.2.1.1/FieldDominance | Error | shall | unverified
 ST2067-21/FrameLayout | 2014 | absent
 ST2067-21/FrameLayout | 2016 | absent
-ST2067-21/FrameLayout | 2020 | ST2067-21:2020:6.2.1/FrameLayout | Error | shall | verified
-ST2067-21/FrameLayout | 2023 | ST2067-21:2023:6.2.1/FrameLayout | Error | shall | verified
-ST2067-21/FrameLayout | 2026 | ST2067-21:2026:7.2.1.4/FrameLayout | Error | shall | verified
+ST2067-21/FrameLayout | 2020 | ST2067-21:2020:6.2.1/FrameLayout | Error | shall | unverified
+ST2067-21/FrameLayout | 2023 | ST2067-21:2023:6.2.1/FrameLayout | Error | shall | unverified
+ST2067-21/FrameLayout | 2026 | ST2067-21:2026:7.2.1.4/FrameLayout | Error | shall | unverified
 ST2067-21/FrameLayoutInterlaced | 2014 | absent
 ST2067-21/FrameLayoutInterlaced | 2016 | absent
-ST2067-21/FrameLayoutInterlaced | 2020 | ST2067-21:2020:6.2.1/FrameLayoutInterlaced | Error | shall | unverified
-ST2067-21/FrameLayoutInterlaced | 2023 | ST2067-21:2023:6.2.1/FrameLayoutInterlaced | Error | shall | unverified
-ST2067-21/FrameLayoutInterlaced | 2026 | ST2067-21:2026:6.2.1/FrameLayoutInterlaced | Error | shall | verified
+ST2067-21/FrameLayoutInterlaced | 2020 | ST2067-21:2020:6.2.1/FrameLayoutInterlaced | Error | shall | suspect
+ST2067-21/FrameLayoutInterlaced | 2023 | ST2067-21:2023:6.2.1/FrameLayoutInterlaced | Error | shall | suspect
+ST2067-21/FrameLayoutInterlaced | 2026 | ST2067-21:2026:6.2.1/FrameLayoutInterlaced | Error | shall | unverified
 ST2067-21/ImageAlignmentOffset | 2014 | absent
 ST2067-21/ImageAlignmentOffset | 2016 | absent
-ST2067-21/ImageAlignmentOffset | 2020 | ST2067-21:2020:6.2.1/ImageAlignmentOffset | Error | shall | verified
-ST2067-21/ImageAlignmentOffset | 2023 | ST2067-21:2023:6.2.1/ImageAlignmentOffset | Error | shall | verified
-ST2067-21/ImageAlignmentOffset | 2026 | ST2067-21:2026:7.2.1.1/ImageAlignmentOffset | Error | shall | verified
+ST2067-21/ImageAlignmentOffset | 2020 | ST2067-21:2020:6.2.1/ImageAlignmentOffset | Error | shall | unverified
+ST2067-21/ImageAlignmentOffset | 2023 | ST2067-21:2023:6.2.1/ImageAlignmentOffset | Error | shall | unverified
+ST2067-21/ImageAlignmentOffset | 2026 | ST2067-21:2026:7.2.1.1/ImageAlignmentOffset | Error | shall | unverified
 ST2067-21/ImageEndOffset | 2014 | absent
 ST2067-21/ImageEndOffset | 2016 | absent
-ST2067-21/ImageEndOffset | 2020 | ST2067-21:2020:6.2.1/ImageEndOffset | Error | shall | verified
-ST2067-21/ImageEndOffset | 2023 | ST2067-21:2023:6.2.1/ImageEndOffset | Error | shall | verified
-ST2067-21/ImageEndOffset | 2026 | ST2067-21:2026:7.2.1.1/ImageEndOffset | Error | shall | verified
+ST2067-21/ImageEndOffset | 2020 | ST2067-21:2020:6.2.1/ImageEndOffset | Error | shall | unverified
+ST2067-21/ImageEndOffset | 2023 | ST2067-21:2023:6.2.1/ImageEndOffset | Error | shall | unverified
+ST2067-21/ImageEndOffset | 2026 | ST2067-21:2026:7.2.1.1/ImageEndOffset | Error | shall | unverified
 ST2067-21/ImageStartOffset | 2014 | absent
 ST2067-21/ImageStartOffset | 2016 | absent
-ST2067-21/ImageStartOffset | 2020 | ST2067-21:2020:6.2.1/ImageStartOffset | Error | shall | verified
-ST2067-21/ImageStartOffset | 2023 | ST2067-21:2023:6.2.1/ImageStartOffset | Error | shall | verified
-ST2067-21/ImageStartOffset | 2026 | ST2067-21:2026:7.2.1.1/ImageStartOffset | Error | shall | verified
+ST2067-21/ImageStartOffset | 2020 | ST2067-21:2020:6.2.1/ImageStartOffset | Error | shall | unverified
+ST2067-21/ImageStartOffset | 2023 | ST2067-21:2023:6.2.1/ImageStartOffset | Error | shall | unverified
+ST2067-21/ImageStartOffset | 2026 | ST2067-21:2026:7.2.1.1/ImageStartOffset | Error | shall | unverified
 ST2067-21/SampledHeight | 2014 | absent
 ST2067-21/SampledHeight | 2016 | absent
-ST2067-21/SampledHeight | 2020 | ST2067-21:2020:6.2.1/SampledHeight | Error | shall | verified
-ST2067-21/SampledHeight | 2023 | ST2067-21:2023:6.2.1/SampledHeight | Error | shall | verified
-ST2067-21/SampledHeight | 2026 | ST2067-21:2026:7.2.1.1/SampledHeight | Error | shall | verified
+ST2067-21/SampledHeight | 2020 | ST2067-21:2020:6.2.1/SampledHeight | Error | shall | unverified
+ST2067-21/SampledHeight | 2023 | ST2067-21:2023:6.2.1/SampledHeight | Error | shall | unverified
+ST2067-21/SampledHeight | 2026 | ST2067-21:2026:7.2.1.1/SampledHeight | Error | shall | unverified
 ST2067-21/SampledWidth | 2014 | absent
 ST2067-21/SampledWidth | 2016 | absent
-ST2067-21/SampledWidth | 2020 | ST2067-21:2020:6.2.1/SampledWidth | Error | shall | verified
-ST2067-21/SampledWidth | 2023 | ST2067-21:2023:6.2.1/SampledWidth | Error | shall | verified
-ST2067-21/SampledWidth | 2026 | ST2067-21:2026:7.2.1.1/SampledWidth | Error | shall | verified
+ST2067-21/SampledWidth | 2020 | ST2067-21:2020:6.2.1/SampledWidth | Error | shall | unverified
+ST2067-21/SampledWidth | 2023 | ST2067-21:2023:6.2.1/SampledWidth | Error | shall | unverified
+ST2067-21/SampledWidth | 2026 | ST2067-21:2026:7.2.1.1/SampledWidth | Error | shall | unverified
 ST2067-21/SampledXOffset | 2014 | absent
 ST2067-21/SampledXOffset | 2016 | absent
-ST2067-21/SampledXOffset | 2020 | ST2067-21:2020:6.2.1/SampledXOffset | Error | shall | verified
-ST2067-21/SampledXOffset | 2023 | ST2067-21:2023:6.2.1/SampledXOffset | Error | shall | verified
-ST2067-21/SampledXOffset | 2026 | ST2067-21:2026:7.2.1.1/SampledXOffset | Error | shall | verified
+ST2067-21/SampledXOffset | 2020 | ST2067-21:2020:6.2.1/SampledXOffset | Error | shall | unverified
+ST2067-21/SampledXOffset | 2023 | ST2067-21:2023:6.2.1/SampledXOffset | Error | shall | unverified
+ST2067-21/SampledXOffset | 2026 | ST2067-21:2026:7.2.1.1/SampledXOffset | Error | shall | unverified
 ST2067-21/SampledYOffset | 2014 | absent
 ST2067-21/SampledYOffset | 2016 | absent
-ST2067-21/SampledYOffset | 2020 | ST2067-21:2020:6.2.1/SampledYOffset | Error | shall | verified
-ST2067-21/SampledYOffset | 2023 | ST2067-21:2023:6.2.1/SampledYOffset | Error | shall | verified
-ST2067-21/SampledYOffset | 2026 | ST2067-21:2026:7.2.1.1/SampledYOffset | Error | shall | verified
+ST2067-21/SampledYOffset | 2020 | ST2067-21:2020:6.2.1/SampledYOffset | Error | shall | unverified
+ST2067-21/SampledYOffset | 2023 | ST2067-21:2023:6.2.1/SampledYOffset | Error | shall | unverified
+ST2067-21/SampledYOffset | 2026 | ST2067-21:2026:7.2.1.1/SampledYOffset | Error | shall | unverified
 ST2067-21/StoredF2Offset | 2014 | absent
 ST2067-21/StoredF2Offset | 2016 | absent
-ST2067-21/StoredF2Offset | 2020 | ST2067-21:2020:6.2.1/StoredF2Offset | Error | shall | verified
-ST2067-21/StoredF2Offset | 2023 | ST2067-21:2023:6.2.1/StoredF2Offset | Error | shall | verified
-ST2067-21/StoredF2Offset | 2026 | ST2067-21:2026:7.2.1.1/StoredF2Offset | Error | shall | verified
+ST2067-21/StoredF2Offset | 2020 | ST2067-21:2020:6.2.1/StoredF2Offset | Error | shall | unverified
+ST2067-21/StoredF2Offset | 2023 | ST2067-21:2023:6.2.1/StoredF2Offset | Error | shall | unverified
+ST2067-21/StoredF2Offset | 2026 | ST2067-21:2026:7.2.1.1/StoredF2Offset | Error | shall | unverified
 ST2067-21/TransferCharacteristicMissing | 2014 | absent
 ST2067-21/TransferCharacteristicMissing | 2016 | absent
-ST2067-21/TransferCharacteristicMissing | 2020 | ST2067-21:2020:6.2.1/TransferCharacteristicMissing | Error | shall | verified
-ST2067-21/TransferCharacteristicMissing | 2023 | ST2067-21:2023:6.2.1/TransferCharacteristicMissing | Error | shall | verified
-ST2067-21/TransferCharacteristicMissing | 2026 | ST2067-21:2026:7.2.1.1/TransferCharacteristicMissing | Error | shall | verified
+ST2067-21/TransferCharacteristicMissing | 2020 | ST2067-21:2020:6.2.1/TransferCharacteristicMissing | Error | shall | unverified
+ST2067-21/TransferCharacteristicMissing | 2023 | ST2067-21:2023:6.2.1/TransferCharacteristicMissing | Error | shall | unverified
+ST2067-21/TransferCharacteristicMissing | 2026 | ST2067-21:2026:7.2.1.1/TransferCharacteristicMissing | Error | shall | unverified
 ST2067-21/TransferCharacteristicUnknown | 2014 | absent
 ST2067-21/TransferCharacteristicUnknown | 2016 | absent
-ST2067-21/TransferCharacteristicUnknown | 2020 | ST2067-21:2020:6.2.2/TransferCharacteristicUnknown | Error | shall | verified
-ST2067-21/TransferCharacteristicUnknown | 2023 | ST2067-21:2023:6.2.2/TransferCharacteristicUnknown | Error | shall | verified
-ST2067-21/TransferCharacteristicUnknown | 2026 | ST2067-21:2026:7.2.2/TransferCharacteristicUnknown | Error | shall | verified
+ST2067-21/TransferCharacteristicUnknown | 2020 | ST2067-21:2020:6.2.2/TransferCharacteristicUnknown | Error | shall | unverified
+ST2067-21/TransferCharacteristicUnknown | 2023 | ST2067-21:2023:6.2.2/TransferCharacteristicUnknown | Error | shall | unverified
+ST2067-21/TransferCharacteristicUnknown | 2026 | ST2067-21:2026:7.2.2/TransferCharacteristicUnknown | Error | shall | unverified
 ST2067-21/CodingEquationsUnknown | 2014 | absent
 ST2067-21/CodingEquationsUnknown | 2016 | absent
-ST2067-21/CodingEquationsUnknown | 2020 | ST2067-21:2020:6.2.3/CodingEquationsUnknown | Error | shall | verified
-ST2067-21/CodingEquationsUnknown | 2023 | ST2067-21:2023:6.2.3/CodingEquationsUnknown | Error | shall | verified
-ST2067-21/CodingEquationsUnknown | 2026 | ST2067-21:2026:7.2.3/CodingEquationsUnknown | Error | shall | verified
+ST2067-21/CodingEquationsUnknown | 2020 | ST2067-21:2020:6.2.3/CodingEquationsUnknown | Error | shall | unverified
+ST2067-21/CodingEquationsUnknown | 2023 | ST2067-21:2023:6.2.3/CodingEquationsUnknown | Error | shall | unverified
+ST2067-21/CodingEquationsUnknown | 2026 | ST2067-21:2026:7.2.3/CodingEquationsUnknown | Error | shall | unverified
 ST2067-21/ColorPrimariesUnknown | 2014 | absent
 ST2067-21/ColorPrimariesUnknown | 2016 | absent
-ST2067-21/ColorPrimariesUnknown | 2020 | ST2067-21:2020:6.2.4/ColorPrimariesUnknown | Error | shall | verified
-ST2067-21/ColorPrimariesUnknown | 2023 | ST2067-21:2023:6.2.4/ColorPrimariesUnknown | Error | shall | verified
-ST2067-21/ColorPrimariesUnknown | 2026 | ST2067-21:2026:7.2.4/ColorPrimariesUnknown | Error | shall | verified
+ST2067-21/ColorPrimariesUnknown | 2020 | ST2067-21:2020:6.2.4/ColorPrimariesUnknown | Error | shall | unverified
+ST2067-21/ColorPrimariesUnknown | 2023 | ST2067-21:2023:6.2.4/ColorPrimariesUnknown | Error | shall | unverified
+ST2067-21/ColorPrimariesUnknown | 2026 | ST2067-21:2026:7.2.4/ColorPrimariesUnknown | Error | shall | unverified
 ST2067-21/J2KRequired | 2014 | absent
 ST2067-21/J2KRequired | 2016 | absent
-ST2067-21/J2KRequired | 2020 | ST2067-21:2020:6.2.5/J2KRequired | Error | shall | verified
-ST2067-21/J2KRequired | 2023 | ST2067-21:2023:6.2.5/J2KRequired | Error | shall | verified
-ST2067-21/J2KRequired | 2026 | ST2067-21:2026:7.2.5/J2KRequired | Error | shall | verified
+ST2067-21/J2KRequired | 2020 | ST2067-21:2020:6.2.5/J2KRequired | Error | shall | unverified
+ST2067-21/J2KRequired | 2023 | ST2067-21:2023:6.2.5/J2KRequired | Error | shall | unverified
+ST2067-21/J2KRequired | 2026 | ST2067-21:2026:7.2.5/J2KRequired | Error | shall | unverified
 ST2067-21/AlphaMaxRef | 2014 | absent
 ST2067-21/AlphaMaxRef | 2016 | absent
-ST2067-21/AlphaMaxRef | 2020 | ST2067-21:2020:6.3/AlphaMaxRef | Error | shall | verified
-ST2067-21/AlphaMaxRef | 2023 | ST2067-21:2023:6.3/AlphaMaxRef | Error | shall | verified
-ST2067-21/AlphaMaxRef | 2026 | ST2067-21:2026:7.3.1/AlphaMaxRef | Error | shall | verified
+ST2067-21/AlphaMaxRef | 2020 | ST2067-21:2020:6.3/AlphaMaxRef | Error | shall | unverified
+ST2067-21/AlphaMaxRef | 2023 | ST2067-21:2023:6.3/AlphaMaxRef | Error | shall | unverified
+ST2067-21/AlphaMaxRef | 2026 | ST2067-21:2026:7.3.1/AlphaMaxRef | Error | shall | unverified
 ST2067-21/AlphaMinRef | 2014 | absent
 ST2067-21/AlphaMinRef | 2016 | absent
-ST2067-21/AlphaMinRef | 2020 | ST2067-21:2020:6.3/AlphaMinRef | Error | shall | verified
-ST2067-21/AlphaMinRef | 2023 | ST2067-21:2023:6.3/AlphaMinRef | Error | shall | verified
-ST2067-21/AlphaMinRef | 2026 | ST2067-21:2026:7.3.1/AlphaMinRef | Error | shall | verified
+ST2067-21/AlphaMinRef | 2020 | ST2067-21:2020:6.3/AlphaMinRef | Error | shall | unverified
+ST2067-21/AlphaMinRef | 2023 | ST2067-21:2023:6.3/AlphaMinRef | Error | shall | unverified
+ST2067-21/AlphaMinRef | 2026 | ST2067-21:2026:7.3.1/AlphaMinRef | Error | shall | unverified
 ST2067-21/ComponentMaxRef | 2014 | absent
 ST2067-21/ComponentMaxRef | 2016 | absent
-ST2067-21/ComponentMaxRef | 2020 | ST2067-21:2020:6.3/ComponentMaxRef | Error | shall | verified
-ST2067-21/ComponentMaxRef | 2023 | ST2067-21:2023:6.3/ComponentMaxRef | Error | shall | verified
-ST2067-21/ComponentMaxRef | 2026 | ST2067-21:2026:7.3.1/ComponentMaxRef | Error | shall | verified
+ST2067-21/ComponentMaxRef | 2020 | ST2067-21:2020:6.3/ComponentMaxRef | Error | shall | unverified
+ST2067-21/ComponentMaxRef | 2023 | ST2067-21:2023:6.3/ComponentMaxRef | Error | shall | unverified
+ST2067-21/ComponentMaxRef | 2026 | ST2067-21:2026:7.3.1/ComponentMaxRef | Error | shall | unverified
 ST2067-21/ComponentMinRef | 2014 | absent
 ST2067-21/ComponentMinRef | 2016 | absent
-ST2067-21/ComponentMinRef | 2020 | ST2067-21:2020:6.3/ComponentMinRef | Error | shall | verified
-ST2067-21/ComponentMinRef | 2023 | ST2067-21:2023:6.3/ComponentMinRef | Error | shall | verified
-ST2067-21/ComponentMinRef | 2026 | ST2067-21:2026:7.3.1/ComponentMinRef | Error | shall | verified
+ST2067-21/ComponentMinRef | 2020 | ST2067-21:2020:6.3/ComponentMinRef | Error | shall | unverified
+ST2067-21/ComponentMinRef | 2023 | ST2067-21:2023:6.3/ComponentMinRef | Error | shall | unverified
+ST2067-21/ComponentMinRef | 2026 | ST2067-21:2026:7.3.1/ComponentMinRef | Error | shall | unverified
 ST2067-21/Palette | 2014 | absent
 ST2067-21/Palette | 2016 | absent
-ST2067-21/Palette | 2020 | ST2067-21:2020:6.3/Palette | Error | shall | verified
-ST2067-21/Palette | 2023 | ST2067-21:2023:6.3/Palette | Error | shall | verified
-ST2067-21/Palette | 2026 | ST2067-21:2026:7.3.1/Palette | Error | shall | verified
+ST2067-21/Palette | 2020 | ST2067-21:2020:6.3/Palette | Error | shall | unverified
+ST2067-21/Palette | 2023 | ST2067-21:2023:6.3/Palette | Error | shall | unverified
+ST2067-21/Palette | 2026 | ST2067-21:2026:7.3.1/Palette | Error | shall | unverified
 ST2067-21/PaletteLayout | 2014 | absent
 ST2067-21/PaletteLayout | 2016 | absent
-ST2067-21/PaletteLayout | 2020 | ST2067-21:2020:6.3/PaletteLayout | Error | shall | verified
-ST2067-21/PaletteLayout | 2023 | ST2067-21:2023:6.3/PaletteLayout | Error | shall | verified
-ST2067-21/PaletteLayout | 2026 | ST2067-21:2026:7.3.1/PaletteLayout | Error | shall | verified
+ST2067-21/PaletteLayout | 2020 | ST2067-21:2020:6.3/PaletteLayout | Error | shall | unverified
+ST2067-21/PaletteLayout | 2023 | ST2067-21:2023:6.3/PaletteLayout | Error | shall | unverified
+ST2067-21/PaletteLayout | 2026 | ST2067-21:2026:7.3.1/PaletteLayout | Error | shall | unverified
 ST2067-21/ScanningDirection | 2014 | absent
 ST2067-21/ScanningDirection | 2016 | absent
-ST2067-21/ScanningDirection | 2020 | ST2067-21:2020:6.3/ScanningDirection | Error | shall | verified
-ST2067-21/ScanningDirection | 2023 | ST2067-21:2023:6.3/ScanningDirection | Error | shall | verified
-ST2067-21/ScanningDirection | 2026 | ST2067-21:2026:7.3.1/ScanningDirection | Error | shall | verified
+ST2067-21/ScanningDirection | 2020 | ST2067-21:2020:6.3/ScanningDirection | Error | shall | unverified
+ST2067-21/ScanningDirection | 2023 | ST2067-21:2023:6.3/ScanningDirection | Error | shall | unverified
+ST2067-21/ScanningDirection | 2026 | ST2067-21:2026:7.3.1/ScanningDirection | Error | shall | unverified
 ST2067-21/AlphaSampleDepth | 2014 | absent
 ST2067-21/AlphaSampleDepth | 2016 | absent
-ST2067-21/AlphaSampleDepth | 2020 | ST2067-21:2020:6.4/AlphaSampleDepth | Error | shall | verified
-ST2067-21/AlphaSampleDepth | 2023 | ST2067-21:2023:6.4/AlphaSampleDepth | Error | shall | verified
-ST2067-21/AlphaSampleDepth | 2026 | ST2067-21:2026:7.4.1/AlphaSampleDepth | Error | shall | verified
+ST2067-21/AlphaSampleDepth | 2020 | ST2067-21:2020:6.4/AlphaSampleDepth | Error | shall | unverified
+ST2067-21/AlphaSampleDepth | 2023 | ST2067-21:2023:6.4/AlphaSampleDepth | Error | shall | unverified
+ST2067-21/AlphaSampleDepth | 2026 | ST2067-21:2026:7.4.1/AlphaSampleDepth | Error | shall | unverified
 ST2067-21/ColorSiting | 2014 | absent
 ST2067-21/ColorSiting | 2016 | absent
-ST2067-21/ColorSiting | 2020 | ST2067-21:2020:6.4/ColorSiting | Error | shall | verified
-ST2067-21/ColorSiting | 2023 | ST2067-21:2023:6.4/ColorSiting | Error | shall | verified
-ST2067-21/ColorSiting | 2026 | ST2067-21:2026:7.4.1/ColorSiting | Error | shall | verified
+ST2067-21/ColorSiting | 2020 | ST2067-21:2020:6.4/ColorSiting | Error | shall | unverified
+ST2067-21/ColorSiting | 2023 | ST2067-21:2023:6.4/ColorSiting | Error | shall | unverified
+ST2067-21/ColorSiting | 2026 | ST2067-21:2026:7.4.1/ColorSiting | Error | shall | unverified
 ST2067-21/ComponentDepth | 2014 | absent
 ST2067-21/ComponentDepth | 2016 | absent
-ST2067-21/ComponentDepth | 2020 | ST2067-21:2020:6.4/ComponentDepth | Error | shall | verified
-ST2067-21/ComponentDepth | 2023 | ST2067-21:2023:6.4/ComponentDepth | Error | shall | verified
-ST2067-21/ComponentDepth | 2026 | ST2067-21:2026:7.4.1/ComponentDepth | Error | shall | verified
+ST2067-21/ComponentDepth | 2020 | ST2067-21:2020:6.4/ComponentDepth | Error | shall | unverified
+ST2067-21/ComponentDepth | 2023 | ST2067-21:2023:6.4/ComponentDepth | Error | shall | unverified
+ST2067-21/ComponentDepth | 2026 | ST2067-21:2026:7.4.1/ComponentDepth | Error | shall | unverified
 ST2067-21/HorizontalSubsampling | 2014 | absent
 ST2067-21/HorizontalSubsampling | 2016 | absent
-ST2067-21/HorizontalSubsampling | 2020 | ST2067-21:2020:6.4/HorizontalSubsampling | Error | shall | verified
-ST2067-21/HorizontalSubsampling | 2023 | ST2067-21:2023:6.4/HorizontalSubsampling | Error | shall | verified
-ST2067-21/HorizontalSubsampling | 2026 | ST2067-21:2026:7.4.2/HorizontalSubsampling | Error | shall | verified
+ST2067-21/HorizontalSubsampling | 2020 | ST2067-21:2020:6.4/HorizontalSubsampling | Error | shall | unverified
+ST2067-21/HorizontalSubsampling | 2023 | ST2067-21:2023:6.4/HorizontalSubsampling | Error | shall | unverified
+ST2067-21/HorizontalSubsampling | 2026 | ST2067-21:2026:7.4.2/HorizontalSubsampling | Error | shall | unverified
 ST2067-21/PaddingBits | 2014 | absent
 ST2067-21/PaddingBits | 2016 | absent
-ST2067-21/PaddingBits | 2020 | ST2067-21:2020:6.4/PaddingBits | Error | shall | verified
-ST2067-21/PaddingBits | 2023 | ST2067-21:2023:6.4/PaddingBits | Error | shall | verified
-ST2067-21/PaddingBits | 2026 | ST2067-21:2026:7.4.1/PaddingBits | Error | shall | verified
+ST2067-21/PaddingBits | 2020 | ST2067-21:2020:6.4/PaddingBits | Error | shall | unverified
+ST2067-21/PaddingBits | 2023 | ST2067-21:2023:6.4/PaddingBits | Error | shall | unverified
+ST2067-21/PaddingBits | 2026 | ST2067-21:2026:7.4.1/PaddingBits | Error | shall | unverified
 ST2067-21/ReversedByteOrder | 2014 | absent
 ST2067-21/ReversedByteOrder | 2016 | absent
-ST2067-21/ReversedByteOrder | 2020 | ST2067-21:2020:6.4/ReversedByteOrder | Error | shall | verified
-ST2067-21/ReversedByteOrder | 2023 | ST2067-21:2023:6.4/ReversedByteOrder | Error | shall | verified
-ST2067-21/ReversedByteOrder | 2026 | ST2067-21:2026:7.4.1/ReversedByteOrder | Error | shall | verified
+ST2067-21/ReversedByteOrder | 2020 | ST2067-21:2020:6.4/ReversedByteOrder | Error | shall | unverified
+ST2067-21/ReversedByteOrder | 2023 | ST2067-21:2023:6.4/ReversedByteOrder | Error | shall | unverified
+ST2067-21/ReversedByteOrder | 2026 | ST2067-21:2026:7.4.1/ReversedByteOrder | Error | shall | unverified
 ST2067-21/VerticalSubsampling | 2014 | absent
 ST2067-21/VerticalSubsampling | 2016 | absent
-ST2067-21/VerticalSubsampling | 2020 | ST2067-21:2020:6.4/VerticalSubsampling | Error | shall | verified
-ST2067-21/VerticalSubsampling | 2023 | ST2067-21:2023:6.4/VerticalSubsampling | Error | shall | verified
-ST2067-21/VerticalSubsampling | 2026 | ST2067-21:2026:7.4.1/VerticalSubsampling | Error | shall | verified
+ST2067-21/VerticalSubsampling | 2020 | ST2067-21:2020:6.4/VerticalSubsampling | Error | shall | unverified
+ST2067-21/VerticalSubsampling | 2023 | ST2067-21:2023:6.4/VerticalSubsampling | Error | shall | unverified
+ST2067-21/VerticalSubsampling | 2026 | ST2067-21:2026:7.4.1/VerticalSubsampling | Error | shall | unverified
 ST2067-21/CodingStyle | 2014 | absent
 ST2067-21/CodingStyle | 2016 | absent
-ST2067-21/CodingStyle | 2020 | ST2067-21:2020:6.5.2/CodingStyle | Error | shall | unverified
-ST2067-21/CodingStyle | 2023 | ST2067-21:2023:6.5.2/CodingStyle | Error | shall | unverified
-ST2067-21/CodingStyle | 2026 | ST2067-21:2026:7.5.1/CodingStyle | Error | shall | verified
+ST2067-21/CodingStyle | 2020 | ST2067-21:2020:6.5.2/CodingStyle | Error | shall | suspect
+ST2067-21/CodingStyle | 2023 | ST2067-21:2023:6.5.2/CodingStyle | Error | shall | suspect
+ST2067-21/CodingStyle | 2026 | ST2067-21:2026:7.5.1/CodingStyle | Error | shall | unverified
 ST2067-21/J2CLayout | 2014 | absent
 ST2067-21/J2CLayout | 2016 | absent
-ST2067-21/J2CLayout | 2020 | ST2067-21:2020:6.5.2/J2CLayout | Error | shall | unverified
-ST2067-21/J2CLayout | 2023 | ST2067-21:2023:6.5.2/J2CLayout | Error | shall | unverified
-ST2067-21/J2CLayout | 2026 | ST2067-21:2026:7.5.2/J2CLayout | Error | shall | verified
+ST2067-21/J2CLayout | 2020 | ST2067-21:2020:6.5.2/J2CLayout | Error | shall | suspect
+ST2067-21/J2CLayout | 2023 | ST2067-21:2023:6.5.2/J2CLayout | Error | shall | suspect
+ST2067-21/J2CLayout | 2026 | ST2067-21:2026:7.5.2/J2CLayout | Error | shall | unverified
 ST2067-21/Jpeg2000SubDescriptor | 2014 | absent
 ST2067-21/Jpeg2000SubDescriptor | 2016 | absent
-ST2067-21/Jpeg2000SubDescriptor | 2020 | ST2067-21:2020:6.5.2/Jpeg2000SubDescriptor | Warning | should | unverified
-ST2067-21/Jpeg2000SubDescriptor | 2023 | ST2067-21:2023:6.5.2/Jpeg2000SubDescriptor | Warning | should | unverified
-ST2067-21/Jpeg2000SubDescriptor | 2026 | ST2067-21:2026:7.5.1/Jpeg2000SubDescriptor | Warning | should | verified
+ST2067-21/Jpeg2000SubDescriptor | 2020 | ST2067-21:2020:6.5.2/Jpeg2000SubDescriptor | Warning | should | suspect
+ST2067-21/Jpeg2000SubDescriptor | 2023 | ST2067-21:2023:6.5.2/Jpeg2000SubDescriptor | Warning | should | suspect
+ST2067-21/Jpeg2000SubDescriptor | 2026 | ST2067-21:2026:7.5.1/Jpeg2000SubDescriptor | Warning | should | unverified
 ST2067-21/J2KHtNotAllowed | 2014 | absent
 ST2067-21/J2KHtNotAllowed | 2016 | absent
-ST2067-21/J2KHtNotAllowed | 2020 | ST2067-21:2020:6.2.5/J2KHtNotAllowed | Error | shall | verified
+ST2067-21/J2KHtNotAllowed | 2020 | ST2067-21:2020:6.2.5/J2KHtNotAllowed | Error | shall | unverified
 ST2067-21/J2KHtNotAllowed | 2023 | absent
 ST2067-21/J2KHtNotAllowed | 2026 | absent
 ST2067-21/J2K4KResolution | 2014 | absent
 ST2067-21/J2K4KResolution | 2016 | absent
-ST2067-21/J2K4KResolution | 2020 | ST2067-21:2020:6.2.5/J2K4KResolution | Error | shall | verified
-ST2067-21/J2K4KResolution | 2023 | ST2067-21:2023:6.2.5/J2K4KResolution | Error | shall | verified
-ST2067-21/J2K4KResolution | 2026 | ST2067-21:2026:7.2.5/J2K4KResolution | Error | shall | verified
+ST2067-21/J2K4KResolution | 2020 | ST2067-21:2020:6.2.5/J2K4KResolution | Error | shall | unverified
+ST2067-21/J2K4KResolution | 2023 | ST2067-21:2023:6.2.5/J2K4KResolution | Error | shall | unverified
+ST2067-21/J2K4KResolution | 2026 | ST2067-21:2026:7.2.5/J2K4KResolution | Error | shall | unverified
 ST2067-21/J2K2KResolution | 2014 | absent
 ST2067-21/J2K2KResolution | 2016 | absent
-ST2067-21/J2K2KResolution | 2020 | ST2067-21:2020:6.2.5/J2K2KResolution | Error | shall | verified
-ST2067-21/J2K2KResolution | 2023 | ST2067-21:2023:6.2.5/J2K2KResolution | Error | shall | verified
-ST2067-21/J2K2KResolution | 2026 | ST2067-21:2026:7.2.5/J2K2KResolution | Error | shall | verified
+ST2067-21/J2K2KResolution | 2020 | ST2067-21:2020:6.2.5/J2K2KResolution | Error | shall | unverified
+ST2067-21/J2K2KResolution | 2023 | ST2067-21:2023:6.2.5/J2K2KResolution | Error | shall | unverified
+ST2067-21/J2K2KResolution | 2026 | ST2067-21:2026:7.2.5/J2K2KResolution | Error | shall | unverified
 ST2067-21/J2KBcpResolution | 2014 | absent
 ST2067-21/J2KBcpResolution | 2016 | absent
-ST2067-21/J2KBcpResolution | 2020 | ST2067-21:2020:6.2.5/J2KBcpResolution | Error | shall | verified
-ST2067-21/J2KBcpResolution | 2023 | ST2067-21:2023:6.2.5/J2KBcpResolution | Error | shall | verified
-ST2067-21/J2KBcpResolution | 2026 | ST2067-21:2026:7.2.5/J2KBcpResolution | Error | shall | verified
+ST2067-21/J2KBcpResolution | 2020 | ST2067-21:2020:6.2.5/J2KBcpResolution | Error | shall | unverified
+ST2067-21/J2KBcpResolution | 2023 | ST2067-21:2023:6.2.5/J2KBcpResolution | Error | shall | unverified
+ST2067-21/J2KBcpResolution | 2026 | ST2067-21:2026:7.2.5/J2KBcpResolution | Error | shall | unverified
 ST2067-21/J2KProfileNotAllowed | 2014 | absent
 ST2067-21/J2KProfileNotAllowed | 2016 | absent
-ST2067-21/J2KProfileNotAllowed | 2020 | ST2067-21:2020:6.2.5/J2KProfileNotAllowed | Error | shall | verified
-ST2067-21/J2KProfileNotAllowed | 2023 | ST2067-21:2023:6.2.5/J2KProfileNotAllowed | Error | shall | verified
+ST2067-21/J2KProfileNotAllowed | 2020 | ST2067-21:2020:6.2.5/J2KProfileNotAllowed | Error | shall | unverified
+ST2067-21/J2KProfileNotAllowed | 2023 | ST2067-21:2023:6.2.5/J2KProfileNotAllowed | Error | shall | unverified
 ST2067-21/J2KProfileNotAllowed | 2026 | absent
 ST2067-21/HomogeneousImageEssence | 2014 | absent
 ST2067-21/HomogeneousImageEssence | 2016 | absent
-ST2067-21/HomogeneousImageEssence | 2020 | ST2067-21:2020:7.2/HomogeneousImageEssence | Error | shall | verified
-ST2067-21/HomogeneousImageEssence | 2023 | ST2067-21:2023:7.2/HomogeneousImageEssence | Error | shall | verified
-ST2067-21/HomogeneousImageEssence | 2026 | ST2067-21:2026:8.2/HomogeneousImageEssence | Error | shall | verified
+ST2067-21/HomogeneousImageEssence | 2020 | ST2067-21:2020:7.2/HomogeneousImageEssence | Error | shall | unverified
+ST2067-21/HomogeneousImageEssence | 2023 | ST2067-21:2023:7.2/HomogeneousImageEssence | Error | shall | unverified
+ST2067-21/HomogeneousImageEssence | 2026 | ST2067-21:2026:8.2/HomogeneousImageEssence | Error | shall | unverified
 ST2067-21/SegmentDurationMultiple | 2014 | absent
 ST2067-21/SegmentDurationMultiple | 2016 | absent
-ST2067-21/SegmentDurationMultiple | 2020 | ST2067-21:2020:7.4/SegmentDurationMultiple | Error | shall | verified
-ST2067-21/SegmentDurationMultiple | 2023 | ST2067-21:2023:7.4/SegmentDurationMultiple | Error | shall | verified
-ST2067-21/SegmentDurationMultiple | 2026 | ST2067-21:2026:8.3.2/SegmentDurationMultiple | Error | shall | verified
+ST2067-21/SegmentDurationMultiple | 2020 | ST2067-21:2020:7.4/SegmentDurationMultiple | Error | shall | unverified
+ST2067-21/SegmentDurationMultiple | 2023 | ST2067-21:2023:7.4/SegmentDurationMultiple | Error | shall | unverified
+ST2067-21/SegmentDurationMultiple | 2026 | ST2067-21:2026:8.3.2/SegmentDurationMultiple | Error | shall | unverified
 ST2067-21/J2KExtendedCapabilities | 2014 | absent
 ST2067-21/J2KExtendedCapabilities | 2016 | absent
 ST2067-21/J2KExtendedCapabilities | 2020 | absent
-ST2067-21/J2KExtendedCapabilities | 2023 | ST2067-21:2023:6.5.2/J2KExtendedCapabilities | Error | shall | unverified
-ST2067-21/J2KExtendedCapabilities | 2026 | ST2067-21:2026:7.5.1/J2KExtendedCapabilities | Error | shall | verified
+ST2067-21/J2KExtendedCapabilities | 2023 | ST2067-21:2023:6.5.2/J2KExtendedCapabilities | Error | shall | suspect
+ST2067-21/J2KExtendedCapabilities | 2026 | ST2067-21:2026:7.5.1/J2KExtendedCapabilities | Error | shall | unverified
 ST2067-21/HtIrvParameterBMax | 2014 | absent
 ST2067-21/HtIrvParameterBMax | 2016 | absent
 ST2067-21/HtIrvParameterBMax | 2020 | absent
 ST2067-21/HtIrvParameterBMax | 2023 | absent
-ST2067-21/HtIrvParameterBMax | 2026 | ST2067-21:2026:H/HtIrvParameterBMax | Error | shall | verified
+ST2067-21/HtIrvParameterBMax | 2026 | ST2067-21:2026:H/HtIrvParameterBMax | Error | shall | unverified
 ST2067-21/HtIrvParameterBRecommended | 2014 | absent
 ST2067-21/HtIrvParameterBRecommended | 2016 | absent
 ST2067-21/HtIrvParameterBRecommended | 2020 | absent
 ST2067-21/HtIrvParameterBRecommended | 2023 | absent
-ST2067-21/HtIrvParameterBRecommended | 2026 | ST2067-21:2026:H/HtIrvParameterBRecommended | Warning | should | verified
+ST2067-21/HtIrvParameterBRecommended | 2026 | ST2067-21:2026:H/HtIrvParameterBRecommended | Warning | should | unverified
 ST2067-21/J2K8KResolution | 2014 | absent
 ST2067-21/J2K8KResolution | 2016 | absent
 ST2067-21/J2K8KResolution | 2020 | absent
 ST2067-21/J2K8KResolution | 2023 | absent
-ST2067-21/J2K8KResolution | 2026 | ST2067-21:2026:7.2.5/J2K8KResolution | Error | shall | verified
-ST2067-201/CodecForbidden | 2019 | ST2067-201:2019:5.9/CodecForbidden | Error | shall | verified
-ST2067-201/CodecForbidden | 2021 | ST2067-201:2021:5.9/CodecForbidden | Error | shall | verified
+ST2067-21/J2K8KResolution | 2026 | ST2067-21:2026:7.2.5/J2K8KResolution | Error | shall | unverified
+ST2067-201/CodecForbidden | 2019 | ST2067-201:2019:5.9/CodecForbidden | Error | shall | unverified
+ST2067-201/CodecForbidden | 2021 | ST2067-201:2021:5.9/CodecForbidden | Error | shall | unverified
 ST2067-201/CodecForbidden | 2026 | ST2067-201:2026:5.9/CodecForbidden | Error | shall | verified
-ST2067-201/ElectrospatialFormulationInvalid | 2019 | ST2067-201:2019:5.9/ElectrospatialFormulationInvalid | Error | shall | verified
-ST2067-201/ElectrospatialFormulationInvalid | 2021 | ST2067-201:2021:5.9/ElectrospatialFormulationInvalid | Error | shall | verified
+ST2067-201/ElectrospatialFormulationInvalid | 2019 | ST2067-201:2019:5.9/ElectrospatialFormulationInvalid | Error | shall | unverified
+ST2067-201/ElectrospatialFormulationInvalid | 2021 | ST2067-201:2021:5.9/ElectrospatialFormulationInvalid | Error | shall | unverified
 ST2067-201/ElectrospatialFormulationInvalid | 2026 | ST2067-201:2026:5.9/ElectrospatialFormulationInvalid | Error | shall | verified
-ST2067-201/QuantizationBitsMissing | 2019 | ST2067-201:2019:5.9/QuantizationBitsMissing | Warning | should | verified
-ST2067-201/QuantizationBitsMissing | 2021 | ST2067-201:2021:5.9/QuantizationBitsMissing | Warning | should | verified
+ST2067-201/QuantizationBitsMissing | 2019 | ST2067-201:2019:5.9/QuantizationBitsMissing | Warning | should | unverified
+ST2067-201/QuantizationBitsMissing | 2021 | ST2067-201:2021:5.9/QuantizationBitsMissing | Warning | should | unverified
 ST2067-201/QuantizationBitsMissing | 2026 | ST2067-201:2026:5.9/QuantizationBitsMissing | Warning | should | verified
-ST2067-201/QuantizationBitsInvalid | 2019 | ST2067-201:2019:5.9/QuantizationBitsInvalid | Error | shall | verified
-ST2067-201/QuantizationBitsInvalid | 2021 | ST2067-201:2021:5.9/QuantizationBitsInvalid | Error | shall | verified
+ST2067-201/QuantizationBitsInvalid | 2019 | ST2067-201:2019:5.9/QuantizationBitsInvalid | Error | shall | unverified
+ST2067-201/QuantizationBitsInvalid | 2021 | ST2067-201:2021:5.9/QuantizationBitsInvalid | Error | shall | unverified
 ST2067-201/QuantizationBitsInvalid | 2026 | ST2067-201:2026:5.9/QuantizationBitsInvalid | Error | shall | verified
-ST2067-201/ContainerFormatMissing | 2019 | ST2067-201:2019:5.9/ContainerFormatMissing | Warning | should | verified
-ST2067-201/ContainerFormatMissing | 2021 | ST2067-201:2021:5.9/ContainerFormatMissing | Warning | should | verified
+ST2067-201/ContainerFormatMissing | 2019 | ST2067-201:2019:5.9/ContainerFormatMissing | Warning | should | unverified
+ST2067-201/ContainerFormatMissing | 2021 | ST2067-201:2021:5.9/ContainerFormatMissing | Warning | should | unverified
 ST2067-201/ContainerFormatMissing | 2026 | ST2067-201:2026:5.9/ContainerFormatMissing | Warning | should | verified
-ST2067-201/EssenceContainerInvalid | 2019 | ST2067-201:2019:5.9/EssenceContainerInvalid | Error | shall | verified
-ST2067-201/EssenceContainerInvalid | 2021 | ST2067-201:2021:5.9/EssenceContainerInvalid | Error | shall | verified
+ST2067-201/EssenceContainerInvalid | 2019 | ST2067-201:2019:5.9/EssenceContainerInvalid | Error | shall | unverified
+ST2067-201/EssenceContainerInvalid | 2021 | ST2067-201:2021:5.9/EssenceContainerInvalid | Error | shall | unverified
 ST2067-201/EssenceContainerInvalid | 2026 | ST2067-201:2026:5.9/EssenceContainerInvalid | Error | shall | verified
-ST2067-201/AudioSamplingRateMissing | 2019 | ST2067-201:2019:5.9/AudioSamplingRateMissing | Error | shall | verified
-ST2067-201/AudioSamplingRateMissing | 2021 | ST2067-201:2021:5.9/AudioSamplingRateMissing | Error | shall | verified
+ST2067-201/AudioSamplingRateMissing | 2019 | ST2067-201:2019:5.9/AudioSamplingRateMissing | Error | shall | unverified
+ST2067-201/AudioSamplingRateMissing | 2021 | ST2067-201:2021:5.9/AudioSamplingRateMissing | Error | shall | unverified
 ST2067-201/AudioSamplingRateMissing | 2026 | ST2067-201:2026:5.9/AudioSamplingRateMissing | Error | shall | verified
-ST2067-201/AudioSamplingRateInvalid | 2019 | ST2067-201:2019:5.9/AudioSamplingRateInvalid | Error | shall | verified
-ST2067-201/AudioSamplingRateInvalid | 2021 | ST2067-201:2021:5.9/AudioSamplingRateInvalid | Error | shall | verified
+ST2067-201/AudioSamplingRateInvalid | 2019 | ST2067-201:2019:5.9/AudioSamplingRateInvalid | Error | shall | unverified
+ST2067-201/AudioSamplingRateInvalid | 2021 | ST2067-201:2021:5.9/AudioSamplingRateInvalid | Error | shall | unverified
 ST2067-201/AudioSamplingRateInvalid | 2026 | ST2067-201:2026:5.9/AudioSamplingRateInvalid | Error | shall | verified
-ST2067-201/SoundCompressionMissing | 2019 | ST2067-201:2019:5.9/SoundCompressionMissing | Warning | should | verified
-ST2067-201/SoundCompressionMissing | 2021 | ST2067-201:2021:5.9/SoundCompressionMissing | Warning | should | verified
+ST2067-201/SoundCompressionMissing | 2019 | ST2067-201:2019:5.9/SoundCompressionMissing | Warning | should | unverified
+ST2067-201/SoundCompressionMissing | 2021 | ST2067-201:2021:5.9/SoundCompressionMissing | Warning | should | unverified
 ST2067-201/SoundCompressionMissing | 2026 | ST2067-201:2026:5.9/SoundCompressionMissing | Warning | should | verified
-ST2067-201/SoundCompressionInvalid | 2019 | ST2067-201:2019:5.9/SoundCompressionInvalid | Error | shall | verified
-ST2067-201/SoundCompressionInvalid | 2021 | ST2067-201:2021:5.9/SoundCompressionInvalid | Error | shall | verified
+ST2067-201/SoundCompressionInvalid | 2019 | ST2067-201:2019:5.9/SoundCompressionInvalid | Error | shall | unverified
+ST2067-201/SoundCompressionInvalid | 2021 | ST2067-201:2021:5.9/SoundCompressionInvalid | Error | shall | unverified
 ST2067-201/SoundCompressionInvalid | 2026 | ST2067-201:2026:5.9/SoundCompressionInvalid | Error | shall | verified
-ST2067-201/ChannelCountNotZero | 2019 | ST2067-201:2019:5.9/ChannelCountNotZero | Error | shall | verified
+ST2067-201/ChannelCountNotZero | 2019 | ST2067-201:2019:5.9/ChannelCountNotZero | Error | shall | unverified
 ST2067-201/ChannelCountNotZero | 2021 | absent
 ST2067-201/ChannelCountNotZero | 2026 | absent
-ST2067-201/SubDescriptorMissing | 2019 | ST2067-201:2019:5.10.2/SubDescriptorMissing | Error | shall | verified
-ST2067-201/SubDescriptorMissing | 2021 | ST2067-201:2021:5.10.2/SubDescriptorMissing | Error | shall | verified
+ST2067-201/SubDescriptorMissing | 2019 | ST2067-201:2019:5.10.2/SubDescriptorMissing | Error | shall | unverified
+ST2067-201/SubDescriptorMissing | 2021 | ST2067-201:2021:5.10.2/SubDescriptorMissing | Error | shall | unverified
 ST2067-201/SubDescriptorMissing | 2026 | ST2067-201:2026:5.10.2/SubDescriptorMissing | Error | shall | verified
-ST2067-201/MCATagSymbolMissing | 2019 | ST2067-201:2019:5.10.4/MCATagSymbolMissing | Error | shall | verified
-ST2067-201/MCATagSymbolMissing | 2021 | ST2067-201:2021:5.10.4/MCATagSymbolMissing | Error | shall | verified
+ST2067-201/MCATagSymbolMissing | 2019 | ST2067-201:2019:5.10.4/MCATagSymbolMissing | Error | shall | unverified
+ST2067-201/MCATagSymbolMissing | 2021 | ST2067-201:2021:5.10.4/MCATagSymbolMissing | Error | shall | unverified
 ST2067-201/MCATagSymbolMissing | 2026 | ST2067-201:2026:5.10.4/MCATagSymbolMissing | Error | shall | verified
-ST2067-201/MCATagSymbolInvalid | 2019 | ST2067-201:2019:5.10.4/MCATagSymbolInvalid | Error | shall | verified
-ST2067-201/MCATagSymbolInvalid | 2021 | ST2067-201:2021:5.10.4/MCATagSymbolInvalid | Error | shall | verified
+ST2067-201/MCATagSymbolInvalid | 2019 | ST2067-201:2019:5.10.4/MCATagSymbolInvalid | Error | shall | unverified
+ST2067-201/MCATagSymbolInvalid | 2021 | ST2067-201:2021:5.10.4/MCATagSymbolInvalid | Error | shall | unverified
 ST2067-201/MCATagSymbolInvalid | 2026 | ST2067-201:2026:5.10.4/MCATagSymbolInvalid | Error | shall | verified
-ST2067-201/MCATagNameMissing | 2019 | ST2067-201:2019:5.10.3/MCATagNameMissing | Error | shall | verified
-ST2067-201/MCATagNameMissing | 2021 | ST2067-201:2021:5.10.3/MCATagNameMissing | Error | shall | verified
+ST2067-201/MCATagNameMissing | 2019 | ST2067-201:2019:5.10.3/MCATagNameMissing | Error | shall | unverified
+ST2067-201/MCATagNameMissing | 2021 | ST2067-201:2021:5.10.3/MCATagNameMissing | Error | shall | unverified
 ST2067-201/MCATagNameMissing | 2026 | ST2067-201:2026:5.10.3/MCATagNameMissing | Error | shall | verified
-ST2067-201/MCATagNameInvalid | 2019 | ST2067-201:2019:5.10.4/MCATagNameInvalid | Error | shall | verified
-ST2067-201/MCATagNameInvalid | 2021 | ST2067-201:2021:5.10.4/MCATagNameInvalid | Error | shall | verified
+ST2067-201/MCATagNameInvalid | 2019 | ST2067-201:2019:5.10.4/MCATagNameInvalid | Error | shall | unverified
+ST2067-201/MCATagNameInvalid | 2021 | ST2067-201:2021:5.10.4/MCATagNameInvalid | Error | shall | unverified
 ST2067-201/MCATagNameInvalid | 2026 | ST2067-201:2026:5.10.4/MCATagNameInvalid | Error | shall | verified
-ST2067-201/MCALabelDictionaryIDMissing | 2019 | ST2067-201:2019:5.10.4/MCALabelDictionaryIDMissing | Error | shall | verified
-ST2067-201/MCALabelDictionaryIDMissing | 2021 | ST2067-201:2021:5.10.4/MCALabelDictionaryIDMissing | Error | shall | verified
+ST2067-201/MCALabelDictionaryIDMissing | 2019 | ST2067-201:2019:5.10.4/MCALabelDictionaryIDMissing | Error | shall | unverified
+ST2067-201/MCALabelDictionaryIDMissing | 2021 | ST2067-201:2021:5.10.4/MCALabelDictionaryIDMissing | Error | shall | unverified
 ST2067-201/MCALabelDictionaryIDMissing | 2026 | ST2067-201:2026:5.10.4/MCALabelDictionaryIDMissing | Error | shall | verified
-ST2067-201/MCALabelDictionaryIDInvalid | 2019 | ST2067-201:2019:5.10.4/MCALabelDictionaryIDInvalid | Error | shall | verified
-ST2067-201/MCALabelDictionaryIDInvalid | 2021 | ST2067-201:2021:5.10.4/MCALabelDictionaryIDInvalid | Error | shall | verified
+ST2067-201/MCALabelDictionaryIDInvalid | 2019 | ST2067-201:2019:5.10.4/MCALabelDictionaryIDInvalid | Error | shall | unverified
+ST2067-201/MCALabelDictionaryIDInvalid | 2021 | ST2067-201:2021:5.10.4/MCALabelDictionaryIDInvalid | Error | shall | unverified
 ST2067-201/MCALabelDictionaryIDInvalid | 2026 | ST2067-201:2026:5.10.4/MCALabelDictionaryIDInvalid | Error | shall | verified
-ST2067-201/IABSequenceNoResources | 2019 | ST2067-201:2019:6.2/IABSequenceNoResources | Error | shall | verified
-ST2067-201/IABSequenceNoResources | 2021 | ST2067-201:2021:6.2/IABSequenceNoResources | Error | shall | verified
+ST2067-201/IABSequenceNoResources | 2019 | ST2067-201:2019:6.2/IABSequenceNoResources | Error | shall | unverified
+ST2067-201/IABSequenceNoResources | 2021 | ST2067-201:2021:6.2/IABSequenceNoResources | Error | shall | unverified
 ST2067-201/IABSequenceNoResources | 2026 | ST2067-201:2026:6.2.1/IABSequenceNoResources | Error | shall | verified
-ST2067-201/IABSequenceSourceEncodingInvalid | 2019 | ST2067-201:2019:6.2/IABSequenceSourceEncodingInvalid | Error | shall | verified
-ST2067-201/IABSequenceSourceEncodingInvalid | 2021 | ST2067-201:2021:6.2/IABSequenceSourceEncodingInvalid | Error | shall | verified
+ST2067-201/IABSequenceSourceEncodingInvalid | 2019 | ST2067-201:2019:6.2/IABSequenceSourceEncodingInvalid | Error | shall | unverified
+ST2067-201/IABSequenceSourceEncodingInvalid | 2021 | ST2067-201:2021:6.2/IABSequenceSourceEncodingInvalid | Error | shall | unverified
 ST2067-201/IABSequenceSourceEncodingInvalid | 2026 | ST2067-201:2026:6.2.1/IABSequenceSourceEncodingInvalid | Error | shall | verified
-ST2067-201/ForbiddenMCASubDescriptor | 2019 | ST2067-201:2019:5.10.2/ForbiddenMCASubDescriptor | Error | shall | verified
-ST2067-201/ForbiddenMCASubDescriptor | 2021 | ST2067-201:2021:5.10.2/ForbiddenMCASubDescriptor | Error | shall | verified
+ST2067-201/ForbiddenMCASubDescriptor | 2019 | ST2067-201:2019:5.10.2/ForbiddenMCASubDescriptor | Error | shall | unverified
+ST2067-201/ForbiddenMCASubDescriptor | 2021 | ST2067-201:2021:5.10.2/ForbiddenMCASubDescriptor | Error | shall | unverified
 ST2067-201/ForbiddenMCASubDescriptor | 2026 | ST2067-201:2026:5.10.2/ForbiddenMCASubDescriptor | Error | shall | verified
-ST2067-201/SubDescriptorDuplicate | 2019 | ST2067-201:2019:5.10.2/SubDescriptorDuplicate | Error | shall | verified
-ST2067-201/SubDescriptorDuplicate | 2021 | ST2067-201:2021:5.10.2/SubDescriptorDuplicate | Error | shall | verified
+ST2067-201/SubDescriptorDuplicate | 2019 | ST2067-201:2019:5.10.2/SubDescriptorDuplicate | Error | shall | unverified
+ST2067-201/SubDescriptorDuplicate | 2021 | ST2067-201:2021:5.10.2/SubDescriptorDuplicate | Error | shall | unverified
 ST2067-201/SubDescriptorDuplicate | 2026 | ST2067-201:2026:5.10.2/SubDescriptorDuplicate | Error | shall | verified
-ST2067-201/MCAChannelIDForbidden | 2019 | ST2067-201:2019:C.2/MCAChannelIDForbidden | Error | shall | verified
-ST2067-201/MCAChannelIDForbidden | 2021 | ST2067-201:2021:C.2/MCAChannelIDForbidden | Error | shall | verified
+ST2067-201/MCAChannelIDForbidden | 2019 | ST2067-201:2019:C.2/MCAChannelIDForbidden | Error | shall | unverified
+ST2067-201/MCAChannelIDForbidden | 2021 | ST2067-201:2021:C.2/MCAChannelIDForbidden | Error | shall | unverified
 ST2067-201/MCAChannelIDForbidden | 2026 | ST2067-201:2026:C.2/MCAChannelIDForbidden | Error | shall | verified
-ST2067-201/EditRateNotIntegerMultiple | 2019 | ST2067-201:2019:6.2/EditRateNotIntegerMultiple | Error | shall | verified
-ST2067-201/EditRateNotIntegerMultiple | 2021 | ST2067-201:2021:6.2/EditRateNotIntegerMultiple | Error | shall | verified
+ST2067-201/EditRateNotIntegerMultiple | 2019 | ST2067-201:2019:6.2/EditRateNotIntegerMultiple | Error | shall | unverified
+ST2067-201/EditRateNotIntegerMultiple | 2021 | ST2067-201:2021:6.2/EditRateNotIntegerMultiple | Error | shall | unverified
 ST2067-201/EditRateNotIntegerMultiple | 2026 | ST2067-201:2026:6.2.1/EditRateNotIntegerMultiple | Error | shall | verified
 ST2067-201/IabChannelSubDescriptorRecommended | 2019 | absent
 ST2067-201/IabChannelSubDescriptorRecommended | 2021 | absent
-ST2067-201/IabChannelSubDescriptorRecommended | 2026 | ST2067-201:2026:5.10.2/IabChannelSubDescriptorRecommended | Warning | should | verified
-ST2067-202/NamespaceUriMissing | 2023 | ST2067-202:2023:9.2/NamespaceUriMissing | Error | shall | verified
-ST2067-202/ISXDSequenceNoResources | 2023 | ST2067-202:2023:6/ISXDSequenceNoResources | Error | shall | verified
-ST2067-202/ISXDSequenceSourceEncodingInvalid | 2023 | ST2067-202:2023:6/ISXDSequenceSourceEncodingInvalid | Error | shall | verified
-ST2067-202/NamespaceUriMismatch | 2023 | ST2067-202:2023:6/NamespaceUriMismatch | Error | shall | verified
-ST2067-202/EditRateMismatch | 2023 | ST2067-202:2023:6/EditRateMismatch | Error | shall | verified
-ST2067-202/ISXDVirtualTrackMissing | 2023 | ST2067-202:2023:6/ISXDVirtualTrackMissing | Error | shall | verified
-ST2067-202/DataEssenceCodingMissing | 2023 | ST2067-202:2023:9.3/DataEssenceCodingMissing | Error | shall | verified
-ST2067-202/DataEssenceCodingInvalid | 2023 | ST2067-202:2023:9.3/DataEssenceCodingInvalid | Error | shall | verified
-XSD/ElementMissing | CPL-2013 | XSD:CPL-2013/ElementMissing | Error | shall | verified
-XSD/ElementMissing | CPL-2016 | XSD:CPL-2016/ElementMissing | Error | shall | verified
-XSD/ElementMissing | PKL-2016 | XSD:PKL-2016/ElementMissing | Error | shall | verified
-XSD/ElementMissing | DCI-PKL-2007 | XSD:DCI-PKL-2007/ElementMissing | Error | shall | verified
-XSD/ElementMissing | SCM-2018 | XSD:SCM-2018/ElementMissing | Error | shall | verified
-XSD/ElementMissing | OPL-2014 | XSD:OPL-2014/ElementMissing | Error | shall | verified
-XSD/ElementMissing | custom | XSD:custom/ElementMissing | Error | shall | verified
+ST2067-201/IabChannelSubDescriptorRecommended | 2026 | ST2067-201:2026:5.10.2/IabChannelSubDescriptorRecommended | Warning | should | unverified
+ST2067-202/NamespaceUriMissing | 2023 | ST2067-202:2023:9.2/NamespaceUriMissing | Error | shall | unverified
+ST2067-202/ISXDSequenceNoResources | 2023 | ST2067-202:2023:6/ISXDSequenceNoResources | Error | shall | unverified
+ST2067-202/ISXDSequenceSourceEncodingInvalid | 2023 | ST2067-202:2023:6/ISXDSequenceSourceEncodingInvalid | Error | shall | unverified
+ST2067-202/NamespaceUriMismatch | 2023 | ST2067-202:2023:6/NamespaceUriMismatch | Error | shall | unverified
+ST2067-202/EditRateMismatch | 2023 | ST2067-202:2023:6/EditRateMismatch | Error | shall | unverified
+ST2067-202/ISXDVirtualTrackMissing | 2023 | ST2067-202:2023:6/ISXDVirtualTrackMissing | Error | shall | unverified
+ST2067-202/DataEssenceCodingMissing | 2023 | ST2067-202:2023:9.3/DataEssenceCodingMissing | Error | shall | unverified
+ST2067-202/DataEssenceCodingInvalid | 2023 | ST2067-202:2023:9.3/DataEssenceCodingInvalid | Error | shall | unverified
+XSD/ElementMissing | CPL-2013 | XSD:CPL-2013/ElementMissing | Error | shall | unverified
+XSD/ElementMissing | CPL-2016 | XSD:CPL-2016/ElementMissing | Error | shall | unverified
+XSD/ElementMissing | PKL-2016 | XSD:PKL-2016/ElementMissing | Error | shall | unverified
+XSD/ElementMissing | DCI-PKL-2007 | XSD:DCI-PKL-2007/ElementMissing | Error | shall | unverified
+XSD/ElementMissing | SCM-2018 | XSD:SCM-2018/ElementMissing | Error | shall | unverified
+XSD/ElementMissing | OPL-2014 | XSD:OPL-2014/ElementMissing | Error | shall | unverified
+XSD/ElementMissing | custom | XSD:custom/ElementMissing | Error | shall | unverified
 XSD/ElementMissing | unvendored | absent
-XSD/UnexpectedElement | CPL-2013 | XSD:CPL-2013/UnexpectedElement | Error | shall | verified
-XSD/UnexpectedElement | CPL-2016 | XSD:CPL-2016/UnexpectedElement | Error | shall | verified
-XSD/UnexpectedElement | PKL-2016 | XSD:PKL-2016/UnexpectedElement | Error | shall | verified
-XSD/UnexpectedElement | DCI-PKL-2007 | XSD:DCI-PKL-2007/UnexpectedElement | Error | shall | verified
-XSD/UnexpectedElement | SCM-2018 | XSD:SCM-2018/UnexpectedElement | Error | shall | verified
-XSD/UnexpectedElement | OPL-2014 | XSD:OPL-2014/UnexpectedElement | Error | shall | verified
-XSD/UnexpectedElement | custom | XSD:custom/UnexpectedElement | Error | shall | verified
+XSD/UnexpectedElement | CPL-2013 | XSD:CPL-2013/UnexpectedElement | Error | shall | unverified
+XSD/UnexpectedElement | CPL-2016 | XSD:CPL-2016/UnexpectedElement | Error | shall | unverified
+XSD/UnexpectedElement | PKL-2016 | XSD:PKL-2016/UnexpectedElement | Error | shall | unverified
+XSD/UnexpectedElement | DCI-PKL-2007 | XSD:DCI-PKL-2007/UnexpectedElement | Error | shall | unverified
+XSD/UnexpectedElement | SCM-2018 | XSD:SCM-2018/UnexpectedElement | Error | shall | unverified
+XSD/UnexpectedElement | OPL-2014 | XSD:OPL-2014/UnexpectedElement | Error | shall | unverified
+XSD/UnexpectedElement | custom | XSD:custom/UnexpectedElement | Error | shall | unverified
 XSD/UnexpectedElement | unvendored | absent
-XSD/PatternInvalid | CPL-2013 | XSD:CPL-2013/PatternInvalid | Error | shall | verified
-XSD/PatternInvalid | CPL-2016 | XSD:CPL-2016/PatternInvalid | Error | shall | verified
-XSD/PatternInvalid | PKL-2016 | XSD:PKL-2016/PatternInvalid | Error | shall | verified
-XSD/PatternInvalid | DCI-PKL-2007 | XSD:DCI-PKL-2007/PatternInvalid | Error | shall | verified
-XSD/PatternInvalid | SCM-2018 | XSD:SCM-2018/PatternInvalid | Error | shall | verified
-XSD/PatternInvalid | OPL-2014 | XSD:OPL-2014/PatternInvalid | Error | shall | verified
-XSD/PatternInvalid | custom | XSD:custom/PatternInvalid | Error | shall | verified
+XSD/PatternInvalid | CPL-2013 | XSD:CPL-2013/PatternInvalid | Error | shall | unverified
+XSD/PatternInvalid | CPL-2016 | XSD:CPL-2016/PatternInvalid | Error | shall | unverified
+XSD/PatternInvalid | PKL-2016 | XSD:PKL-2016/PatternInvalid | Error | shall | unverified
+XSD/PatternInvalid | DCI-PKL-2007 | XSD:DCI-PKL-2007/PatternInvalid | Error | shall | unverified
+XSD/PatternInvalid | SCM-2018 | XSD:SCM-2018/PatternInvalid | Error | shall | unverified
+XSD/PatternInvalid | OPL-2014 | XSD:OPL-2014/PatternInvalid | Error | shall | unverified
+XSD/PatternInvalid | custom | XSD:custom/PatternInvalid | Error | shall | unverified
 XSD/PatternInvalid | unvendored | absent
-XSD/TypeInvalid | CPL-2013 | XSD:CPL-2013/TypeInvalid | Error | shall | verified
-XSD/TypeInvalid | CPL-2016 | XSD:CPL-2016/TypeInvalid | Error | shall | verified
-XSD/TypeInvalid | PKL-2016 | XSD:PKL-2016/TypeInvalid | Error | shall | verified
-XSD/TypeInvalid | DCI-PKL-2007 | XSD:DCI-PKL-2007/TypeInvalid | Error | shall | verified
-XSD/TypeInvalid | SCM-2018 | XSD:SCM-2018/TypeInvalid | Error | shall | verified
-XSD/TypeInvalid | OPL-2014 | XSD:OPL-2014/TypeInvalid | Error | shall | verified
-XSD/TypeInvalid | custom | XSD:custom/TypeInvalid | Error | shall | verified
+XSD/TypeInvalid | CPL-2013 | XSD:CPL-2013/TypeInvalid | Error | shall | unverified
+XSD/TypeInvalid | CPL-2016 | XSD:CPL-2016/TypeInvalid | Error | shall | unverified
+XSD/TypeInvalid | PKL-2016 | XSD:PKL-2016/TypeInvalid | Error | shall | unverified
+XSD/TypeInvalid | DCI-PKL-2007 | XSD:DCI-PKL-2007/TypeInvalid | Error | shall | unverified
+XSD/TypeInvalid | SCM-2018 | XSD:SCM-2018/TypeInvalid | Error | shall | unverified
+XSD/TypeInvalid | OPL-2014 | XSD:OPL-2014/TypeInvalid | Error | shall | unverified
+XSD/TypeInvalid | custom | XSD:custom/TypeInvalid | Error | shall | unverified
 XSD/TypeInvalid | unvendored | absent
-XSD/SchemaConstraintFailed | CPL-2013 | XSD:CPL-2013/SchemaConstraintFailed | Error | shall | verified
-XSD/SchemaConstraintFailed | CPL-2016 | XSD:CPL-2016/SchemaConstraintFailed | Error | shall | verified
-XSD/SchemaConstraintFailed | PKL-2016 | XSD:PKL-2016/SchemaConstraintFailed | Error | shall | verified
-XSD/SchemaConstraintFailed | DCI-PKL-2007 | XSD:DCI-PKL-2007/SchemaConstraintFailed | Error | shall | verified
-XSD/SchemaConstraintFailed | SCM-2018 | XSD:SCM-2018/SchemaConstraintFailed | Error | shall | verified
-XSD/SchemaConstraintFailed | OPL-2014 | XSD:OPL-2014/SchemaConstraintFailed | Error | shall | verified
-XSD/SchemaConstraintFailed | custom | XSD:custom/SchemaConstraintFailed | Error | shall | verified
+XSD/SchemaConstraintFailed | CPL-2013 | XSD:CPL-2013/SchemaConstraintFailed | Error | shall | unverified
+XSD/SchemaConstraintFailed | CPL-2016 | XSD:CPL-2016/SchemaConstraintFailed | Error | shall | unverified
+XSD/SchemaConstraintFailed | PKL-2016 | XSD:PKL-2016/SchemaConstraintFailed | Error | shall | unverified
+XSD/SchemaConstraintFailed | DCI-PKL-2007 | XSD:DCI-PKL-2007/SchemaConstraintFailed | Error | shall | unverified
+XSD/SchemaConstraintFailed | SCM-2018 | XSD:SCM-2018/SchemaConstraintFailed | Error | shall | unverified
+XSD/SchemaConstraintFailed | OPL-2014 | XSD:OPL-2014/SchemaConstraintFailed | Error | shall | unverified
+XSD/SchemaConstraintFailed | custom | XSD:custom/SchemaConstraintFailed | Error | shall | unverified
 XSD/SchemaConstraintFailed | unvendored | absent
-XSD/ValidationAborted | CPL-2013 | XSD:CPL-2013/ValidationAborted | Critical | shall | verified
-XSD/ValidationAborted | CPL-2016 | XSD:CPL-2016/ValidationAborted | Critical | shall | verified
-XSD/ValidationAborted | PKL-2016 | XSD:PKL-2016/ValidationAborted | Critical | shall | verified
-XSD/ValidationAborted | DCI-PKL-2007 | XSD:DCI-PKL-2007/ValidationAborted | Critical | shall | verified
-XSD/ValidationAborted | SCM-2018 | XSD:SCM-2018/ValidationAborted | Critical | shall | verified
-XSD/ValidationAborted | OPL-2014 | XSD:OPL-2014/ValidationAborted | Critical | shall | verified
-XSD/ValidationAborted | custom | XSD:custom/ValidationAborted | Critical | shall | verified
+XSD/ValidationAborted | CPL-2013 | XSD:CPL-2013/ValidationAborted | Critical | shall | unverified
+XSD/ValidationAborted | CPL-2016 | XSD:CPL-2016/ValidationAborted | Critical | shall | unverified
+XSD/ValidationAborted | PKL-2016 | XSD:PKL-2016/ValidationAborted | Critical | shall | unverified
+XSD/ValidationAborted | DCI-PKL-2007 | XSD:DCI-PKL-2007/ValidationAborted | Critical | shall | unverified
+XSD/ValidationAborted | SCM-2018 | XSD:SCM-2018/ValidationAborted | Critical | shall | unverified
+XSD/ValidationAborted | OPL-2014 | XSD:OPL-2014/ValidationAborted | Critical | shall | unverified
+XSD/ValidationAborted | custom | XSD:custom/ValidationAborted | Critical | shall | unverified
 XSD/ValidationAborted | unvendored | absent
 XSD/NotValidated | CPL-2013 | absent
 XSD/NotValidated | CPL-2016 | absent
@@ -727,20 +725,22 @@ XSD/NotValidated | DCI-PKL-2007 | absent
 XSD/NotValidated | SCM-2018 | absent
 XSD/NotValidated | OPL-2014 | absent
 XSD/NotValidated | custom | absent
-XSD/NotValidated | unvendored | XSD:unvendored/NotValidated | Info | may | verified
-IMFERNO/OpenFailed | - | IMFERNO:Mxf/OpenFailed | Critical | shall | verified
-IMFERNO/PartitionPackParseFailed | - | IMFERNO:Mxf/PartitionPackParseFailed | Critical | shall | verified
-IMFERNO/RegXmlConversionFailed | - | IMFERNO:Mxf/RegXmlConversionFailed | Warning | should | verified
-IMFERNO/EssenceContainersDetected | - | IMFERNO:Mxf/EssenceContainersDetected | Info | may | verified
-IMFERNO/IoError | - | IMFERNO:General/IoError | Error | shall | verified
-IMFERNO/UnreferencedAsset | - | IMFERNO:Package/UnreferencedAsset | Info | may | verified
-IMFERNO/UnlistedEssence | - | IMFERNO:Package/UnlistedEssence | Info | may | verified
-IMFERNO/ParseError | - | IMFERNO:Package/ParseError | Critical | shall | verified
-IMFERNO/PklParseError | - | IMFERNO:Package/PklParseError | Error | shall | verified
-IMFERNO/XmlAssetParseError | - | IMFERNO:Package/XmlAssetParseError | Warning | should | verified
-IMFERNO/XmlReadError | - | IMFERNO:Package/XmlReadError | Warning | should | verified
-IMFERNO/ReadDirError | - | IMFERNO:Package/ReadDirError | Info | may | verified
-IMFERNO/DirEntryError | - | IMFERNO:Package/DirEntryError | Info | may | verified
-IMFERNO/PathTraversal | - | IMFERNO:Package/PathTraversal | Error | shall | verified
-IMFERNO/ApplicationProfileNotValidated | - | IMFERNO:Package/ApplicationProfileNotValidated | Warning | should | verified
-IMFERNO/RuleNotInEdition | - | IMFERNO:Engine/RuleNotInEdition | Warning | should | verified
+XSD/NotValidated | unvendored | XSD:unvendored/NotValidated | Info | may | unverified
+IMFERNO/EditionAssumed | - | IMFERNO:Package/EditionAssumed | Info | may | unverified
+IMFERNO/DeliveryNotChecked | - | IMFERNO:Package/DeliveryNotChecked | Info | may | unverified
+IMFERNO/OpenFailed | - | IMFERNO:Mxf/OpenFailed | Critical | shall | unverified
+IMFERNO/PartitionPackParseFailed | - | IMFERNO:Mxf/PartitionPackParseFailed | Critical | shall | unverified
+IMFERNO/RegXmlConversionFailed | - | IMFERNO:Mxf/RegXmlConversionFailed | Warning | should | unverified
+IMFERNO/EssenceContainersDetected | - | IMFERNO:Mxf/EssenceContainersDetected | Info | may | unverified
+IMFERNO/IoError | - | IMFERNO:General/IoError | Error | shall | unverified
+IMFERNO/UnreferencedAsset | - | IMFERNO:Package/UnreferencedAsset | Info | may | unverified
+IMFERNO/UnlistedEssence | - | IMFERNO:Package/UnlistedEssence | Info | may | unverified
+IMFERNO/ParseError | - | IMFERNO:Package/ParseError | Critical | shall | unverified
+IMFERNO/PklParseError | - | IMFERNO:Package/PklParseError | Error | shall | unverified
+IMFERNO/XmlAssetParseError | - | IMFERNO:Package/XmlAssetParseError | Warning | should | unverified
+IMFERNO/XmlReadError | - | IMFERNO:Package/XmlReadError | Warning | should | unverified
+IMFERNO/ReadDirError | - | IMFERNO:Package/ReadDirError | Info | may | unverified
+IMFERNO/DirEntryError | - | IMFERNO:Package/DirEntryError | Info | may | unverified
+IMFERNO/PathTraversal | - | IMFERNO:Package/PathTraversal | Error | shall | unverified
+IMFERNO/ApplicationProfileNotValidated | - | IMFERNO:Package/ApplicationProfileNotValidated | Warning | should | unverified
+IMFERNO/RuleNotInEdition | - | IMFERNO:Engine/RuleNotInEdition | Warning | should | unverified

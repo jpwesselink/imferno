@@ -45,6 +45,10 @@ pub struct ValidationResult {
     pub package: Imferno,
     /// Validation findings (spec violations, warnings, info).
     pub validation: ValidationReport,
+    /// Keys of the `rules` option that select no rule (typos, unknown
+    /// editions); they were ignored. Absent when every key matched.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub rule_warnings: Vec<crate::diagnostics::rules::RuleValidationWarning>,
 }
 
 impl ValidationResult {
@@ -83,6 +87,7 @@ pub fn validate(
             ValidationResult {
                 package,
                 validation,
+                rule_warnings: options.rules.validate(),
             }
         }
         Err(e) => {
@@ -100,6 +105,7 @@ pub fn validate(
             ValidationResult {
                 package: Imferno::empty(),
                 validation,
+                rule_warnings: options.rules.validate(),
             }
         }
     }
@@ -284,23 +290,54 @@ impl std::fmt::Display for FileValidationError {
     }
 }
 
-/// Report an ST 2067-2 package-level rule for a package whose Packing List
-/// edition is `spec_ed`. When that edition does not contain the rule (e.g.
-/// ST 2067-2:2013 defines no Asset Map or ingest provisions), the rule is
-/// reported against the newest edition that does: that is the text whose
-/// requirement was applied.
+/// Report an ST 2067-2 package-level rule for a package of ST 2067-2
+/// edition `spec_ed`, or `None` when that edition does not contain the rule
+/// (ST 2067-2:2013 has no delivery requirements: Asset Map ingest, asset
+/// size and hash at ingest). The package then reports
+/// `IMFERNO:Package/DeliveryNotChecked` once instead.
 fn pkg_issue(
     rule: &'static Rule<St2067_2Edition>,
     spec_ed: St2067_2Edition,
     message: impl Into<String>,
-) -> ValidationIssue {
-    ValidationIssue::from_rule(rule, rule.applicable_edition(spec_ed), message)
+) -> Option<ValidationIssue> {
+    rule.in_edition(spec_ed)
+        .then(|| ValidationIssue::from_rule(rule, spec_ed, message))
+}
+
+/// The ST 2067-2 edition applied to a package's package-level rules (see
+/// [`Imferno::package_edition`]).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PackageEdition {
+    /// The edition applied.
+    pub edition: St2067_2Edition,
+    /// Why the edition was assumed rather than determined; reported as
+    /// `IMFERNO:Package/EditionAssumed`.
+    pub assumed: Option<String>,
+}
+
+/// The ST 2067-2 delivery rules of ST 429-9 (Annex A Basic Map Profile v2,
+/// the VOLINDEX of the deprecated profile): ST 2067-2:2016/2020 §8 apply
+/// them to IMP delivery; ST 2067-2:2013 defines no delivery, so they are
+/// not reported for a 2013 package.
+fn is_delivery_rule(issue: &ValidationIssue) -> bool {
+    [
+        &st429_9::VolindexMissing,
+        &st429_9::AssetMapFileName,
+        &st429_9::PathNotRelative,
+        &st429_9::PathCharacters,
+        &st429_9::PathTooLong,
+        &st429_9::PathTooManySegments,
+        &st429_9::PathDuplicate,
+    ]
+    .iter()
+    .any(|r| issue.is(*r))
 }
 
 impl FileValidationError {
-    /// The finding for this error, for a package of ST 2067-2 edition `spec_ed`.
-    pub fn to_issue(&self, spec_ed: St2067_2Edition) -> ValidationIssue {
-        match self {
+    /// The finding for this error, for a package of ST 2067-2 edition
+    /// `spec_ed`; `None` when that edition does not contain the rule.
+    pub fn to_issue(&self, spec_ed: St2067_2Edition) -> Option<ValidationIssue> {
+        Some(match self {
             FileValidationError::NotInAssetMap {
                 uuid,
                 original_file_name,
@@ -312,13 +349,13 @@ impl FileValidationError {
                     uuid,
                     original_file_name.as_deref().unwrap_or("no filename")
                 ),
-            )
+            )?
             .with_context("asset_uuid", uuid.clone()),
             FileValidationError::Missing { uuid, path } => pkg_issue(
                 &st2067_2::FileNotFound,
                 spec_ed,
                 format!("Missing file for asset {}: {}", uuid, path.display()),
-            )
+            )?
             .with_location(Location::new().with_file(path.clone()))
             .with_context("asset_uuid", uuid.clone()),
             FileValidationError::SizeMismatch {
@@ -336,7 +373,7 @@ impl FileValidationError {
                     expected,
                     actual
                 ),
-            )
+            )?
             .with_location(Location::new().with_file(path.clone()))
             .with_context("asset_uuid", uuid.clone())
             .with_context("expected_size", expected.to_string())
@@ -356,7 +393,7 @@ impl FileValidationError {
                     expected,
                     actual
                 ),
-            )
+            )?
             .with_location(Location::new().with_file(path.clone()))
             .with_context("asset_uuid", uuid.clone())
             .with_suggestion("Re-deliver the asset or re-generate the PKL hash"),
@@ -380,7 +417,7 @@ impl FileValidationError {
                 &st2067_2::DuplicateUuid,
                 spec_ed,
                 format!("Duplicate asset UUID {} in PKL {}", uuid, pkl_id),
-            )
+            )?
             .with_context("asset_uuid", uuid.clone())
             .with_context("pkl_id", pkl_id.clone()),
             FileValidationError::UnknownPklNamespace { pkl_id, namespace } => pkg_issue(
@@ -391,7 +428,7 @@ impl FileValidationError {
                      SMPTE PKL namespace set",
                     pkl_id, namespace
                 ),
-            )
+            )?
             .with_context("pkl_id", pkl_id.clone())
             .with_context("namespace", namespace.clone()),
             FileValidationError::AssetMapHasNoPackingList => ValidationIssue::from_rule(
@@ -409,7 +446,7 @@ impl FileValidationError {
                 ),
             )
             .with_context("pkl_id", pkl_id.clone()),
-        }
+        })
     }
 }
 
@@ -723,9 +760,10 @@ impl Imferno {
         let skip_disk = options.skip_disk_checks;
         #[cfg(target_arch = "wasm32")]
         let skip_disk = false;
-        let report = self.validate_package_structure_with_cpl_validator(
+        let report = self.validate_package_structure_for(
             |cpl| validate_cpl_with_registry(cpl, &registry),
             skip_disk,
+            options.core_spec,
         );
         let report = self.enrich_cpl_locations(report);
         let report = report.apply_rules(&options.rules);
@@ -751,9 +789,10 @@ impl Imferno {
             ..Default::default()
         };
         let registry = ConfigurableValidatorRegistry::new(selection);
-        let report = self.validate_package_with_hashes_with_cpl_validator(|cpl| {
-            validate_cpl_with_registry(cpl, &registry)
-        });
+        let report = self.validate_package_with_hashes_for(
+            |cpl| validate_cpl_with_registry(cpl, &registry),
+            options.core_spec,
+        );
         let report = self.enrich_cpl_locations(report);
         let report = report.apply_rules(&options.rules);
         if options.aggregate_repeats {
@@ -1139,23 +1178,113 @@ impl Imferno {
             .collect()
     }
 
-    /// The ST 2067-2 edition applied to package-level rules: the edition of
-    /// the Packing Lists' namespace. Where that is not one ST 2067-2 edition
-    /// (an ST 429-8 DCI PKL, an unknown namespace, no PKL, or PKLs of
-    /// different editions), the newest edition is used.
-    pub fn package_edition(&self) -> St2067_2Edition {
+    /// The ST 2067-2 edition applied to package-level rules.
+    ///
+    /// 1. `core_spec`, when the caller pins one.
+    /// 2. The Packing Lists: an ST 429-8 PKL is ST 2067-2:2013 (2013 §7.1);
+    ///    the `.../2067-2/2016/PKL` namespace is used by both 2016 (Annex K)
+    ///    and 2020 (Annex J).
+    /// 3. Between 2016 and 2020: the Core Constraints namespace the CPLs
+    ///    declare.
+    ///
+    /// When that leaves more than one edition, the newest is used and
+    /// [`PackageEdition::assumed`] says so.
+    pub fn package_edition(
+        &self,
+        core_spec: Option<crate::validation::CoreSpecTarget>,
+    ) -> PackageEdition {
         use crate::assetmap::PklNamespace;
-        let mut editions = self.packing_lists.values().map(|pkl| match pkl.namespace {
-            PklNamespace::Smpte2067_2_2013 => Some(St2067_2Edition::V2013),
-            PklNamespace::Smpte2067_2_2016 | PklNamespace::Smpte2067_2_2016Pkl => {
-                Some(St2067_2Edition::V2016)
+        use crate::diagnostics::Edition;
+        use crate::validation::CoreSpecTarget;
+        use St2067_2Edition::{V2013, V2016, V2020};
+
+        if let Some(target) = core_spec {
+            let edition = match target {
+                CoreSpecTarget::St2067_2_2013 => V2013,
+                CoreSpecTarget::St2067_2_2016 => V2016,
+                CoreSpecTarget::St2067_2_2020 => V2020,
+            };
+            return PackageEdition {
+                edition,
+                assumed: None,
+            };
+        }
+
+        let mut candidates: Vec<St2067_2Edition> = vec![V2013, V2016, V2020];
+        for pkl in self.packing_lists.values() {
+            let allowed: &[St2067_2Edition] = match pkl.namespace {
+                PklNamespace::Dci429_8 | PklNamespace::Smpte2067_2_2013 => &[V2013],
+                PklNamespace::Smpte2067_2_2016
+                | PklNamespace::Smpte2067_2_2016Pkl
+                | PklNamespace::Smpte2067_2_2020 => &[V2016, V2020],
+                PklNamespace::Unknown(_) => &[V2013, V2016, V2020],
+            };
+            candidates.retain(|e| allowed.contains(e));
+        }
+
+        let mut declared: Vec<St2067_2Edition> = self
+            .composition_playlists
+            .values()
+            .filter_map(crate::validation::declared_core_constraints_edition)
+            .collect();
+        declared.sort();
+        declared.dedup();
+
+        match (candidates.as_slice(), declared.as_slice()) {
+            ([only], _) => PackageEdition {
+                edition: *only,
+                assumed: None,
+            },
+            (_, [cpl]) if candidates.contains(cpl) => PackageEdition {
+                edition: *cpl,
+                assumed: None,
+            },
+            _ => {
+                let newest = candidates.last().copied().unwrap_or(V2020);
+                let why = if candidates.is_empty() {
+                    "the Packing Lists are of different ST 2067-2 editions".to_string()
+                } else if declared.is_empty() {
+                    "the Packing List namespace is shared by several editions and no CPL \
+                     declares a Core Constraints namespace"
+                        .to_string()
+                } else {
+                    let list: Vec<_> = declared.iter().map(|e| e.label()).collect();
+                    format!(
+                        "the CPLs declare Core Constraints namespaces of {}",
+                        list.join(", ")
+                    )
+                };
+                PackageEdition {
+                    edition: newest,
+                    assumed: Some(format!(
+                        "ST 2067-2 edition of the package could not be determined ({why}); \
+                         package-level rules were checked against ST 2067-2:{}",
+                        newest.label()
+                    )),
+                }
             }
-            PklNamespace::Smpte2067_2_2020 => Some(St2067_2Edition::V2020),
-            PklNamespace::Dci429_8 | PklNamespace::Unknown(_) => None,
-        });
-        match editions.next().flatten() {
-            Some(first) if editions.all(|e| e == Some(first)) => first,
-            _ => St2067_2Edition::V2020,
+        }
+    }
+
+    /// The edition-dependent notices of a package: the assumed edition, and
+    /// for an ST 2067-2:2013 package the delivery rules not checked.
+    fn edition_notices(&self, edition: &PackageEdition, report: &mut ValidationReport) {
+        if let Some(why) = &edition.assumed {
+            report.add(ValidationIssue::from_rule(
+                &imferno::EditionAssumed,
+                ImfernoEdition::Current,
+                why.clone(),
+            ));
+        }
+        if edition.edition == St2067_2Edition::V2013 {
+            report.add(ValidationIssue::from_rule(
+                &imferno::DeliveryNotChecked,
+                ImfernoEdition::Current,
+                "ST 2067-2:2013 defines no delivery requirements (an IMP is a Packing List \
+                 and the assets it references, §7); delivery rules of later editions \
+                 (Asset Map ingest, ASSETMAP.xml name, ST 429-9 Annex A paths, VOLINDEX, \
+                 asset size and hash at ingest) were not checked",
+            ));
         }
     }
 
@@ -1742,12 +1871,31 @@ impl Imferno {
     where
         F: Fn(&CompositionPlaylist) -> Vec<ValidationIssue>,
     {
-        let spec_ed = self.package_edition();
+        self.validate_package_structure_for(cpl_validator, skip_disk_checks, None)
+    }
+
+    /// [`Self::validate_package_structure_with_cpl_validator`] with the
+    /// ST 2067-2 edition pinned by `core_spec` (see [`Self::package_edition`]).
+    pub fn validate_package_structure_for<F>(
+        &self,
+        cpl_validator: F,
+        skip_disk_checks: bool,
+        core_spec: Option<crate::validation::CoreSpecTarget>,
+    ) -> ValidationReport
+    where
+        F: Fn(&CompositionPlaylist) -> Vec<ValidationIssue>,
+    {
+        let edition = self.package_edition(core_spec);
+        let spec_ed = edition.edition;
+        let delivery = spec_ed != St2067_2Edition::V2013;
         let mut report = ValidationReport::new(ValidationProfile::SMPTE);
+        self.edition_notices(&edition, &mut report);
 
         // VOLINDEX diagnostics (ST 429-9) — emitted first
         for issue in &self.volindex_issues {
-            report.add(issue.clone());
+            if delivery || !is_delivery_rule(issue) {
+                report.add(issue.clone());
+            }
         }
 
         // Parse-time diagnostics (PKL/CPL/OPL/SCM failures)
@@ -1765,8 +1913,10 @@ impl Imferno {
                 .assets
                 .iter()
                 .flat_map(|a| a.chunk_list.chunks.iter().map(|c| c.path.as_str()));
-            for issue in crate::assetmap::map_profile::basic_map_profile_v2_issues(paths) {
-                report.add(issue);
+            if delivery {
+                for issue in crate::assetmap::map_profile::basic_map_profile_v2_issues(paths) {
+                    report.add(issue);
+                }
             }
         }
 
@@ -1774,7 +1924,7 @@ impl Imferno {
         for issue in self
             .validate_pkl_constraints()
             .iter()
-            .map(|e| e.to_issue(spec_ed))
+            .filter_map(|e| e.to_issue(spec_ed))
         {
             report.add(issue);
         }
@@ -1791,7 +1941,7 @@ impl Imferno {
             for issue in self
                 .validate_file_manifest()
                 .iter()
-                .map(|e| e.to_issue(spec_ed))
+                .filter_map(|e| e.to_issue(spec_ed))
             {
                 report.add(issue);
             }
@@ -1804,7 +1954,7 @@ impl Imferno {
             for issue in self
                 .pkl_assets_not_in_assetmap()
                 .iter()
-                .map(|e| e.to_issue(spec_ed))
+                .filter_map(|e| e.to_issue(spec_ed))
             {
                 report.add(issue);
             }
@@ -1813,7 +1963,7 @@ impl Imferno {
         // CPL TrackFileId → AssetMap cross-references
         let mut signature_notices = Vec::new();
         for cpl in self.composition_playlists.values() {
-            self.validate_cpl_asset_references_accumulating(cpl, &mut report);
+            self.validate_cpl_asset_references_accumulating(cpl, &mut report, spec_ed);
 
             // Optional external CPL-level validation injection
             for issue in cpl_validator(cpl) {
@@ -1835,13 +1985,13 @@ impl Imferno {
         self.emit_unreferenced_asset_info(&mut report);
 
         // Multi-PKL consistency (ST 2067-2 §7)
-        self.validate_multi_pkl_consistency(&mut report);
+        self.validate_multi_pkl_consistency(&mut report, spec_ed);
 
         // MXF header cross-validation (ST 377-1) — skipped on WASM, when no root_path is set,
         // and when skip_disk_checks is true
         #[cfg(not(target_arch = "wasm32"))]
         if !skip_disk_checks && !self.root_path.as_os_str().is_empty() {
-            self.validate_mxf_headers(&mut report);
+            self.validate_mxf_headers(&mut report, spec_ed);
         }
 
         // Files the AssetMap does not list. A directory listing reads no
@@ -1868,12 +2018,30 @@ impl Imferno {
     where
         F: Fn(&CompositionPlaylist) -> Vec<ValidationIssue>,
     {
-        let spec_ed = self.package_edition();
+        self.validate_package_with_hashes_for(cpl_validator, None)
+    }
+
+    /// [`Self::validate_package_with_hashes_with_cpl_validator`] with the
+    /// ST 2067-2 edition pinned by `core_spec`.
+    pub fn validate_package_with_hashes_for<F>(
+        &self,
+        cpl_validator: F,
+        core_spec: Option<crate::validation::CoreSpecTarget>,
+    ) -> ValidationReport
+    where
+        F: Fn(&CompositionPlaylist) -> Vec<ValidationIssue>,
+    {
+        let edition = self.package_edition(core_spec);
+        let spec_ed = edition.edition;
+        let delivery = spec_ed != St2067_2Edition::V2013;
         let mut report = ValidationReport::new(ValidationProfile::SMPTE);
+        self.edition_notices(&edition, &mut report);
 
         // VOLINDEX diagnostics (ST 429-9) — emitted first
         for issue in &self.volindex_issues {
-            report.add(issue.clone());
+            if delivery || !is_delivery_rule(issue) {
+                report.add(issue.clone());
+            }
         }
 
         // Parse-time diagnostics (PKL/CPL/OPL/SCM failures)
@@ -1885,7 +2053,7 @@ impl Imferno {
         for issue in self
             .validate_pkl_constraints()
             .iter()
-            .map(|e| e.to_issue(spec_ed))
+            .filter_map(|e| e.to_issue(spec_ed))
         {
             report.add(issue);
         }
@@ -1894,7 +2062,7 @@ impl Imferno {
         for issue in self
             .validate_file_hashes()
             .iter()
-            .map(|e| e.to_issue(spec_ed))
+            .filter_map(|e| e.to_issue(spec_ed))
         {
             report.add(issue);
         }
@@ -1902,7 +2070,7 @@ impl Imferno {
         // CPL TrackFileId → AssetMap cross-references
         let mut signature_notices = Vec::new();
         for cpl in self.composition_playlists.values() {
-            self.validate_cpl_asset_references_accumulating(cpl, &mut report);
+            self.validate_cpl_asset_references_accumulating(cpl, &mut report, spec_ed);
 
             // Optional external CPL-level validation injection
             for issue in cpl_validator(cpl) {
@@ -1918,10 +2086,10 @@ impl Imferno {
         }
 
         // Multi-PKL consistency
-        self.validate_multi_pkl_consistency(&mut report);
+        self.validate_multi_pkl_consistency(&mut report, spec_ed);
 
         // MXF header cross-validation (ST 377-1)
-        self.validate_mxf_headers(&mut report);
+        self.validate_mxf_headers(&mut report, spec_ed);
 
         report
     }
@@ -2078,8 +2246,11 @@ impl Imferno {
     /// Per ST 2067-2 §7, when the same asset UUID appears in multiple PKLs,
     /// the hash and size must be identical. Conflicting metadata indicates
     /// a corrupt or inconsistent package delivery.
-    fn validate_multi_pkl_consistency(&self, report: &mut ValidationReport) {
-        let spec_ed = self.package_edition();
+    fn validate_multi_pkl_consistency(
+        &self,
+        report: &mut ValidationReport,
+        spec_ed: St2067_2Edition,
+    ) {
         if self.packing_lists.len() < 2 {
             return; // Nothing to cross-validate
         }
@@ -2103,7 +2274,7 @@ impl Imferno {
             let (first_pkl, ref first_hash, first_size) = records[0];
             for (pkl_id, hash, size) in &records[1..] {
                 if hash != first_hash {
-                    report.add(
+                    report.extend(
                         pkg_issue(
                             &st2067_2::ChecksumMismatch,
                             spec_ed,
@@ -2116,11 +2287,11 @@ impl Imferno {
                                 &hash[..8.min(hash.len())],
                             ),
                         )
-                        .with_context("asset_uuid", asset_id.to_string()),
+                        .map(|i| i.with_context("asset_uuid", asset_id.to_string())),
                     );
                 }
                 if *size != first_size {
-                    report.add(
+                    report.extend(
                         pkg_issue(&st2067_2::SizeMismatch, spec_ed,
                             format!(
                                 "Asset {} has different sizes in PKL {} ({} bytes) vs PKL {} ({} bytes)",
@@ -2131,7 +2302,7 @@ impl Imferno {
                                 size,
                             ),
                         )
-                        .with_context("asset_uuid", asset_id.to_string()),
+                        .map(|i| i.with_context("asset_uuid", asset_id.to_string())),
                     );
                 }
             }
@@ -2144,10 +2315,8 @@ impl Imferno {
     /// 1. Parse the MXF Header Partition Pack
     /// 2. Check that the Operational Pattern is OP1a (required for IMF per ST 2067-2)
     /// 3. Report parse failures as warnings (file may be unavailable or corrupt)
-    fn validate_mxf_headers(&self, report: &mut ValidationReport) {
-        // MXF essence checks are native-only.
-        #[cfg_attr(target_arch = "wasm32", allow(unused_variables))]
-        let spec_ed = self.package_edition();
+    #[cfg_attr(target_arch = "wasm32", allow(unused_variables))]
+    fn validate_mxf_headers(&self, report: &mut ValidationReport, spec_ed: St2067_2Edition) {
         // OP1a UL prefix: 060e2b34.04010102.0d010201.0101__00
         // Bytes 13-14 identify the OP variant: 01 01 = OP1a, 01 02 = OP1b, etc.
         // Byte 15 encodes the qualifier (xxxx xxxx pattern). We ignore byte 8 (version).
@@ -2403,12 +2572,19 @@ impl Imferno {
         &self,
         cpl: &crate::cpl::CompositionPlaylist,
         report: &mut ValidationReport,
+        spec_ed: St2067_2Edition,
     ) {
-        let spec_ed = self.package_edition();
         if self.asset_map.asset_list.assets.is_empty() {
+            // ST 429-9 §11: AssetList has one or more Asset elements. The
+            // Asset Map namespace (`.../429-9/2007/AM`) is shared by the
+            // 2007 and 2014 editions; the current edition is applied.
             report.add(
-                pkg_issue(&st2067_2::AssetMap, spec_ed, "AssetMap contains no assets")
-                    .with_location(Location::new().with_cpl(cpl.id)),
+                ValidationIssue::from_rule(
+                    &st429_9::AssetListEmpty,
+                    St429_9Edition::V2014,
+                    "AssetMap contains no assets",
+                )
+                .with_location(Location::new().with_cpl(cpl.id)),
             );
             return;
         }
@@ -2442,7 +2618,7 @@ impl Imferno {
                             // complete compositions, so this is legal (e.g. a
                             // supplemental package referring to the OV).
                             // https://github.com/Netflix/photon/issues/337
-                            report.add(
+                            report.extend(
                                 pkg_issue(
                                     &st2067_2::TrackFileNotInPackage,
                                     spec_ed,
@@ -2452,13 +2628,15 @@ impl Imferno {
                                         track_type, track_file_id
                                     ),
                                 )
-                                .with_location(
-                                    Location::new()
-                                        .with_cpl(cpl_id)
-                                        .with_segment(seg_idx)
-                                        .with_resource(res_idx),
-                                )
-                                .with_context("track_file_id", track_file_id.to_string()),
+                                .map(|i| {
+                                    i.with_location(
+                                        Location::new()
+                                            .with_cpl(cpl_id)
+                                            .with_segment(seg_idx)
+                                            .with_resource(res_idx),
+                                    )
+                                    .with_context("track_file_id", track_file_id.to_string())
+                                }),
                             );
                         }
                     }
@@ -3860,7 +4038,11 @@ mod tests {
         resource.track_file_id = Some(outside);
 
         let mut report = ValidationReport::default();
-        package.validate_cpl_asset_references_accumulating(&cpl, &mut report);
+        package.validate_cpl_asset_references_accumulating(
+            &cpl,
+            &mut report,
+            St2067_2Edition::V2020,
+        );
 
         assert!(report.errors.is_empty(), "{:#?}", report.errors);
         let info: Vec<_> = report
@@ -3904,8 +4086,25 @@ mod tests {
             .assets
             .retain(|a| a.id != track_file);
 
-        // Without disk checks the PKL→AssetMap gap is still an ERROR.
-        let full = package.validate_package_structure_with_cpl_validator(|_| Vec::new(), true);
+        // MERIDIAN is an ST 2067-2:2013 IMP (ST 429-8 PKL): no delivery
+        // rules, so the gap is not reported, and the package says so.
+        let as_2013 = package.validate_package_structure_with_cpl_validator(|_| Vec::new(), true);
+        assert!(!as_2013
+            .errors
+            .iter()
+            .any(|i| i.is(&st2067_2::UnresolvedUuid)));
+        assert!(as_2013
+            .info
+            .iter()
+            .any(|i| i.is(&imferno::DeliveryNotChecked)));
+
+        // Checked as ST 2067-2:2020, the PKL→AssetMap gap is an ERROR even
+        // without disk checks.
+        let full = package.validate_package_structure_for(
+            |_| Vec::new(),
+            true,
+            Some(crate::validation::CoreSpecTarget::St2067_2_2020),
+        );
         let unresolved = st2067_2::UnresolvedUuid
             .code(St2067_2Edition::V2020)
             .unwrap();
@@ -3918,7 +4117,11 @@ mod tests {
         );
 
         let mut report = ValidationReport::default();
-        package.validate_cpl_asset_references_accumulating(&cpl, &mut report);
+        package.validate_cpl_asset_references_accumulating(
+            &cpl,
+            &mut report,
+            St2067_2Edition::V2020,
+        );
         assert!(
             !report
                 .info
@@ -4006,7 +4209,7 @@ mod tests {
             uuid: "test-uuid".to_string(),
             original_file_name: Some("test.mxf".to_string()),
         };
-        let issue = err.to_issue(St2067_2Edition::V2020);
+        let issue = err.to_issue(St2067_2Edition::V2020).unwrap();
         assert_eq!(issue.severity, Severity::Error);
         assert_eq!(issue.category, Category::Reference);
         assert!(issue.is(&st2067_2::UnresolvedUuid));
@@ -4023,7 +4226,7 @@ mod tests {
             expected: "abc123".to_string(),
             actual: "def456".to_string(),
         };
-        let issue = err.to_issue(St2067_2Edition::V2020);
+        let issue = err.to_issue(St2067_2Edition::V2020).unwrap();
         assert_eq!(issue.severity, Severity::Error);
         assert!(issue.is(&st2067_2::ChecksumMismatch));
         assert!(issue.suggestion.is_some());
@@ -4036,7 +4239,7 @@ mod tests {
             uuid: "missing-uuid".to_string(),
             path: PathBuf::from("/tmp/missing.mxf"),
         };
-        let issue = err.to_issue(St2067_2Edition::V2020);
+        let issue = err.to_issue(St2067_2Edition::V2020).unwrap();
         assert_eq!(issue.severity, Severity::Error);
         assert_eq!(issue.category, Category::Asset);
         assert!(issue.is(&st2067_2::FileNotFound));
@@ -4055,7 +4258,7 @@ mod tests {
 
         // PKL references cccccccc which is NOT in AssetMap
         let pkl_xml = r#"<?xml version="1.0"?>
-<PackingList xmlns="http://www.smpte-ra.org/schemas/429-8/2007/PKL">
+<PackingList xmlns="http://www.smpte-ra.org/schemas/2067-2/2016/PKL">
 <Id>urn:uuid:aaaaaaaa-0000-0000-0000-000000000001</Id>
 <IssueDate>2024-01-01T00:00:00Z</IssueDate>
 <AssetList>
@@ -4433,7 +4636,7 @@ mod tests {
             expected: 1000,
             actual: 2000,
         };
-        let issue = err.to_issue(St2067_2Edition::V2020);
+        let issue = err.to_issue(St2067_2Edition::V2020).unwrap();
         assert_eq!(issue.severity, Severity::Error);
         assert_eq!(issue.category, Category::Asset);
         assert!(issue.is(&st2067_2::SizeMismatch));
@@ -4449,7 +4652,7 @@ mod tests {
             path: PathBuf::from("/tmp/broken.mxf"),
             message: "permission denied".to_string(),
         };
-        let issue = err.to_issue(St2067_2Edition::V2020);
+        let issue = err.to_issue(St2067_2Edition::V2020).unwrap();
         assert_eq!(issue.severity, Severity::Error);
         assert_eq!(issue.category, Category::Asset);
         assert_eq!(issue.code, "IMFERNO:General/IoError");
@@ -4463,7 +4666,7 @@ mod tests {
             uuid: "dup-uuid".to_string(),
             pkl_id: "pkl-001".to_string(),
         };
-        let issue = err.to_issue(St2067_2Edition::V2020);
+        let issue = err.to_issue(St2067_2Edition::V2020).unwrap();
         assert_eq!(issue.severity, Severity::Error);
         assert_eq!(issue.category, Category::Reference);
         assert!(issue.is(&st2067_2::DuplicateUuid));

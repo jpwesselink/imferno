@@ -271,17 +271,19 @@ pub struct EditionEntry<E: Edition> {
     pub severity_reason: Option<&'static str>,
     /// Working-group / plugfest interpretation the check follows.
     pub interpretation: Option<Interpretation>,
-    /// `false` when the clause is known or suspected to be wrong, or was
-    /// copied from another edition without being checked against this
-    /// edition's text (to be fixed in the table, without renaming).
+    /// `true` only when this row (clause, or absence) was checked against
+    /// this edition's text. Defaults to `false`.
     pub verified: bool,
+    /// The clause is known or suspected to be wrong (the C1 list); to be
+    /// fixed in the table, without renaming.
+    pub suspect: bool,
     /// `false` while `strength` is derived from the default severity rather
     /// than read from the edition's text.
     pub strength_verified: bool,
 }
 
 /// A row for an edition that contains the rule. Strength is derived from
-/// `severity` and marked unverified.
+/// `severity`; neither strength nor clause is marked verified.
 pub const fn row<E: Edition>(
     edition: E,
     clause: &'static str,
@@ -294,7 +296,8 @@ pub const fn row<E: Edition>(
         default_severity: severity,
         severity_reason: None,
         interpretation: None,
-        verified: true,
+        verified: false,
+        suspect: false,
         strength_verified: false,
     }
 }
@@ -308,14 +311,22 @@ pub const fn absent<E: Edition>(edition: E) -> EditionEntry<E> {
         default_severity: Severity::Info,
         severity_reason: None,
         interpretation: None,
-        verified: true,
+        verified: false,
+        suspect: false,
         strength_verified: false,
     }
 }
 
 impl<E: Edition> EditionEntry<E> {
-    /// Mark the clause as not verified against this edition's text.
-    pub const fn unverified(mut self) -> Self {
+    /// Mark the row as checked against this edition's text.
+    pub const fn verified(mut self) -> Self {
+        self.verified = true;
+        self
+    }
+
+    /// Mark the clause as known or suspected to be wrong.
+    pub const fn suspect(mut self) -> Self {
+        self.suspect = true;
         self.verified = false;
         self
     }
@@ -381,22 +392,6 @@ impl<E: Edition> Rule<E> {
     /// Whether `edition` contains the rule.
     pub fn in_edition(&self, edition: E) -> bool {
         self.entry(edition).is_some_and(|e| e.clause.is_some())
-    }
-
-    /// `preferred` when it contains the rule, otherwise the newest edition
-    /// that does. For checks whose governing document's edition lacks the
-    /// requirement while imferno still applies it (as stated in a later
-    /// edition), so the finding names the text actually applied.
-    pub fn applicable_edition(&self, preferred: E) -> E {
-        if self.in_edition(preferred) {
-            return preferred;
-        }
-        self.editions
-            .iter()
-            .rev()
-            .find(|e| e.clause.is_some())
-            .map(|e| e.edition)
-            .unwrap_or(preferred)
     }
 }
 
@@ -509,6 +504,7 @@ impl<E: Edition> AnyRule for Rule<E> {
                     url: i.url.map(str::to_string),
                 }),
                 verified: e.verified,
+                suspect: e.suspect,
                 strength_verified: e.strength_verified,
             })
             .collect()
@@ -566,9 +562,10 @@ pub struct EditionInfo {
     /// Interpretation the check follows.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub interpretation: Option<InterpretationInfo>,
-    /// `false` when the clause is known or suspected wrong, or not yet
-    /// checked against this edition's text.
+    /// `true` only when the row was checked against this edition's text.
     pub verified: bool,
+    /// The clause is known or suspected to be wrong.
+    pub suspect: bool,
     /// `false` while the strength is derived from the default severity.
     pub strength_verified: bool,
 }

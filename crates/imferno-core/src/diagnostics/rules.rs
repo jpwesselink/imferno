@@ -275,6 +275,10 @@ impl ValidationReport {
             let matched = rules.lookup(&issue).map(|(k, v)| (k.to_string(), v));
             match matched {
                 Some((key, RuleSeverity::Off)) => {
+                    issue.context.insert(
+                        "original_severity".to_string(),
+                        format!("{:?}", issue.severity),
+                    );
                     issue.context.insert("suppressed_by".to_string(), key);
                     issue.severity = Severity::Info;
                     self.suppressed.push(issue);

@@ -23,7 +23,7 @@ pub static NotMxf: Rule<E> = Rule {
     description: "File is not a valid MXF container.",
     example: Some("An asset declared in the PKL with MIME `application/mxf` whose header doesn't carry the MXF run-in / partition pack key."),
     editions: &[
-        row(E::V2011, "5", Severity::Warning).unverified(),
+        row(E::V2011, "5", Severity::Warning).suspect(),
     ],
 };
 
@@ -34,7 +34,7 @@ pub static ParseError: Rule<E> = Rule {
     description: "MXF file could not be parsed; it may be truncated or corrupt.",
     example: Some("An MXF file that was truncated mid-transfer; the footer partition is missing or the RIP is unreadable."),
     editions: &[
-        row(E::V2011, "5", Severity::Warning).unverified(),
+        row(E::V2011, "5", Severity::Warning).suspect(),
     ],
 };
 
@@ -45,7 +45,7 @@ pub static NoEssenceContainers: Rule<E> = Rule {
     description: "MXF file contains no essence containers.",
     example: Some("An MXF file whose header metadata declares no EssenceContainer ULs — the body has no decodable essence."),
     editions: &[
-        row(E::V2011, "11", Severity::Warning).unverified(),
+        row(E::V2011, "11", Severity::Warning).suspect(),
     ],
 };
 
@@ -57,7 +57,7 @@ pub static Op1a: Rule<E> = Rule {
     example: Some(
         "An MXF file whose Preface declares OperationalPattern OP-Atom or OP-3a instead of OP-1a.",
     ),
-    editions: &[row(E::V2011, "7", Severity::Error).unverified()],
+    editions: &[row(E::V2011, "7", Severity::Error).suspect()],
 };
 
 /// The first partition in an MXF file must be the Header partition.
@@ -67,7 +67,7 @@ pub static NonHeaderFirstPartition: Rule<E> = Rule {
     description: "The first partition in an MXF file must be the Header partition.",
     example: Some("An authoring tool wrote a Body partition before the Header partition, violating ST 377-1 ordering."),
     editions: &[
-        row(E::V2011, "6.4", Severity::Error).unverified(),
+        row(E::V2011, "6.4", Severity::Error).suspect(),
     ],
 };
 
@@ -78,7 +78,7 @@ pub static HeaderPartitionOpen: Rule<E> = Rule {
     description: "The header partition is Open and no Closed footer partition carries header metadata, so the MXF file is Open.",
     example: Some("A live-streaming export shipped an OpenIncomplete Header partition and no Closed Footer partition with header metadata."),
     editions: &[
-        row(E::V2011, "8.3.3", Severity::Warning).unverified(),
+        row(E::V2011, "8.3.3", Severity::Warning).suspect(),
     ],
 };
 
@@ -89,7 +89,7 @@ pub static MissingHeaderMetadata: Rule<E> = Rule {
     description: "The header partition must carry header metadata (HeaderByteCount > 0).",
     example: Some("An MXF file whose Header partition advertises HeaderByteCount = 0 — no metadata sets follow the partition pack."),
     editions: &[
-        row(E::V2011, "8.3.3", Severity::Error).unverified(),
+        row(E::V2011, "8.3.3", Severity::Error).suspect(),
     ],
 };
 
@@ -100,7 +100,7 @@ pub static StructuralComponentDurationMissing: Rule<E> = Rule {
     description: "A Structural Component on a Timeline Track has no Duration; it is a Best Effort property there and shall be encoded (-1 when unknown).",
     example: Some("A timed-text track file whose Source Clip on the Timeline Track carries no Duration item."),
     editions: &[
-        row(E::V2011, "B.8", Severity::Error).unverified(),
+        row(E::V2011, "B.8", Severity::Error).suspect(),
     ],
 };
 

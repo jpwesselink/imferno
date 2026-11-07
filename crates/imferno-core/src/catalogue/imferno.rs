@@ -192,8 +192,31 @@ pub static RuleNotInEdition: Rule<E> = Rule {
     ],
 };
 
+/// The ST 2067-2 edition of a package could not be determined from its
+/// Packing Lists and CPLs; package-level rules were checked against the
+/// edition named in the message.
+pub static EditionAssumed: Rule<E> = Rule {
+    name: "EditionAssumed",
+    category: Category::Structure,
+    description: "The package's ST 2067-2 edition could not be determined from its Packing List and CPL namespaces; package-level rules were checked against the edition named in the message (the newest candidate).",
+    example: Some("Packing List in the ST 2067-2:2016 PKL namespace (used by 2016 and 2020) and no CPL declaring a Core Constraints namespace"),
+    editions: &[row(E::Current, "Package", Severity::Info)],
+};
+
+/// The package is an ST 2067-2:2013 IMP: that edition defines no delivery
+/// requirements, so delivery rules of later editions were not checked.
+pub static DeliveryNotChecked: Rule<E> = Rule {
+    name: "DeliveryNotChecked",
+    category: Category::Structure,
+    description: "ST 2067-2:2013 defines no delivery requirements (an IMP is a Packing List and its assets, §7); the delivery rules of later editions (Asset Map ingest, ASSETMAP.xml name, Annex A paths, VOLINDEX, asset size and hash at ingest) were not checked.",
+    example: Some("ST 429-8 Packing List with CPLs in the ST 2067-3:2013 namespace"),
+    editions: &[row(E::Current, "Package", Severity::Info)],
+};
+
 /// Every rule of this spec.
 pub static ALL: &[&dyn AnyRule] = &[
+    &EditionAssumed,
+    &DeliveryNotChecked,
     &OpenFailed,
     &PartitionPackParseFailed,
     &RegXmlConversionFailed,

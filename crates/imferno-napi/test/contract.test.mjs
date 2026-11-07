@@ -232,6 +232,14 @@ describe("runtime outputs conform to their declared types", () => {
     }
   });
 
+  it("unknown rules keys come back as rule_warnings", () => {
+    const r = api.validatePath(join(testData, "MERIDIAN_Netflix_Photon_161006"), {
+      rules: { BogusKey: "off", "ST2067-3/SegmentDuration": "warn" },
+    });
+    check("ValidationResult", r, "validatePath(rule warnings)");
+    expect(r.rule_warnings).toEqual([{ key: "BogusKey", reason: { kind: "matches_nothing" } }]);
+  });
+
   it("toSarif → a SARIF 2.1.0 log of the findings", () => {
     const r = api.validatePath(join(testData, "MERIDIAN_Netflix_Photon_161006"));
     const log = api.toSarif(r);
@@ -241,7 +249,10 @@ describe("runtime outputs conform to their declared types", () => {
       .reduce((n, k) => n + (r.validation[k]?.length ?? 0), 0);
     expect(results.length).toBe(findings);
     for (const res of results) expect(res.ruleId).toMatch(/^[A-Z0-9-]+\/[A-Za-z0-9]+$/);
-    expect(api.toSarif(r.validation)).toEqual(log);
+    // With the package, artifact URIs are relative to its root.
+    expect(log.runs[0].originalUriBaseIds.PKGROOT.uri).toMatch(/^file:\/\/\/.*\/$/);
+    // The bare report works too (root unknown).
+    expect(api.toSarif(r.validation).runs[0].results.length).toBe(findings);
   });
 });
 

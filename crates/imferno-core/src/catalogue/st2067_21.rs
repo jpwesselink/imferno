@@ -277,8 +277,8 @@ pub static RequiredComponentDepth: Rule<E> = Rule {
     editions: &[
         absent(E::V2014),
         absent(E::V2016),
-        row(E::V2020, "6.2", Severity::Error).unverified(),
-        row(E::V2023, "6.2", Severity::Error).unverified(),
+        row(E::V2020, "6.2", Severity::Error).suspect(),
+        row(E::V2023, "6.2", Severity::Error).suspect(),
         row(E::V2026, "7.4.1", Severity::Error),
     ],
 };
@@ -367,8 +367,8 @@ pub static FrameLayoutInterlaced: Rule<E> = Rule {
     editions: &[
         absent(E::V2014),
         absent(E::V2016),
-        row(E::V2020, "6.2.1", Severity::Error).unverified(),
-        row(E::V2023, "6.2.1", Severity::Error).unverified(),
+        row(E::V2020, "6.2.1", Severity::Error).suspect(),
+        row(E::V2023, "6.2.1", Severity::Error).suspect(),
         row(E::V2026, "6.2.1", Severity::Error),
     ],
 };
@@ -793,8 +793,8 @@ pub static CodingStyle: Rule<E> = Rule {
     editions: &[
         absent(E::V2014),
         absent(E::V2016),
-        row(E::V2020, "6.5.2", Severity::Error).unverified(),
-        row(E::V2023, "6.5.2", Severity::Error).unverified(),
+        row(E::V2020, "6.5.2", Severity::Error).suspect(),
+        row(E::V2023, "6.5.2", Severity::Error).suspect(),
         row(E::V2026, "7.5.1", Severity::Error),
     ],
 };
@@ -808,8 +808,8 @@ pub static J2CLayout: Rule<E> = Rule {
     editions: &[
         absent(E::V2014),
         absent(E::V2016),
-        row(E::V2020, "6.5.2", Severity::Error).unverified(),
-        row(E::V2023, "6.5.2", Severity::Error).unverified(),
+        row(E::V2020, "6.5.2", Severity::Error).suspect(),
+        row(E::V2023, "6.5.2", Severity::Error).suspect(),
         row(E::V2026, "7.5.2", Severity::Error),
     ],
 };
@@ -825,8 +825,8 @@ pub static Jpeg2000SubDescriptor: Rule<E> = Rule {
     editions: &[
         absent(E::V2014),
         absent(E::V2016),
-        row(E::V2020, "6.5.2", Severity::Warning).unverified(),
-        row(E::V2023, "6.5.2", Severity::Warning).unverified(),
+        row(E::V2020, "6.5.2", Severity::Warning).suspect(),
+        row(E::V2023, "6.5.2", Severity::Warning).suspect(),
         row(E::V2026, "7.5.1", Severity::Warning),
     ],
 };
@@ -950,7 +950,7 @@ pub static J2KExtendedCapabilities: Rule<E> = Rule {
         absent(E::V2014),
         absent(E::V2016),
         absent(E::V2020),
-        row(E::V2023, "6.5.2", Severity::Error).unverified(),
+        row(E::V2023, "6.5.2", Severity::Error).suspect(),
         row(E::V2026, "7.5.1", Severity::Error),
     ],
 };

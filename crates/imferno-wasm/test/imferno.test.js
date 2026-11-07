@@ -158,6 +158,13 @@ describe('toSarif', () => {
         }
     });
 
+    it('reports unknown rules keys as rule_warnings', () => {
+        const result = wasm.validate(packageFiles, { rules: { BogusKey: 'off' } });
+        expect(result.rule_warnings).toEqual([
+            { key: 'BogusKey', reason: { kind: 'matches_nothing' } },
+        ]);
+    });
+
     it('rejects a non-report', () => {
         expect(() => wasm.toSarif({ nope: true })).toThrow();
     });

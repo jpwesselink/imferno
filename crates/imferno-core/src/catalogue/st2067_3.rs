@@ -24,8 +24,8 @@ pub static ContentKindUnknown: Rule<E> = Rule {
     description: "ContentKind uses an unrecognized value under the SMPTE scope.",
     example: Some("<ContentKind scope=\"http://www.smpte-ra.org/schemas/2067-3/2013/content-kind\">Banana</ContentKind>"),
     editions: &[
-        row(E::V2013, "5.5.1.2", Severity::Warning).unverified(),
-        row(E::V2016, "5.5.1.2", Severity::Warning).unverified(),
+        row(E::V2013, "5.5.1.2", Severity::Warning).suspect(),
+        row(E::V2016, "5.5.1.2", Severity::Warning).suspect(),
     ],
 };
 
@@ -132,8 +132,8 @@ pub static MarkerOffsetOutOfRange: Rule<E> = Rule {
     description: "Marker offset exceeds the resource IntrinsicDuration.",
     example: Some("<Marker><Offset>120</Offset></Marker>  <!-- resource IntrinsicDuration=100 -->"),
     editions: &[
-        row(E::V2013, "7.4", Severity::Error).unverified(),
-        row(E::V2016, "7.4", Severity::Error).unverified(),
+        row(E::V2013, "7.4", Severity::Error).suspect(),
+        row(E::V2016, "7.4", Severity::Error).suspect(),
     ],
 };
 
@@ -144,8 +144,8 @@ pub static MarkerLabelUnknown: Rule<E> = Rule {
     description: "Marker label is not a recognized SMPTE standard value.",
     example: Some("<Marker><Label>NotARealMarker</Label></Marker>"),
     editions: &[
-        row(E::V2013, "7.4", Severity::Warning).unverified(),
-        row(E::V2016, "7.4", Severity::Warning).unverified(),
+        row(E::V2013, "7.4", Severity::Warning).suspect(),
+        row(E::V2016, "7.4", Severity::Warning).suspect(),
     ],
 };
 
@@ -159,7 +159,7 @@ pub static SegmentDuration: Rule<E> = Rule {
     ),
     editions: &[
         row(E::V2013, "7.2.2", Severity::Error),
-        row(E::V2016, "7.2.2", Severity::Error).unverified(),
+        row(E::V2016, "7.2.2", Severity::Error).suspect(),
     ],
 };
 

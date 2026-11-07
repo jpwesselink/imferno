@@ -29,7 +29,7 @@ pub static CodecForbidden: Rule<E> = Rule {
     editions: &[
         row(E::V2019, "5.9", Severity::Error),
         row(E::V2021, "5.9", Severity::Error),
-        row(E::V2026, "5.9", Severity::Error),
+        row(E::V2026, "5.9", Severity::Error).verified(),
     ],
 };
 
@@ -42,7 +42,7 @@ pub static ElectrospatialFormulationInvalid: Rule<E> = Rule {
     editions: &[
         row(E::V2019, "5.9", Severity::Error),
         row(E::V2021, "5.9", Severity::Error),
-        row(E::V2026, "5.9", Severity::Error),
+        row(E::V2026, "5.9", Severity::Error).verified(),
     ],
 };
 
@@ -55,7 +55,7 @@ pub static QuantizationBitsMissing: Rule<E> = Rule {
     editions: &[
         row(E::V2019, "5.9", Severity::Warning),
         row(E::V2021, "5.9", Severity::Warning),
-        row(E::V2026, "5.9", Severity::Warning),
+        row(E::V2026, "5.9", Severity::Warning).verified(),
     ],
 };
 
@@ -68,7 +68,7 @@ pub static QuantizationBitsInvalid: Rule<E> = Rule {
     editions: &[
         row(E::V2019, "5.9", Severity::Error),
         row(E::V2021, "5.9", Severity::Error),
-        row(E::V2026, "5.9", Severity::Error),
+        row(E::V2026, "5.9", Severity::Error).verified(),
     ],
 };
 
@@ -81,7 +81,7 @@ pub static ContainerFormatMissing: Rule<E> = Rule {
     editions: &[
         row(E::V2019, "5.9", Severity::Warning),
         row(E::V2021, "5.9", Severity::Warning),
-        row(E::V2026, "5.9", Severity::Warning),
+        row(E::V2026, "5.9", Severity::Warning).verified(),
     ],
 };
 
@@ -94,7 +94,7 @@ pub static EssenceContainerInvalid: Rule<E> = Rule {
     editions: &[
         row(E::V2019, "5.9", Severity::Error),
         row(E::V2021, "5.9", Severity::Error),
-        row(E::V2026, "5.9", Severity::Error),
+        row(E::V2026, "5.9", Severity::Error).verified(),
     ],
 };
 
@@ -107,7 +107,7 @@ pub static AudioSamplingRateMissing: Rule<E> = Rule {
     editions: &[
         row(E::V2019, "5.9", Severity::Error),
         row(E::V2021, "5.9", Severity::Error),
-        row(E::V2026, "5.9", Severity::Error),
+        row(E::V2026, "5.9", Severity::Error).verified(),
     ],
 };
 
@@ -120,7 +120,7 @@ pub static AudioSamplingRateInvalid: Rule<E> = Rule {
     editions: &[
         row(E::V2019, "5.9", Severity::Error),
         row(E::V2021, "5.9", Severity::Error),
-        row(E::V2026, "5.9", Severity::Error),
+        row(E::V2026, "5.9", Severity::Error).verified(),
     ],
 };
 
@@ -133,7 +133,7 @@ pub static SoundCompressionMissing: Rule<E> = Rule {
     editions: &[
         row(E::V2019, "5.9", Severity::Warning),
         row(E::V2021, "5.9", Severity::Warning),
-        row(E::V2026, "5.9", Severity::Warning),
+        row(E::V2026, "5.9", Severity::Warning).verified(),
     ],
 };
 
@@ -146,7 +146,7 @@ pub static SoundCompressionInvalid: Rule<E> = Rule {
     editions: &[
         row(E::V2019, "5.9", Severity::Error),
         row(E::V2021, "5.9", Severity::Error),
-        row(E::V2026, "5.9", Severity::Error),
+        row(E::V2026, "5.9", Severity::Error).verified(),
     ],
 };
 
@@ -159,7 +159,7 @@ pub static ChannelCountNotZero: Rule<E> = Rule {
     editions: &[
         row(E::V2019, "5.9", Severity::Error),
         absent(E::V2021),
-        absent(E::V2026),
+        absent(E::V2026).verified(),
     ],
 };
 
@@ -172,7 +172,7 @@ pub static SubDescriptorMissing: Rule<E> = Rule {
     editions: &[
         row(E::V2019, "5.10.2", Severity::Error),
         row(E::V2021, "5.10.2", Severity::Error),
-        row(E::V2026, "5.10.2", Severity::Error),
+        row(E::V2026, "5.10.2", Severity::Error).verified(),
     ],
 };
 
@@ -185,7 +185,7 @@ pub static MCATagSymbolMissing: Rule<E> = Rule {
     editions: &[
         row(E::V2019, "5.10.4", Severity::Error),
         row(E::V2021, "5.10.4", Severity::Error),
-        row(E::V2026, "5.10.4", Severity::Error),
+        row(E::V2026, "5.10.4", Severity::Error).verified(),
     ],
 };
 
@@ -198,7 +198,7 @@ pub static MCATagSymbolInvalid: Rule<E> = Rule {
     editions: &[
         row(E::V2019, "5.10.4", Severity::Error),
         row(E::V2021, "5.10.4", Severity::Error),
-        row(E::V2026, "5.10.4", Severity::Error),
+        row(E::V2026, "5.10.4", Severity::Error).verified(),
     ],
 };
 
@@ -211,7 +211,7 @@ pub static MCATagNameMissing: Rule<E> = Rule {
     editions: &[
         row(E::V2019, "5.10.3", Severity::Error),
         row(E::V2021, "5.10.3", Severity::Error),
-        row(E::V2026, "5.10.3", Severity::Error),
+        row(E::V2026, "5.10.3", Severity::Error).verified(),
     ],
 };
 
@@ -224,7 +224,7 @@ pub static MCATagNameInvalid: Rule<E> = Rule {
     editions: &[
         row(E::V2019, "5.10.4", Severity::Error),
         row(E::V2021, "5.10.4", Severity::Error),
-        row(E::V2026, "5.10.4", Severity::Error),
+        row(E::V2026, "5.10.4", Severity::Error).verified(),
     ],
 };
 
@@ -237,7 +237,7 @@ pub static MCALabelDictionaryIDMissing: Rule<E> = Rule {
     editions: &[
         row(E::V2019, "5.10.4", Severity::Error),
         row(E::V2021, "5.10.4", Severity::Error),
-        row(E::V2026, "5.10.4", Severity::Error),
+        row(E::V2026, "5.10.4", Severity::Error).verified(),
     ],
 };
 
@@ -250,7 +250,7 @@ pub static MCALabelDictionaryIDInvalid: Rule<E> = Rule {
     editions: &[
         row(E::V2019, "5.10.4", Severity::Error),
         row(E::V2021, "5.10.4", Severity::Error),
-        row(E::V2026, "5.10.4", Severity::Error),
+        row(E::V2026, "5.10.4", Severity::Error).verified(),
     ],
 };
 
@@ -263,7 +263,7 @@ pub static IABSequenceNoResources: Rule<E> = Rule {
     editions: &[
         row(E::V2019, "6.2", Severity::Error),
         row(E::V2021, "6.2", Severity::Error),
-        row(E::V2026, "6.2.1", Severity::Error),
+        row(E::V2026, "6.2.1", Severity::Error).verified(),
     ],
 };
 
@@ -276,7 +276,7 @@ pub static IABSequenceSourceEncodingInvalid: Rule<E> = Rule {
     editions: &[
         row(E::V2019, "6.2", Severity::Error),
         row(E::V2021, "6.2", Severity::Error),
-        row(E::V2026, "6.2.1", Severity::Error),
+        row(E::V2026, "6.2.1", Severity::Error).verified(),
     ],
 };
 
@@ -289,7 +289,7 @@ pub static ForbiddenMCASubDescriptor: Rule<E> = Rule {
     editions: &[
         row(E::V2019, "5.10.2", Severity::Error),
         row(E::V2021, "5.10.2", Severity::Error),
-        row(E::V2026, "5.10.2", Severity::Error),
+        row(E::V2026, "5.10.2", Severity::Error).verified(),
     ],
 };
 
@@ -305,7 +305,7 @@ pub static SubDescriptorDuplicate: Rule<E> = Rule {
     editions: &[
         row(E::V2019, "5.10.2", Severity::Error),
         row(E::V2021, "5.10.2", Severity::Error),
-        row(E::V2026, "5.10.2", Severity::Error),
+        row(E::V2026, "5.10.2", Severity::Error).verified(),
     ],
 };
 
@@ -318,7 +318,7 @@ pub static MCAChannelIDForbidden: Rule<E> = Rule {
     editions: &[
         row(E::V2019, "C.2", Severity::Error),
         row(E::V2021, "C.2", Severity::Error),
-        row(E::V2026, "C.2", Severity::Error),
+        row(E::V2026, "C.2", Severity::Error).verified(),
     ],
 };
 
@@ -331,7 +331,7 @@ pub static EditRateNotIntegerMultiple: Rule<E> = Rule {
     editions: &[
         row(E::V2019, "6.2", Severity::Error),
         row(E::V2021, "6.2", Severity::Error),
-        row(E::V2026, "6.2.1", Severity::Error),
+        row(E::V2026, "6.2.1", Severity::Error).verified(),
     ],
 };
 

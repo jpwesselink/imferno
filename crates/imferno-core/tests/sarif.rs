@@ -4,7 +4,7 @@
 
 use std::path::PathBuf;
 
-use imferno_core::diagnostics::{to_sarif_json, RuleSeverity, RulesConfig};
+use imferno_core::diagnostics::{to_sarif_with_root, RuleSeverity, RulesConfig};
 use imferno_core::package::{read_dir, Imferno, ValidationOptions};
 
 fn schema() -> jsonschema::Validator {
@@ -26,7 +26,11 @@ fn sarif_for(package: &str, options: &ValidationOptions) -> serde_json::Value {
         .join("../../test-data")
         .join(package);
     let pkg = Imferno::parse(read_dir(&dir).unwrap()).expect("package parses");
-    to_sarif_json(&pkg.validate(options))
+    serde_json::to_value(to_sarif_with_root(
+        &pkg.validate(options),
+        Some(&pkg.root_path),
+    ))
+    .unwrap()
 }
 
 fn assert_valid(log: &serde_json::Value) {
@@ -79,6 +83,21 @@ fn valid_package_sarif_validates_against_the_schema() {
         suppressed["ruleId"],
         "ST377-4/SoundfieldGroupLinkIDMismatch"
     );
+    // Reported at the level it had before the rules config switched it off.
+    assert_eq!(suppressed["level"], "error");
+    assert_eq!(suppressed["properties"]["originalSeverity"], "Error");
+
+    // Artifact URIs are relative to the package root.
+    let root = log["runs"][0]["originalUriBaseIds"]["PKGROOT"]["uri"]
+        .as_str()
+        .unwrap();
+    assert!(
+        root.starts_with("file:///") && root.ends_with('/'),
+        "{root}"
+    );
+    let art = &suppressed["locations"][0]["physicalLocation"]["artifactLocation"];
+    assert_eq!(art["uriBaseId"], "PKGROOT");
+    assert!(!art["uri"].as_str().unwrap().starts_with('/'), "{art}");
 }
 
 #[test]

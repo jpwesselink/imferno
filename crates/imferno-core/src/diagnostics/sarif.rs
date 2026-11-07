@@ -9,8 +9,10 @@
 //! - `results[]`: one per finding; `ruleId`/`ruleIndex`, `level`
 //!   (Critical/Error → error, Warning → warning, Info → note), `taxa`
 //!   pointing at the applied edition's clause, `message`, `locations`
-//!   (artifact URI; regions follow with D1). Findings suppressed by a rules
-//!   config are included with an external suppression.
+//!   (artifact URI relative to the package root, `uriBaseId` `PKGROOT`;
+//!   regions follow with D1). Findings suppressed by a rules config are
+//!   included with an external suppression, at their original level
+//!   (property `originalSeverity`).
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
@@ -24,6 +26,9 @@ use serde_sarif::sarif::{
 
 use super::{Location, Severity, ValidationIssue, ValidationReport};
 use crate::catalogue;
+
+/// The `uriBaseId` artifact URIs are relative to: the package root.
+pub const PACKAGE_ROOT_BASE_ID: &str = "PKGROOT";
 
 /// SARIF 2.1.0 schema URI written into `$schema`.
 pub const SARIF_SCHEMA: &str = "https://json.schemastore.org/sarif-2.1.0.json";
@@ -71,12 +76,51 @@ fn path_uri(path: &std::path::Path) -> String {
     out
 }
 
-fn sarif_location(loc: &Location) -> Option<SarifLocation> {
-    let uri = loc
-        .file
-        .as_deref()
-        .map(path_uri)
-        .or_else(|| loc.cpl_filename.as_deref().map(|f| path_uri(f.as_ref())));
+/// An artifact location for `path`: relative to the package root (with
+/// `uriBaseId` [`PACKAGE_ROOT_BASE_ID`]) when it lies under `root` or is
+/// relative already, else an absolute `file://` URI.
+fn artifact(path: &std::path::Path, root: Option<&std::path::Path>) -> ArtifactLocation {
+    let relative = match root {
+        Some(r) if !r.as_os_str().is_empty() => path.strip_prefix(r).ok(),
+        _ => None,
+    }
+    .or_else(|| path.is_relative().then_some(path));
+    match relative {
+        Some(rel) => ArtifactLocation::builder()
+            .uri(path_uri(rel))
+            .uri_base_id(PACKAGE_ROOT_BASE_ID)
+            .build(),
+        None => {
+            let abs = path_uri(path);
+            let uri = if abs.starts_with('/') {
+                format!("file://{abs}")
+            } else {
+                format!("file:///{abs}")
+            };
+            ArtifactLocation::builder().uri(uri).build()
+        }
+    }
+}
+
+/// The `file://` URI of the package root, ending in `/`.
+fn root_uri(root: &std::path::Path) -> String {
+    let mut abs = path_uri(root);
+    if !abs.ends_with('/') {
+        abs.push('/');
+    }
+    if abs.starts_with('/') {
+        format!("file://{abs}")
+    } else {
+        format!("file:///{abs}")
+    }
+}
+
+fn sarif_location(loc: &Location, root: Option<&std::path::Path>) -> Option<SarifLocation> {
+    let uri = loc.file.as_deref().map(|f| artifact(f, root)).or_else(|| {
+        loc.cpl_filename
+            .as_deref()
+            .map(|f| artifact(std::path::Path::new(f), root))
+    });
     let mut logical = Vec::new();
     if let Some(cpl) = loc.cpl_id {
         logical.push(
@@ -111,10 +155,10 @@ fn sarif_location(loc: &Location) -> Option<SarifLocation> {
         props.insert("resourceId".to_string(), json!(s));
     }
     let mut out = SarifLocation::default();
-    if let Some(uri) = uri {
+    if let Some(artifact) = uri {
         out.physical_location = Some(
             PhysicalLocation::builder()
-                .artifact_location(ArtifactLocation::builder().uri(uri).build())
+                .artifact_location(artifact)
                 .build(),
         );
     }
@@ -127,8 +171,16 @@ fn sarif_location(loc: &Location) -> Option<SarifLocation> {
     Some(out)
 }
 
-/// Build the SARIF log for `report`.
+/// Build the SARIF log for `report`, with artifact URIs relative to the
+/// package root when it is not known (see [`to_sarif_with_root`]).
 pub fn to_sarif(report: &ValidationReport) -> Sarif {
+    to_sarif_with_root(report, None)
+}
+
+/// Build the SARIF log for `report`; `root` is the package root directory,
+/// recorded as `originalUriBaseIds.PKGROOT` and used to make artifact URIs
+/// relative.
+pub fn to_sarif_with_root(report: &ValidationReport, root: Option<&std::path::Path>) -> Sarif {
     // Driver rules: the whole catalogue, in catalogue order.
     let mut rule_index: HashMap<String, i64> = HashMap::new();
     let mut rules = Vec::new();
@@ -219,13 +271,27 @@ pub fn to_sarif(report: &ValidationReport) -> Sarif {
 
         let locations: Vec<SarifLocation> = std::iter::once(&issue.location)
             .chain(issue.additional_instances.iter())
-            .filter_map(sarif_location)
+            .filter_map(|l| sarif_location(l, root))
             .collect();
 
+        // A suppressed finding is reported at the severity it had before
+        // the rules config switched it off.
+        let original = issue
+            .context
+            .get("original_severity")
+            .and_then(|s| serde_json::from_value::<Severity>(json!(s)).ok());
+        let shown = if suppressed {
+            original.unwrap_or(issue.severity)
+        } else {
+            issue.severity
+        };
+        if suppressed {
+            props.insert("originalSeverity".to_string(), json!(shown));
+        }
         let mut r = SarifResult::builder()
             .message(Message::builder().text(issue.message.clone()).build())
             .rule_id(issue.rule.0.clone())
-            .level(level(issue.severity))
+            .level(level(shown))
             .taxa(vec![taxon_ref])
             .properties(PropertyBag::builder().additional_properties(props).build())
             .build();
@@ -284,8 +350,22 @@ pub fn to_sarif(report: &ValidationReport) -> Sarif {
     run_props.insert("profile".to_string(), json!(report.profile));
     run_props.insert("timestamp".to_string(), json!(report.timestamp));
 
+    let mut base = ArtifactLocation::builder()
+        .description(
+            Message::builder()
+                .text("The IMF package root directory")
+                .build(),
+        )
+        .build();
+    if let Some(r) = root.filter(|r| !r.as_os_str().is_empty()) {
+        base.uri = Some(root_uri(r));
+    }
+    let mut bases = BTreeMap::new();
+    bases.insert(PACKAGE_ROOT_BASE_ID.to_string(), base);
+
     let run = Run::builder()
         .tool(Tool::builder().driver(driver).build())
+        .original_uri_base_ids(bases)
         .taxonomies(taxonomies)
         .results(results)
         .properties(
@@ -306,13 +386,19 @@ pub fn to_sarif(report: &ValidationReport) -> Sarif {
 /// validation result carrying one under `validation` (what the NAPI/WASM
 /// `validate` functions return).
 pub fn sarif_from_json(value: serde_json::Value) -> Result<serde_json::Value, String> {
+    let root = value
+        .get("package")
+        .and_then(|p| p.get("rootPath").or_else(|| p.get("root_path")))
+        .and_then(|r| r.as_str())
+        .map(std::path::PathBuf::from);
     let report = match value.get("validation") {
         Some(v) if v.is_object() => v.clone(),
         _ => value,
     };
     let report: ValidationReport =
         serde_json::from_value(report).map_err(|e| format!("Invalid validation report: {e}"))?;
-    Ok(to_sarif_json(&report))
+    serde_json::to_value(to_sarif_with_root(&report, root.as_deref()))
+        .map_err(|e| format!("SARIF serialisation failed: {e}"))
 }
 
 /// [`to_sarif`] as a JSON value.

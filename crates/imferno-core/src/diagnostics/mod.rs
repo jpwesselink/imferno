@@ -545,6 +545,14 @@ impl ValidationReport {
     }
 }
 
+impl Extend<ValidationIssue> for ValidationReport {
+    fn extend<I: IntoIterator<Item = ValidationIssue>>(&mut self, issues: I) {
+        for issue in issues {
+            self.add(issue);
+        }
+    }
+}
+
 impl fmt::Display for ValidationReport {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "IMF Package Validation Report")?;
@@ -639,7 +647,7 @@ pub use rules::{RuleSeverity, RulesConfig};
 
 /// SARIF 2.1.0 output.
 pub mod sarif;
-pub use sarif::{sarif_from_json, to_sarif, to_sarif_json};
+pub use sarif::{sarif_from_json, to_sarif, to_sarif_json, to_sarif_with_root};
 
 /// Result type for parsing operations that can accumulate errors
 pub type ParseResult<T> = Result<(T, ValidationReport), CriticalError>;

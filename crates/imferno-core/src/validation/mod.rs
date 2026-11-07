@@ -374,6 +374,29 @@ impl std::str::FromStr for AppSpecTarget {
     }
 }
 
+/// The ST 2067-2 edition whose Core Constraints namespace a CPL declares
+/// (e.g. `xmlns:cc="http://www.smpte-ra.org/ns/2067-2/2020"`), or `None`
+/// when it declares none, several, or its source XML was not kept.
+pub fn declared_core_constraints_edition(
+    cpl: &CompositionPlaylist,
+) -> Option<crate::catalogue::st2067_2::St2067_2Edition> {
+    use crate::catalogue::st2067_2::St2067_2Edition;
+    let xml = cpl.source_xml.as_deref()?;
+    let declared: Vec<St2067_2Edition> = [
+        (CoreSpecTarget::St2067_2_2013, St2067_2Edition::V2013),
+        (CoreSpecTarget::St2067_2_2016, St2067_2Edition::V2016),
+        (CoreSpecTarget::St2067_2_2020, St2067_2Edition::V2020),
+    ]
+    .into_iter()
+    .filter(|(target, _)| xml.contains(&format!("\"{}\"", target.namespace_uri())))
+    .map(|(_, e)| e)
+    .collect();
+    match declared.as_slice() {
+        [one] => Some(*one),
+        _ => None,
+    }
+}
+
 /// Parse a core spec string, handling `"auto"` as `None` (auto-detect).
 pub fn parse_core_spec_target(s: &str) -> Result<Option<CoreSpecTarget>, String> {
     match s {

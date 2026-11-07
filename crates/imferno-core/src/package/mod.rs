@@ -2513,7 +2513,7 @@ impl Imferno {
         }
     }
 
-    /// ST 2067-3 §7.2.2: Within each segment, all virtual tracks must span the
+    /// ST 2067-3 §7.2: Within each segment, all virtual tracks must span the
     /// same timeline duration. Durations are compared in time (seconds), not in
     /// raw edit-rate units, because video (e.g. 24fps) and audio (e.g. 48000Hz)
     /// use different edit rates.

@@ -191,6 +191,118 @@ pub static SegmentDurationIntegerEditUnits: Rule<E> = Rule {
     ],
 };
 
+/// Duplicate Segment Id within the CPL.
+pub static UniqueSegmentId: Rule<E> = Rule {
+    name: "UniqueSegmentId",
+    category: Category::Structure,
+    description: "Duplicate Segment Id within the CPL.",
+    example: Some("Two <Segment><Id>urn:uuid:abc…</Id></Segment> with the same Id"),
+    editions: &[
+        checked(E::V2013, "6.9.1", Shall),
+        checked(E::V2016, "6.9.1", Shall),
+    ],
+};
+
+/// Duplicate EssenceDescriptor Id within the CPL.
+pub static UniqueEssenceDescriptorId: Rule<E> = Rule {
+    name: "UniqueEssenceDescriptorId",
+    category: Category::Structure,
+    description: "Duplicate EssenceDescriptor Id within the CPL.",
+    example: Some(
+        "Two <EssenceDescriptor><Id>urn:uuid:abc…</Id></EssenceDescriptor> with the same Id",
+    ),
+    editions: &[
+        checked(E::V2013, "6.7.1", Shall),
+        checked(E::V2016, "6.7.1", Shall),
+    ],
+};
+
+/// Duplicate Resource Id within the CPL.
+pub static UniqueResourceId: Rule<E> = Rule {
+    name: "UniqueResourceId",
+    category: Category::Structure,
+    description: "Duplicate Resource Id within the CPL.",
+    example: Some("Two <Resource><Id>urn:uuid:abc…</Id></Resource> with the same Id"),
+    editions: &[
+        checked(E::V2013, "6.11.1", Shall),
+        checked(E::V2016, "6.11.1", Shall),
+    ],
+};
+
+/// EntryPoint shall be less than IntrinsicDuration.
+pub static EntryPoint: Rule<E> = Rule {
+    name: "EntryPoint",
+    category: Category::Timing,
+    description: "EntryPoint shall be less than IntrinsicDuration.",
+    example: Some("<IntrinsicDuration>100</IntrinsicDuration><EntryPoint>150</EntryPoint>"),
+    editions: &[
+        checked(E::V2013, "6.11.6", Shall).interpret("Flags EntryPoint >= IntrinsicDuration. The text bounds SourceDuration (0 to IntrinsicDuration - EntryPoint), so EntryPoint == IntrinsicDuration with a zero SourceDuration is arguably allowed; open for decision.", None),
+        checked(E::V2016, "6.11.6", Shall).interpret("Flags EntryPoint >= IntrinsicDuration. The text bounds SourceDuration (0 to IntrinsicDuration - EntryPoint), so EntryPoint == IntrinsicDuration with a zero SourceDuration is arguably allowed; open for decision.", None),
+    ],
+};
+
+/// EntryPoint + SourceDuration exceeds IntrinsicDuration.
+pub static ResourceDuration: Rule<E> = Rule {
+    name: "ResourceDuration",
+    category: Category::Timing,
+    description: "EntryPoint + SourceDuration exceeds IntrinsicDuration.",
+    example: Some("<IntrinsicDuration>100</IntrinsicDuration><EntryPoint>50</EntryPoint><SourceDuration>80</SourceDuration>  <!-- 50+80 > 100 -->"),
+    editions: &[
+        checked(E::V2013, "6.11.6", Shall),
+        checked(E::V2016, "6.11.6", Shall),
+    ],
+};
+
+/// RepeatCount shall be a positive integer.
+pub static RepeatCount: Rule<E> = Rule {
+    name: "RepeatCount",
+    category: Category::Timing,
+    description: "RepeatCount shall be a positive integer.",
+    example: Some("<RepeatCount>0</RepeatCount>"),
+    editions: &[
+        checked(E::V2013, "6.11", Shall),
+        checked(E::V2016, "6.11", Shall),
+    ],
+};
+
+/// A non-marker resource is missing a TrackFileId.
+pub static TrackFileId: Rule<E> = Rule {
+    name: "TrackFileId",
+    category: Category::Reference,
+    description: "A non-marker resource is missing a TrackFileId.",
+    example: Some("<Resource xsi:type=\"TrackFileResourceType\">…</Resource>  <!-- no <TrackFileId> child -->"),
+    editions: &[
+        checked(E::V2013, "6.12", Shall),
+        checked(E::V2016, "6.12", Shall),
+    ],
+};
+
+/// A virtual track is missing from one or more segments.
+pub static VirtualTrackContinuity: Rule<E> = Rule {
+    name: "VirtualTrackContinuity",
+    category: Category::Structure,
+    description: "A virtual track is missing from one or more segments.",
+    example: Some(
+        "Two <Segment> entries, MainAudio track present in segment 0 but absent from segment 1",
+    ),
+    editions: &[
+        checked(E::V2013, "6.9.3", Shall),
+        checked(E::V2016, "6.9.3", Shall),
+    ],
+};
+
+/// EssenceDescriptor present in EssenceDescriptorList but not referenced by any Resource.
+pub static DanglingEssenceDescriptor: Rule<E> = Rule {
+    name: "DanglingEssenceDescriptor",
+    category: Category::Reference,
+    description: "EssenceDescriptor present in EssenceDescriptorList but not referenced by any Resource.",
+    example: Some("<EssenceDescriptor><Id>urn:uuid:abc…</Id></EssenceDescriptor>  <!-- no Resource references this Id -->"),
+    editions: &[
+        checked(E::V2013, "6.1.10.1", Shall),
+        checked(E::V2016, "6.1.10.1", Shall),
+    ],
+};
+
 /// Every rule of this spec.
 pub static ALL: &[&dyn AnyRule] = &[
     &ContentKindUnknown,
@@ -207,4 +319,13 @@ pub static ALL: &[&dyn AnyRule] = &[
     &SegmentDuration,
     &ContentVersionIdDuplicate,
     &SegmentDurationIntegerEditUnits,
+    &UniqueSegmentId,
+    &UniqueEssenceDescriptorId,
+    &UniqueResourceId,
+    &EntryPoint,
+    &ResourceDuration,
+    &RepeatCount,
+    &TrackFileId,
+    &VirtualTrackContinuity,
+    &DanglingEssenceDescriptor,
 ];

@@ -29,9 +29,8 @@ use crate::diagnostics::{Location, ValidationIssue};
 
 /// SMPTE Operational Pattern 1A UL — bytes per ST 378:2004 §6.
 ///
-/// IMF mandates OP1a via ST 2067-2 §5.2 (which cites ST 2067-5:2013 §5.2),
-/// itself citing ST 377-1:2011 §8.3.3 for the constraint that an OP1a
-/// file contains exactly one MaterialPackage with one essence.
+/// IMF mandates OP1a via ST 2067-2 §5.1.1 (Track Files conform to
+/// ST 2067-5); ST 377-1:2011 §8.3.3 defines the OP UL.
 const OP1A_UL_BYTES: [u8; 16] = [
     0x06, 0x0e, 0x2b, 0x34, 0x04, 0x01, 0x01, 0x01, 0x0d, 0x01, 0x02, 0x01, 0x01, 0x01, 0x01, 0x00,
 ];
@@ -44,7 +43,7 @@ const OP1A_UL_BYTES: [u8; 16] = [
 const OP_UL_MATCH_MASK: u128 = 0xffff_ffff_ff00_ff00_ffff_ffff_ffff_0000;
 
 /// Validate an MXF file against the partition-pack-level rules of
-/// ST 2067-2 §5.2 and ST 377-1 §8.3.3. Returns a catalogue of
+/// ST 2067-2 §5.1.1 and ST 377-1 §6. Returns a catalogue of
 /// `ValidationIssue`s; the caller folds them into the usual
 /// `ValidationReport`.
 ///
@@ -335,7 +334,7 @@ fn check_partition_pack(
         );
     }
 
-    // ST 2067-2 §5.2 / ST 377-1 §8.3.3: IMF essence MXFs SHALL be
+    // ST 2067-2 §5.1.1 (via ST 2067-5): IMF essence MXFs SHALL be
     // OP1a. Compare via the UL match mask so registry-byte and
     // version-byte revisions don't false-flag conformant files.
     let pack_op = u128::from_be_bytes(*pack.operational_pattern.as_bytes());
@@ -344,7 +343,7 @@ fn check_partition_pack(
         issues.push(
             ValidationIssue::from_rule(&st2067_2::OperationalPatternNotOP1A, spec_ed,
                 format!(
-                    "MXF file at {} uses Operational Pattern UL {} — ST 2067-2 §5.2 requires OP1a (ST 378:2004)",
+                    "MXF file at {} uses Operational Pattern UL {} — ST 2067-2 §5.1.1 (via ST 2067-5) requires OP1a (ST 378:2004)",
                     path.display(),
                     format_ul(pack.operational_pattern.as_bytes()),
                 ),

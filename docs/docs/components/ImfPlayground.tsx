@@ -5,8 +5,8 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 type RuleSeverity = 'off' | 'info' | 'warn' | 'error' | 'critical';
 
 const CONFIGURABLE_RULES: Array<{ code: string; label: string; hint: string }> = [
-    { code: 'ST2067-2:2020:8.3/FileNotFound',        label: 'FileNotFound',      hint: 'Asset file not found on disk' },
-    { code: 'ST2067-3:2020:7.2/SegmentDuration',   label: 'SegmentDuration',   hint: 'Unequal segment durations across tracks' },
+    { code: 'ST2067-2:2020:7.2/FileNotFound',        label: 'FileNotFound',      hint: 'Asset file not found on disk' },
+    { code: 'ST2067-3:2016:7.2/SegmentDuration',   label: 'SegmentDuration',   hint: 'Unequal segment durations across tracks' },
 ];
 import IMFPackageViewer from './IMFPackageViewer';
 
@@ -308,7 +308,7 @@ export default function ImfPlayground() {
     const [parseError, setParseError] = useState<string | null>(null);
     const [skippedCount, setSkippedCount] = useState<number>(0);
     const [rulesConfig, setRulesConfig] = useState<Record<string, RuleSeverity>>({
-        'ST2067-2:2020:8.3/FileNotFound': 'info',
+        'ST2067-2:2020:7.2/FileNotFound': 'info',
     });
     const rulesConfigRef = useRef<Record<string, RuleSeverity>>({});
     rulesConfigRef.current = rulesConfig;

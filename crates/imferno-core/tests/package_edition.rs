@@ -55,7 +55,7 @@ fn missing_files_package_is_checked_against_2020_with_a_notice() {
         .collect();
     assert!(!missing.is_empty());
     for i in missing {
-        assert_eq!(i.code, "ST2067-2:2020:8.3/FileNotFound");
+        assert_eq!(i.code, "ST2067-2:2020:7.2/FileNotFound");
     }
     assert_eq!(
         all(&report)

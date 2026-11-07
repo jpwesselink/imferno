@@ -74,75 +74,50 @@ Unmarked rows are carried over from earlier catalogues and not yet checked.
 
 | Rule | Description | Category | 2013 | 2016 | 2020 |
 |------|-------------|----------|------|------|------|
-| `ST2067-2/AssetMapMalformedXml` | The ASSETMAP.xml document is not well-formed XML. | Structure | —✓ | 8.1✓ error | 7 error |
-| `ST2067-2/PklMalformedXml` | A Packing List document is not well-formed XML. | Structure | 7.1✓ error | K✓ error | 9† error |
-| `ST2067-2/NoCpls` | No CPL assets found in the AssetMap. | Structure | —✓ | 7.1✓ info | 7 info |
-| `ST2067-2/SizeMismatch` | Declared file size does not match the on-disk size. | Asset | —✓ | 8.3✓ error | 8.3 error |
-| `ST2067-2/FileNotFound` | A referenced asset file is not present at the declared path. | Asset | 7.1✓ error | 8.3✓ error | 8.3 error |
-| `ST2067-2/ChecksumMismatch` | File hash does not match the declared SHA-1/SHA-256 checksum. | Asset | —✓ | 8.3✓ error | 8.3 error |
-| `ST2067-2/UnresolvedUuid` | An asset listed in the Packing List is not in the AssetMap. | Reference | —✓ | 8.3✓ error | 7 error |
-| `ST2067-2/TrackFileNotInPackage` | A CPL track file is not in this package; an IMP need not contain complete compositions (e.g. a supplemental package referring to the original version). | Reference | 7.6✓ info | 7.1✓ info | 7.1 info |
-| `ST2067-2/DuplicateUuid` | Two or more assets within the package share the same UUID. | Reference | 7.2✓ error | 7.3.1✓ error | 7 error |
-| `ST2067-2/PklUnknownNamespace` | PKL document namespace is not one of the published SMPTE PKL namespaces. | Structure | 7.1✓ error | K✓ error | 9† error |
-| `ST2067-2/ResourceListEmpty` | A Sequence has an empty ResourceList. | Structure | XSD† error | XSD† error | XSD† error |
-| `ST2067-2/ContentTitle` | ContentTitle shall not be empty. | Metadata | XSD† error | XSD† error | XSD† error |
-| `ST2067-2/TotalRunningTimeFormat` | TotalRunningTime does not match required format HH:MM:SS. | Structure | XSD† error | XSD† error | XSD† error |
-| `ST2067-2/SegmentList` | SegmentList shall contain at least one Segment. | Structure | XSD† critical | XSD† critical | XSD† critical |
-| `ST2067-2/Segment` | A Segment contains no sequences. | Structure | XSD† error | XSD† error | XSD† error |
-| `ST2067-2/EditRate` | CPL EditRate is required (XSD schema §88). | Structure | XSD† error | XSD† error | XSD† error |
-| `ST2067-2/IssueDate` | IssueDate shall not be empty. | Metadata | XSD† error | XSD† error | XSD† error |
-| `ST2067-2/IssueDateFormat` | IssueDate is not a valid xs:dateTime format. | Metadata | XSD† warning | XSD† warning | XSD† warning |
-| `ST2067-2/CompositionTimecodeDropFrame` | CompositionTimecode.TimecodeDropFrame is required when CompositionTimecode is present. | Timing | XSD† error | XSD† error | XSD† error |
-| `ST2067-2/CompositionTimecodeRate` | CompositionTimecode.TimecodeRate is required when CompositionTimecode is present. | Timing | XSD† error | XSD† error | XSD† error |
-| `ST2067-2/CompositionTimecodeStartAddress` | CompositionTimecode.TimecodeStartAddress is required when CompositionTimecode is present. | Timing | XSD† error | XSD† error | XSD† error |
-| `ST2067-2/CompositionTimecodeRateZero` | CompositionTimecode.TimecodeRate shall be a positive integer. | Timing | XSD† error | XSD† error | XSD† error |
-| `ST2067-2/CompositionTimecodeStartAddressFormat` | TimecodeStartAddress does not match SMPTE timecode format HH:MM:SS:FF. | Timing | XSD† error | XSD† error | XSD† error |
-| `ST2067-2/CompositionTimecodeRateMismatch` | CompositionTimecode.TimecodeRate does not match the CPL EditRate. | Metadata | XSD† warning | XSD† warning | XSD† warning |
-| `ST2067-2/LocaleListNonEmpty` | LocaleList shall contain at least one Locale. | Structure | XSD† error | XSD† error | XSD† error |
-| `ST2067-2/UniqueSegmentId` | Duplicate Segment Id within the CPL. | Structure | 6.1† error | 6.1† error | 6.1† error |
-| `ST2067-2/UniqueEssenceDescriptorId` | Duplicate EssenceDescriptor Id within the CPL. | Structure | 6.1† error | 6.1† error | 6.1† error |
-| `ST2067-2/UniqueResourceId` | Duplicate Resource Id within the CPL. | Structure | 6.1† error | 6.1† error | 6.1† error |
-| `ST2067-2/IntrinsicDuration` | IntrinsicDuration shall be greater than 0. | Timing | 6.10† error | 6.10† error | 6.10† error |
-| `ST2067-2/EntryPoint` | EntryPoint shall be less than IntrinsicDuration. | Timing | 6.10† error | 6.10† error | 6.10† error |
-| `ST2067-2/ResourceDuration` | EntryPoint + SourceDuration exceeds IntrinsicDuration. | Timing | 6.10† error | 6.10† error | 6.10† error |
-| `ST2067-2/RepeatCount` | RepeatCount shall be a positive integer. | Timing | 6.10† error | 6.10† error | 6.10† error |
-| `ST2067-2/TrackFileId` | A non-marker resource is missing a TrackFileId. | Reference | 6.10† error | 6.10† error | 6.10† error |
-| `ST2067-2/VirtualTrackContinuity` | A virtual track is missing from one or more segments. | Structure | 6.9† error | 6.9† error | 6.9† error |
-| `ST2067-2/VirtualTrackEditRate` | All resources in a virtual track shall have the same edit rate. | Timing | 6.9.3† error | 6.9.3† error | 6.9.3† error |
-| `ST2067-2/TimedTextSampleRate` | DCTimedTextDescriptor SampleRate is missing. | Subtitle | 10† warning | 10† warning | 10† warning |
-| `ST2067-2/TimedTextEmptyLanguageTag` | Empty language tag in RFC5646LanguageTagList. | Subtitle | 10† warning | 10† warning | 10† warning |
-| `ST2067-2/TimedTextMalformedLanguageTag` | Language tag does not start with an ASCII letter (RFC 5646 primary subtag). | Subtitle | 10† warning | 10† warning | 10† warning |
-| `ST2067-2/AudioSampleRate` | WAVEPCMDescriptor has no AudioSampleRate or SampleRate. | Audio | ST377-4† warning | ST377-4† warning | ST377-4† warning |
-| `ST2067-2/ChannelCount` | WAVEPCMDescriptor ChannelCount is missing. | Audio | ST377-4† warning | ST377-4† warning | ST377-4† warning |
-| `ST2067-2/ChannelCountZero` | WAVEPCMDescriptor ChannelCount is zero. | Audio | ST377-4† error | ST377-4† error | ST377-4† error |
-| `ST2067-2/MCASubDescriptors` | WAVEPCMDescriptor has no MCA SubDescriptors. | Audio | ST377-4† warning | ST377-4† warning | ST377-4† warning |
-| `ST2067-2/SoundfieldGroup` | WAVEPCMDescriptor SubDescriptors missing SoundfieldGroupLabelSubDescriptor. | Audio | ST377-4† warning | ST377-4† warning | ST377-4† warning |
-| `ST2067-2/MCATagSymbol` | SoundfieldGroupLabelSubDescriptor is missing MCATagSymbol. | Audio | ST377-4† warning | ST377-4† warning | ST377-4† warning |
-| `ST2067-2/SoundfieldChannelCount` | Soundfield group channel count is inconsistent with WAVEPCMDescriptor.ChannelCount. | Audio | ST377-4† error | ST377-4† error | ST377-4† error |
-| `ST2067-2/DigitalSignature` | The CPL carries a Signature (ST 2067-2 §6.9); signature verification is not performed. | Security | 6.9† info | 6.9† info | 6.9† info |
-| `ST2067-2/DanglingEssenceDescriptor` | EssenceDescriptor present in EssenceDescriptorList but not referenced by any Resource. | Reference | 6.4.2† error | 6.4.2† error | 6.4.2† error |
-| `ST2067-2/EssenceDescriptorList` | EssenceDescriptorList is required per ST 2067-2 §6.4.2. | Structure | 6.4.2† error | 6.4.2† error | 6.4.2† error |
-| `ST2067-2/CplIdAssetMapMismatch` | An AssetMap asset points at a CPL file whose Id differs from the asset Id. | Reference | 7.2† error | 7.3.1† error | 7.3.1† error |
-| `ST2067-2/OperationalPatternNotOP1A` | MXF essence Operational Pattern UL is not OP1a (ST 378:2004). | Container | 5.1.1✓ error | 5.2† error | 5.1.1✓ error |
-| `ST2067-2/SoundDescriptorNotWAVEPCM` | Audio essence descriptor must be WAVEPCMDescriptor. | Audio | 5.3.4.1✓ error | 5.3.4.1 error | 5.3.4.1✓ error |
-| `ST2067-2/AudioSampleRateUnsupported` | AudioSampleRate must be 48000 Hz or 96000 Hz. | Audio | 5.3.2.2✓ error | 5.3.2.2 error | 5.3.2.2✓ error |
-| `ST2067-2/QuantizationBitsNot24` | QuantizationBits must be 24. | Audio | 5.3.2.3✓ error | 5.3.2.3 error | 5.3.2.3✓ error |
-| `ST2067-2/ChannelLabelCountMismatch` | Number of AudioChannelLabelSubDescriptors must equal ChannelCount. | Audio | 5.3.6.2✓ error | 5.3.6.2 error | 5.3.6.2✓ error |
-| `ST2067-2/MCAChannelIDMissing` | MCAChannelID shall be present per channel (channel 1 may omit it) — §5.3.6.5 Table 7. | Audio | —✓ | 5.3.6.5 error | 5.3.6.5✓ error |
-| `ST2067-2/SoundFieldGroupLabelCount` | Exactly one SoundfieldGroupLabelSubDescriptor is required per WAVEPCMDescriptor. | Audio | 5.3.6.3✓ error | 5.3.6.3 error | 5.3.6.3✓ error |
-| `ST2067-2/SoundfieldGroupLinkIDMissing` | Every AudioChannelLabelSubDescriptor shall carry a SoundfieldGroupLinkID (§5.3.6.5 Table 7). | Audio | 5.3.6.5✓ error | 5.3.6.5 error | 5.3.6.5✓ error |
-| `ST2067-2/AudioNotClipWrapped` | Audio essence must be Wave Clip-Wrapped (ST 382 §10). | Container | 5.3.3✓ error | 5.3.3 error | 5.3.3✓ error |
-| `ST2067-2/RFC5646SpokenLanguageMissing` | Audio descriptor should carry an RFC-5646 spoken language tag. | Audio | 5.3.6.5✓ warning | 5.3 warning | 5.3.6.5✓ warning |
-| `ST2067-2/ChannelAssignmentMissing` | ChannelAssignment shall be present on the audio essence descriptor (§5.3.4.2). | Audio | 5.3.4.2✓ error | 5.3.4.2 error | 5.3.4.2✓ error |
-| `ST2067-2/ChannelAssignmentNotMCA` | ChannelAssignment shall equal the ST 2067-2 Table 5 channel-assignment label UL. | Audio | 5.3.4.2✓ error | 5.3.4.2 error | 5.3.4.2✓ error |
-| `ST2067-2/SoundfieldGroupMissingMCATitle` | SoundfieldGroupLabelSubDescriptor shall carry MCATitle (§5.3.6.5 Table 7). | Audio | 5.3.6.5✓ error | 5.3.6.5 error | 5.3.6.5✓ error |
-| `ST2067-2/SoundfieldGroupMissingMCATitleVersion` | SoundfieldGroupLabelSubDescriptor shall carry MCATitleVersion (§5.3.6.5 Table 7). | Audio | 5.3.6.5✓ error | 5.3.6.5 error | 5.3.6.5✓ error |
-| `ST2067-2/SoundfieldGroupMissingMCAAudioContentKind` | SoundfieldGroupLabelSubDescriptor shall carry MCAAudioContentKind (§5.3.6.5 Table 7). | Audio | 5.3.6.5✓ error | 5.3.6.5 error | 5.3.6.5✓ error |
-| `ST2067-2/SoundfieldGroupMissingMCAAudioElementKind` | SoundfieldGroupLabelSubDescriptor shall carry MCAAudioElementKind (§5.3.6.5 Table 7). | Audio | 5.3.6.5✓ error | 5.3.6.5 error | 5.3.6.5✓ error |
-| `ST2067-2/TimedTextUCSEncodingNotUTF8` | TimedTextDescriptor UCSEncoding must be UTF-8. | Subtitle | 5.4.2✓ error | 5.4 error | 4.3✓ error |
-| `ST2067-2/TimedTextNamespaceNotIMSC` | TimedTextDescriptor NamespaceURI must be one of the IMSC1 profile namespaces. | Subtitle | —✓ | 5.4 error | 5.4.2✓ error |
-| `ST2067-2/TimedTextResourceMIMETypeUnsupported` | TimeTextResourceSubDescriptor MIMEType must be image/png, font/otf (2020) or application/x-font-opentype. | Subtitle | 5.4.5✓ error | 5.4.5 error | 5.4.5✓ error |
-| `ST2067-2/TimedTextMappingKindNot0x13` | Timed-text ContainerFormat UL Mapping Kind byte must be 0x13 (IMSC). | Container | 5.4.2 error | 5.4 error | 5.4.2✓ error |
+| `ST2067-2/AssetMapMalformedXml` | The ASSETMAP.xml document is not well-formed XML. | Structure | —✓ | 8.1✓ error | 8.1✓ error |
+| `ST2067-2/PklMalformedXml` | A Packing List document is not well-formed XML. | Structure | 7.1✓ error | K✓ error | J✓ error |
+| `ST2067-2/NoCpls` | No CPL assets found in the AssetMap. | Structure | —✓ | 7.2.1✓ info | 7.2✓ info |
+| `ST2067-2/SizeMismatch` | Declared file size does not match the on-disk size. | Asset | —✓ | K✓ error | J✓ error |
+| `ST2067-2/FileNotFound` | A referenced asset file is not present at the declared path. | Asset | 7.1✓ error | 7.2.1✓ error | 7.2✓ error |
+| `ST2067-2/ChecksumMismatch` | File hash does not match the declared SHA-1/SHA-256 checksum. | Asset | —✓ | K✓ error | J✓ error |
+| `ST2067-2/UnresolvedUuid` | An asset listed in the Packing List is not in the AssetMap. | Reference | —✓ | 8.2✓ error | 8.2✓ error |
+| `ST2067-2/TrackFileNotInPackage` | A CPL track file is not in this package; an IMP need not contain complete compositions (e.g. a supplemental package referring to the original version). | Reference | 7.6✓ info | 7.2.3✓ info | 7.2✓ info |
+| `ST2067-2/DuplicateUuid` | Two or more assets within the package share the same UUID. | Reference | 7.2✓ error | 7.3.1✓ error | 7.3.1✓ error |
+| `ST2067-2/PklUnknownNamespace` | PKL document namespace is not one of the published SMPTE PKL namespaces. | Structure | 7.1✓ error | K✓ error | J✓ error |
+| `ST2067-2/VirtualTrackEditRate` | All resources in a virtual track shall have the same edit rate. | Timing | 6.3✓ error | 6.3✓ error | 6.3✓ error |
+| `ST2067-2/TimedTextSampleRate` | DCTimedTextDescriptor SampleRate is missing. | Subtitle | 5.4.2✓ error | 5.4.2✓ error | 5.4.2✓ error |
+| `ST2067-2/TimedTextEmptyLanguageTag` | Empty language tag in RFC5646LanguageTagList. | Subtitle | 5.4.4✓ error | 5.4.4✓ error | 5.4.4✓ error |
+| `ST2067-2/TimedTextMalformedLanguageTag` | Language tag does not start with an ASCII letter (RFC 5646 primary subtag). | Subtitle | 5.4.4✓ error | 5.4.4✓ error | 5.4.4✓ error |
+| `ST2067-2/AudioSampleRate` | WAVEPCMDescriptor has no AudioSampleRate or SampleRate. | Audio | 5.3.4.1✓ error | 5.3.4.1✓ error | 5.3.4.1✓ error |
+| `ST2067-2/ChannelCount` | WAVEPCMDescriptor ChannelCount is missing. | Audio | 5.3.4.1✓ error | 5.3.4.1✓ error | 5.3.4.1✓ error |
+| `ST2067-2/ChannelCountZero` | WAVEPCMDescriptor ChannelCount is zero. | Audio | 5.3.2.1✓ error | 5.3.2.1✓ error | 5.3.2.1✓ error |
+| `ST2067-2/MCASubDescriptors` | WAVEPCMDescriptor has no MCA SubDescriptors. | Audio | 5.3.6.2✓ error | 5.3.6.2✓ error | 5.3.6.2✓ error |
+| `ST2067-2/SoundfieldGroup` | WAVEPCMDescriptor SubDescriptors missing SoundfieldGroupLabelSubDescriptor. | Audio | 5.3.6.3✓ error | 5.3.6.3✓ error | 5.3.6.3✓ error |
+| `ST2067-2/MCATagSymbol` | SoundfieldGroupLabelSubDescriptor is missing MCATagSymbol. | Audio | 5.3.6.1✓ error | 5.3.6.1✓ error | 5.3.6.1✓ error |
+| `ST2067-2/SoundfieldChannelCount` | Soundfield group channel count is inconsistent with WAVEPCMDescriptor.ChannelCount. | Audio | 5.3.6.6✓ error | 5.3.6.6✓ error | 5.3.6.6✓ error |
+| `ST2067-2/DigitalSignature` | The CPL carries a Signature (ST 2067-2 §6.9); signature verification is not performed. | Security | 6.9✓ info | 6.9✓ info | 6.9✓ info |
+| `ST2067-2/EssenceDescriptorList` | EssenceDescriptorList is required per ST 2067-2 §6.4.2. | Structure | 6.8✓ error | 6.8✓ error | 6.8✓ error |
+| `ST2067-2/CplIdAssetMapMismatch` | An AssetMap asset points at a CPL file whose Id differs from the asset Id. | Reference | 7.2✓ error | 7.3.1✓ error | 7.3.1✓ error |
+| `ST2067-2/OperationalPatternNotOP1A` | MXF essence Operational Pattern UL is not OP1a (ST 378:2004). | Container | 5.1.1✓ error | 5.1.1✓ error | 5.1.1✓ error |
+| `ST2067-2/SoundDescriptorNotWAVEPCM` | Audio essence descriptor must be WAVEPCMDescriptor. | Audio | 5.3.4.1✓ error | 5.3.4.1✓ error | 5.3.4.1✓ error |
+| `ST2067-2/AudioSampleRateUnsupported` | AudioSampleRate must be 48000 Hz or 96000 Hz. | Audio | 5.3.2.2✓ error | 5.3.2.2✓ error | 5.3.2.2✓ error |
+| `ST2067-2/QuantizationBitsNot24` | QuantizationBits must be 24. | Audio | 5.3.2.3✓ error | 5.3.2.3✓ error | 5.3.2.3✓ error |
+| `ST2067-2/ChannelLabelCountMismatch` | Number of AudioChannelLabelSubDescriptors must equal ChannelCount. | Audio | 5.3.6.2✓ error | 5.3.6.2✓ error | 5.3.6.2✓ error |
+| `ST2067-2/MCAChannelIDMissing` | MCAChannelID shall be present per channel (channel 1 may omit it) — §5.3.6.5 Table 7. | Audio | —✓ | 5.3.6.5✓ error | 5.3.6.5✓ error |
+| `ST2067-2/SoundFieldGroupLabelCount` | Exactly one SoundfieldGroupLabelSubDescriptor is required per WAVEPCMDescriptor. | Audio | 5.3.6.3✓ error | 5.3.6.3✓ error | 5.3.6.3✓ error |
+| `ST2067-2/SoundfieldGroupLinkIDMissing` | Every AudioChannelLabelSubDescriptor shall carry a SoundfieldGroupLinkID (§5.3.6.5 Table 7). | Audio | 5.3.6.5✓ error | 5.3.6.5✓ error | 5.3.6.5✓ error |
+| `ST2067-2/AudioNotClipWrapped` | Audio essence must be Wave Clip-Wrapped (ST 382 §10). | Container | 5.3.3✓ error | 5.3.3✓ error | 5.3.3✓ error |
+| `ST2067-2/RFC5646SpokenLanguageMissing` | Audio descriptor should carry an RFC-5646 spoken language tag. | Audio | 5.3.6.5✓ warning | 5.3.6.5✓ warning | 5.3.6.5✓ warning |
+| `ST2067-2/ChannelAssignmentMissing` | ChannelAssignment shall be present on the audio essence descriptor (§5.3.4.2). | Audio | 5.3.4.2✓ error | 5.3.4.2✓ error | 5.3.4.2✓ error |
+| `ST2067-2/ChannelAssignmentNotMCA` | ChannelAssignment shall equal the ST 2067-2 Table 5 channel-assignment label UL. | Audio | 5.3.4.2✓ error | 5.3.4.2✓ error | 5.3.4.2✓ error |
+| `ST2067-2/SoundfieldGroupMissingMCATitle` | SoundfieldGroupLabelSubDescriptor shall carry MCATitle (§5.3.6.5 Table 7). | Audio | 5.3.6.5✓ error | 5.3.6.5✓ error | 5.3.6.5✓ error |
+| `ST2067-2/SoundfieldGroupMissingMCATitleVersion` | SoundfieldGroupLabelSubDescriptor shall carry MCATitleVersion (§5.3.6.5 Table 7). | Audio | 5.3.6.5✓ error | 5.3.6.5✓ error | 5.3.6.5✓ error |
+| `ST2067-2/SoundfieldGroupMissingMCAAudioContentKind` | SoundfieldGroupLabelSubDescriptor shall carry MCAAudioContentKind (§5.3.6.5 Table 7). | Audio | 5.3.6.5✓ error | 5.3.6.5✓ error | 5.3.6.5✓ error |
+| `ST2067-2/SoundfieldGroupMissingMCAAudioElementKind` | SoundfieldGroupLabelSubDescriptor shall carry MCAAudioElementKind (§5.3.6.5 Table 7). | Audio | 5.3.6.5✓ error | 5.3.6.5✓ error | 5.3.6.5✓ error |
+| `ST2067-2/TimedTextUCSEncodingNotUTF8` | TimedTextDescriptor UCSEncoding must be UTF-8. | Subtitle | 5.4.2✓ error | 4.3✓ error | 4.3✓ error |
+| `ST2067-2/TimedTextNamespaceNotIMSC` | TimedTextDescriptor NamespaceURI must be one of the IMSC1 profile namespaces. | Subtitle | —✓ | 5.4.2✓ error | 5.4.2✓ error |
+| `ST2067-2/TimedTextResourceMIMETypeUnsupported` | TimeTextResourceSubDescriptor MIMEType must be image/png, font/otf (2020) or application/x-font-opentype. | Subtitle | 5.4.5✓ error | 5.4.5✓ error | 5.4.5✓ error |
+| `ST2067-2/TimedTextMappingKindNot0x13` | Timed-text ContainerFormat UL Mapping Kind byte must be 0x13 (IMSC). | Container | 5.4.2✓ error | 5.4.2✓ error | 5.4.2✓ error |
 
 ## SMPTE ST 2067-3 — Composition Playlist
 
@@ -162,6 +137,15 @@ Unmarked rows are carried over from earlier catalogues and not yet checked.
 | `ST2067-3/SegmentDuration` | All virtual tracks in a segment must span the same number of edit units. | Timing | 7.2✓ error | 7.2✓ error |
 | `ST2067-3/ContentVersionIdDuplicate` | No two ContentVersion elements shall have identical Id values. | Structure | 6.1.9✓ error | 6.1.9✓ error |
 | `ST2067-3/SegmentDurationIntegerEditUnits` | Sequence duration shall be an integer number of Composition Edit Units. | Timing | 7.3✓ error | 7.3✓ error |
+| `ST2067-3/UniqueSegmentId` | Duplicate Segment Id within the CPL. | Structure | 6.9.1✓ error | 6.9.1✓ error |
+| `ST2067-3/UniqueEssenceDescriptorId` | Duplicate EssenceDescriptor Id within the CPL. | Structure | 6.7.1✓ error | 6.7.1✓ error |
+| `ST2067-3/UniqueResourceId` | Duplicate Resource Id within the CPL. | Structure | 6.11.1✓ error | 6.11.1✓ error |
+| `ST2067-3/EntryPoint` | EntryPoint shall be less than IntrinsicDuration. | Timing | 6.11.6✓ error | 6.11.6✓ error |
+| `ST2067-3/ResourceDuration` | EntryPoint + SourceDuration exceeds IntrinsicDuration. | Timing | 6.11.6✓ error | 6.11.6✓ error |
+| `ST2067-3/RepeatCount` | RepeatCount shall be a positive integer. | Timing | 6.11✓ error | 6.11✓ error |
+| `ST2067-3/TrackFileId` | A non-marker resource is missing a TrackFileId. | Reference | 6.12✓ error | 6.12✓ error |
+| `ST2067-3/VirtualTrackContinuity` | A virtual track is missing from one or more segments. | Structure | 6.9.3✓ error | 6.9.3✓ error |
+| `ST2067-3/DanglingEssenceDescriptor` | EssenceDescriptor present in EssenceDescriptorList but not referenced by any Resource. | Reference | 6.1.10.1✓ error | 6.1.10.1✓ error |
 
 ## SMPTE ST 2067-9 — Sidecar Composition Map
 
@@ -324,4 +308,6 @@ Unmarked rows are carried over from earlier catalogues and not yet checked.
 | `IMFERNO/PathTraversal` | An asset chunk path attempts to escape the package root directory (path traversal). | Structure | Package error |
 | `IMFERNO/ApplicationProfileNotValidated` | Application-profile validation was not performed for the CPL: ApplicationIdentification is absent or lists URIs imferno has no validator for. | Structure | Package warning |
 | `IMFERNO/RuleNotInEdition` | Internal: a check reported a rule against an edition whose table row says the edition does not contain it. The finding was dropped; please report this as an imferno bug. | Structure | Engine warning |
+| `IMFERNO/IntrinsicDurationZero` | A Resource has IntrinsicDuration 0, i.e. an empty underlying asset (allowed by ST 2067-3, flagged by imferno). | Timing | Cpl warning |
+| `IMFERNO/CompositionTimecodeRateMismatch` | CompositionTimecode.TimecodeRate does not match the rounded CPL EditRate (not required by ST 2067-3; flagged by imferno). | Metadata | Cpl warning |
 

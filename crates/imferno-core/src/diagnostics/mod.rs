@@ -726,8 +726,8 @@ mod tests {
         let e2016 =
             ValidationIssue::from_rule(&st2067_2::FileNotFound, St2067_2Edition::V2016, "x");
         let e2020 = file_not_found();
-        assert_eq!(e2016.code, "ST2067-2:2016:8.3/FileNotFound");
-        assert_eq!(e2020.code, "ST2067-2:2020:8.3/FileNotFound");
+        assert_eq!(e2016.code, "ST2067-2:2016:7.2.1/FileNotFound");
+        assert_eq!(e2020.code, "ST2067-2:2020:7.2/FileNotFound");
         assert_eq!(e2016.rule, e2020.rule);
     }
 

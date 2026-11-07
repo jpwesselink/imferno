@@ -41,7 +41,7 @@ use std::collections::{HashMap, HashSet};
 
 use crate::catalogue::imferno::{self, ImfernoEdition};
 use crate::catalogue::st2067_2::{self, St2067_2Edition};
-use crate::catalogue::st2067_3;
+use crate::catalogue::st2067_3::{self, St2067_3Edition};
 use crate::cpl::CompositionPlaylist;
 use crate::cpl::{CodingEquations, ColorPrimaries, CplNamespace, EditRate, TransferCharacteristic};
 use crate::diagnostics::{Location, ValidationIssue};
@@ -700,9 +700,8 @@ impl std::fmt::Display for ColorSystem {
 // gutted along with their XSD-overlap emission sites — see the runtime-XSD
 // architecture spike (uppsala-based) for the replacement path.
 
-// `validate_resource_list_non_empty` was gutted — XSD-overlap check
-// (ST2067-2/ResourceListEmpty mirrors xs:sequence + minOccurs=1
-// on the Resource element). Replacement comes via runtime-XSD validation.
+// An empty ResourceList violates the ST 2067-3 schema (Resource has
+// minOccurs 1) and is reported by runtime-XSD validation.
 
 /// Shared core structure checks applied by all spec versions.
 fn validate_core_structure(
@@ -718,19 +717,21 @@ fn validate_core_structure(
     issues.extend(crate::xsd::validate_parsed_cpl(cpl));
 
     let loc = Location::new().with_cpl(cpl.id);
+    // CPL-structure rules belong to ST 2067-3, in the edition of the CPL's namespace.
+    let cpl_ed = crate::cpl::validate::st2067_3_edition(&cpl.namespace);
 
     // ───────────────────────────────────────────────────────────────────────────
-    // XSD-overlap structural checks (ContentTitle, TotalRunningTime, SegmentList,
-    // Segment-has-sequences, EditRate, IssueDate, IssueDate format,
-    // CompositionTimecode completeness + TimecodeRate>0 + TimecodeStartAddress
-    // format) were gutted. They mirrored constraints already expressed in the
-    // SMPTE XSDs and will be re-emitted by the runtime-XSD validation path
-    // (see spike branch) via a translator that maps schema diagnostics back
-    // into the ST 2067-2 rule table.
+    // XSD-overlap structural checks (ContentTitle, TotalRunningTime,
+    // SegmentList, Segment-has-sequences, EditRate, IssueDate,
+    // CompositionTimecode completeness and formats, LocaleList, ResourceList)
+    // are reported by the runtime XSD layer (XSD/*). They are ST 2067-3 schema
+    // constraints; their never-emitted ST 2067-2 rules were removed in C1.
     // ───────────────────────────────────────────────────────────────────────────
 
-    // Cross-field semantic check: TimecodeRate must equal rounded CPL EditRate.
-    // KEPT — XSD cannot express this; it's prose-only (cross-field invariant).
+    // Cross-field consistency check: TimecodeRate vs the rounded CPL EditRate.
+    // No edition of ST 2067-3 requires equality (§8 lets a TimecodeRate up to
+    // 60 increment once or twice per edit unit), so this is imferno's own
+    // Warning (IMFERNO/CompositionTimecodeRateMismatch).
     if let (Some(ref tc), Some(ref er)) = (&cpl.composition_timecode, &cpl.edit_rate) {
         if let Some(tc_rate) = tc.timecode_rate {
             // EditRate as integer fps (for non-drop-frame comparison)
@@ -741,7 +742,7 @@ fn validate_core_structure(
             };
             if tc_rate != edit_fps {
                 issues.push(
-                    ValidationIssue::from_rule(&st2067_2::CompositionTimecodeRateMismatch, spec_ed,
+                    ValidationIssue::from_rule(&imferno::CompositionTimecodeRateMismatch, ImfernoEdition::Current,
                         format!(
                             "CompositionTimecode.TimecodeRate {} does not match CPL EditRate {}/{}  (≈{} fps)",
                             tc_rate, er.numerator, er.denominator, edit_fps,
@@ -753,20 +754,17 @@ fn validate_core_structure(
         }
     }
 
-    // LocaleListNonEmpty + ResourceListEmpty were gutted — both are XSD-overlap
-    // (xs:sequence + minOccurs=1 on Locale / Resource elements respectively).
-
-    // ST 2067-3 constraints delegated to st2067-3 crate (§5.5.1.2, §6.4.2, §6.11, §6.12, §7.3, §7.4)
+    // ST 2067-3 constraints (see cpl::validate for the clauses)
     issues.extend(crate::cpl::validate_cpl_constraints(cpl));
 
     // UUID uniqueness
-    validate_uuid_uniqueness(cpl, spec_ed, issues);
+    validate_uuid_uniqueness(cpl, cpl_ed, issues);
 
     // Resource constraints (duration, timing)
-    validate_resource_constraints(cpl, spec_ed, issues);
+    validate_resource_constraints(cpl, cpl_ed, issues);
 
     // Virtual track continuity across segments
-    validate_virtual_track_continuity(cpl, spec_ed, issues);
+    validate_virtual_track_continuity(cpl, cpl_ed, issues);
 
     // Virtual track edit rate consistency
     validate_virtual_track_edit_rates(cpl, spec_ed, issues);
@@ -774,7 +772,7 @@ fn validate_core_structure(
     // Audio MCA label validation
     validate_audio_mca_labels(cpl, spec_ed, issues);
 
-    // Timed text descriptor constraints (ST 2067-2 §10)
+    // Timed text descriptor constraints (ST 2067-2 §5.4.2, §5.4.4)
     validate_timed_text_extended(cpl, spec_ed, issues);
 
     // Segment track duration consistency
@@ -783,9 +781,9 @@ fn validate_core_structure(
     // Digital Signatures (ST 2067-2 §6.9)
     validate_digital_signature_notice(cpl, spec_ed, issues);
 
-    // §6.4.2: Every EssenceDescriptor must be referenced by at least one Resource.
+    // ST 2067-3 §6.1.10.1: Every EssenceDescriptor must be referenced by at least one Resource.
     // Applies to all spec versions (no-op when EDL is absent).
-    validate_dangling_essence_descriptors(cpl, spec_ed, issues);
+    validate_dangling_essence_descriptors(cpl, cpl_ed, issues);
 
     // Asset Identification: CPL Id vs the AssetMap asset Id it was loaded under.
     validate_cpl_id_matches_assetmap(cpl, spec_ed, issues);
@@ -828,10 +826,11 @@ fn validate_cpl_id_matches_assetmap(
 
 /// All Segment Ids, EssenceDescriptor Ids, and Resource Ids shall be unique within a CPL.
 ///
-/// ST 2067-2 §6.1: "Each Id element shall be unique within the scope of the Composition."
+/// ST 2067-3 §6.9.1 (Segment), §6.7.1 (EssenceDescriptor), §6.11.1 (Resource):
+/// each Id element "shall uniquely identify" its element.
 fn validate_uuid_uniqueness(
     cpl: &CompositionPlaylist,
-    spec_ed: St2067_2Edition,
+    cpl_ed: St2067_3Edition,
     issues: &mut Vec<ValidationIssue>,
 ) {
     let cpl_loc = Location::new().with_cpl(cpl.id);
@@ -843,8 +842,8 @@ fn validate_uuid_uniqueness(
         if !segment_ids.insert(id_str.clone()) {
             issues.push(
                 ValidationIssue::from_rule(
-                    &st2067_2::UniqueSegmentId,
-                    spec_ed,
+                    &st2067_3::UniqueSegmentId,
+                    cpl_ed,
                     format!("Duplicate Segment Id '{}' at index {}", id_str, i),
                 )
                 .with_location(cpl_loc.clone().with_segment(i)),
@@ -861,8 +860,8 @@ fn validate_uuid_uniqueness(
             if !ed_ids.insert(id_str.clone()) {
                 issues.push(
                     ValidationIssue::from_rule(
-                        &st2067_2::UniqueEssenceDescriptorId,
-                        spec_ed,
+                        &st2067_3::UniqueEssenceDescriptorId,
+                        cpl_ed,
                         format!("Duplicate EssenceDescriptor Id '{}'", id_str),
                     )
                     .with_location(cpl_loc.clone()),
@@ -880,8 +879,8 @@ fn validate_uuid_uniqueness(
                 if !resource_ids.insert(id_str.clone()) {
                     issues.push(
                         ValidationIssue::from_rule(
-                            &st2067_2::UniqueResourceId,
-                            spec_ed,
+                            &st2067_3::UniqueResourceId,
+                            cpl_ed,
                             format!(
                                 "Duplicate Resource Id '{}' in {} segment {}",
                                 id_str,
@@ -929,14 +928,14 @@ fn validate_uuid_uniqueness(
 
 /// Validate individual resource constraints.
 ///
-/// ST 2067-2 §6.10:
-/// - IntrinsicDuration shall be greater than 0.
+/// ST 2067-3 §6.11 / §6.12 (and an imferno check on IntrinsicDuration):
+/// - IntrinsicDuration 0 (an empty asset) is flagged by imferno.
 /// - If EntryPoint is present, EntryPoint + SourceDuration <= IntrinsicDuration.
 /// - If RepeatCount is present, it shall be greater than 0.
 /// - Non-marker resources shall have TrackFileId and SourceEncoding.
 fn validate_resource_constraints(
     cpl: &CompositionPlaylist,
-    spec_ed: St2067_2Edition,
+    cpl_ed: St2067_3Edition,
     issues: &mut Vec<ValidationIssue>,
 ) {
     use crate::cpl::SequenceAccess;
@@ -958,10 +957,10 @@ fn validate_resource_constraints(
                     if resource.intrinsic_duration == 0 {
                         issues.push(
                             ValidationIssue::from_rule(
-                                &st2067_2::IntrinsicDuration,
-                                spec_ed,
+                                &imferno::IntrinsicDurationZero,
+                                ImfernoEdition::Current,
                                 format!(
-                                    "{} resource {} IntrinsicDuration shall be greater than 0",
+                                    "{} resource {} has IntrinsicDuration 0 (empty asset)",
                                     track_type, resource.id,
                                 ),
                             )
@@ -969,7 +968,7 @@ fn validate_resource_constraints(
                         );
                     }
 
-                    // B: EntryPoint < IntrinsicDuration (ST 2067-2 §6.10)
+                    // B: EntryPoint < IntrinsicDuration (ST 2067-3 §6.11.6)
                     let entry_point = resource.entry_point.unwrap_or(0);
                     if resource.entry_point.is_some()
                         && resource.intrinsic_duration > 0
@@ -977,8 +976,8 @@ fn validate_resource_constraints(
                     {
                         issues.push(
                             ValidationIssue::from_rule(
-                                &st2067_2::EntryPoint,
-                                spec_ed,
+                                &st2067_3::EntryPoint,
+                                cpl_ed,
                                 format!(
                                     "{} resource {}: EntryPoint ({}) shall be less than \
                                  IntrinsicDuration ({})",
@@ -999,8 +998,8 @@ fn validate_resource_constraints(
                         if entry_point + source_duration > resource.intrinsic_duration {
                             issues.push(
                                 ValidationIssue::from_rule(
-                                    &st2067_2::ResourceDuration,
-                                    spec_ed,
+                                    &st2067_3::ResourceDuration,
+                                    cpl_ed,
                                     format!(
                                     "{} resource {}: EntryPoint ({}) + SourceDuration ({}) = {} \
                                      exceeds IntrinsicDuration ({})",
@@ -1020,8 +1019,8 @@ fn validate_resource_constraints(
                         if repeat_count == 0 {
                             issues.push(
                                 ValidationIssue::from_rule(
-                                    &st2067_2::RepeatCount,
-                                    spec_ed,
+                                    &st2067_3::RepeatCount,
+                                    cpl_ed,
                                     format!(
                                         "{} resource {} RepeatCount shall be greater than 0",
                                         track_type, resource.id,
@@ -1036,8 +1035,8 @@ fn validate_resource_constraints(
                     if !is_marker && resource.track_file_id.is_none() {
                         issues.push(
                             ValidationIssue::from_rule(
-                                &st2067_2::TrackFileId,
-                                spec_ed,
+                                &st2067_3::TrackFileId,
+                                cpl_ed,
                                 format!(
                                     "{} resource {} is missing TrackFileId",
                                     track_type, resource.id,
@@ -1118,7 +1117,7 @@ fn collect_track_ids(segment: &crate::cpl::Segment) -> HashMap<String, &'static 
 /// Composition Playlist."
 fn validate_virtual_track_continuity(
     cpl: &CompositionPlaylist,
-    spec_ed: St2067_2Edition,
+    cpl_ed: St2067_3Edition,
     issues: &mut Vec<ValidationIssue>,
 ) {
     let segments = &cpl.segment_list.segments;
@@ -1145,8 +1144,8 @@ fn validate_virtual_track_continuity(
             if !seg_tracks.contains(track_id) {
                 issues.push(
                     ValidationIssue::from_rule(
-                        &st2067_2::VirtualTrackContinuity,
-                        spec_ed,
+                        &st2067_3::VirtualTrackContinuity,
+                        cpl_ed,
                         format!(
                             "{} virtual track '{}' is missing from segment {} \
                              but is present in other segments; \
@@ -1253,12 +1252,13 @@ fn validate_virtual_track_edit_rates(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Timed text extended validation (ST 2067-2 §10)
+// Timed text extended validation (ST 2067-2 §5.4)
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// Extended validation for DCTimedTextDescriptor beyond NamespaceURI.
 ///
-/// ST 2067-2 §10: SampleRate should be present and consistent with the CPL EditRate.
+/// ST 2067-2 §5.4.2 (ST 429-5 descriptor): SampleRate shall be present.
+/// §5.4.4: RFC 5646 language tags.
 /// Language tags in RFC5646LanguageTagList should be well-formed.
 fn validate_timed_text_extended(
     cpl: &CompositionPlaylist,
@@ -1721,7 +1721,7 @@ fn validate_digital_signature_notice(
 /// corresponding essence in the composition. ST 2067-3 forbids it.
 fn validate_dangling_essence_descriptors(
     cpl: &CompositionPlaylist,
-    spec_ed: St2067_2Edition,
+    cpl_ed: St2067_3Edition,
     issues: &mut Vec<ValidationIssue>,
 ) {
     let edl = match &cpl.essence_descriptor_list {
@@ -1791,8 +1791,8 @@ fn validate_dangling_essence_descriptors(
         if !referenced.contains(&id) {
             issues.push(
                 ValidationIssue::from_rule(
-                    &st2067_2::DanglingEssenceDescriptor,
-                    spec_ed,
+                    &st2067_3::DanglingEssenceDescriptor,
+                    cpl_ed,
                     format!(
                         "EssenceDescriptor {} is present in EssenceDescriptorList but not \
                          referenced by any Resource's SourceEncoding (ST 2067-3 §6.1.10.1)",
@@ -5165,7 +5165,7 @@ mod tests {
     /// SegmentDuration normalization: audio at 48000/1 and video at 24/1 with
     /// the same real-time duration must NOT be flagged.
     ///
-    /// ST 2067-2 §7.2.2 requires equal real-time duration across all virtual
+    /// ST 2067-3 §7.2 requires equal real-time duration across all virtual
     /// tracks in a segment, not equal raw frame counts.
     #[test]
     fn core_accepts_equal_real_time_duration_across_edit_rates() {

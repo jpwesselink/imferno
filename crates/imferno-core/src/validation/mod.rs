@@ -77,9 +77,21 @@ pub trait ValidatorRegistry {
     fn resolve_for_cpl(&self, cpl: &CompositionPlaylist) -> Vec<Box<dyn ConstraintsValidator>> {
         let mut validators: Vec<Box<dyn ConstraintsValidator>> = Vec::new();
 
+        // ST 2067-2:2020 reuses the ST 2067-3:2016 CPL namespace. A CPL is
+        // checked against 2067-2:2020 when its ApplicationIdentification
+        // names an App #2E edition that normatively references 2067-2:2020
+        // (2020, 2023, 2026), or when the element is in (or the CPL declares
+        // only) the 2020 Core Constraints namespace (working-group finding #12).
+        let core_2020 = app2e_references_core_2020(cpl)
+            || application_identification_core_edition(cpl)
+                .or_else(|| declared_core_constraints_edition(cpl))
+                == Some(crate::catalogue::st2067_2::St2067_2Edition::V2020);
         let core_ns = match &cpl.namespace {
-            CplNamespace::Smpte2067_3_2013 => Some("http://www.smpte-ra.org/schemas/2067-2/2013"),
-            CplNamespace::Smpte2067_3_2016 => Some("http://www.smpte-ra.org/schemas/2067-2/2016"),
+            CplNamespace::Smpte2067_3_2013 => Some(CoreSpecTarget::St2067_2_2013.namespace_uri()),
+            CplNamespace::Smpte2067_3_2016 if core_2020 => {
+                Some(CoreSpecTarget::St2067_2_2020.namespace_uri())
+            }
+            CplNamespace::Smpte2067_3_2016 => Some(CoreSpecTarget::St2067_2_2016.namespace_uri()),
             _ => None,
         };
         if let Some(ns) = core_ns {
@@ -397,6 +409,63 @@ pub fn declared_core_constraints_edition(
     }
 }
 
+/// Whether the CPL's ApplicationIdentification names an App #2E edition
+/// whose normative reference is ST 2067-2:2020 (ST 2067-21:2020, 2023, 2026).
+fn app2e_references_core_2020(cpl: &CompositionPlaylist) -> bool {
+    let Some(app_id) = cpl
+        .extension_properties
+        .as_ref()
+        .and_then(|e| e.application_identification.as_deref())
+    else {
+        return false;
+    };
+    [
+        App2EEdition::V2020,
+        App2EEdition::V2023,
+        App2EEdition::V2026,
+    ]
+    .iter()
+    .any(|ed| {
+        app2e::application_identification_includes(app_id, ed.application_identification_uri())
+    })
+}
+
+/// The ST 2067-2 edition of the namespace of the CPL's
+/// `ApplicationIdentification` element (ST 2067-2 §6.1 defines the element in
+/// the Core Constraints namespace of its edition), or `None` when the element
+/// is absent, its namespace cannot be resolved, or it is not a Core
+/// Constraints namespace.
+pub fn application_identification_core_edition(
+    cpl: &CompositionPlaylist,
+) -> Option<crate::catalogue::st2067_2::St2067_2Edition> {
+    use crate::catalogue::st2067_2::St2067_2Edition;
+    let xml = cpl.source_xml.as_deref()?;
+    let re =
+        regex::Regex::new(r"<(?:([A-Za-z_][\w.-]*):)?ApplicationIdentification\b([^>]*)>").ok()?;
+    let caps = re.captures(xml)?;
+    let prefix = caps.get(1).map(|m| m.as_str());
+    let attr = match prefix {
+        Some(p) => format!("xmlns:{p}=\""),
+        None => "xmlns=\"".to_string(),
+    };
+    let uri_from = |text: &str| -> Option<String> {
+        let i = text.find(&attr)? + attr.len();
+        let j = text[i..].find('"')?;
+        Some(text[i..i + j].to_string())
+    };
+    // Declared on the element itself, else (prefixed) anywhere in the document.
+    let uri = uri_from(caps.get(2).map_or("", |m| m.as_str()))
+        .or_else(|| prefix.and_then(|_| uri_from(xml)))?;
+    [
+        (CoreSpecTarget::St2067_2_2013, St2067_2Edition::V2013),
+        (CoreSpecTarget::St2067_2_2016, St2067_2Edition::V2016),
+        (CoreSpecTarget::St2067_2_2020, St2067_2Edition::V2020),
+    ]
+    .into_iter()
+    .find(|(t, _)| t.namespace_uri() == uri)
+    .map(|(_, e)| e)
+}
+
 /// Parse a core spec string, handling `"auto"` as `None` (auto-detect).
 pub fn parse_core_spec_target(s: &str) -> Result<Option<CoreSpecTarget>, String> {
     match s {
@@ -701,7 +770,51 @@ impl std::fmt::Display for ColorSystem {
 // architecture spike (uppsala-based) for the replacement path.
 
 // An empty ResourceList violates the ST 2067-3 schema (Resource has
-// minOccurs 1) and is reported by runtime-XSD validation.
+// minOccurs 1). The runtime XSD layer does not catch it — sequences sit in
+// an `xs:any ##other lax` slot — so cpl::validate reports it
+// (ST2067-3/ResourceListEmpty).
+
+/// ST 2067-2 §6.3.1: exactly one Main Image Virtual Track; §6.3.2 (2013,
+/// 2016): one or more Audio Virtual Tracks (2020: zero or more).
+fn validate_required_virtual_tracks(
+    cpl: &CompositionPlaylist,
+    spec_ed: St2067_2Edition,
+    issues: &mut Vec<ValidationIssue>,
+) {
+    let loc = Location::new().with_cpl(cpl.id);
+    let segments = &cpl.segment_list.segments;
+    let image: HashSet<String> = segments
+        .iter()
+        .flat_map(|s| s.sequence_list.main_image_sequences.iter())
+        .map(|s| s.track_id.to_string())
+        .collect();
+    if image.len() != 1 {
+        issues.push(
+            ValidationIssue::from_rule(
+                &st2067_2::MainImageVirtualTrackCount,
+                spec_ed,
+                format!(
+                    "The Composition has {} Main Image Virtual Tracks; exactly one is required",
+                    image.len()
+                ),
+            )
+            .with_location(loc.clone()),
+        );
+    }
+    let audio_absent = segments
+        .iter()
+        .all(|s| s.sequence_list.main_audio_sequences.is_empty());
+    if audio_absent && st2067_2::AudioVirtualTrackMissing.in_edition(spec_ed) {
+        issues.push(
+            ValidationIssue::from_rule(
+                &st2067_2::AudioVirtualTrackMissing,
+                spec_ed,
+                "The Composition has no Audio Virtual Track; one or more are required",
+            )
+            .with_location(loc),
+        );
+    }
+}
 
 /// Shared core structure checks applied by all spec versions.
 fn validate_core_structure(
@@ -756,6 +869,9 @@ fn validate_core_structure(
 
     // ST 2067-3 constraints (see cpl::validate for the clauses)
     issues.extend(crate::cpl::validate_cpl_constraints(cpl));
+
+    // Main Image / Audio Virtual Track presence (ST 2067-2 §6.3)
+    validate_required_virtual_tracks(cpl, spec_ed, issues);
 
     // UUID uniqueness
     validate_uuid_uniqueness(cpl, cpl_ed, issues);
@@ -2449,7 +2565,8 @@ mod tests {
         });
         let validators = get_validators_for_cpl(&cpl);
         assert_eq!(validators.len(), 2);
-        assert_eq!(validators[0].spec_id(), "ST 2067-2:2016");
+        // App #2E 2023 normatively references ST 2067-2:2020.
+        assert_eq!(validators[0].spec_id(), "ST 2067-2:2020");
         assert_eq!(validators[1].spec_id(), "ST 2067-21:2023 (App2E)");
     }
 
@@ -2566,7 +2683,8 @@ mod tests {
         let registry = BuiltinValidatorRegistry;
         let validators = registry.resolve_for_cpl(&cpl);
         assert_eq!(validators.len(), 3);
-        assert_eq!(validators[0].spec_id(), "ST 2067-2:2016");
+        // App #2E 2023 normatively references ST 2067-2:2020.
+        assert_eq!(validators[0].spec_id(), "ST 2067-2:2020");
         assert_eq!(validators[1].spec_id(), "ST 2067-21:2023 (App2E)");
         assert_eq!(
             validators[2].spec_id(),
@@ -2625,6 +2743,7 @@ mod tests {
 
         let validators = registry.resolve_for_cpl(&cpl);
         assert_eq!(validators.len(), 2);
+        // The core edition comes from the CPL (no ApplicationIdentification).
         assert_eq!(validators[0].spec_id(), "ST 2067-2:2016");
         assert_eq!(validators[1].spec_id(), "ST 2067-21:2023 (App2E)");
     }
@@ -2761,6 +2880,7 @@ mod tests {
         });
         let validators = registry.resolve_for_cpl(&cpl);
         assert_eq!(validators.len(), 2);
+        // The core edition comes from the CPL (no ApplicationIdentification).
         assert_eq!(validators[0].spec_id(), "ST 2067-2:2016");
         assert_eq!(validators[1].spec_id(), "ST 2067-21:2023 (App2E)");
     }
@@ -2911,13 +3031,10 @@ mod tests {
         );
     }
 
-    /// XSD: ContentTitle is `dcml:UserTextType` (xs:string-derived). The
-    /// XSD grammar permits the empty string, so this is NOT a structural
-    /// constraint — it has to live as a semantic check if we want it at
-    /// all. The original "gutted" claim was inaccurate; left ignored
-    /// pending a deliberate decision on whether to re-add semantically.
+    /// ContentTitle is `dcml:UserTextType`, so the XSD permits the empty
+    /// string; ST 2067-3 §6.1.7 ("shall contain a human-readable title")
+    /// does not. Reported as ST2067-3/ContentTitleEmpty.
     #[test]
-    #[ignore = "ContentTitle non-empty is not XSD-expressible; needs semantic check if desired"]
     fn core_flags_empty_content_title() {
         let mut cpl = minimal_cpl();
         cpl.content_title.text = "".to_string();
@@ -2950,20 +3067,19 @@ mod tests {
         );
     }
 
-    /// XSD §150-156: `SequenceList` contains an optional `MarkerSequence`
-    /// followed by `xs:any namespace="##other" minOccurs="0"` — the
-    /// schema explicitly *allows* an empty SequenceList. Catching this
-    /// requires semantic logic ("a Segment with zero sequences is
-    /// useless") and is not XSD-expressible.
+    /// The ST 2067-3 schema allows an empty SequenceList (`xs:any
+    /// minOccurs=0`); ST 2067-2 §6.3.1 does not, since a Composition shall
+    /// contain exactly one Main Image Virtual Track.
     #[test]
-    #[ignore = "Empty SequenceList is schema-valid (xs:any minOccurs=0); needs semantic check"]
     fn core_flags_segment_with_no_sequences() {
         let cpl = minimal_cpl(); // has one segment with empty sequence list
         let v = CoreConstraints2020;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| mentions(i, "Segment")),
-            "Should flag segment with no sequences"
+            issues
+                .iter()
+                .any(|i| i.is(&st2067_2::MainImageVirtualTrackCount)),
+            "Should flag a Composition with no Main Image Virtual Track"
         );
     }
 
@@ -3326,12 +3442,13 @@ mod tests {
         });
         let validators = get_validators_for_cpl(&cpl);
         assert_eq!(validators.len(), 2, "Should dispatch both core and app2e");
-        assert_eq!(validators[0].spec_id(), "ST 2067-2:2016");
+        // App #2E 2023 normatively references ST 2067-2:2020.
+        assert_eq!(validators[0].spec_id(), "ST 2067-2:2020");
         assert_eq!(validators[1].spec_id(), "ST 2067-21:2023 (App2E)");
 
         // validate_cpl should run both and merge issues
         let issues = validate_cpl(&cpl);
-        let has_core = issues.iter().any(|i| i.code.starts_with("ST2067-2:2016:"));
+        let has_core = issues.iter().any(|i| i.code.starts_with("ST2067-2:2020:"));
         assert!(
             has_core,
             "Core validator should produce issues for CPL without EDL"
@@ -9099,5 +9216,82 @@ mod tests {
                 "{g} still in the 2023 code set"
             );
         }
+    }
+
+    // ── C1 review: re-emitted structure rules ────────────────────────────────
+
+    /// A CPL in the ST 2067-3 `year` namespace with `title` and `sequences`
+    /// in its single Segment.
+    fn c1_cpl(year: &str, title: &str, sequences: &str) -> CompositionPlaylist {
+        let core = if year == "2013" { "2013" } else { "2016" };
+        let xml = format!(
+            r#"<CompositionPlaylist xmlns="http://www.smpte-ra.org/schemas/2067-3/{year}" xmlns:cc="http://www.smpte-ra.org/schemas/2067-2/{core}">
+            <Id>urn:uuid:00000000-0000-0000-0000-000000000001</Id>
+            <IssueDate>2024-01-01T00:00:00Z</IssueDate>
+            <ContentTitle>{title}</ContentTitle>
+            <EditRate>24 1</EditRate>
+            <SegmentList><Segment>
+                <Id>urn:uuid:00000000-0000-0000-0000-000000000002</Id>
+                <SequenceList>{sequences}</SequenceList>
+            </Segment></SegmentList>
+        </CompositionPlaylist>"#
+        );
+        crate::cpl::parse_cpl(&xml).expect("test CPL parses")
+    }
+
+    const C1_IMAGE_EMPTY_RESOURCES: &str = r#"<cc:MainImageSequence>
+            <Id>urn:uuid:00000000-0000-0000-0000-000000000010</Id>
+            <TrackId>urn:uuid:00000000-0000-0000-0000-000000000011</TrackId>
+            <ResourceList/>
+        </cc:MainImageSequence>"#;
+
+    fn c1_codes(issues: &[ValidationIssue]) -> Vec<String> {
+        issues.iter().map(|i| i.code.clone()).collect()
+    }
+
+    #[test]
+    fn empty_content_title_is_flagged_in_2013_and_2016() {
+        let i13 = CoreConstraints2013.validate_cpl(&c1_cpl("2013", "", ""));
+        assert!(c1_codes(&i13).contains(&"ST2067-3:2013:6.1.7/ContentTitleEmpty".to_string()));
+        let i16 = CoreConstraints2016.validate_cpl(&c1_cpl("2016", " ", ""));
+        assert!(c1_codes(&i16).contains(&"ST2067-3:2016:6.1.7/ContentTitleEmpty".to_string()));
+        let ok = CoreConstraints2016.validate_cpl(&c1_cpl("2016", "Title", ""));
+        assert!(!ok.iter().any(|i| i.is(&st2067_3::ContentTitleEmpty)));
+    }
+
+    #[test]
+    fn empty_resource_list_is_flagged_in_2013_and_2016() {
+        let i13 = CoreConstraints2013.validate_cpl(&c1_cpl("2013", "T", C1_IMAGE_EMPTY_RESOURCES));
+        assert!(
+            c1_codes(&i13).contains(&"ST2067-3:2013:6.10/ResourceListEmpty".to_string()),
+            "{:#?}",
+            c1_codes(&i13)
+        );
+        let i16 = CoreConstraints2016.validate_cpl(&c1_cpl("2016", "T", C1_IMAGE_EMPTY_RESOURCES));
+        assert!(c1_codes(&i16).contains(&"ST2067-3:2016:6.10/ResourceListEmpty".to_string()));
+    }
+
+    #[test]
+    fn required_virtual_tracks_per_edition() {
+        // Empty SequenceList: no Main Image and no Audio Virtual Track.
+        let i13 = c1_codes(&CoreConstraints2013.validate_cpl(&c1_cpl("2013", "T", "")));
+        assert!(i13.contains(&"ST2067-2:2013:6.3.1/MainImageVirtualTrackCount".to_string()));
+        assert!(i13.contains(&"ST2067-2:2013:6.3.2/AudioVirtualTrackMissing".to_string()));
+        let i16 = c1_codes(&CoreConstraints2016.validate_cpl(&c1_cpl("2016", "T", "")));
+        assert!(i16.contains(&"ST2067-2:2016:6.3.1/MainImageVirtualTrackCount".to_string()));
+        assert!(i16.contains(&"ST2067-2:2016:6.3.2/AudioVirtualTrackMissing".to_string()));
+        // 2067-2:2020 §6.3.2: zero or more Audio Virtual Tracks.
+        let i20 = CoreConstraints2020.validate_cpl(&c1_cpl("2016", "T", ""));
+        assert!(i20
+            .iter()
+            .any(|i| i.is(&st2067_2::MainImageVirtualTrackCount)));
+        assert!(!i20
+            .iter()
+            .any(|i| i.is(&st2067_2::AudioVirtualTrackMissing)));
+        // One Main Image Virtual Track satisfies §6.3.1.
+        let one = CoreConstraints2016.validate_cpl(&c1_cpl("2016", "T", C1_IMAGE_EMPTY_RESOURCES));
+        assert!(!one
+            .iter()
+            .any(|i| i.is(&st2067_2::MainImageVirtualTrackCount)));
     }
 }

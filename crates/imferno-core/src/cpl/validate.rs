@@ -59,6 +59,8 @@ pub fn validate_cpl(cpl: &CompositionPlaylist) -> Vec<ValidationIssue> {
     validate_sequence_duration_integer_edit_units(cpl, spec_ed, &mut issues);
     validate_marker_offsets(cpl, spec_ed, &mut issues);
     validate_marker_labels(cpl, spec_ed, &mut issues);
+    validate_content_title(cpl, spec_ed, &mut issues);
+    validate_resource_lists_non_empty(cpl, spec_ed, &mut issues);
 
     issues
 }
@@ -391,6 +393,61 @@ fn validate_locale_language_tags(
                         .with_location(loc.clone()),
                     );
                 }
+            }
+        }
+    }
+}
+
+// ─── §6.1.7 ContentTitle ─────────────────────────────────────────────────────
+
+/// ST 2067-3 §6.1.7: ContentTitle shall contain a human-readable title; an
+/// empty (or whitespace-only) value contains none.
+fn validate_content_title(
+    cpl: &CompositionPlaylist,
+    spec_ed: St2067_3Edition,
+    issues: &mut Vec<ValidationIssue>,
+) {
+    if cpl.content_title.text.trim().is_empty() {
+        issues.push(
+            ValidationIssue::from_rule(
+                &st2067_3::ContentTitleEmpty,
+                spec_ed,
+                "ContentTitle is empty; it shall contain a human-readable title",
+            )
+            .with_location(Location::new().with_cpl(cpl.id)),
+        );
+    }
+}
+
+// ─── §6.10 ResourceList ──────────────────────────────────────────────────────
+
+/// ST 2067-3 §6.10 (SequenceType schema): ResourceList holds one or more
+/// Resource elements. The runtime XSD layer does not see this: sequences sit
+/// in an `xs:any namespace="##other" processContents="lax"` slot.
+fn validate_resource_lists_non_empty(
+    cpl: &CompositionPlaylist,
+    spec_ed: St2067_3Edition,
+    issues: &mut Vec<ValidationIssue>,
+) {
+    for (seg_idx, segment) in cpl.segment_list.segments.iter().enumerate() {
+        let sl = &segment.sequence_list;
+        let mut all_seqs = sl.all_sequences_typed();
+        for s in &sl.marker_sequences {
+            all_seqs.push((s, "MarkerSequence"));
+        }
+        for (seq, track_type) in all_seqs {
+            if seq.resource_list().resources.is_empty() {
+                issues.push(
+                    ValidationIssue::from_rule(
+                        &st2067_3::ResourceListEmpty,
+                        spec_ed,
+                        format!(
+                            "Segment {} {track_type} has an empty ResourceList",
+                            seg_idx + 1
+                        ),
+                    )
+                    .with_location(Location::new().with_cpl(cpl.id).with_segment(seg_idx)),
+                );
             }
         }
     }

@@ -303,8 +303,34 @@ pub static DanglingEssenceDescriptor: Rule<E> = Rule {
     ],
 };
 
+/// ContentTitle is empty.
+pub static ContentTitleEmpty: Rule<E> = Rule {
+    name: "ContentTitleEmpty",
+    category: Category::Metadata,
+    description: "ContentTitle is empty; it shall contain a human-readable title.",
+    example: Some("<ContentTitle></ContentTitle>"),
+    editions: &[
+        checked(E::V2013, "6.1.7", Shall),
+        checked(E::V2016, "6.1.7", Shall),
+    ],
+};
+
+/// A Sequence has an empty ResourceList.
+pub static ResourceListEmpty: Rule<E> = Rule {
+    name: "ResourceListEmpty",
+    category: Category::Structure,
+    description: "A Sequence has an empty ResourceList; the SequenceType schema requires one or more Resource elements.",
+    example: Some("<MainAudioSequence>…<ResourceList></ResourceList></MainAudioSequence>"),
+    editions: &[
+        checked(E::V2013, "6.10", Shall).interpret("Sequences sit in an xs:any lax slot, so the runtime XSD layer does not check Resource minOccurs; imferno does.", None),
+        checked(E::V2016, "6.10", Shall).interpret("Sequences sit in an xs:any lax slot, so the runtime XSD layer does not check Resource minOccurs; imferno does.", None),
+    ],
+};
+
 /// Every rule of this spec.
 pub static ALL: &[&dyn AnyRule] = &[
+    &ContentTitleEmpty,
+    &ResourceListEmpty,
     &ContentKindUnknown,
     &SourceEncodingNoEssenceDescriptorList,
     &SourceEncodingUnresolved,

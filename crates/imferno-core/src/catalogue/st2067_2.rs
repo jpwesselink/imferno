@@ -678,6 +678,32 @@ pub static TimedTextMappingKindNot0x13: Rule<E> = Rule {
     ],
 };
 
+/// The Composition does not have exactly one Main Image Virtual Track.
+pub static MainImageVirtualTrackCount: Rule<E> = Rule {
+    name: "MainImageVirtualTrackCount",
+    category: Category::Structure,
+    description: "A Composition shall contain exactly one Main Image Virtual Track.",
+    example: Some("<SequenceList/>  <!-- no MainImageSequence in any Segment -->"),
+    editions: &[
+        checked(E::V2013, "6.3.1", Shall),
+        checked(E::V2016, "6.3.1", Shall),
+        checked(E::V2020, "6.3.1", Shall),
+    ],
+};
+
+/// The Composition has no Audio Virtual Track (2013 and 2016 only).
+pub static AudioVirtualTrackMissing: Rule<E> = Rule {
+    name: "AudioVirtualTrackMissing",
+    category: Category::Structure,
+    description: "A Composition shall contain one or more Audio Virtual Tracks (ST 2067-2:2013 and 2016; 2020 allows zero).",
+    example: Some("A CPL whose Segments contain no MainAudioSequence"),
+    editions: &[
+        checked(E::V2013, "6.3.2", Shall).interpret("Dropped in 2067-2:2020 (zero or more Audio Virtual Tracks).", Some("https://github.com/Netflix/photon/issues/227")),
+        checked(E::V2016, "6.3.2", Shall).interpret("Dropped in 2067-2:2020 (zero or more Audio Virtual Tracks).", Some("https://github.com/Netflix/photon/issues/227")),
+        absent(E::V2020).verified(),
+    ],
+};
+
 /// Every rule of this spec.
 pub static ALL: &[&dyn AnyRule] = &[
     &AssetMapMalformedXml,
@@ -724,4 +750,6 @@ pub static ALL: &[&dyn AnyRule] = &[
     &TimedTextNamespaceNotIMSC,
     &TimedTextResourceMIMETypeUnsupported,
     &TimedTextMappingKindNot0x13,
+    &MainImageVirtualTrackCount,
+    &AudioVirtualTrackMissing,
 ];

@@ -75,8 +75,12 @@ const codes = {
     TimedTextNamespaceNotIMSC: "ST2067-2/TimedTextNamespaceNotIMSC",
     TimedTextResourceMIMETypeUnsupported: "ST2067-2/TimedTextResourceMIMETypeUnsupported",
     TimedTextMappingKindNot0x13: "ST2067-2/TimedTextMappingKindNot0x13",
+    MainImageVirtualTrackCount: "ST2067-2/MainImageVirtualTrackCount",
+    AudioVirtualTrackMissing: "ST2067-2/AudioVirtualTrackMissing",
   },
   ST2067_3: {
+    ContentTitleEmpty: "ST2067-3/ContentTitleEmpty",
+    ResourceListEmpty: "ST2067-3/ResourceListEmpty",
     ContentKindUnknown: "ST2067-3/ContentKindUnknown",
     SourceEncodingNoEssenceDescriptorList: "ST2067-3/SourceEncodingNoEssenceDescriptorList",
     SourceEncodingUnresolved: "ST2067-3/SourceEncodingUnresolved",

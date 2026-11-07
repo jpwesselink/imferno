@@ -75,8 +75,12 @@ export declare const codes: {
     readonly TimedTextNamespaceNotIMSC: "ST2067-2/TimedTextNamespaceNotIMSC";
     readonly TimedTextResourceMIMETypeUnsupported: "ST2067-2/TimedTextResourceMIMETypeUnsupported";
     readonly TimedTextMappingKindNot0x13: "ST2067-2/TimedTextMappingKindNot0x13";
+    readonly MainImageVirtualTrackCount: "ST2067-2/MainImageVirtualTrackCount";
+    readonly AudioVirtualTrackMissing: "ST2067-2/AudioVirtualTrackMissing";
   };
   readonly ST2067_3: {
+    readonly ContentTitleEmpty: "ST2067-3/ContentTitleEmpty";
+    readonly ResourceListEmpty: "ST2067-3/ResourceListEmpty";
     readonly ContentKindUnknown: "ST2067-3/ContentKindUnknown";
     readonly SourceEncodingNoEssenceDescriptorList: "ST2067-3/SourceEncodingNoEssenceDescriptorList";
     readonly SourceEncodingUnresolved: "ST2067-3/SourceEncodingUnresolved";

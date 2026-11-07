@@ -691,8 +691,23 @@ pub static AudioVirtualTrackMissing: Rule<E> = Rule {
     ],
 };
 
+/// The CPL is not an IMF Composition Playlist: its namespace is not an
+/// ST 2067-3 namespace (a D-Cinema ST 429-7 CPL, or an unknown namespace).
+pub static NotImfCompositionPlaylist: Rule<E> = Rule {
+    name: "NotImfCompositionPlaylist",
+    category: Category::Structure,
+    description: "The CPL is not an IMF Composition Playlist: its namespace is not an ST 2067-3 namespace (e.g. a D-Cinema ST 429-7 CPL). No ST 2067-3, Core Constraints or application rules are applied to it.",
+    example: Some("<CompositionPlaylist xmlns=\"http://www.smpte-ra.org/schemas/429-7/2006/CPL\">  <!-- a D-Cinema CPL in an IMP -->"),
+    editions: &[
+        checked(E::V2013, "6", Shall).interpret("2013 has no definition sentence: §6 constrains the Composition Playlist instance, whose schema §4.1 imports from the ST 2067-3:2013 namespace. The text has no shall for this; Error per JP (a CPL that is not an ST 2067-3 CPL is not part of a Composition).", None),
+        checked(E::V2016, "6.11", Shall).interpret("§6.11 defines a Composition as one Composition Playlist as specified in ST 2067-3 and the Assets it references. A definition, not a shall sentence; Error per JP.", None),
+        checked(E::V2020, "6.11", Shall).interpret("§6.11 defines a Composition as one Composition Playlist as specified in ST 2067-3 and the Assets it references. A definition, not a shall sentence; Error per JP.", None),
+    ],
+};
+
 /// Every rule of this spec.
 pub static ALL: &[&dyn AnyRule] = &[
+    &NotImfCompositionPlaylist,
     &PklMalformedXml,
     &NoCpls,
     &SizeMismatch,

@@ -75,6 +75,7 @@ Unmarked rows are carried over from earlier catalogues and not yet checked.
 
 | Rule | Description | Category | 2013 | 2016 | 2020 |
 |------|-------------|----------|------|------|------|
+| `ST2067-2/NotImfCompositionPlaylist` | The CPL is not an IMF Composition Playlist: its namespace is not an ST 2067-3 namespace (e.g. a D-Cinema ST 429-7 CPL). No ST 2067-3, Core Constraints or application rules are applied to it. | Structure | 6✓ error | 6.11✓ error | 6.11✓ error |
 | `ST2067-2/PklMalformedXml` | A Packing List document is not well-formed XML. | Structure | 7.1✓ error | K✓ error | J✓ error |
 | `ST2067-2/NoCpls` | No CPL assets found in the AssetMap. | Structure | —✓ | 7.2.1✓ info | 7.2✓ info |
 | `ST2067-2/SizeMismatch` | Declared file size does not match the on-disk size. | Asset | —✓ | K✓ error | J✓ error |

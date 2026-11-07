@@ -32,6 +32,7 @@ const codes = {
     AssetMapMalformedXml: "ST429-9/AssetMapMalformedXml",
   },
   ST2067_2: {
+    NotImfCompositionPlaylist: "ST2067-2/NotImfCompositionPlaylist",
     PklMalformedXml: "ST2067-2/PklMalformedXml",
     NoCpls: "ST2067-2/NoCpls",
     SizeMismatch: "ST2067-2/SizeMismatch",

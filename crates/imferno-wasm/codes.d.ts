@@ -32,6 +32,7 @@ export declare const codes: {
     readonly AssetMapMalformedXml: "ST429-9/AssetMapMalformedXml";
   };
   readonly ST2067_2: {
+    readonly NotImfCompositionPlaylist: "ST2067-2/NotImfCompositionPlaylist";
     readonly PklMalformedXml: "ST2067-2/PklMalformedXml";
     readonly NoCpls: "ST2067-2/NoCpls";
     readonly SizeMismatch: "ST2067-2/SizeMismatch";

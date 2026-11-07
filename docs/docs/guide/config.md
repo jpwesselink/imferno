@@ -226,8 +226,9 @@ edition used (one per package, and per CPL).
 - **ST 2067-3, CPL** (`--cpl-spec` / `cplSpec`): the 2013 namespace means 2013;
   2016 and 2020 share the 2016 namespace, and the only evidence is a Marker
   Label in the `2020#standard-markers` scope, which only 2020 defines. An
-  ST 429-7 (DCI) or unknown namespace is not an ST 2067-3 namespace: the newest
-  edition is applied and announced.
+  ST 429-7 (D-Cinema) or unknown namespace is not an IMF Composition Playlist:
+  it gets `ST2067-2/NotImfCompositionPlaylist` (Error) naming the namespace,
+  and no ST 2067-3, Core Constraints or application rules.
 - **ST 2067-201, CPL with IAB** (`--iab-spec` / `iabSpec`): every edition
   (2019, 2021, 2026) uses the 2019 namespace and nothing in a CPL tells them
   apart, so the newest is applied and announced. The track files its IAB

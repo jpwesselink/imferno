@@ -82,6 +82,9 @@ pub trait ValidatorRegistry {
 
     /// Resolve all applicable validators for a CPL.
     fn resolve_for_cpl(&self, cpl: &CompositionPlaylist) -> Vec<Box<dyn ConstraintsValidator>> {
+        if is_not_imf_cpl(cpl) {
+            return vec![Box::new(NotImfCpl { core_pin: None })];
+        }
         let mut validators: Vec<Box<dyn ConstraintsValidator>> = Vec::new();
 
         if let Some(core) = cpl_core_edition(cpl) {
@@ -150,6 +153,73 @@ fn push_application_validators(
             unrecognised,
             not_app_profile,
         }));
+    }
+}
+
+/// Whether a CPL is outside IMF: its namespace is not an ST 2067-3
+/// namespace (a D-Cinema ST 429-7 CPL, or an unknown namespace).
+fn is_not_imf_cpl(cpl: &CompositionPlaylist) -> bool {
+    matches!(
+        cpl.namespace,
+        crate::cpl::CplNamespace::Dci429_7 | crate::cpl::CplNamespace::Unknown(_)
+    )
+}
+
+/// Reports `ST2067-2/NotImfCompositionPlaylist` for a CPL outside IMF (the
+/// only validator such a CPL gets), against the pinned ST 2067-2 edition,
+/// else the newest, announced.
+struct NotImfCpl {
+    core_pin: Option<St2067_2Edition>,
+}
+
+impl ConstraintsValidator for NotImfCpl {
+    fn spec_id(&self) -> &str {
+        "imferno IMF CPL check"
+    }
+
+    fn validate_cpl(&self, cpl: &CompositionPlaylist) -> Vec<ValidationIssue> {
+        let choice = match self.core_pin {
+            Some(edition) => EditionChoice {
+                edition,
+                assumed: None,
+            },
+            None => resolve_edition(
+                &format!("CPL {}", cpl.id),
+                &format!("its namespace {}", cpl.namespace),
+                &[],
+                &[],
+            ),
+        };
+        let seen = match &cpl.namespace {
+            crate::cpl::CplNamespace::Dci429_7 => format!(
+                "the D-Cinema ST 429-7 Composition Playlist namespace {}",
+                cpl.namespace
+            ),
+            crate::cpl::CplNamespace::Unknown(ns) if ns.is_empty() => "no namespace".into(),
+            ns => format!("the namespace {ns}, which is not an ST 2067-3 namespace"),
+        };
+        let loc = Location::new().with_cpl(cpl.id);
+        let mut out: Vec<ValidationIssue> = choice
+            .assumed
+            .into_iter()
+            .map(|n| {
+                ValidationIssue::from_rule(&imferno::EditionAssumed, ImfernoEdition::Current, n)
+                    .with_location(loc.clone())
+            })
+            .collect();
+        out.push(
+            ValidationIssue::from_rule(
+                &st2067_2::NotImfCompositionPlaylist,
+                choice.edition,
+                format!(
+                    "CPL {} is not an IMF Composition Playlist: it has {seen}. No ST 2067-3, \
+                     Core Constraints or application rules were applied to it",
+                    cpl.id
+                ),
+            )
+            .with_location(loc),
+        );
+        out
     }
 }
 
@@ -667,6 +737,9 @@ impl ValidatorRegistry for ConfigurableValidatorRegistry {
                 .and_then(CoreSpecTarget::from_namespace_uri)
                 .map(|t| t.edition())
         });
+        if is_not_imf_cpl(cpl) {
+            return vec![Box::new(NotImfCpl { core_pin })];
+        }
         let mut notices = Vec::new();
         let cpl_ed = match pinned_cpl {
             Some(e) => e,
@@ -3048,18 +3121,41 @@ mod tests {
     }
 
     #[test]
-    fn get_validators_for_cpl_returns_empty_for_dci_legacy_namespace() {
-        // DCI-era CPLs (ST 429-7:2006) have no matching core validator.
-        let mut cpl = minimal_cpl();
-        cpl.namespace = CplNamespace::Dci429_7;
-        let validators = get_validators_for_cpl(&cpl);
-        // Only the "no application profile validated" notice (photon#407).
-        let ids: Vec<_> = validators.iter().map(|v| v.spec_id()).collect();
-        assert_eq!(
-            ids,
-            vec!["imferno application-profile dispatch"],
-            "DCI namespace should yield no core validator"
-        );
+    fn non_imf_cpl_namespaces_are_bounced_without_other_rules() {
+        // A DCI (ST 429-7) or unknown-namespace CPL is not an IMF CPL: one
+        // finding, and no ST 2067-3, Core Constraints or application rules,
+        // also when the core edition is pinned.
+        for (ns, needle) in [
+            (CplNamespace::Dci429_7, "D-Cinema ST 429-7"),
+            (CplNamespace::Unknown("urn:example".into()), "urn:example"),
+        ] {
+            let mut cpl = minimal_cpl();
+            cpl.namespace = ns;
+            cpl.content_title.text = String::new(); // would be ContentTitleEmpty
+            let pinned = ConfigurableValidatorRegistry::new(ValidatorSelection {
+                core_spec: Some(CoreSpecTarget::St2067_2_2016),
+                ..Default::default()
+            });
+            for issues in [
+                validate_cpl(&cpl),
+                validate_cpl_with_registry(&cpl, &pinned),
+            ] {
+                let bounce: Vec<_> = issues
+                    .iter()
+                    .filter(|i| i.is(&st2067_2::NotImfCompositionPlaylist))
+                    .collect();
+                assert_eq!(bounce.len(), 1, "{issues:#?}");
+                assert_eq!(bounce[0].severity, crate::diagnostics::Severity::Error);
+                assert!(bounce[0].message.contains(needle), "{}", bounce[0].message);
+                assert!(
+                    issues
+                        .iter()
+                        .all(|i| i.is(&st2067_2::NotImfCompositionPlaylist)
+                            || i.is(&imferno::EditionAssumed)),
+                    "{issues:#?}"
+                );
+            }
+        }
     }
 
     #[test]

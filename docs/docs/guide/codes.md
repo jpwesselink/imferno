@@ -164,71 +164,71 @@ Unmarked rows are carried over from earlier catalogues and not yet checked.
 
 | Rule | Description | Category | 2014 | 2016 | 2020 | 2023 | 2026 |
 |------|-------------|----------|------|------|------|------|------|
-| `ST2067-21/ColorSystem` | Color system designator is not in the permitted set. | Video | 6.1 error | 6.1 error | 6.2 error | 6.2 error | 7.2 error |
-| `ST2067-21/BlackRefLevel` | BlackRefLevel value is inconsistent with ComponentDepth. | Video | 6.1.4 error | 6.3 error | 6.4.3 error | 6.4.3 error | 7.4.3 error |
-| `ST2067-21/WhiteRefLevel` | WhiteRefLevel value is inconsistent with ComponentDepth. | Video | 6.1.4 error | 6.3 error | 6.4.3 error | 6.4.3 error | 7.4.3 error |
-| `ST2067-21/ColorRange` | ColorRange value is not in the permitted set. | Video | 6.1.4 error | 6.3 error | 6.4.3 error | 6.4.3 error | 7.4.3 error |
-| `ST2067-21/ApplicationIdentification` | ApplicationIdentification is required for App2E compositions. | Metadata | 7 error | 7.1 error | 7.1 error | 7.1 error | 8.1 error |
-| `ST2067-21/AppIdMismatch` | ApplicationIdentification in CPL ExtensionProperties does not include the expected App2E URI. | Metadata | 7 warning | 7.1 warning | 7.1 warning | 7.1 warning | 8.1 warning |
-| `ST2067-21/ComponentRefValues` | Component max/min reference values are inconsistent with bit depth. | Video | — | 6.2 error | 6.3.2 error | 6.3.2 error | 7.3.2 error |
-| `ST2067-21/MaxCLLMaxFALL` | MaxCLL / MaxFALL HDR metadata is absent; recommended for HDR content. | Video | — | 7.2 info | 7.5 info | 7.5 info | 8.3.3 info |
-| `ST2067-21/FrameRate` | Frame rate is not in the permitted set for App2E. | Video | — | — | 5.2 error | 5.2 error | 6.2.1 error |
-| `ST2067-21/Resolution` | Image resolution is not in the permitted set for App2E. | Video | — | — | 5.2 error | 5.2 error | 6.2.1 error |
-| `ST2067-21/RequiredStoredWidth` | RGBA/CDCI descriptor is missing the required StoredWidth field. | Encoding | — | — | 6.2 error | 6.2 error | 7.2.1.1 error |
-| `ST2067-21/RequiredStoredHeight` | RGBA/CDCI descriptor is missing the required StoredHeight field. | Encoding | — | — | 6.2 error | 6.2 error | 7.2.1.1 error |
-| `ST2067-21/RequiredSampleRate` | RGBA/CDCI descriptor is missing the required SampleRate field. | Encoding | — | — | 6.2 error | 6.2 error | 7.2.1.1 error |
-| `ST2067-21/RequiredFrameLayout` | RGBA/CDCI descriptor is missing the required FrameLayout field. | Encoding | — | — | 6.2 error | 6.2 error | 7.2.1.1 error |
-| `ST2067-21/RequiredColorPrimaries` | RGBA/CDCI descriptor is missing the required ColorPrimaries field. | Encoding | — | — | 6.2 error | 6.2 error | 7.2.1.1 error |
-| `ST2067-21/RequiredTransferCharacteristic` | RGBA/CDCI descriptor is missing the required TransferCharacteristic field. | Encoding | — | — | 6.2 error | 6.2 error | 7.2.1.1 error |
-| `ST2067-21/RequiredPictureCompression` | RGBA/CDCI descriptor is missing the required PictureCompression field. | Encoding | — | — | 6.2 error | 6.2 error | 7.2.1.1 error |
-| `ST2067-21/RequiredComponentDepth` | CDCI descriptor is missing the required ComponentDepth field. | Encoding | — | — | 6.2† error | 6.2† error | 7.4.1 error |
-| `ST2067-21/AlphaTransparency` | Alpha transparency mode is not permitted in App2E. | Video | — | — | 6.2.1 error | 6.2.1 error | — |
-| `ST2067-21/CodingEquationsMissing` | CodingEquations field is absent from the picture descriptor. | Video | — | — | 6.2.1 error | 6.2.1 error | 7.2.1.1 error |
-| `ST2067-21/ColorPrimariesMissing` | ColorPrimaries field is absent from the picture descriptor. | Video | — | — | 6.2.1 error | 6.2.1 error | 7.2.1.1 error |
-| `ST2067-21/FieldDominance` | FieldDominance value is not permitted for the declared FrameLayout. | Video | — | — | 6.2.1 error | 6.2.1 error | 7.2.1.1 error |
-| `ST2067-21/FrameLayout` | FrameLayout value is not in the permitted set for App2E. | Video | — | — | 6.2.1 error | 6.2.1 error | 7.2.1.4 error |
-| `ST2067-21/FrameLayoutInterlaced` | Image frame structure (progressive or interlaced) does not fit the closest permitted column of the edition's image-characteristics table. | Video | — | — | 6.2.1† error | 6.2.1† error | 6.2.1 error |
-| `ST2067-21/ImageAlignmentOffset` | ImageAlignmentOffset must be zero. | Video | — | — | 6.2.1 error | 6.2.1 error | 7.2.1.1 error |
-| `ST2067-21/ImageEndOffset` | ImageEndOffset must be zero. | Video | — | — | 6.2.1 error | 6.2.1 error | 7.2.1.1 error |
-| `ST2067-21/ImageStartOffset` | ImageStartOffset must be zero. | Video | — | — | 6.2.1 error | 6.2.1 error | 7.2.1.1 error |
-| `ST2067-21/SampledHeight` | SampledHeight must equal StoredHeight. | Video | — | — | 6.2.1 error | 6.2.1 error | 7.2.1.1 error |
-| `ST2067-21/SampledWidth` | SampledWidth must equal StoredWidth. | Video | — | — | 6.2.1 error | 6.2.1 error | 7.2.1.1 error |
-| `ST2067-21/SampledXOffset` | SampledXOffset must be zero. | Video | — | — | 6.2.1 error | 6.2.1 error | 7.2.1.1 error |
-| `ST2067-21/SampledYOffset` | SampledYOffset must be zero. | Video | — | — | 6.2.1 error | 6.2.1 error | 7.2.1.1 error |
-| `ST2067-21/StoredF2Offset` | StoredF2Offset must be zero. | Video | — | — | 6.2.1 error | 6.2.1 error | 7.2.1.1 error |
-| `ST2067-21/TransferCharacteristicMissing` | TransferCharacteristic field is absent from the picture descriptor. | Video | — | — | 6.2.1 error | 6.2.1 error | 7.2.1.1 error |
-| `ST2067-21/TransferCharacteristicUnknown` | TransferCharacteristic UL is present but not a recognized value. | Video | — | — | 6.2.2 error | 6.2.2 error | 7.2.2 error |
-| `ST2067-21/CodingEquationsUnknown` | CodingEquations UL is present but not a recognized value. | Video | — | — | 6.2.3 error | 6.2.3 error | 7.2.3 error |
-| `ST2067-21/ColorPrimariesUnknown` | ColorPrimaries UL is present but not a recognized value. | Video | — | — | 6.2.4 error | 6.2.4 error | 7.2.4 error |
-| `ST2067-21/J2KRequired` | Video essence is not JPEG 2000 encoded as required by App2E. | Encoding | — | — | 6.2.5 error | 6.2.5 error | 7.2.5 error |
-| `ST2067-21/AlphaMaxRef` | AlphaMaxRef value is not permitted. | Video | — | — | 6.3 error | 6.3 error | 7.3.1 error |
-| `ST2067-21/AlphaMinRef` | AlphaMinRef value is not permitted. | Video | — | — | 6.3 error | 6.3 error | 7.3.1 error |
-| `ST2067-21/ComponentMaxRef` | ComponentMaxRef value is not in the permitted range. | Video | — | — | 6.3 error | 6.3 error | 7.3.1 error |
-| `ST2067-21/ComponentMinRef` | ComponentMinRef value is not in the permitted range. | Video | — | — | 6.3 error | 6.3 error | 7.3.1 error |
-| `ST2067-21/Palette` | Palette is present; palette images are not permitted in App2E. | Video | — | — | 6.3 error | 6.3 error | 7.3.1 error |
-| `ST2067-21/PaletteLayout` | PaletteLayout is present; palette layout is not permitted in App2E. | Video | — | — | 6.3 error | 6.3 error | 7.3.1 error |
-| `ST2067-21/ScanningDirection` | ScanningDirection value is not in the permitted set. | Video | — | — | 6.3 error | 6.3 error | 7.3.1 error |
-| `ST2067-21/AlphaSampleDepth` | AlphaSampleDepth value is not permitted. | Video | — | — | 6.4 error | 6.4 error | 7.4.1 error |
-| `ST2067-21/ColorSiting` | ColorSiting value is not in the permitted set. | Video | — | — | 6.4 error | 6.4 error | 7.4.1 error |
-| `ST2067-21/ComponentDepth` | ComponentDepth is missing, or the pixel bit depth is not permitted for the image characteristics. | Video | — | — | 6.4 error | 6.4 error | 7.4.1 error |
-| `ST2067-21/HorizontalSubsampling` | HorizontalSubsampling value is not in the permitted set. | Video | — | — | 6.4 error | 6.4 error | 7.4.2 error |
-| `ST2067-21/PaddingBits` | PaddingBits must be zero. | Video | — | — | 6.4 error | 6.4 error | 7.4.1 error |
-| `ST2067-21/ReversedByteOrder` | ReversedByteOrder flag is set; byte reversal is not permitted. | Video | — | — | 6.4 error | 6.4 error | 7.4.1 error |
-| `ST2067-21/VerticalSubsampling` | VerticalSubsampling value is not in the permitted set. | Video | — | — | 6.4 error | 6.4 error | 7.4.1 error |
-| `ST2067-21/CodingStyle` | JPEG 2000 codestream coding style is not compliant. | Encoding | — | — | 6.5.2† error | 6.5.2† error | 7.5.1 error |
-| `ST2067-21/J2CLayout` | JPEG 2000 codestream layout does not meet App2E requirements. | Encoding | — | — | 6.5.2† error | 6.5.2† error | 7.5.2 error |
-| `ST2067-21/Jpeg2000SubDescriptor` | JPEG2000SubDescriptor is absent or incomplete. | Encoding | — | — | 6.5.2† warning | 6.5.2† warning | 7.5.1 warning |
-| `ST2067-21/J2KHtNotAllowed` | JPEG 2000 HT (ISO 15444-15) is not permitted by App2E 2020. | Encoding | — | — | 6.2.5 error | — | — |
-| `ST2067-21/J2K4KResolution` | JPEG 2000 IMF 4K Profile: stored resolution is outside the permitted range. | Encoding | — | — | 6.2.5 error | 6.2.5 error | 7.2.5 error |
-| `ST2067-21/J2K2KResolution` | JPEG 2000 IMF 2K Profile: stored resolution is outside the permitted range. | Encoding | — | — | 6.2.5 error | 6.2.5 error | 7.2.5 error |
-| `ST2067-21/J2KBcpResolution` | JPEG 2000 Broadcast Contribution Profile: stored resolution is outside the permitted range. | Encoding | — | — | 6.2.5 error | 6.2.5 error | 7.2.5 error |
-| `ST2067-21/J2KProfileNotAllowed` | The JPEG 2000 profile is not listed in the edition's JPEG 2000 profile table. | Encoding | — | — | 6.2.5 error | 6.2.5 error | — |
-| `ST2067-21/HomogeneousImageEssence` | All image essence in a composition shall use the same color system. | Video | — | — | 7.2 error | 7.2 error | 8.2 error |
-| `ST2067-21/SegmentDurationMultiple` | Segment duration must be an integer multiple of 5 edit units. | Timing | — | — | 7.4 error | 7.4 error | 8.3.2 error |
-| `ST2067-21/J2KExtendedCapabilities` | J2KExtendedCapabilities shall be present when ISO/IEC 15444-15 (HTJ2K) coding is used, but it is missing. | Encoding | — | — | — | 6.5.2† error | 7.5.1 error |
-| `ST2067-21/HtIrvParameterBMax` | HTJ2K irreversible (APP2.HT.IRV) codestream: the MAGB_P set signalled in Ccap15 allows parameter B above 31. APP2.HT.REV is not checked: Table H.1 gives its B as a value calculated per Table H.2, not a limit (SMPTE st2067-21 issue 7, open for REV). | Encoding | — | — | — | — | H error |
-| `ST2067-21/HtIrvParameterBRecommended` | HTJ2K irreversible (APP2.HT.IRV) codestream: the MAGB_P set signalled in Ccap15 allows parameter B above the recommended value for its bit depth and multiple component transform. | Encoding | — | — | — | — | H warning |
-| `ST2067-21/J2K8KResolution` | JPEG 2000 IMF 8K Profile: stored resolution is outside the permitted range. | Encoding | — | — | — | — | 7.2.5 error |
+| `ST2067-21/ColorSystem` | Color system designator is not in the permitted set. | Video | 6.1✓ error | 6.1✓ error | 6.2✓ error | 6.2✓ error | 7.2✓ error |
+| `ST2067-21/BlackRefLevel` | BlackRefLevel value is inconsistent with ComponentDepth. | Video | 6.1.4✓ error | 6.3✓ error | 6.4.3✓ error | 6.4.3✓ error | 7.4.3✓ error |
+| `ST2067-21/WhiteRefLevel` | WhiteRefLevel value is inconsistent with ComponentDepth. | Video | 6.1.4✓ error | 6.3✓ error | 6.4.3✓ error | 6.4.3✓ error | 7.4.3✓ error |
+| `ST2067-21/ColorRange` | ColorRange value is not in the permitted set. | Video | 6.1.4✓ error | 6.3✓ error | 6.4.3✓ error | 6.4.3✓ error | 7.4.3✓ error |
+| `ST2067-21/ApplicationIdentification` | ApplicationIdentification is required for App2E compositions. | Metadata | 7✓ error | 7.1✓ error | 7.1✓ error | 7.1✓ error | 8.1✓ error |
+| `ST2067-21/AppIdMismatch` | ApplicationIdentification in CPL ExtensionProperties does not include the expected App2E URI. | Metadata | 7✓ warning | 7.1✓ warning | 7.1✓ warning | 7.1✓ warning | 8.1✓ warning |
+| `ST2067-21/ComponentRefValues` | Component max/min reference values are inconsistent with bit depth. | Video | —✓ | 6.2✓ error | 6.3.2✓ error | 6.3.2✓ error | 7.3.2✓ error |
+| `ST2067-21/MaxCLLMaxFALL` | MaxCLL / MaxFALL HDR metadata is absent; recommended for HDR content. | Video | —✓ | 7.2✓ info | 7.5✓ info | 7.5✓ info | 8.3.3✓ info |
+| `ST2067-21/FrameRate` | Frame rate is not in the permitted set for App2E. | Video | —✓ | —✓ | 5.2✓ error | 5.2✓ error | 6.2.1✓ error |
+| `ST2067-21/Resolution` | Image resolution is not in the permitted set for App2E. | Video | —✓ | —✓ | 5.2✓ error | 5.2✓ error | 6.2.1✓ error |
+| `ST2067-21/RequiredStoredWidth` | RGBA/CDCI descriptor is missing the required StoredWidth field. | Encoding | —✓ | —✓ | 6.2.1.1✓ error | 6.2.1.1✓ error | 7.2.1.2✓ error |
+| `ST2067-21/RequiredStoredHeight` | RGBA/CDCI descriptor is missing the required StoredHeight field. | Encoding | —✓ | —✓ | 6.2.1.1✓ error | 6.2.1.1✓ error | 7.2.1.2✓ error |
+| `ST2067-21/RequiredSampleRate` | RGBA/CDCI descriptor is missing the required SampleRate field. | Encoding | —✓ | —✓ | 6.2.1✓ error | 6.2.1✓ error | 7.2.1.1✓ error |
+| `ST2067-21/RequiredFrameLayout` | RGBA/CDCI descriptor is missing the required FrameLayout field. | Encoding | —✓ | —✓ | 6.2.1.3✓ error | 6.2.1.3✓ error | 7.2.1.4✓ error |
+| `ST2067-21/RequiredColorPrimaries` | RGBA/CDCI descriptor is missing the required ColorPrimaries field. | Encoding | —✓ | —✓ | 6.2.1✓ error | 6.2.1✓ error | 7.2.1.1✓ error |
+| `ST2067-21/RequiredTransferCharacteristic` | RGBA/CDCI descriptor is missing the required TransferCharacteristic field. | Encoding | —✓ | —✓ | 6.2.1✓ error | 6.2.1✓ error | 7.2.1.1✓ error |
+| `ST2067-21/RequiredPictureCompression` | RGBA/CDCI descriptor is missing the required PictureCompression field. | Encoding | —✓ | —✓ | 6.2.1✓ error | 6.2.1✓ error | 7.2.1.1✓ error |
+| `ST2067-21/RequiredComponentDepth` | CDCI descriptor is missing the required ComponentDepth field. | Encoding | —✓ | —✓ | 6.4.1✓ error | 6.4.1✓ error | 7.4.1✓ error |
+| `ST2067-21/AlphaTransparency` | Alpha transparency mode is not permitted in App2E. | Video | —✓ | —✓ | 6.2.1✓ error | 6.2.1✓ error | —✓ |
+| `ST2067-21/CodingEquationsMissing` | CodingEquations field is absent from the picture descriptor. | Video | —✓ | —✓ | 6.2.1✓ error | 6.2.1✓ error | 7.2.1.1✓ error |
+| `ST2067-21/ColorPrimariesMissing` | ColorPrimaries field is absent from the picture descriptor. | Video | —✓ | —✓ | 6.2.1✓ error | 6.2.1✓ error | 7.2.1.1✓ error |
+| `ST2067-21/FieldDominance` | FieldDominance value is not permitted for the declared FrameLayout. | Video | —✓ | —✓ | 6.2.1✓ error | 6.2.1✓ error | 7.2.1.1✓ error |
+| `ST2067-21/FrameLayout` | FrameLayout value is not in the permitted set for App2E. | Video | —✓ | —✓ | 6.2.1.3✓ error | 6.2.1.3✓ error | 7.2.1.4✓ error |
+| `ST2067-21/FrameLayoutInterlaced` | Image frame structure (progressive or interlaced) does not fit the closest permitted column of the edition's image-characteristics table. | Video | —✓ | —✓ | 5.2✓ error | 5.2✓ error | 6.2.1✓ error |
+| `ST2067-21/ImageAlignmentOffset` | ImageAlignmentOffset must be zero. | Video | —✓ | —✓ | 6.2.1✓ error | 6.2.1✓ error | 7.2.1.1✓ error |
+| `ST2067-21/ImageEndOffset` | ImageEndOffset must be zero. | Video | —✓ | —✓ | 6.2.1✓ error | 6.2.1✓ error | 7.2.1.1✓ error |
+| `ST2067-21/ImageStartOffset` | ImageStartOffset must be zero. | Video | —✓ | —✓ | 6.2.1✓ error | 6.2.1✓ error | 7.2.1.1✓ error |
+| `ST2067-21/SampledHeight` | SampledHeight must equal StoredHeight. | Video | —✓ | —✓ | 6.2.1✓ error | 6.2.1✓ error | 7.2.1.1✓ error |
+| `ST2067-21/SampledWidth` | SampledWidth must equal StoredWidth. | Video | —✓ | —✓ | 6.2.1✓ error | 6.2.1✓ error | 7.2.1.1✓ error |
+| `ST2067-21/SampledXOffset` | SampledXOffset must be zero. | Video | —✓ | —✓ | 6.2.1✓ error | 6.2.1✓ error | 7.2.1.1✓ error |
+| `ST2067-21/SampledYOffset` | SampledYOffset must be zero. | Video | —✓ | —✓ | 6.2.1✓ error | 6.2.1✓ error | 7.2.1.1✓ error |
+| `ST2067-21/StoredF2Offset` | StoredF2Offset must be zero. | Video | —✓ | —✓ | 6.2.1✓ error | 6.2.1✓ error | 7.2.1.1✓ error |
+| `ST2067-21/TransferCharacteristicMissing` | TransferCharacteristic field is absent from the picture descriptor. | Video | —✓ | —✓ | 6.2.1✓ error | 6.2.1✓ error | 7.2.1.1✓ error |
+| `ST2067-21/TransferCharacteristicUnknown` | TransferCharacteristic UL is present but not a recognized value. | Video | — | — | 6.2.2✓ error | 6.2.2✓ error | 7.2.2✓ error |
+| `ST2067-21/CodingEquationsUnknown` | CodingEquations UL is present but not a recognized value. | Video | — | — | 6.2.3✓ error | 6.2.3✓ error | 7.2.3✓ error |
+| `ST2067-21/ColorPrimariesUnknown` | ColorPrimaries UL is present but not a recognized value. | Video | — | — | 6.2.4✓ error | 6.2.4✓ error | 7.2.4✓ error |
+| `ST2067-21/J2KRequired` | Video essence is not JPEG 2000 encoded as required by App2E. | Encoding | —✓ | — | 6.2.5✓ error | 6.2.5✓ error | 7.2.5✓ error |
+| `ST2067-21/AlphaMaxRef` | AlphaMaxRef value is not permitted. | Video | —✓ | —✓ | 6.3.1✓ error | 6.3.1✓ error | 7.3.1✓ error |
+| `ST2067-21/AlphaMinRef` | AlphaMinRef value is not permitted. | Video | —✓ | —✓ | 6.3.1✓ error | 6.3.1✓ error | 7.3.1✓ error |
+| `ST2067-21/ComponentMaxRef` | ComponentMaxRef value is not in the permitted range. | Video | —✓ | —✓ | 6.3.1✓ error | 6.3.1✓ error | 7.3.1✓ error |
+| `ST2067-21/ComponentMinRef` | ComponentMinRef value is not in the permitted range. | Video | —✓ | —✓ | 6.3.1✓ error | 6.3.1✓ error | 7.3.1✓ error |
+| `ST2067-21/Palette` | Palette is present; palette images are not permitted in App2E. | Video | —✓ | —✓ | 6.3.1✓ error | 6.3.1✓ error | 7.3.1✓ error |
+| `ST2067-21/PaletteLayout` | PaletteLayout is present; palette layout is not permitted in App2E. | Video | —✓ | —✓ | 6.3.1✓ error | 6.3.1✓ error | 7.3.1✓ error |
+| `ST2067-21/ScanningDirection` | ScanningDirection value is not in the permitted set. | Video | —✓ | —✓ | 6.3.1✓ error | 6.3.1✓ error | 7.3.1✓ error |
+| `ST2067-21/AlphaSampleDepth` | AlphaSampleDepth value is not permitted. | Video | —✓ | —✓ | 6.4.1✓ error | 6.4.1✓ error | 7.4.1✓ error |
+| `ST2067-21/ColorSiting` | ColorSiting value is not in the permitted set. | Video | —✓ | —✓ | 6.4.1✓ error | 6.4.1✓ error | 7.4.1✓ error |
+| `ST2067-21/ComponentDepth` | ComponentDepth is missing, or the pixel bit depth is not permitted for the image characteristics. | Video | —✓ | —✓ | 6.4.1✓ error | 6.4.1✓ error | 7.4.1✓ error |
+| `ST2067-21/HorizontalSubsampling` | HorizontalSubsampling value is not in the permitted set. | Video | —✓ | —✓ | 6.4.2✓ error | 6.4.2✓ error | 7.4.2✓ error |
+| `ST2067-21/PaddingBits` | PaddingBits must be zero. | Video | —✓ | —✓ | 6.4.1✓ error | 6.4.1✓ error | 7.4.1✓ error |
+| `ST2067-21/ReversedByteOrder` | ReversedByteOrder flag is set; byte reversal is not permitted. | Video | —✓ | —✓ | 6.4.1✓ error | 6.4.1✓ error | 7.4.1✓ error |
+| `ST2067-21/VerticalSubsampling` | VerticalSubsampling value is not in the permitted set. | Video | —✓ | —✓ | 6.4.1✓ error | 6.4.1✓ error | 7.4.1✓ error |
+| `ST2067-21/CodingStyle` | JPEG 2000 codestream coding style is not compliant. | Encoding | —✓ | —✓ | 6.5.1✓ error | 6.5.1✓ error | 7.5.1✓ error |
+| `ST2067-21/J2CLayout` | JPEG 2000 codestream layout does not meet App2E requirements. | Encoding | —✓ | —✓ | 6.5.1✓ error | 6.5.1✓ error | 7.5.1✓ error |
+| `ST2067-21/Jpeg2000SubDescriptor` | JPEG2000SubDescriptor is absent or incomplete. | Encoding | —✓ | —✓ | 6.5.1✓ warning | 6.5.1✓ warning | 7.5.1✓ warning |
+| `ST2067-21/J2KHtNotAllowed` | JPEG 2000 HT (ISO 15444-15) is not permitted by App2E 2020. | Encoding | —✓ | — | 5.5.2✓ error | —✓ | —✓ |
+| `ST2067-21/J2K4KResolution` | JPEG 2000 IMF 4K Profile: stored resolution is outside the permitted range. | Encoding | —✓ | — | 5.5.2✓ error | 5.5.2✓ error | 6.5.2✓ error |
+| `ST2067-21/J2K2KResolution` | JPEG 2000 IMF 2K Profile: stored resolution is outside the permitted range. | Encoding | —✓ | — | 5.5.2✓ error | 5.5.2✓ error | 6.5.2✓ error |
+| `ST2067-21/J2KBcpResolution` | JPEG 2000 Broadcast Contribution Profile: stored resolution is outside the permitted range. | Encoding | —✓ | — | 5.5.2✓ error | 5.5.2✓ error | 6.5.2✓ error |
+| `ST2067-21/J2KProfileNotAllowed` | The JPEG 2000 profile is not listed in the edition's JPEG 2000 profile table. | Encoding | —✓ | — | 5.5.2✓ error | 5.5.2✓ error | —✓ |
+| `ST2067-21/HomogeneousImageEssence` | All image essence in a composition shall use the same color system. | Video | —✓ | —✓ | 7.2✓ error | 7.2✓ error | 8.2✓ error |
+| `ST2067-21/SegmentDurationMultiple` | Segment duration must be an integer multiple of 5 edit units. | Timing | —✓ | —✓ | 7.4✓ error | 7.4✓ error | 8.3.2✓ error |
+| `ST2067-21/J2KExtendedCapabilities` | J2KExtendedCapabilities shall be present when ISO/IEC 15444-15 (HTJ2K) coding is used, but it is missing. | Encoding | —✓ | —✓ | —✓ | 6.5.1✓ error | 7.5.1✓ error |
+| `ST2067-21/HtIrvParameterBMax` | HTJ2K irreversible (APP2.HT.IRV) codestream: the MAGB_P set signalled in Ccap15 allows parameter B above 31. APP2.HT.REV is not checked: Table H.1 gives its B as a value calculated per Table H.2, not a limit (SMPTE st2067-21 issue 7, open for REV). | Encoding | —✓ | —✓ | —✓ | —✓ | H✓ error |
+| `ST2067-21/HtIrvParameterBRecommended` | HTJ2K irreversible (APP2.HT.IRV) codestream: the MAGB_P set signalled in Ccap15 allows parameter B above the recommended value for its bit depth and multiple component transform. | Encoding | —✓ | —✓ | —✓ | —✓ | H✓ warning |
+| `ST2067-21/J2K8KResolution` | JPEG 2000 IMF 8K Profile: stored resolution is outside the permitted range. | Encoding | —✓ | —✓ | —✓ | —✓ | 6.5.2✓ error |
 
 ## SMPTE ST 2067-201 — IAB Level 0 Plug-in
 

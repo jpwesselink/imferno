@@ -3076,7 +3076,7 @@ mod tests {
         let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| mentions(i, "6.4/ComponentDepth")),
+            issues.iter().any(|i| mentions(i, "6.4.1/ComponentDepth")),
             "Should flag invalid bit depth"
         );
     }
@@ -3562,7 +3562,7 @@ mod tests {
         let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| mentions(i, "6.5.2/CodingStyle")),
+            issues.iter().any(|i| mentions(i, "6.5.1/CodingStyle")),
             "Should flag missing CodingStyleDefault: {:#?}",
             issues
         );
@@ -3658,7 +3658,7 @@ mod tests {
         let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| mentions(i, "6.5.2/J2CLayout")),
+            issues.iter().any(|i| mentions(i, "6.5.1/J2CLayout")),
             "Should flag missing J2CLayout: {:#?}",
             issues
         );
@@ -3759,7 +3759,7 @@ mod tests {
         assert!(
             issues
                 .iter()
-                .any(|i| mentions(i, "6.5.2/J2KExtendedCapabilities")),
+                .any(|i| mentions(i, "6.5.1/J2KExtendedCapabilities")),
             "Should flag missing J2KExtendedCapabilities for HTJ2K: {:#?}",
             issues
         );
@@ -3774,7 +3774,7 @@ mod tests {
 
         assert!(
             issues.iter().any(|i| {
-                i.code.contains("6.5.2/Jpeg2000SubDescriptor") && i.severity == Severity::Warning
+                i.code.contains("6.5.1/Jpeg2000SubDescriptor") && i.severity == Severity::Warning
             }),
             "Should warn when JPEG2000SubDescriptor is missing: {:#?}",
             issues
@@ -7845,7 +7845,7 @@ mod tests {
         assert!(
             issues
                 .iter()
-                .any(|i| mentions(i, "6.4/HorizontalSubsampling")),
+                .any(|i| mentions(i, "6.4.2/HorizontalSubsampling")),
             "Should flag HorizontalSubsampling=3: {:#?}",
             issues,
         );
@@ -7872,7 +7872,7 @@ mod tests {
         assert!(
             issues
                 .iter()
-                .any(|i| mentions(i, "6.4/HorizontalSubsampling")),
+                .any(|i| mentions(i, "6.4.2/HorizontalSubsampling")),
             "Should flag missing HorizontalSubsampling: {:#?}",
             issues,
         );
@@ -7897,7 +7897,7 @@ mod tests {
         let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| mentions(i, "6.4/ColorSiting")),
+            issues.iter().any(|i| mentions(i, "6.4.1/ColorSiting")),
             "Should flag ColorSiting ≠ 0: {:#?}",
             issues,
         );
@@ -7922,7 +7922,7 @@ mod tests {
         let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| mentions(i, "6.4/ColorSiting")),
+            issues.iter().any(|i| mentions(i, "6.4.1/ColorSiting")),
             "Should flag missing ColorSiting: {:#?}",
             issues,
         );
@@ -7949,7 +7949,7 @@ mod tests {
         assert!(
             issues
                 .iter()
-                .any(|i| mentions(i, "6.4/VerticalSubsampling")),
+                .any(|i| mentions(i, "6.4.1/VerticalSubsampling")),
             "Should flag VerticalSubsampling ≠ 1: {:#?}",
             issues,
         );
@@ -7976,7 +7976,7 @@ mod tests {
         assert!(
             issues
                 .iter()
-                .any(|i| mentions(i, "6.4/VerticalSubsampling")),
+                .any(|i| mentions(i, "6.4.1/VerticalSubsampling")),
             "Should flag missing VerticalSubsampling: {:#?}",
             issues,
         );
@@ -8001,7 +8001,7 @@ mod tests {
         let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| mentions(i, "6.4/ComponentDepth")),
+            issues.iter().any(|i| mentions(i, "6.4.1/ComponentDepth")),
             "Should flag ComponentDepth=14: {:#?}",
             issues,
         );
@@ -8026,7 +8026,7 @@ mod tests {
         let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| mentions(i, "6.4/ComponentDepth")),
+            issues.iter().any(|i| mentions(i, "6.4.1/ComponentDepth")),
             "Should flag missing ComponentDepth: {:#?}",
             issues,
         );
@@ -8051,7 +8051,7 @@ mod tests {
         let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| mentions(i, "6.3/ComponentMaxRef")),
+            issues.iter().any(|i| mentions(i, "6.3.1/ComponentMaxRef")),
             "Should flag missing ComponentMaxRef: {:#?}",
             issues,
         );
@@ -8072,7 +8072,7 @@ mod tests {
         let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| mentions(i, "6.3/ComponentMinRef")),
+            issues.iter().any(|i| mentions(i, "6.3.1/ComponentMinRef")),
             "Should flag missing ComponentMinRef: {:#?}",
             issues,
         );
@@ -8093,7 +8093,9 @@ mod tests {
         let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| mentions(i, "6.3/ScanningDirection")),
+            issues
+                .iter()
+                .any(|i| mentions(i, "6.3.1/ScanningDirection")),
             "Should flag missing ScanningDirection: {:#?}",
             issues,
         );
@@ -8115,7 +8117,9 @@ mod tests {
         let v = App2E2023;
         let issues = v.validate_cpl(&cpl);
         assert!(
-            issues.iter().any(|i| mentions(i, "6.3/ScanningDirection")),
+            issues
+                .iter()
+                .any(|i| mentions(i, "6.3.1/ScanningDirection")),
             "Should flag wrong ScanningDirection: {:#?}",
             issues,
         );
@@ -8644,18 +8648,18 @@ mod tests {
             // COLOR.4 is 8/10 bit only.
             (
                 cdci_frame(3840, 2160, false, (24, 1), C4, 12, 2),
-                "6.4/ComponentDepth",
+                "6.4.1/ComponentDepth",
             ),
             // COLOR.5 has no 8-bit column.
             (
                 cdci_frame(3840, 2160, false, (24, 1), C5, 8, 2),
-                "6.4/ComponentDepth",
+                "6.4.1/ComponentDepth",
             ),
             // Progressive 4:2:2 with COLOR.1 (only COLOR.3 has a 4:2:2
             // progressive column among COLOR.1/2/3).
             (
                 cdci_frame(1920, 1080, false, (25, 1), C1, 10, 2),
-                "6.4/HorizontalSubsampling",
+                "6.4.2/HorizontalSubsampling",
             ),
             // 120 fps exists only for R'G'B'.
             (
@@ -8675,7 +8679,7 @@ mod tests {
             // Y'C'BC'R 4:4:4 exists only for COLOR.1/2/3 (1..1920 column).
             (
                 cdci_frame(1920, 1080, false, (24, 1), C5, 10, 1),
-                "6.4/HorizontalSubsampling",
+                "6.4.2/HorizontalSubsampling",
             ),
         ];
         for (cpl, suffix) in &cases {
@@ -8992,7 +8996,7 @@ mod tests {
             );
             assert_eq!(
                 j2k(App2E2023.validate_cpl(&cpl)),
-                vec!["ST2067-21:2023:6.2.5/J2KProfileNotAllowed".to_string()],
+                vec!["ST2067-21:2023:5.5.2/J2KProfileNotAllowed".to_string()],
                 "{ul}: no 8K profile in 2023 Table 6"
             );
 
@@ -9001,7 +9005,7 @@ mod tests {
             cdci_mut(&mut small).picture_compression = Some(VideoCodec::from_ul(ul));
             assert_eq!(
                 j2k(App2E2026.validate_cpl(&small)),
-                vec!["ST2067-21:2026:7.2.5/J2K8KResolution".to_string()],
+                vec!["ST2067-21:2026:6.5.2/J2K8KResolution".to_string()],
             );
         }
     }

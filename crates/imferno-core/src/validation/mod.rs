@@ -30,10 +30,12 @@
 //! - **ST 2067-202:2023** ISXD Plug-in (`AppIsxdPlugin2023`)
 
 mod app2e;
+mod edition;
 pub mod iab;
 pub mod isxd;
 
 pub use app2e::{App2E, App2E2014, App2E2016, App2E2020, App2E2023, App2E2026, App2EEdition};
+pub use edition::{application_identification_core_edition, declared_core_constraints_editions};
 pub use iab::{AppIabPlugin2019, AppIabPlugin2021, AppIabPlugin2026, URI_2019, URI_2019_SCHEMAS};
 pub use isxd::{AppIsxdPlugin2023, URI_2022};
 
@@ -376,18 +378,7 @@ impl std::str::FromStr for AppSpecTarget {
 pub fn declared_core_constraints_edition(
     cpl: &CompositionPlaylist,
 ) -> Option<crate::catalogue::st2067_2::St2067_2Edition> {
-    use crate::catalogue::st2067_2::St2067_2Edition;
-    let xml = cpl.source_xml.as_deref()?;
-    let declared: Vec<St2067_2Edition> = [
-        (CoreSpecTarget::St2067_2_2013, St2067_2Edition::V2013),
-        (CoreSpecTarget::St2067_2_2016, St2067_2Edition::V2016),
-        (CoreSpecTarget::St2067_2_2020, St2067_2Edition::V2020),
-    ]
-    .into_iter()
-    .filter(|(target, _)| xml.contains(&format!("\"{}\"", target.namespace_uri())))
-    .map(|(_, e)| e)
-    .collect();
-    match declared.as_slice() {
+    match edition::declared_core_constraints_editions(cpl).as_slice() {
         [one] => Some(*one),
         _ => None,
     }
@@ -450,42 +441,6 @@ fn app2e_references_core_2020(cpl: &CompositionPlaylist) -> bool {
     .any(|ed| {
         app2e::application_identification_includes(app_id, ed.application_identification_uri())
     })
-}
-
-/// The ST 2067-2 edition of the namespace of the CPL's
-/// `ApplicationIdentification` element (ST 2067-2 §6.1 defines the element in
-/// the Core Constraints namespace of its edition), or `None` when the element
-/// is absent, its namespace cannot be resolved, or it is not a Core
-/// Constraints namespace.
-pub fn application_identification_core_edition(
-    cpl: &CompositionPlaylist,
-) -> Option<crate::catalogue::st2067_2::St2067_2Edition> {
-    use crate::catalogue::st2067_2::St2067_2Edition;
-    let xml = cpl.source_xml.as_deref()?;
-    let re =
-        regex::Regex::new(r"<(?:([A-Za-z_][\w.-]*):)?ApplicationIdentification\b([^>]*)>").ok()?;
-    let caps = re.captures(xml)?;
-    let prefix = caps.get(1).map(|m| m.as_str());
-    let attr = match prefix {
-        Some(p) => format!("xmlns:{p}=\""),
-        None => "xmlns=\"".to_string(),
-    };
-    let uri_from = |text: &str| -> Option<String> {
-        let i = text.find(&attr)? + attr.len();
-        let j = text[i..].find('"')?;
-        Some(text[i..i + j].to_string())
-    };
-    // Declared on the element itself, else (prefixed) anywhere in the document.
-    let uri = uri_from(caps.get(2).map_or("", |m| m.as_str()))
-        .or_else(|| prefix.and_then(|_| uri_from(xml)))?;
-    [
-        (CoreSpecTarget::St2067_2_2013, St2067_2Edition::V2013),
-        (CoreSpecTarget::St2067_2_2016, St2067_2Edition::V2016),
-        (CoreSpecTarget::St2067_2_2020, St2067_2Edition::V2020),
-    ]
-    .into_iter()
-    .find(|(t, _)| t.namespace_uri() == uri)
-    .map(|(_, e)| e)
 }
 
 /// Parse a core spec string, handling `"auto"` as `None` (auto-detect).

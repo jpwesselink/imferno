@@ -3,8 +3,8 @@
 //!
 //! Four rules:
 //!
-//! - **§5.4 / ST 429-5** — Mapping Kind byte in the essence container
-//!   UL must be `0x13` (IMSC mapping).
+//! - **§5.4.2 / ST 429-5 Annex A Table A.1** — Mapping Kind byte in the
+//!   essence container UL must be `0x13` (Timed Text).
 //! - **§5.4** — `UCSEncoding` must be UTF-8.
 //! - **§5.4** — Timed-text `NamespaceURI` must be one of the IMSC1
 //!   profiles.
@@ -42,8 +42,8 @@ pub fn check_timed_text(
         return issues;
     }
 
-    // §5.4 / ST 429-5 §7 — timed-text essence container UL byte 14
-    // (Mapping Kind, 1-indexed; index 13) must be 0x13 for IMSC text.
+    // §5.4.2 / ST 429-5 Annex A Table A.1 — timed-text essence container
+    // UL byte 14 (Mapping Kind, 1-indexed; index 13) must be 0x13 (Timed Text).
     // The canonical ST 429-5 container UL is
     // 060e2b34.0401010a.0d010301.02130101: 0x13 sits at index 13 and
     // index 14 is 0x01 (AUDIT-7 — checking index 14 false-positived on

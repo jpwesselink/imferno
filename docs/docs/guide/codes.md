@@ -117,7 +117,7 @@ Unmarked rows are carried over from earlier catalogues and not yet checked.
 | `ST2067-2/TimedTextUCSEncodingNotUTF8` | TimedTextDescriptor UCSEncoding must be UTF-8. | Subtitle | 5.4.2✓ error | 4.3✓ error | 4.3✓ error |
 | `ST2067-2/TimedTextNamespaceNotIMSC` | TimedTextDescriptor NamespaceURI must be one of the IMSC1 profile namespaces. | Subtitle | —✓ | 5.4.2✓ error | 5.4.2✓ error |
 | `ST2067-2/TimedTextResourceMIMETypeUnsupported` | TimeTextResourceSubDescriptor MIMEType must be image/png, font/otf (2020) or application/x-font-opentype. | Subtitle | 5.4.5✓ error | 5.4.5✓ error | 5.4.5✓ error |
-| `ST2067-2/TimedTextMappingKindNot0x13` | Timed-text ContainerFormat UL Mapping Kind byte must be 0x13 (IMSC). | Container | 5.4.2✓ error | 5.4.2✓ error | 5.4.2✓ error |
+| `ST2067-2/TimedTextMappingKindNot0x13` | Timed-text Essence Container UL Mapping Kind byte (byte 14) must be 13h, Timed Text (ST 429-5 Annex A Table A.1). | Container | 5.4.2✓ error | 5.4.2✓ error | 5.4.2✓ error |
 | `ST2067-2/MainImageVirtualTrackCount` | A Composition shall contain exactly one Main Image Virtual Track. | Structure | 6.3.1✓ error | 6.3.1✓ error | 6.3.1✓ error |
 | `ST2067-2/AudioVirtualTrackMissing` | A Composition shall contain one or more Audio Virtual Tracks (ST 2067-2:2013 and 2016; 2020 allows zero). | Structure | 6.3.2✓ error | 6.3.2✓ error | —✓ |
 

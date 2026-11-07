@@ -654,14 +654,14 @@ pub static TimedTextResourceMIMETypeUnsupported: Rule<E> = Rule {
 pub static TimedTextMappingKindNot0x13: Rule<E> = Rule {
     name: "TimedTextMappingKindNot0x13",
     category: Category::Container,
-    description: "Timed-text ContainerFormat UL Mapping Kind byte must be 0x13 (IMSC).",
+    description: "Timed-text Essence Container UL Mapping Kind byte (byte 14) must be 13h, Timed Text (ST 429-5 Annex A Table A.1).",
     example: Some(
         "Timed-text ContainerFormat UL byte 14 (Mapping Kind) = 0x12 instead of 0x13 (IMSC)",
     ),
     editions: &[
-        checked(E::V2013, "5.4.2", Shall).interpret("5.4.2 requires Track Files to conform to SMPTE ST 429-5, whose Timed Text essence container UL carries mapping kind 0x13; the same sentence appears in every edition.", None),
-        checked(E::V2016, "5.4.2", Shall).interpret("5.4.2 requires Track Files to conform to SMPTE ST 429-5, whose Timed Text essence container UL carries mapping kind 0x13; the same sentence appears in every edition.", None),
-        checked(E::V2020, "5.4.2", Shall).interpret("5.4.2 requires Track Files to conform to SMPTE ST 429-5, whose Timed Text essence container UL carries mapping kind 0x13; the same sentence appears in every edition.", None),
+        checked(E::V2013, "5.4.2", Shall).interpret("5.4.2 requires Data Essence Track Files to conform to SMPTE ST 429-5 (normative reference: ST 429-5:2009), whose normative Annex A Table A.1 sets Mapping Kind 13h (Timed Text) in the essence container label. It applies to the SMPTE-TT track files of 2013 as well.", None),
+        checked(E::V2016, "5.4.2", Shall).interpret("5.4.2 requires Data Essence Track Files to conform to SMPTE ST 429-5 (normative reference: ST 429-5:2009), whose normative Annex A Table A.1 sets Mapping Kind 13h (Timed Text) in the essence container label.", None),
+        checked(E::V2020, "5.4.2", Shall).interpret("5.4.2 requires Timed Text Track Files to conform to SMPTE ST 429-5 (normative reference: ST 429-5:2017), whose normative Annex A Table A.1 sets Mapping Kind 13h (Timed Text) in the essence container label.", None),
     ],
 };
 

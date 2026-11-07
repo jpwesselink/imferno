@@ -26,10 +26,9 @@ export function buildReport(files, options) {
 }
 
 /**
- * Format a previously built `ImfReport` as a human-readable string.
+ * Format a validation result as a human-readable string.
  *
- * Pass the object returned by `buildReport()` (or any valid `ImfReport` JSON).
- * Returns the same output as `imferno report` on the CLI.
+ * Pass the object returned by `validate()`, or (legacy) by `buildReport()`.
  * @param {any} report
  * @returns {string}
  */
@@ -226,10 +225,6 @@ function __wbg_get_imports() {
         },
         __wbg_get_unchecked_e6325ad374eff861: function(arg0, arg1) {
             const ret = arg0[arg1 >>> 0];
-            return ret;
-        },
-        __wbg_get_with_ref_key_fc601247060b7204: function(arg0, arg1) {
-            const ret = arg0[arg1];
             return ret;
         },
         __wbg_instanceof_ArrayBuffer_12cdaa4161423e6b: function(arg0) {

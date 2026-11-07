@@ -90,9 +90,25 @@ pub fn resolve<E: Edition + Ord>(
     candidates.sort();
     candidates.dedup();
     if let [only] = candidates.as_slice() {
+        // The namespace decides; evidence that names another edition is
+        // reported, not followed.
+        let against: Vec<String> = evidence
+            .iter()
+            .filter(|ev| !ev.editions.contains(only))
+            .map(|ev| format!("{} ({})", ev.what, labels(&ev.editions)))
+            .collect();
         return EditionChoice {
             edition: *only,
-            assumed: None,
+            assumed: (!against.is_empty()).then(|| {
+                format!(
+                    "{spec} edition of {subject} is {spec}:{} by {namespace}, but {} \
+                     names another edition; {spec} rules were checked against {spec}:{} \
+                     (the namespace's edition)",
+                    only.label(),
+                    against.join("; "),
+                    only.label()
+                )
+            }),
         };
     }
     let left: Vec<E> = candidates
@@ -612,6 +628,18 @@ mod tests {
                 "{why}"
             );
         }
+    }
+
+    #[test]
+    fn evidence_against_the_namespace_edition_is_announced() {
+        use St2067_2Edition::{V2013, V2020};
+        let c = resolve("X", "ns", &[V2013], &[Evidence::one(V2013, "a")]);
+        assert_eq!((c.edition, c.assumed), (V2013, None));
+        let c = resolve("X", "ns", &[V2013], &[Evidence::one(V2020, "b")]);
+        assert_eq!(c.edition, V2013, "the namespace decides");
+        let why = c.assumed.expect("the conflict is announced");
+        assert!(why.contains("b (ST 2067-2:2020)"), "{why}");
+        assert!(why.contains("checked against ST 2067-2:2013"), "{why}");
     }
 
     #[test]

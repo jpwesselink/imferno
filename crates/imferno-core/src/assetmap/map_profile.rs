@@ -51,12 +51,21 @@ pub fn basic_map_profile_v2_issues<'a>(
         }
 
         let segments: Vec<&str> = path.split('/').collect();
-        if let Some(bad) = segments.iter().find(|s| s.chars().any(|c| !allowed(c))) {
+        // "/" separates segments; "?" and "#" are reported above. The
+        // segment rule still covers them, so they are listed here too.
+        let mut bad: Vec<char> = Vec::new();
+        for c in path.chars().filter(|&c| c != '/' && !allowed(c)) {
+            if !bad.contains(&c) {
+                bad.push(c);
+            }
+        }
+        if !bad.is_empty() {
+            let listed: Vec<String> = bad.iter().map(|c| format!("{c:?}")).collect();
             issues.push(issue(
                 St429_9_2014::PathCharacters,
                 format!(
-                    "has segment '{bad}' with characters outside a-z, A-Z, 0-9, '-', '_', '.' \
-                     (ST 429-9 A.2)"
+                    "has characters outside a-z, A-Z, 0-9, '-', '_', '.': {} (ST 429-9 A.2)",
+                    listed.join(", ")
                 ),
             ));
         }
@@ -140,6 +149,23 @@ mod tests {
                 codes(&[p]).contains(&"ST429-9:2014:A.2/PathCharacters".to_string()),
                 "{p}"
             );
+        }
+    }
+
+    /// Paths seen in the wild (imferno issue 79): one finding per path,
+    /// naming every offending character.
+    #[test]
+    fn offending_characters_are_named_once_per_path() {
+        let issues = basic_map_profile_v2_issues(["FR Dubcard.mxf", "A&B (it's)+new!.mxf"]);
+        let msgs: Vec<_> = issues
+            .iter()
+            .filter(|i| i.code == "ST429-9:2014:A.2/PathCharacters")
+            .map(|i| i.message.clone())
+            .collect();
+        assert_eq!(msgs.len(), 2, "{issues:#?}");
+        assert!(msgs[0].contains("' '"), "{}", msgs[0]);
+        for c in ["'&'", "' '", "'('", "'\\''", "')'", "'+'", "'!'"] {
+            assert!(msgs[1].contains(c), "{c} in {}", msgs[1]);
         }
     }
 

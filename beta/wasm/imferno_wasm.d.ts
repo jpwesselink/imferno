@@ -35,12 +35,22 @@ export function getVersion(): string;
 export function init(): void;
 
 /**
+ * The rule catalogue: one entry per rule with its per-edition table.
+ */
+export function listRules(): any;
+
+/**
  * Parse an IMF package from in-memory files, returning the full parsed package.
  *
  * Unlike `buildReport` which returns a summary, this returns the complete
  * `Imferno` struct with all essence descriptors, locales, content versions, etc.
  */
 export function parsePackage(files: any): any;
+
+/**
+ * Convert a validation result (or its `validation` report) to a SARIF 2.1.0 log.
+ */
+export function toSarif(report: any): any;
 
 /**
  * Parse and validate an IMF package in one call.
@@ -60,7 +70,9 @@ export interface InitOutput {
     readonly formatReport: (a: any) => [number, number, number, number];
     readonly getVersion: () => [number, number];
     readonly init: () => void;
+    readonly listRules: () => [number, number, number];
     readonly parsePackage: (a: any) => [number, number, number];
+    readonly toSarif: (a: any) => [number, number, number];
     readonly validate: (a: any, b: any) => [number, number, number];
     readonly __wbindgen_malloc: (a: number, b: number) => number;
     readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;

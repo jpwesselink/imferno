@@ -76,6 +76,18 @@ export function init() {
 }
 
 /**
+ * The rule catalogue: one entry per rule with its per-edition table.
+ * @returns {any}
+ */
+export function listRules() {
+    const ret = wasm.listRules();
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return takeFromExternrefTable0(ret[0]);
+}
+
+/**
  * Parse an IMF package from in-memory files, returning the full parsed package.
  *
  * Unlike `buildReport` which returns a summary, this returns the complete
@@ -85,6 +97,19 @@ export function init() {
  */
 export function parsePackage(files) {
     const ret = wasm.parsePackage(files);
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return takeFromExternrefTable0(ret[0]);
+}
+
+/**
+ * Convert a validation result (or its `validation` report) to a SARIF 2.1.0 log.
+ * @param {any} report
+ * @returns {any}
+ */
+export function toSarif(report) {
+    const ret = wasm.toSarif(report);
     if (ret[2]) {
         throw takeFromExternrefTable0(ret[1]);
     }

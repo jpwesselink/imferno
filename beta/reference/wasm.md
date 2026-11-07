@@ -49,7 +49,7 @@ const result = await validate(files, {
   coreSpec: 'v2020',
   app2eSpec: 'v2023',
   rules: {
-    'ST2067-21:2023:7.1/AppIdMismatch': 'error',
+    'ST2067-21:2023/AppIdMismatch': 'error',
     'IMFERNO:Package/UnreferencedAsset': 'off',
   },
 });
@@ -125,9 +125,9 @@ Typed validation code constants for use in `rules` config. Provides autocomplete
 ```typescript
 import { codes } from '@imferno/wasm';
 
-codes.ST2067_2_2020.FileNotFound    // "ST2067-2:2020:8.3/FileNotFound"
-codes.ST2067_21_2023.FrameRate      // "ST2067-21:2023:5.2/FrameRate"
-codes.ST2067_201_2021.MCATagSymbolInvalid  // ...
+codes.ST2067_2.FileNotFound    // "ST2067-2/FileNotFound" (rule id, all editions)
+codes.ST2067_21.FrameRate      // "ST2067-21/FrameRate"
+codes.ST2067_201.MCATagSymbolInvalid  // ...
 ```
 
 See [Configuration](/imferno/beta/guide/config/index.md) for how to use `codes` with rules.

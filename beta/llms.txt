@@ -8,7 +8,7 @@
 
 ## Others
 
-- [Validation Codes](/imferno/beta/guide/codes.md): Complete reference of all validation codes across every supported SMPTE spec.
+- [Validation Codes](/imferno/beta/guide/codes.md): Every validation rule imferno checks, per spec and per edition.
 - [Configuration](/imferno/beta/guide/config.md): Configure validation rules, severity overrides, and spec selection.
 - [Examples](/imferno/beta/guide/examples.md): Working examples showing how to use imferno in your projects.
 - [Introduction](/imferno/beta/guide/index.md): What imferno is, what IMF is, and why this exists.

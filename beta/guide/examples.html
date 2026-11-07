@@ -6,12 +6,12 @@
 <script src="/imferno/beta/version-switcher.js" defer>
   <script>{;const saved = localStorage.getItem('rspress-theme-appearance');const preferDark = window.matchMedia('(prefers-color-scheme: dark)').matches;const defaultTheme = 'auto';const theme = saved === 'light' || saved === 'dark' || saved === 'auto' ? saved : defaultTheme;const isDark = theme === 'auto' ? preferDark : theme === 'dark';document.documentElement.classList.toggle('dark', isDark);document.documentElement.classList.toggle('rp-dark', isDark);document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';}</script>
 <link href="/imferno/beta/static/css/styles.b7bd2309ad.css" rel="stylesheet">
-<link rel="preload" href="/imferno/beta/static/js/async/route-fc8415be9943.be636e89d9.js" as="script">
+<link rel="preload" href="/imferno/beta/static/js/async/route-fc8415be9943.8615858964.js" as="script">
 <script defer src="/imferno/beta/static/js/styles.d57284674d.js"></script>
 <script defer src="/imferno/beta/static/js/lib-react.49ca540f5b.js"></script>
 <script defer src="/imferno/beta/static/js/lib-router.e520f21483.js"></script>
 <script defer src="/imferno/beta/static/js/z.c3732eae2a.js"></script>
-<script defer src="/imferno/beta/static/js/index.5eef9c8c1d.js"></script>
+<script defer src="/imferno/beta/static/js/index.0e41b26ef6.js"></script>
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="generator" content="Rspress v2.1.1">
 <link rel="alternate" type="text/markdown" href="/imferno/beta/guide/examples.md">
@@ -35,7 +35,7 @@
 <span class="line"><span style="color:var(--shiki-token-keyword)">const</span><span style="color:var(--shiki-token-constant)"> result</span><span style="color:var(--shiki-token-keyword)"> =</span><span style="color:var(--shiki-token-function)"> validatePath</span><span style="color:var(--shiki-foreground)">(impPath</span><span style="color:var(--shiki-token-punctuation)">,</span><span style="color:var(--shiki-foreground)"> {</span></span>
 <span class="line"><span style="color:var(--shiki-foreground)">  rules</span><span style="color:var(--shiki-token-keyword)">:</span><span style="color:var(--shiki-foreground)"> {</span></span>
 <span class="line"><span style="color:var(--shiki-token-comment)">    // Promote checksum mismatches to critical</span></span>
-<span class="line"><span style="color:var(--shiki-foreground)">    [</span><span style="color:var(--shiki-token-constant)">codes</span><span style="color:var(--shiki-foreground)">.</span><span style="color:var(--shiki-token-constant)">ST2067_2_2020</span><span style="color:var(--shiki-foreground)">.ChecksumMismatch]</span><span style="color:var(--shiki-token-keyword)">:</span><span style="color:var(--shiki-token-string-expression)"> &quot;critical&quot;</span><span style="color:var(--shiki-token-punctuation)">,</span></span>
+<span class="line"><span style="color:var(--shiki-foreground)">    [</span><span style="color:var(--shiki-token-constant)">codes</span><span style="color:var(--shiki-foreground)">.</span><span style="color:var(--shiki-token-constant)">ST2067_2</span><span style="color:var(--shiki-foreground)">.ChecksumMismatch]</span><span style="color:var(--shiki-token-keyword)">:</span><span style="color:var(--shiki-token-string-expression)"> &quot;critical&quot;</span><span style="color:var(--shiki-token-punctuation)">,</span></span>
 <span class="line"><span style="color:var(--shiki-token-comment)">    // Suppress unreferenced asset warnings</span></span>
 <span class="line"><span style="color:var(--shiki-foreground)">    [</span><span style="color:var(--shiki-token-constant)">codes</span><span style="color:var(--shiki-foreground)">.</span><span style="color:var(--shiki-token-constant)">Imferno</span><span style="color:var(--shiki-foreground)">.UnreferencedAsset]</span><span style="color:var(--shiki-token-keyword)">:</span><span style="color:var(--shiki-token-string-expression)"> &quot;off&quot;</span><span style="color:var(--shiki-token-punctuation)">,</span></span>
 <span class="line"><span style="color:var(--shiki-foreground)">  }</span><span style="color:var(--shiki-token-punctuation)">,</span></span>

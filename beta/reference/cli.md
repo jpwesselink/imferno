@@ -154,8 +154,8 @@ Create a `rules.json` to override severity levels:
 
 ```json
 {
-    "ST2067-2:2020:8.3/FileNotFound": "critical",
-    "ST2067-21:2023:7.1/AppIdMismatch": "off"
+    "ST2067-2/FileNotFound": "critical",
+    "ST2067-21:2023/AppIdMismatch": "off"
 }
 ```
 

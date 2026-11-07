@@ -23,7 +23,7 @@ const impPath = resolve("./my-package");
 const result = validatePath(impPath, {
   rules: {
     // Promote checksum mismatches to critical
-    [codes.ST2067_2_2020.ChecksumMismatch]: "critical",
+    [codes.ST2067_2.ChecksumMismatch]: "critical",
     // Suppress unreferenced asset warnings
     [codes.Imferno.UnreferencedAsset]: "off",
   },

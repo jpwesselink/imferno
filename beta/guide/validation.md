@@ -134,6 +134,6 @@ See the [Node.js API Reference](/imferno/beta/reference/node/index.md) for the f
 
 ## Validation codes
 
-Each issue carries a typed code string (e.g. `ST2067-2:2020:8.3/FileNotFound`), a human-readable message, severity, category, and optional location.
+Each issue carries its rule id (`rule`, e.g. `ST2067-2/FileNotFound`), the spec, edition and clause that were applied, a display code (e.g. `ST2067-2:2020:8.3/FileNotFound`), a human-readable message, severity, category, and optional location.
 
 See the [Validation Codes](/imferno/beta/guide/codes/index.md) reference for the full catalogue.

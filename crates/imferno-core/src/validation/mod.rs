@@ -1979,8 +1979,20 @@ impl ConstraintsValidator for CoreConstraints2013 {
 
         validate_core_structure(cpl, St2067_2Edition::V2013, &mut issues);
 
-        // 2013: EssenceDescriptorList is OPTIONAL — no check
-        // 2013: ApplicationIdentification does not exist — no check
+        // 2013 §6.8: each Track File's File Descriptor shall be mapped to an
+        // EssenceDescriptor, so the EssenceDescriptorList is required (as in
+        // 2016 and 2020).
+        if cpl.essence_descriptor_list.is_none() {
+            issues.push(
+                ValidationIssue::from_rule(
+                    &st2067_2::EssenceDescriptorList,
+                    St2067_2Edition::V2013,
+                    "EssenceDescriptorList is required per ST 2067-2:2013",
+                )
+                .with_location(Location::new().with_cpl(cpl.id)),
+            );
+        }
+
         // SourceEncoding references validated by st2067-3::validate_cpl_constraints.
 
         issues
@@ -2966,7 +2978,7 @@ mod tests {
     }
 
     #[test]
-    fn core_2013_allows_missing_essence_descriptor_list() {
+    fn core_2013_requires_essence_descriptor_list() {
         let mut cpl = minimal_cpl();
         cpl.namespace = CplNamespace::Smpte2067_3_2013;
         // Add a sequence so no "empty segment" error
@@ -2986,9 +2998,13 @@ mod tests {
             .iter()
             .filter(|i| mentions(i, "EssenceDescriptorList"))
             .collect();
-        assert!(
-            edl_issues.is_empty(),
-            "2013 should not require EssenceDescriptorList"
+        assert_eq!(
+            edl_issues
+                .iter()
+                .map(|i| i.code.as_str())
+                .collect::<Vec<_>>(),
+            vec!["ST2067-2:2013:6.8/EssenceDescriptorList"],
+            "ST 2067-2:2013 §6.8 requires the EssenceDescriptorList"
         );
     }
 

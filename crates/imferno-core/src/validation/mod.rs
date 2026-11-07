@@ -1156,6 +1156,99 @@ fn validate_cpl_id_matches_assetmap(
 // UUID uniqueness validation
 // ─────────────────────────────────────────────────────────────────────────────
 
+/// `urn:uuid:ABC…` → `abc…`.
+fn normalise_uuid(s: &str) -> String {
+    s.trim()
+        .trim_start_matches("urn:uuid:")
+        .to_ascii_lowercase()
+}
+
+/// The distinct canonical forms of the `Resource` elements of a CPL's
+/// source XML, by Resource Id. The canonical form keeps element local
+/// names, attributes other than namespace declarations (sorted) and
+/// trimmed non-empty text, so whitespace and prefixes do not matter.
+/// `None` when the XML cannot be read.
+fn raw_resource_forms(xml: &str) -> Option<HashMap<String, HashSet<String>>> {
+    use quick_xml::events::Event;
+    let mut reader = quick_xml::Reader::from_str(xml);
+    let mut out: HashMap<String, HashSet<String>> = HashMap::new();
+    // (depth of the open Resource, canonical form, Id, in the Id child)
+    let mut cur: Option<(usize, String, String, bool)> = None;
+    let mut depth = 0usize;
+    let tag = |e: &quick_xml::events::BytesStart| {
+        let mut attrs: Vec<String> = e
+            .attributes()
+            .flatten()
+            .filter(|a| {
+                let k = a.key.as_ref();
+                k != "xmlns" && !k.starts_with("xmlns:")
+            })
+            .map(|a| {
+                let v = a
+                    .normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                    .map(|v| v.into_owned())
+                    .unwrap_or_default();
+                format!("{}={v}", a.key.local_name().as_ref())
+            })
+            .collect();
+        attrs.sort();
+        format!("<{} {}>", e.local_name().as_ref(), attrs.join(" "))
+    };
+    loop {
+        match reader.read_event().ok()? {
+            Event::Start(e) => {
+                depth += 1;
+                let local = e.local_name().as_ref().to_string();
+                match &mut cur {
+                    None if local == "Resource" => {
+                        cur = Some((depth, tag(&e), String::new(), false));
+                    }
+                    Some((d, form, _, in_id)) => {
+                        *in_id = local == "Id" && depth == *d + 1;
+                        form.push_str(&tag(&e));
+                    }
+                    None => {}
+                }
+            }
+            Event::Empty(e) => {
+                if let Some((_, form, _, _)) = &mut cur {
+                    form.push_str(&tag(&e));
+                    form.push_str("</>");
+                }
+            }
+            Event::Text(t) => {
+                if let Some((_, form, id, in_id)) = &mut cur {
+                    let text = quick_xml::escape::unescape(&t)
+                        .map(|c| c.into_owned())
+                        .unwrap_or_default();
+                    let text = text.trim();
+                    if !text.is_empty() {
+                        form.push_str(text);
+                        if *in_id {
+                            id.push_str(text);
+                        }
+                    }
+                }
+            }
+            Event::End(_) => {
+                if let Some((d, form, id, in_id)) = &mut cur {
+                    *in_id = false;
+                    form.push_str("</>");
+                    if depth == *d {
+                        out.entry(normalise_uuid(id))
+                            .or_default()
+                            .insert(std::mem::take(form));
+                        cur = None;
+                    }
+                }
+                depth = depth.saturating_sub(1);
+            }
+            Event::Eof => return Some(out),
+            _ => {}
+        }
+    }
+}
+
 /// All Segment Ids, EssenceDescriptor Ids, and Resource Ids shall be unique within a CPL.
 ///
 /// ST 2067-3 §6.9.1 (Segment), §6.7.1 (EssenceDescriptor), §6.11.1 (Resource):
@@ -1205,6 +1298,17 @@ fn validate_uuid_uniqueness<'c>(
     // Resource ID uniqueness (across all segments and sequences). 2020
     // §6.11.1 allows the same Id on Resources that are identical.
     let identical_allowed = cpl_ed == St2067_3Edition::V2020;
+    // "Identical" is judged on the raw Resource elements when the source XML
+    // was kept (parsed Resources omit content imferno does not parse).
+    let raw = if identical_allowed {
+        cpl.source_xml.as_deref().and_then(raw_resource_forms)
+    } else {
+        None
+    };
+    let identical = |id: &str, a: &crate::cpl::Resource, b: &crate::cpl::Resource| match &raw {
+        Some(forms) => forms.get(&normalise_uuid(id)).is_some_and(|f| f.len() == 1),
+        None => a == b,
+    };
     let mut resource_ids: HashMap<String, &crate::cpl::Resource> = HashMap::new();
     for (seg_idx, segment) in cpl.segment_list.segments.iter().enumerate() {
         let mut check_resources = |resources: &'c [crate::cpl::Resource], track_type: &str| {
@@ -1215,7 +1319,7 @@ fn validate_uuid_uniqueness<'c>(
                         resource_ids.insert(id_str.clone(), resource);
                         false
                     }
-                    Some(first) => !(identical_allowed && *first == resource),
+                    Some(first) => !(identical_allowed && identical(&id_str, first, resource)),
                 };
                 if duplicate {
                     issues.push(
@@ -9561,6 +9665,50 @@ mod tests {
         edition: St2067_2Edition::V2016,
         cpl: Some(St2067_3Edition::V2016),
     };
+
+    /// 2020 §6.11.1 "unless they are identical": Resources that parse the
+    /// same but differ in content imferno does not parse are not identical.
+    #[test]
+    fn identical_resources_are_compared_on_their_raw_xml() {
+        let res = |extra: &str| {
+            format!(
+                r#"<Resource xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="TrackFileResourceType">
+                <Id>urn:uuid:00000000-0000-0000-0000-000000000020</Id>
+                <IntrinsicDuration>24</IntrinsicDuration>{extra}
+                <SourceEncoding>urn:uuid:00000000-0000-0000-0000-000000000021</SourceEncoding>
+                <TrackFileId>urn:uuid:00000000-0000-0000-0000-000000000022</TrackFileId>
+            </Resource>"#
+            )
+        };
+        let seq = |a: &str, b: &str| {
+            format!(
+                r#"<cc:MainImageSequence>
+            <Id>urn:uuid:00000000-0000-0000-0000-000000000010</Id>
+            <TrackId>urn:uuid:00000000-0000-0000-0000-000000000011</TrackId>
+            <ResourceList>{a}{b}</ResourceList>
+        </cc:MainImageSequence>"#
+            )
+        };
+        let codes = |cpl: &CompositionPlaylist| {
+            let mut issues = Vec::new();
+            validate_uuid_uniqueness(cpl, St2067_3Edition::V2020, &mut issues);
+            issues.into_iter().map(|i| i.code).collect::<Vec<_>>()
+        };
+        let same = c1_cpl("2016", "T", &seq(&res(""), &res("")));
+        assert!(codes(&same).is_empty());
+        let differ = c1_cpl(
+            "2016",
+            "T",
+            &seq(&res(""), &res("<x:Ext xmlns:x=\"urn:x\">1</x:Ext>")),
+        );
+        let r = &differ.segment_list.segments[0]
+            .sequence_list
+            .main_image_sequences[0]
+            .resource_list
+            .resources;
+        assert!(r[0] == r[1], "the difference is in unparsed content");
+        assert_eq!(codes(&differ), ["ST2067-3:2020:6.11.1/UniqueResourceId"]);
+    }
 
     fn c1_codes(issues: &[ValidationIssue]) -> Vec<String> {
         issues.iter().map(|i| i.code.clone()).collect()

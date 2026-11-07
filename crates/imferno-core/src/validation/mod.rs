@@ -90,19 +90,112 @@ pub trait ValidatorRegistry {
             }
         }
 
-        if let Some(ref ext) = cpl.extension_properties {
-            if let Some(ref app_id) = ext.application_identification {
-                for uri in app_id.split_whitespace() {
-                    if let Some(v) = self.resolve_namespace(uri) {
-                        validators.push(v);
-                    }
-                }
-            }
-        }
+        push_application_validators(cpl, |uri| self.resolve_namespace(uri), &mut validators);
 
         push_sequence_presence_plugins(cpl, &mut validators);
 
         validators
+    }
+}
+
+/// Resolve the CPL's ApplicationIdentification URIs (an `xs:list`) to
+/// validators. When the element is absent, a URI does not resolve, or no
+/// URI is an application profile (plug-in URIs such as IAB or ISXD only),
+/// a validator emitting `IMFERNO:Package/ApplicationProfileNotValidated`
+/// is added, so a CPL whose application profile was not checked is not
+/// reported as if it passed (https://github.com/Netflix/photon/issues/407).
+/// Plug-in validators still run.
+fn push_application_validators(
+    cpl: &CompositionPlaylist,
+    resolve: impl Fn(&str) -> Option<Box<dyn ConstraintsValidator>>,
+    validators: &mut Vec<Box<dyn ConstraintsValidator>>,
+) {
+    let uris: Vec<&str> = cpl
+        .extension_properties
+        .as_ref()
+        .and_then(|ext| ext.application_identification.as_deref())
+        .map(|ids| ids.split_whitespace().collect())
+        .unwrap_or_default();
+    let mut unrecognised = Vec::new();
+    // URIs that resolve to a plug-in or core-constraints validator: those
+    // run, but they are not an application profile.
+    let mut not_app_profile = Vec::new();
+    let mut any_app_profile = false;
+    for uri in &uris {
+        match resolve(uri) {
+            Some(v) => {
+                if App2EEdition::from_application_identification(uri).is_some() {
+                    any_app_profile = true;
+                } else {
+                    not_app_profile.push(uri.to_string());
+                }
+                validators.push(v);
+            }
+            None => unrecognised.push(uri.to_string()),
+        }
+    }
+    if uris.is_empty() || !any_app_profile || !unrecognised.is_empty() {
+        validators.push(Box::new(ApplicationProfileNotValidated {
+            any_validated: any_app_profile,
+            unrecognised,
+            not_app_profile,
+        }));
+    }
+}
+
+/// Emits `IMFERNO:Package/ApplicationProfileNotValidated` (see
+/// [`push_application_validators`]).
+struct ApplicationProfileNotValidated {
+    /// An application-profile validator ran for some URI.
+    any_validated: bool,
+    /// URIs with no validator.
+    unrecognised: Vec<String>,
+    /// URIs whose (plug-in or core) validator ran but which are not an
+    /// application profile.
+    not_app_profile: Vec<String>,
+}
+
+impl ConstraintsValidator for ApplicationProfileNotValidated {
+    fn spec_id(&self) -> &str {
+        "imferno application-profile dispatch"
+    }
+
+    fn validate_cpl(&self, cpl: &CompositionPlaylist) -> Vec<ValidationIssue> {
+        use crate::package::codes::ImfernoCode;
+        let message = if self.unrecognised.is_empty() && self.not_app_profile.is_empty() {
+            "CPL has no ApplicationIdentification, so no application-profile \
+             validation was performed"
+                .to_string()
+        } else if !self.any_validated && self.unrecognised.is_empty() {
+            format!(
+                "CPL ApplicationIdentification lists only plug-in or core-constraints \
+                 URI(s) ({}), which were validated; no application-profile validation \
+                 was performed",
+                self.not_app_profile.join(" ")
+            )
+        } else if self.any_validated {
+            format!(
+                "CPL ApplicationIdentification lists URI(s) imferno has no validator for: {}; \
+                 those application profiles were not validated",
+                self.unrecognised.join(" ")
+            )
+        } else {
+            format!(
+                "CPL ApplicationIdentification lists no application profile imferno has a \
+                 validator for (no validator: {}{}), so no application-profile validation \
+                 was performed",
+                self.unrecognised.join(" "),
+                if self.not_app_profile.is_empty() {
+                    String::new()
+                } else {
+                    format!("; plug-in/core only: {}", self.not_app_profile.join(" "))
+                }
+            )
+        };
+        vec![
+            ValidationIssue::from_code(ImfernoCode::ApplicationProfileNotValidated, message)
+                .with_location(crate::diagnostics::Location::new().with_cpl(cpl.id)),
+        ]
     }
 }
 
@@ -384,15 +477,7 @@ impl ValidatorRegistry for ConfigurableValidatorRegistry {
             // signaled by sequence presence (IAB/ISXD). When the caller
             // pinned app_specs/app_uris above, we respect that pin and do
             // NOT auto-add plug-ins.
-            if let Some(ref ext) = cpl.extension_properties {
-                if let Some(ref app_id) = ext.application_identification {
-                    for uri in app_id.split_whitespace() {
-                        if let Some(v) = self.resolve_namespace(uri) {
-                            validators.push(v);
-                        }
-                    }
-                }
-            }
+            push_application_validators(cpl, |uri| self.resolve_namespace(uri), &mut validators);
             push_sequence_presence_plugins(cpl, &mut validators);
         }
 
@@ -2298,6 +2383,106 @@ mod tests {
         assert_eq!(validators[1].spec_id(), "ST 2067-21:2023 (App2E)");
     }
 
+    fn not_validated_issues(cpl: &CompositionPlaylist) -> Vec<ValidationIssue> {
+        validate_cpl(cpl)
+            .into_iter()
+            .filter(|i| i.code == "IMFERNO:Package/ApplicationProfileNotValidated")
+            .collect()
+    }
+
+    fn with_app_id(app_id: Option<&str>) -> CompositionPlaylist {
+        let mut cpl = minimal_cpl();
+        cpl.extension_properties = Some(ExtensionProperties {
+            application_identification: app_id.map(str::to_string),
+            max_cll: None,
+            max_fall: None,
+        });
+        cpl
+    }
+
+    /// https://github.com/Netflix/photon/issues/407: a CPL whose application
+    /// profile was not validated must say so instead of passing silently.
+    #[test]
+    fn missing_application_identification_is_reported() {
+        for cpl in [minimal_cpl(), with_app_id(None), with_app_id(Some("  "))] {
+            let issues = not_validated_issues(&cpl);
+            assert_eq!(issues.len(), 1, "{issues:#?}");
+            assert_eq!(issues[0].severity, Severity::Warning);
+            assert!(issues[0].message.contains("no ApplicationIdentification"));
+        }
+    }
+
+    #[test]
+    fn unrecognised_application_identification_is_reported_with_uri() {
+        let issues = not_validated_issues(&with_app_id(Some("http://example.com/unknown-app")));
+        assert_eq!(issues.len(), 1, "{issues:#?}");
+        assert!(issues[0].message.contains("http://example.com/unknown-app"));
+        assert!(issues[0]
+            .message
+            .contains("no application-profile validation"));
+
+        // Partly recognised: the App #2E part runs, the rest is named.
+        let issues = not_validated_issues(&with_app_id(Some(
+            "http://www.smpte-ra.org/ns/2067-21/2021 http://example.com/unknown-app",
+        )));
+        assert_eq!(issues.len(), 1, "{issues:#?}");
+        assert!(issues[0].message.contains("http://example.com/unknown-app"));
+        assert!(!issues[0].message.contains("2067-21/2021"));
+    }
+
+    #[test]
+    fn recognised_application_identification_is_not_reported() {
+        let cpl = with_app_id(Some("http://www.smpte-ra.org/ns/2067-21/2021"));
+        assert!(not_validated_issues(&cpl).is_empty());
+    }
+
+    /// Plug-in URIs (IAB, ISXD) are not application profiles: the plug-in
+    /// validator runs, but the CPL still gets the notice.
+    #[test]
+    fn plugin_only_application_identification_is_reported() {
+        for uri in [isxd::URI_2022, iab::URI_2019] {
+            let cpl = with_app_id(Some(uri));
+            let issues = not_validated_issues(&cpl);
+            assert_eq!(issues.len(), 1, "{uri}: {issues:#?}");
+            assert!(issues[0].message.contains(uri), "{}", issues[0].message);
+            let ids: Vec<_> = get_validators_for_cpl(&cpl)
+                .iter()
+                .map(|v| v.spec_id().to_string())
+                .collect();
+            assert!(
+                ids.iter()
+                    .any(|id| id.contains("Plug-in") || id.contains("IAB")),
+                "plug-in validator still runs: {ids:?}"
+            );
+        }
+        // App profile plus plug-in: nothing to report.
+        let cpl = with_app_id(Some(&format!(
+            "http://www.smpte-ra.org/ns/2067-21/2021 {}",
+            isxd::URI_2022
+        )));
+        assert!(not_validated_issues(&cpl).is_empty());
+    }
+
+    #[test]
+    fn pinned_app_selection_does_not_report() {
+        // The caller chose the app profiles (here: none), so nothing is
+        // left unvalidated by imferno's choice.
+        let registry = ConfigurableValidatorRegistry::new(ValidatorSelection {
+            app_specs: Some(vec![]),
+            ..Default::default()
+        });
+        let issues = validate_cpl_with_registry(&minimal_cpl(), &registry);
+        assert!(!issues
+            .iter()
+            .any(|i| i.code == "IMFERNO:Package/ApplicationProfileNotValidated"));
+        // Auto mode reports.
+        let auto = ConfigurableValidatorRegistry::new(ValidatorSelection::default());
+        let issues = validate_cpl_with_registry(&minimal_cpl(), &auto);
+        assert!(issues
+            .iter()
+            .any(|i| i.code == "IMFERNO:Package/ApplicationProfileNotValidated"));
+    }
+
     #[test]
     fn registry_resolve_for_cpl_handles_multiple_app_uris() {
         let mut cpl = minimal_cpl();
@@ -2310,9 +2495,13 @@ mod tests {
         });
         let registry = BuiltinValidatorRegistry;
         let validators = registry.resolve_for_cpl(&cpl);
-        assert_eq!(validators.len(), 2);
+        assert_eq!(validators.len(), 3);
         assert_eq!(validators[0].spec_id(), "ST 2067-2:2016");
         assert_eq!(validators[1].spec_id(), "ST 2067-21:2023 (App2E)");
+        assert_eq!(
+            validators[2].spec_id(),
+            "imferno application-profile dispatch"
+        );
     }
 
     #[test]
@@ -2348,7 +2537,11 @@ mod tests {
         });
 
         let validators = registry.resolve_for_cpl(&cpl);
-        assert_eq!(validators.len(), 1);
+        assert_eq!(validators.len(), 2); // + no-AppId notice (photon#407)
+        assert_eq!(
+            validators[1].spec_id(),
+            "imferno application-profile dispatch"
+        );
         assert_eq!(validators[0].spec_id(), "ST 2067-2:2016");
     }
 
@@ -2394,7 +2587,11 @@ mod tests {
         let mut cpl = minimal_cpl();
         cpl.namespace = CplNamespace::Smpte2067_3_2016;
         let validators = get_validators_for_cpl(&cpl);
-        assert_eq!(validators.len(), 1);
+        assert_eq!(validators.len(), 2); // + no-AppId notice (photon#407)
+        assert_eq!(
+            validators[1].spec_id(),
+            "imferno application-profile dispatch"
+        );
         assert_eq!(validators[0].spec_id(), "ST 2067-2:2016");
     }
 
@@ -2403,7 +2600,11 @@ mod tests {
         let mut cpl = minimal_cpl();
         cpl.namespace = CplNamespace::Smpte2067_3_2013;
         let validators = get_validators_for_cpl(&cpl);
-        assert_eq!(validators.len(), 1);
+        assert_eq!(validators.len(), 2); // + no-AppId notice (photon#407)
+        assert_eq!(
+            validators[1].spec_id(),
+            "imferno application-profile dispatch"
+        );
         assert_eq!(validators[0].spec_id(), "ST 2067-2:2013");
     }
 
@@ -2413,10 +2614,12 @@ mod tests {
         let mut cpl = minimal_cpl();
         cpl.namespace = CplNamespace::Dci429_7;
         let validators = get_validators_for_cpl(&cpl);
+        // Only the "no application profile validated" notice (photon#407).
+        let ids: Vec<_> = validators.iter().map(|v| v.spec_id()).collect();
         assert_eq!(
-            validators.len(),
-            0,
-            "DCI namespace should yield no validators"
+            ids,
+            vec!["imferno application-profile dispatch"],
+            "DCI namespace should yield no core validator"
         );
     }
 
@@ -2469,7 +2672,11 @@ mod tests {
             ..Default::default()
         });
         let validators = registry.resolve_for_cpl(&cpl);
-        assert_eq!(validators.len(), 1);
+        assert_eq!(validators.len(), 2); // + no-AppId notice (photon#407)
+        assert_eq!(
+            validators[1].spec_id(),
+            "imferno application-profile dispatch"
+        );
         assert_eq!(validators[0].spec_id(), "ST 2067-2:2016");
     }
 
@@ -3155,6 +3362,7 @@ mod tests {
                             }),
                             j2k_extended_capabilities: Some(J2KExtendedCapabilities {
                                 pcap: Some(131072),
+                                ccapi: None,
                             }),
                             picture_component_sizing: None,
                         }),
@@ -3260,6 +3468,7 @@ mod tests {
                             }),
                             j2k_extended_capabilities: Some(J2KExtendedCapabilities {
                                 pcap: Some(131072),
+                                ccapi: None,
                             }),
                             picture_component_sizing: None,
                         }),
@@ -3355,6 +3564,7 @@ mod tests {
                             j2c_layout: None, // Missing!
                             j2k_extended_capabilities: Some(J2KExtendedCapabilities {
                                 pcap: Some(131072),
+                                ccapi: None,
                             }),
                             picture_component_sizing: None,
                         }),
@@ -3625,6 +3835,111 @@ mod tests {
             "Should flag segment duration not multiple of 5: {:#?}",
             issues
         );
+    }
+
+    /// Segment duration is the Sequence duration: per resource SourceDuration
+    /// (default IntrinsicDuration - EntryPoint) x RepeatCount, summed
+    /// (https://github.com/Netflix/photon/issues/160, /209).
+    fn segment_issues_for_resource(
+        intrinsic: u64,
+        entry_point: Option<u64>,
+        source_duration: Option<u64>,
+        repeat_count: Option<u64>,
+    ) -> usize {
+        let mut cpl = cpl_with_audio_and_segment_duration(
+            EditRate::new(48000, 1),
+            EditRate::new(30000, 1001),
+            &[intrinsic],
+        );
+        let r = &mut cpl.segment_list.segments[0]
+            .sequence_list
+            .main_image_sequences[0]
+            .resource_list
+            .resources[0];
+        r.entry_point = entry_point;
+        r.source_duration = source_duration;
+        r.repeat_count = repeat_count;
+        App2E2023
+            .validate_cpl(&cpl)
+            .iter()
+            .filter(|i| i.code.contains("SegmentDurationMultiple"))
+            .count()
+    }
+
+    /// Hand check for imferno issue 88: 48 kHz at 24000/1001 is 2002
+    /// samples per edit unit (an integer), so §7.4 does not apply and 3761
+    /// or 2433 edit units are fine. At 30000/1001 (1601.6 samples per edit
+    /// unit, 5 x 1601.6 = 8008) neither is a multiple of 5.
+    #[test]
+    fn app2e_segment_duration_hand_checks() {
+        for (rate, durations, expected) in [
+            (EditRate::new(24000, 1001), [3761, 2433], 0),
+            (EditRate::new(30000, 1001), [3761, 2433], 2),
+            (EditRate::new(30000, 1001), [3760, 2435], 0),
+        ] {
+            let cpl =
+                cpl_with_audio_and_segment_duration(EditRate::new(48000, 1), rate, &durations);
+            let issues: Vec<_> = App2E2023
+                .validate_cpl(&cpl)
+                .into_iter()
+                .filter(|i| i.code.contains("SegmentDurationMultiple"))
+                .collect();
+            assert_eq!(
+                issues.len(),
+                expected,
+                "{rate:?} {durations:?}: {issues:#?}"
+            );
+            if let Some(i) = issues.first() {
+                assert!(
+                    i.message.contains("1601.600 samples per edit unit"),
+                    "{}",
+                    i.message
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn app2e_segment_duration_subtracts_entry_point() {
+        // Intrinsic 12, EntryPoint 2, no SourceDuration: 10 edit units.
+        assert_eq!(segment_issues_for_resource(12, Some(2), None, None), 0);
+        // Intrinsic 10, EntryPoint 2: 8 edit units.
+        assert_eq!(segment_issues_for_resource(10, Some(2), None, None), 1);
+    }
+
+    #[test]
+    fn app2e_segment_duration_multiplies_repeat_count() {
+        // SourceDuration 3 x RepeatCount 5 = 15.
+        assert_eq!(segment_issues_for_resource(3, None, Some(3), Some(5)), 0);
+        // SourceDuration 5 x RepeatCount 2 = 10, EntryPoint ignored when
+        // SourceDuration is present.
+        assert_eq!(segment_issues_for_resource(9, Some(4), Some(5), Some(2)), 0);
+        // SourceDuration 4 x RepeatCount 2 = 8.
+        assert_eq!(segment_issues_for_resource(4, None, Some(4), Some(2)), 1);
+    }
+
+    #[test]
+    fn app2e_segment_duration_uses_one_sequence_not_the_sum() {
+        // ST 2067-3: Sequences in a Segment share its duration, so the
+        // Segment duration is one Sequence's, not the sum over Sequences.
+        // Sequences of 6 and 4 sum to 10, but the Segment is 6 long.
+        let mut cpl = cpl_with_audio_and_segment_duration(
+            EditRate::new(48000, 1),
+            EditRate::new(30000, 1001),
+            &[6, 4],
+        );
+        let second = cpl.segment_list.segments.remove(1);
+        let seq = second.sequence_list.main_image_sequences.into_iter().next();
+        cpl.segment_list.segments[0]
+            .sequence_list
+            .main_image_sequences
+            .extend(seq);
+        let n = App2E2023
+            .validate_cpl(&cpl)
+            .iter()
+            .filter(|i| i.code.contains("SegmentDurationMultiple"))
+            .count();
+        assert_eq!(n, 1);
     }
 
     /// §7.4: Same non-integer sample rate, but segment duration is 10 (multiple of 5) → pass.

@@ -1,4 +1,5 @@
 IMF:General/IoError
+IMFERNO:Package/ApplicationProfileNotValidated
 IMFERNO:Package/DirEntryError
 IMFERNO:Package/ParseError
 IMFERNO:Package/PathTraversal
@@ -260,6 +261,8 @@ ST2067-21:2026:8.1/ApplicationIdentification
 ST2067-21:2026:8.2/HomogeneousImageEssence
 ST2067-21:2026:8.3.2/SegmentDurationMultiple
 ST2067-21:2026:8.3.3/MaxCLLMaxFALL
+ST2067-21:2026:H/HT-IRV-ParameterB-Max
+ST2067-21:2026:H/HT-IRV-ParameterB-Recommended
 ST2067-2:2013:10/TimedText-EmptyLanguageTag
 ST2067-2:2013:10/TimedText-MalformedLanguageTag
 ST2067-2:2013:10/TimedText-SampleRate
@@ -353,6 +356,7 @@ ST2067-2:2020:6.4.2/EssenceDescriptorList
 ST2067-2:2020:6.4.2/EssenceDescriptorList
 ST2067-2:2020:6.9.3/VirtualTrackEditRate
 ST2067-2:2020:6.9/VirtualTrackContinuity
+ST2067-2:2020:7.1/TrackFileNotInPackage
 ST2067-2:2020:7/AssetMap
 ST2067-2:2020:7/DuplicateUuid
 ST2067-2:2020:7/MalformedXml
@@ -428,7 +432,13 @@ ST377-1:2011:6.4/NonHeaderFirstPartition
 ST377-1:2011:7/OP1a
 ST377-1:2011:8.3.3/HeaderPartitionOpen
 ST377-1:2011:8.3.3/MissingHeaderMetadata
+ST377-1:2011:B.8/StructuralComponentDurationMissing
 ST429-9:2014:6.3/AssetMapHasNoPackingList
 ST429-9:2014:6.3/PklIdNotInAssetMap
 ST429-9:2014:7/MalformedXml
 ST429-9:2014:7/VolindexMissing
+ST429-9:2014:A.2/PathCharacters
+ST429-9:2014:A.2/PathDuplicate
+ST429-9:2014:A.2/PathNotRelative
+ST429-9:2014:A.2/PathTooLong
+ST429-9:2014:A.2/PathTooManySegments

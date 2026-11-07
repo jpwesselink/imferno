@@ -15,6 +15,7 @@
 
 use std::collections::{HashMap, HashSet};
 
+use crate::assetmap::SmpteUl;
 use crate::cpl::CompositionPlaylist;
 use crate::diagnostics::{Category, Severity, ValidationIssue};
 use crate::validation::ConstraintsValidator;
@@ -49,6 +50,33 @@ pub const URI_2022: &str = "http://www.smpte-ra.org/ns/2067-202/2022";
 const UTF8_TEXT_DATA_ESSENCE_CODING: &str = "urn:smpte:ul:060e2b34.04010105.0e090606.00000000";
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
+
+/// UL comparison ignoring byte 8, the version byte (ST 377-1 §6.3,
+/// ST 336 §5.2.3), as in the CPL enum and IAB checks. Agreed for this
+/// UL at the IMF UG plugfest: https://github.com/Netflix/photon/issues/408
+fn is_utf8_text_data_essence_coding(ul: &str) -> bool {
+    // Only the version byte is ignored. The value must still be the
+    // canonical URN form (`urn:smpte:ul:` and four dot-separated groups of
+    // eight hex digits); `SmpteUl::parse` alone is more lenient.
+    let ul = ul.to_ascii_lowercase();
+    let canonical = ul.strip_prefix("urn:smpte:ul:").is_some_and(|hex| {
+        let groups: Vec<&str> = hex.split('.').collect();
+        groups.len() == 4
+            && groups
+                .iter()
+                .all(|g| g.len() == 8 && g.bytes().all(|b| b.is_ascii_hexdigit()))
+    });
+    if !canonical {
+        return false;
+    }
+    match (
+        SmpteUl::parse(&ul),
+        SmpteUl::parse(UTF8_TEXT_DATA_ESSENCE_CODING),
+    ) {
+        (Ok(a), Ok(b)) => a.matches_ignoring_version(&b),
+        _ => false,
+    }
+}
 
 /// Validate ISXDDataEssenceDescriptor-level constraints.
 ///
@@ -112,7 +140,7 @@ fn validate_isxd_descriptors(
                     ),
                 ));
             }
-            Some(ul) if !ul.eq_ignore_ascii_case(UTF8_TEXT_DATA_ESSENCE_CODING) => {
+            Some(ul) if !is_utf8_text_data_essence_coding(ul) => {
                 issues.push(ValidationIssue::new(
                     Severity::Error,
                     Category::Data,
@@ -300,6 +328,72 @@ fn validate_isxd_sequences(
                      identical NamespaceURI across the Virtual Track.",
                 ),
             ));
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::cpl::parse_cpl;
+
+    const CPL: &str = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../test-data/ISXD/CPL_ISXD_TEST_1.xml"
+    ));
+    const CANONICAL: &str = "urn:smpte:ul:060e2b34.04010105.0e090606.00000000";
+
+    fn coding_issues(coding: &str) -> Vec<ValidationIssue> {
+        let xml = CPL.replace(CANONICAL, coding);
+        let cpl = parse_cpl(&xml).expect("ISXD fixture parses");
+        AppIsxdPlugin2023
+            .validate_cpl(&cpl)
+            .into_iter()
+            .filter(|i| i.code.contains("DataEssenceCoding"))
+            .collect()
+    }
+
+    #[test]
+    fn canonical_ul_passes() {
+        assert!(CPL.contains(CANONICAL));
+        assert!(coding_issues(CANONICAL).is_empty());
+    }
+
+    /// https://github.com/Netflix/photon/issues/408: a different version
+    /// byte (byte 8) is the same UL.
+    #[test]
+    fn version_byte_variant_passes() {
+        for ul in [
+            "urn:smpte:ul:060e2b34.04010101.0e090606.00000000",
+            "URN:SMPTE:UL:060E2B34.0401010D.0E090606.00000000",
+        ] {
+            let issues = coding_issues(ul);
+            assert!(issues.is_empty(), "{ul}: {issues:#?}");
+        }
+    }
+
+    #[test]
+    fn different_ul_is_invalid() {
+        let issues = coding_issues("urn:smpte:ul:060e2b34.04010105.0e090607.01010103");
+        assert_eq!(issues.len(), 1, "{issues:#?}");
+        assert!(issues[0].code.ends_with("9.3/DataEssenceCodingInvalid"));
+    }
+
+    /// Only the version byte is ignored: a value that is not a canonical
+    /// `urn:smpte:ul:` URN (prefix, four dot-separated groups of eight hex
+    /// digits) is still invalid.
+    #[test]
+    fn malformed_urn_is_invalid() {
+        for ul in [
+            "060e2b34.04010105.0e090606.00000000",
+            "urn:smpte:ul:060e2b3404010105.0e090606.00000000",
+            "urn:smpte:ul:060e2b34.0401.0105.0e090606.00000000",
+            "urn:smpte:ul:060e2b34040101050e09060600000000",
+            "urn:smpte:ul:060e2b34.04010105.0e090606.0000000g",
+        ] {
+            let issues = coding_issues(ul);
+            assert_eq!(issues.len(), 1, "{ul}: {issues:#?}");
+            assert!(issues[0].code.ends_with("9.3/DataEssenceCodingInvalid"));
         }
     }
 }

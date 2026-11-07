@@ -1963,7 +1963,10 @@ impl App2E {
     /// MaxCLL and MaxFALL for PQ (ST 2084) content: 2016 §7.2, 2020/2023
     /// §7.5, 2026 §8.3.3 give them 0..1 cardinality for COLOR.6/COLOR.7
     /// (the PQ-based systems). They are OPTIONAL, not required.
-    /// We emit an informational note when they are absent.
+    /// We emit an informational note when they are absent. Whether they
+    /// are prohibited for other colour systems is not decided, so their
+    /// presence there is not reported. Open SMPTE issue:
+    /// https://github.com/SMPTE/st2067-21/issues/4
     fn check_hdr_metadata(
         &self,
         tc: Option<&TransferCharacteristic>,
@@ -2073,6 +2076,104 @@ impl App2E {
                 );
             }
         }
+
+        self.check_ht_irv_parameter_b(j2k_sub, loc, issues);
+    }
+
+    /// APP2.HT.IRV parameter B limits: 2026 Annex H Table H.1 says MAGB_P
+    /// per parameter B "shall" be at most 31 and "should" be at most the
+    /// Table H.3 value. This is the resolution of
+    /// https://github.com/SMPTE/st2067-21/issues/7 (table values are
+    /// maxima, not exact values). Only the 2026 edition has codes for these
+    /// rules; the 2023 Annex I gives B as a calculated value instead.
+    ///
+    /// Interpretation: the APP2.HT.REV row still reads "calculated
+    /// according to Table H.2", which gives a calculated value, not a
+    /// limit, so no REV check is made. Issue 7 asked for maxima in both
+    /// tables; for REV that is open
+    /// (https://github.com/SMPTE/st2067-21/issues/7).
+    ///
+    /// MAGB_P is read from bits 0-4 of Ccap15 in the CPL descriptor's
+    /// J2KExtendedCapabilities; bit 5 = 1 signals HTIRV (ISO/IEC
+    /// 15444-15:2019 | ITU-T T.814 (06/2019) Table A.2, clauses A.3.6 and
+    /// A.3.7).
+    fn check_ht_irv_parameter_b(
+        &self,
+        j2k_sub: &crate::cpl::JPEG2000SubDescriptor,
+        loc: &Location,
+        issues: &mut Vec<ValidationIssue>,
+    ) {
+        let Some(ccap15) = j2k_sub
+            .j2k_extended_capabilities
+            .as_ref()
+            .and_then(|c| c.ccap15())
+        else {
+            return;
+        };
+        if ccap15 & (1 << 5) == 0 {
+            return; // HTREV
+        }
+        let magb_p = ccap15 & 0x1f;
+
+        if magb_p > magb_p_for_parameter_b(31) {
+            issues.push(
+                ValidationIssue::new(
+                    Severity::Error,
+                    Category::Encoding,
+                    self.code(App2ERule::HtIrvParameterBMax).to_string(),
+                    format!(
+                        "Ccap15 signals MAGB_P {magb_p} (parameter B = {}); \
+                         APP2.HT.IRV requires parameter B of at most 31",
+                        parameter_b(magb_p)
+                    ),
+                )
+                .with_location(loc.clone()),
+            );
+            return;
+        }
+
+        // Table H.3: recommended B by Ssiz and SGcod.C (multiple component
+        // transform). Skipped when either is unknown or Ssiz is not a row.
+        let ssiz = j2k_sub.picture_component_sizing.as_ref().and_then(|pcs| {
+            let first = pcs.components.first()?.ssiz?;
+            pcs.components
+                .iter()
+                .all(|c| c.ssiz == Some(first))
+                .then_some(first)
+        });
+        let mct = j2k_sub
+            .coding_style_default
+            .as_deref()
+            .and_then(|cod| cod.get(8..10))
+            .and_then(|b| u8::from_str_radix(b, 16).ok());
+        let (Some(ssiz), Some(mct)) = (ssiz, mct) else {
+            return;
+        };
+        let recommended = match (ssiz, mct) {
+            (7, 0) | (7, 1) => 9,
+            (9, 0) | (9, 1) => 11,
+            (11, 0) => 13,
+            (11, 1) => 14,
+            (15, 0) => 17,
+            (15, 1) => 18,
+            _ => return,
+        };
+        if magb_p > magb_p_for_parameter_b(recommended) {
+            issues.push(
+                ValidationIssue::new(
+                    Severity::Warning,
+                    Category::Encoding,
+                    self.code(App2ERule::HtIrvParameterBRecommended).to_string(),
+                    format!(
+                        "Ccap15 signals MAGB_P {magb_p} (parameter B = {}); \
+                         for Ssiz {ssiz} and SGcod.C = {mct}, parameter B should be \
+                         at most {recommended}",
+                        parameter_b(magb_p)
+                    ),
+                )
+                .with_location(loc.clone()),
+            );
+        }
     }
 
     /// Section 7.2: All image descriptors in a composition must use the same color system.
@@ -2155,7 +2256,9 @@ impl App2E {
             None => return,
         };
 
-        let mut non_integer_audio = false;
+        // (audio sample rate numerator, denominator) of the first audio
+        // essence whose samples per Composition Edit Unit is not an integer.
+        let mut non_integer_audio: Option<(u64, u64)> = None;
         for ed in &edl.essence_descriptors {
             if let Some(ref wave) = ed.wave_pcm_descriptor {
                 if let Some(ref asr) = wave.audio_sample_rate {
@@ -2165,29 +2268,46 @@ impl App2E {
                     let numerator = asr.numerator as u64 * edit_rate.denominator as u64;
                     let denominator = asr.denominator as u64 * edit_rate.numerator as u64;
                     if denominator > 0 && !numerator.is_multiple_of(denominator) {
-                        non_integer_audio = true;
+                        non_integer_audio = Some((asr.numerator as u64, asr.denominator as u64));
                         break;
                     }
                 }
             }
         }
 
-        if !non_integer_audio {
+        let Some((asr_num, asr_den)) = non_integer_audio else {
             return;
-        }
+        };
+        let samples_per_edit_unit = (asr_num as f64 * edit_rate.denominator as f64)
+            / (asr_den as f64 * edit_rate.numerator as f64);
 
         // Constraint applies: each segment's duration (in edit units) must be divisible by 5.
-        // Segment duration = sum of effective durations of resources in the main image track.
+        // The rule is about the Segment, not individual resources
+        // (https://github.com/Netflix/photon/issues/160, /209). ST 2067-3:
+        // all Sequences of a Segment have the Segment's duration, and a
+        // Sequence lasts the sum over its resources of SourceDuration
+        // (default IntrinsicDuration - EntryPoint) x RepeatCount (default 1).
+        // The first MainImageSequence is used; its edit rate is the
+        // Composition Edit Rate.
         for (seg_idx, segment) in cpl.segment_list.segments.iter().enumerate() {
-            let mut segment_duration: u64 = 0;
-            for seq in &segment.sequence_list.main_image_sequences {
-                for resource in &seq.resource_list.resources {
-                    let effective = resource
-                        .source_duration
-                        .unwrap_or(resource.intrinsic_duration);
-                    segment_duration += effective;
-                }
-            }
+            let segment_duration: u64 = segment
+                .sequence_list
+                .main_image_sequences
+                .first()
+                .map(|seq| {
+                    seq.resource_list
+                        .resources
+                        .iter()
+                        .map(|r| {
+                            let source = r.source_duration.unwrap_or_else(|| {
+                                r.intrinsic_duration
+                                    .saturating_sub(r.entry_point.unwrap_or(0))
+                            });
+                            source.saturating_mul(r.repeat_count.unwrap_or(1))
+                        })
+                        .fold(0u64, u64::saturating_add)
+                })
+                .unwrap_or(0);
 
             if segment_duration > 0 && !segment_duration.is_multiple_of(5) {
                 issues.push(
@@ -2197,17 +2317,19 @@ impl App2E {
                         self.code(App2ERule::SegmentDurationMultiple).to_string(),
                         format!(
                             "Segment {} duration ({} edit units) is not a multiple of 5; \
-                             segment duration is required to be an integer multiple of \
-                             5/Composition Edit Rate when audio samples per edit unit is non-integer",
+                             audio at {}/{} Hz and Composition Edit Rate {}/{} give {:.3} \
+                             samples per edit unit (not an integer), so each Segment shall \
+                             last an integer multiple of 5/Composition Edit Rate",
                             seg_idx + 1,
                             segment_duration,
+                            asr_num,
+                            asr_den,
+                            edit_rate.numerator,
+                            edit_rate.denominator,
+                            samples_per_edit_unit,
                         ),
                     )
-                    .with_location(
-                        Location::new()
-                            .with_cpl(cpl.id)
-                            .with_segment(seg_idx),
-                    ),
+                    .with_location(Location::new().with_cpl(cpl.id).with_segment(seg_idx)),
                 );
             }
         }
@@ -2851,3 +2973,138 @@ const SYSTEMS_2016: &[EditionColorSystem] = &[
         ref_levels: REF_COLOR5_7_2016,
     },
 ];
+
+/// Parameter B of the MAGB_P set signalled by bits 0-4 of Ccap15, per
+/// ISO/IEC 15444-15:2019 | ITU-T T.814 (06/2019) clause A.3.7 and Table 4:
+/// 8 for P = 0, P + 8 for P < 20, 4(P - 19) + 27 for 20 <= P < 31, and 74
+/// for P = 31. Clause 8.7.3 bounds the HT cleanup magnitudes of a set by
+/// its B, so a larger B never admits fewer codestreams.
+///
+/// The smallest MAGB_P whose parameter B is at least `b`.
+fn magb_p_for_parameter_b(b: u16) -> u16 {
+    (0..=31).find(|&p| parameter_b(p) >= b).unwrap_or(31)
+}
+
+/// Parameter B of set MAGB_P (T.814 clause A.3.7, Table 4).
+fn parameter_b(magb_p: u16) -> u16 {
+    match magb_p {
+        0 => 8,
+        1..=19 => magb_p + 8,
+        20..=30 => 4 * (magb_p - 19) + 27,
+        _ => 74,
+    }
+}
+
+#[cfg(test)]
+mod ht_parameter_b_tests {
+    use super::*;
+    use crate::cpl::parse_cpl;
+
+    const HT_CPL: &str = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../test-data/HT/IMP/CPL_67be5fc8-87f1-4172-8d52-819ca14c7a20.xml"
+    ));
+
+    /// The HT fixture is 12-bit (Ssiz 11), MCT on, HTIRV; its Ccap15 is 38
+    /// (bit 5 set, MAGB_P 6, B = 14 = the Table H.3 value).
+    fn issues_with_ccap15(edition: App2EEdition, ccap15: u16) -> Vec<ValidationIssue> {
+        let xml = HT_CPL.replace(
+            "<r2:UInt16>38</r2:UInt16>",
+            &format!("<r2:UInt16>{ccap15}</r2:UInt16>"),
+        );
+        let cpl = parse_cpl(&xml).expect("HT fixture parses");
+        App2E::new(edition).validate(&cpl)
+    }
+
+    fn has(issues: &[ValidationIssue], code: &str) -> bool {
+        issues.iter().any(|i| i.code == code)
+    }
+
+    const MAX: &str = "ST2067-21:2026:H/HT-IRV-ParameterB-Max";
+    const REC: &str = "ST2067-21:2026:H/HT-IRV-ParameterB-Recommended";
+
+    #[test]
+    fn magb_mapping_round_trips() {
+        assert_eq!(magb_p_for_parameter_b(31), 20);
+        assert_eq!(parameter_b(20), 31);
+        assert_eq!(magb_p_for_parameter_b(14), 6);
+        assert_eq!(parameter_b(21), 35);
+        // T.814 Table 4 rows.
+        let table4: [u16; 32] = [
+            8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 31, 35,
+            39, 43, 47, 51, 55, 59, 63, 67, 71, 74,
+        ];
+        for (p, b) in table4.iter().enumerate() {
+            assert_eq!(parameter_b(p as u16), *b, "MAGB{p}");
+            assert_eq!(magb_p_for_parameter_b(*b), p as u16, "B {b}");
+        }
+    }
+
+    #[test]
+    fn ccap15_is_read_from_cpl_descriptor() {
+        let cpl = parse_cpl(HT_CPL).unwrap();
+        let eds = &cpl
+            .essence_descriptor_list
+            .as_ref()
+            .unwrap()
+            .essence_descriptors;
+        let ccap15 = eds.iter().find_map(|d| {
+            let sd = d
+                .rgba_descriptor
+                .as_ref()
+                .and_then(|r| r.sub_descriptors.as_ref())
+                .or_else(|| {
+                    d.cdci_descriptor
+                        .as_ref()
+                        .and_then(|c| c.sub_descriptors.as_ref())
+                })?;
+            sd.jpeg2000_sub_descriptor
+                .as_ref()?
+                .j2k_extended_capabilities
+                .as_ref()?
+                .ccap15()
+        });
+        assert_eq!(ccap15, Some(38));
+    }
+
+    #[test]
+    fn table_value_passes() {
+        let issues = issues_with_ccap15(App2EEdition::V2026, 38);
+        assert!(!has(&issues, MAX) && !has(&issues, REC), "{issues:#?}");
+    }
+
+    #[test]
+    fn above_table_value_warns() {
+        // MAGB_P 7: B = 15 > 14 (Ssiz 11, SGcod.C = 1).
+        let issues = issues_with_ccap15(App2EEdition::V2026, 32 | 7);
+        assert!(!has(&issues, MAX), "{issues:#?}");
+        let i = issues.iter().find(|i| i.code == REC).expect("warning");
+        assert_eq!(i.severity, Severity::Warning);
+    }
+
+    #[test]
+    fn b_31_is_allowed_but_above_is_an_error() {
+        let at_31 = issues_with_ccap15(App2EEdition::V2026, 32 | 20);
+        assert!(!has(&at_31, MAX), "{at_31:#?}");
+        assert!(has(&at_31, REC));
+        let above = issues_with_ccap15(App2EEdition::V2026, 32 | 21);
+        let i = above.iter().find(|i| i.code == MAX).expect("max error");
+        assert_eq!(i.severity, Severity::Error);
+        assert!(!has(&above, REC));
+    }
+
+    #[test]
+    fn htrev_is_not_checked() {
+        let issues = issues_with_ccap15(App2EEdition::V2026, 25);
+        assert!(!has(&issues, MAX) && !has(&issues, REC), "{issues:#?}");
+    }
+
+    #[test]
+    fn not_reported_under_2023() {
+        let issues = issues_with_ccap15(App2EEdition::V2023, 32 | 25);
+        assert!(
+            !issues.iter().any(|i| i.code.contains("ParameterB")),
+            "{issues:#?}"
+        );
+    }
+}

@@ -43,8 +43,12 @@ pub enum St2067_2_2020 {
     FileNotFound,
     /// File hash does not match the declared SHA-1/SHA-256 checksum.
     ChecksumMismatch,
-    /// UUID referenced in the CPL does not resolve to a known asset.
+    /// An asset listed in the PKL is not in the AssetMap.
     UnresolvedUuid,
+    /// A CPL TrackFileId is not an asset of this package. Legal: an IMP
+    /// need not contain complete compositions (§7.1), e.g. a supplemental
+    /// package that refers to the original version.
+    TrackFileNotInPackage,
     /// Two or more assets within the package share the same UUID.
     DuplicateUuid,
     /// An I/O error prevented the asset from being read.
@@ -74,6 +78,7 @@ impl ValidationCode for St2067_2_2020 {
             Self::FileNotFound => "ST2067-2:2020:8.3/FileNotFound",
             Self::ChecksumMismatch => "ST2067-2:2020:8.3/ChecksumMismatch",
             Self::UnresolvedUuid => "ST2067-2:2020:7/UnresolvedUuid",
+            Self::TrackFileNotInPackage => "ST2067-2:2020:7.1/TrackFileNotInPackage",
             Self::DuplicateUuid => "ST2067-2:2020:7/DuplicateUuid",
             Self::IoError => "IMF:General/IoError",
             Self::EssenceDescriptorList => "ST2067-2:2020:6.4.2/EssenceDescriptorList",
@@ -93,7 +98,11 @@ impl ValidationCode for St2067_2_2020 {
             Self::ChecksumMismatch => {
                 "File hash does not match the declared SHA-1/SHA-256 checksum."
             }
-            Self::UnresolvedUuid => "UUID referenced in the CPL does not resolve to a known asset.",
+            Self::UnresolvedUuid => "An asset listed in the Packing List is not in the AssetMap.",
+            // https://github.com/Netflix/photon/issues/337
+            Self::TrackFileNotInPackage => {
+                "A CPL track file is not in this package; an IMP need not contain complete compositions (e.g. a supplemental package referring to the original version)."
+            }
             Self::DuplicateUuid => "Two or more assets within the package share the same UUID.",
             Self::IoError => "An I/O error prevented the asset from being read.",
             Self::EssenceDescriptorList => {
@@ -115,7 +124,7 @@ impl ValidationCode for St2067_2_2020 {
             Self::AssetMap | Self::AssetMapHasNoPackingList => Severity::Critical,
             // ST 2067-2:2020 §7.1: an IMP need not contain complete
             // compositions, so a package without a CPL is legitimate.
-            Self::NoCpls => Severity::Info,
+            Self::NoCpls | Self::TrackFileNotInPackage => Severity::Info,
             _ => Severity::Error,
         }
     }
@@ -131,9 +140,10 @@ impl ValidationCode for St2067_2_2020 {
             Self::SizeMismatch | Self::FileNotFound | Self::IoError | Self::ChecksumMismatch => {
                 Category::Asset
             }
-            Self::UnresolvedUuid | Self::DuplicateUuid | Self::PklIdNotInAssetMap => {
-                Category::Reference
-            }
+            Self::UnresolvedUuid
+            | Self::TrackFileNotInPackage
+            | Self::DuplicateUuid
+            | Self::PklIdNotInAssetMap => Category::Reference,
         }
     }
     fn example(&self) -> Option<&'static str> {
@@ -145,7 +155,8 @@ impl ValidationCode for St2067_2_2020 {
             Self::SizeMismatch => "PKL `<Size>1024</Size>` but the actual file is 2048 bytes on disk",
             Self::FileNotFound => "AssetMap `<Path>missing-track.mxf</Path>` but no such file exists in the package",
             Self::ChecksumMismatch => "PKL `<Hash>2jmj7l5rSw0yVb/vlWAYkK/YBwk=</Hash>` (SHA-1 of empty string) on a non-empty file",
-            Self::UnresolvedUuid => "CPL TrackFileId references urn:uuid:aaa… but no PKL/AssetMap asset has that Id",
+            Self::UnresolvedUuid => "PKL `<Asset><Id>urn:uuid:aaa…</Id>` with no AssetMap asset of that Id",
+            Self::TrackFileNotInPackage => "Supplemental package whose CPL TrackFileId urn:uuid:aaa… is a track file of the original version package",
             Self::DuplicateUuid => "Two AssetMap `<Asset><Id>urn:uuid:00…01</Id></Asset>` entries with the same Id",
             Self::IoError => "Underlying filesystem refused the read (permissions, device error, etc.)",
             Self::EssenceDescriptorList => "CPL with `<SourceEncoding>` references but no top-level `<EssenceDescriptorList>` element",
@@ -166,6 +177,7 @@ impl St2067_2_2020 {
         Self::FileNotFound,
         Self::ChecksumMismatch,
         Self::UnresolvedUuid,
+        Self::TrackFileNotInPackage,
         Self::DuplicateUuid,
         Self::IoError,
         Self::EssenceDescriptorList,

@@ -1,0 +1,43 @@
+[package]
+name = "imferno-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+# Standalone workspace: keeps nightly + libfuzzer-sys out of the main build.
+# Note: the root workspace's `[patch.crates-io]` (patched uppsala fork) does
+# not apply here, so this fuzzes imferno-core against crates.io uppsala —
+# the same combination the published crate uses.
+[workspace]
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+imferno-core = { path = "../crates/imferno-core" }
+
+[[bin]]
+name = "parse_xml"
+path = "fuzz_targets/parse_xml.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "validate_package"
+path = "fuzz_targets/validate_package.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "mxf_header"
+path = "fuzz_targets/mxf_header.rs"
+test = false
+doc = false
+
+# A little optimisation so the fuzzer explores faster, with debug assertions
+# and overflow checks on so logic bugs surface as panics.
+[profile.release]
+debug = 1
+debug-assertions = true
+overflow-checks = true

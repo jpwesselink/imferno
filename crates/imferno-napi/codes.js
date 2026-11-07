@@ -3,6 +3,11 @@ const codes = {
   ST429_9_2014: {
     VolindexMissing: "ST429-9:2014:7/VolindexMissing",
     MalformedXml: "ST429-9:2014:7/MalformedXml",
+    PathNotRelative: "ST429-9:2014:A.2/PathNotRelative",
+    PathCharacters: "ST429-9:2014:A.2/PathCharacters",
+    PathTooLong: "ST429-9:2014:A.2/PathTooLong",
+    PathTooManySegments: "ST429-9:2014:A.2/PathTooManySegments",
+    PathDuplicate: "ST429-9:2014:A.2/PathDuplicate",
   },
   ST377_1_2011: {
     NotMxf: "ST377-1:2011:5/NotMxf",
@@ -12,6 +17,7 @@ const codes = {
     NonHeaderFirstPartition: "ST377-1:2011:6.4/NonHeaderFirstPartition",
     HeaderPartitionOpen: "ST377-1:2011:8.3.3/HeaderPartitionOpen",
     MissingHeaderMetadata: "ST377-1:2011:8.3.3/MissingHeaderMetadata",
+    StructuralComponentDurationMissing: "ST377-1:2011:B.8/StructuralComponentDurationMissing",
   },
   ST2067_2_2020: {
     AssetMap: "ST2067-2:2020:7/AssetMap",
@@ -22,6 +28,7 @@ const codes = {
     FileNotFound: "ST2067-2:2020:8.3/FileNotFound",
     ChecksumMismatch: "ST2067-2:2020:8.3/ChecksumMismatch",
     UnresolvedUuid: "ST2067-2:2020:7/UnresolvedUuid",
+    TrackFileNotInPackage: "ST2067-2:2020:7.1/TrackFileNotInPackage",
     DuplicateUuid: "ST2067-2:2020:7/DuplicateUuid",
     IoError: "IMF:General/IoError",
     EssenceDescriptorList: "ST2067-2:2020:6.4.2/EssenceDescriptorList",
@@ -387,6 +394,8 @@ const codes = {
     J2CLayout: "ST2067-21:2026:7.5.2/J2CLayout",
     J2KExtendedCapabilities: "ST2067-21:2026:7.5.1/J2KExtendedCapabilities",
     JPEG2000SubDescriptor: "ST2067-21:2026:7.5.1/JPEG2000SubDescriptor",
+    HTIRVParameterBMax: "ST2067-21:2026:H/HT-IRV-ParameterB-Max",
+    HTIRVParameterBRecommended: "ST2067-21:2026:H/HT-IRV-ParameterB-Recommended",
     J2K4KResolution: "ST2067-21:2026:7.2.5/J2K-4K-Resolution",
     J2K2KResolution: "ST2067-21:2026:7.2.5/J2K-2K-Resolution",
     J2KBCPResolution: "ST2067-21:2026:7.2.5/J2K-BCP-Resolution",
@@ -468,6 +477,7 @@ const codes = {
     ReadDirError: "IMFERNO:Package/ReadDirError",
     DirEntryError: "IMFERNO:Package/DirEntryError",
     PathTraversal: "IMFERNO:Package/PathTraversal",
+    ApplicationProfileNotValidated: "IMFERNO:Package/ApplicationProfileNotValidated",
   }
 };
 module.exports = { codes };

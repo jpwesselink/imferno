@@ -1909,6 +1909,40 @@ pub struct J2KExtendedCapabilities {
     /// Profile capabilities (Pcap)
     #[serde(rename = "Pcap", default)]
     pub pcap: Option<u64>,
+
+    /// Codestream capabilities (Ccap^i), one UInt16 per Pcap bit set, in
+    /// increasing order of i (ISO/IEC 15444-1 CAP marker).
+    #[serde(rename = "Ccapi", default)]
+    pub ccapi: Option<J2KCcapi>,
+}
+
+/// `Ccapi` array of `J2KExtendedCapabilities`.
+#[cfg_attr(feature = "jsonschema", derive(schemars::JsonSchema))]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone, Default)]
+#[cfg_attr(feature = "typescript", derive(TS))]
+#[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
+#[cfg_attr(feature = "wasm", derive(Tsify))]
+#[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
+pub struct J2KCcapi {
+    #[serde(rename = "UInt16", default)]
+    pub values: Vec<u16>,
+}
+
+impl J2KExtendedCapabilities {
+    /// The Ccap^15 word (ISO/IEC 15444-15 capabilities), when Pcap^15 is
+    /// set and the matching Ccapi entry is present.
+    ///
+    /// Pcap^i is bit (32 - i) of Pcap; Ccapi lists one entry per set bit
+    /// in increasing order of i, so Ccap^15 follows the entries for the
+    /// set bits of parts 1..=14 (bits 31..=18).
+    pub fn ccap15(&self) -> Option<u16> {
+        let pcap = u32::try_from(self.pcap?).ok()?;
+        if pcap & (1 << 17) == 0 {
+            return None;
+        }
+        let index = (pcap >> 18).count_ones() as usize;
+        self.ccapi.as_ref()?.values.get(index).copied()
+    }
 }
 
 /// Picture component sizing information
@@ -3161,6 +3195,8 @@ fn collect_unknown_xml_tokens(xml: &str) -> Result<BTreeSet<String>, String> {
         "Code",
         "ComponentSize",
         "Pcap",
+        "Ccapi",
+        "UInt16",
         "J2KComponentSizing",
         "Ssiz",
         "XRSiz",

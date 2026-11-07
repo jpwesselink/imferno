@@ -3,6 +3,11 @@ export declare const codes: {
   readonly ST429_9_2014: {
     readonly VolindexMissing: "ST429-9:2014:7/VolindexMissing";
     readonly MalformedXml: "ST429-9:2014:7/MalformedXml";
+    readonly PathNotRelative: "ST429-9:2014:A.2/PathNotRelative";
+    readonly PathCharacters: "ST429-9:2014:A.2/PathCharacters";
+    readonly PathTooLong: "ST429-9:2014:A.2/PathTooLong";
+    readonly PathTooManySegments: "ST429-9:2014:A.2/PathTooManySegments";
+    readonly PathDuplicate: "ST429-9:2014:A.2/PathDuplicate";
   };
   readonly ST377_1_2011: {
     readonly NotMxf: "ST377-1:2011:5/NotMxf";
@@ -12,6 +17,7 @@ export declare const codes: {
     readonly NonHeaderFirstPartition: "ST377-1:2011:6.4/NonHeaderFirstPartition";
     readonly HeaderPartitionOpen: "ST377-1:2011:8.3.3/HeaderPartitionOpen";
     readonly MissingHeaderMetadata: "ST377-1:2011:8.3.3/MissingHeaderMetadata";
+    readonly StructuralComponentDurationMissing: "ST377-1:2011:B.8/StructuralComponentDurationMissing";
   };
   readonly ST2067_2_2020: {
     readonly AssetMap: "ST2067-2:2020:7/AssetMap";
@@ -22,6 +28,7 @@ export declare const codes: {
     readonly FileNotFound: "ST2067-2:2020:8.3/FileNotFound";
     readonly ChecksumMismatch: "ST2067-2:2020:8.3/ChecksumMismatch";
     readonly UnresolvedUuid: "ST2067-2:2020:7/UnresolvedUuid";
+    readonly TrackFileNotInPackage: "ST2067-2:2020:7.1/TrackFileNotInPackage";
     readonly DuplicateUuid: "ST2067-2:2020:7/DuplicateUuid";
     readonly IoError: "IMF:General/IoError";
     readonly EssenceDescriptorList: "ST2067-2:2020:6.4.2/EssenceDescriptorList";
@@ -387,6 +394,8 @@ export declare const codes: {
     readonly J2CLayout: "ST2067-21:2026:7.5.2/J2CLayout";
     readonly J2KExtendedCapabilities: "ST2067-21:2026:7.5.1/J2KExtendedCapabilities";
     readonly JPEG2000SubDescriptor: "ST2067-21:2026:7.5.1/JPEG2000SubDescriptor";
+    readonly HTIRVParameterBMax: "ST2067-21:2026:H/HT-IRV-ParameterB-Max";
+    readonly HTIRVParameterBRecommended: "ST2067-21:2026:H/HT-IRV-ParameterB-Recommended";
     readonly J2K4KResolution: "ST2067-21:2026:7.2.5/J2K-4K-Resolution";
     readonly J2K2KResolution: "ST2067-21:2026:7.2.5/J2K-2K-Resolution";
     readonly J2KBCPResolution: "ST2067-21:2026:7.2.5/J2K-BCP-Resolution";
@@ -468,5 +477,6 @@ export declare const codes: {
     readonly ReadDirError: "IMFERNO:Package/ReadDirError";
     readonly DirEntryError: "IMFERNO:Package/DirEntryError";
     readonly PathTraversal: "IMFERNO:Package/PathTraversal";
+    readonly ApplicationProfileNotValidated: "IMFERNO:Package/ApplicationProfileNotValidated";
   }
 };

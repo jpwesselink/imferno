@@ -33,6 +33,11 @@ pub enum St377_1_2011 {
     /// (HeaderByteCount = 0) — ST 377-1 §8.3.3 requires header
     /// metadata in the header partition.
     MissingHeaderMetadata,
+    /// A Structural Component (Sequence, Source Clip, Filler, Timecode
+    /// Component, ...) on a Timeline Track has no Duration. Annex B.8
+    /// makes Duration Best Effort there, and Best Effort properties shall
+    /// always be encoded (§4.4, Table 3).
+    StructuralComponentDurationMissing,
 }
 
 impl ValidationCode for St377_1_2011 {
@@ -45,6 +50,9 @@ impl ValidationCode for St377_1_2011 {
             Self::NonHeaderFirstPartition => "ST377-1:2011:6.4/NonHeaderFirstPartition",
             Self::HeaderPartitionOpen => "ST377-1:2011:8.3.3/HeaderPartitionOpen",
             Self::MissingHeaderMetadata => "ST377-1:2011:8.3.3/MissingHeaderMetadata",
+            Self::StructuralComponentDurationMissing => {
+                "ST377-1:2011:B.8/StructuralComponentDurationMissing"
+            }
         }
     }
     fn description(&self) -> &'static str {
@@ -62,15 +70,20 @@ impl ValidationCode for St377_1_2011 {
             Self::MissingHeaderMetadata => {
                 "The header partition must carry header metadata (HeaderByteCount > 0)."
             }
+            // https://github.com/SMPTE/ST377-1-full-revision/issues/18
+            Self::StructuralComponentDurationMissing => {
+                "A Structural Component on a Timeline Track has no Duration; it is a Best Effort property there and shall be encoded (-1 when unknown)."
+            }
         }
     }
     fn default_severity(&self) -> Severity {
         match self {
             Self::NotMxf | Self::ParseError | Self::NoEssenceContainers => Severity::Warning,
             Self::HeaderPartitionOpen => Severity::Warning,
-            Self::Op1a | Self::NonHeaderFirstPartition | Self::MissingHeaderMetadata => {
-                Severity::Error
-            }
+            Self::Op1a
+            | Self::NonHeaderFirstPartition
+            | Self::MissingHeaderMetadata
+            | Self::StructuralComponentDurationMissing => Severity::Error,
         }
     }
     fn category(&self) -> Category {
@@ -79,7 +92,8 @@ impl ValidationCode for St377_1_2011 {
             Self::NoEssenceContainers | Self::Op1a => Category::Encoding,
             Self::NonHeaderFirstPartition
             | Self::HeaderPartitionOpen
-            | Self::MissingHeaderMetadata => Category::Container,
+            | Self::MissingHeaderMetadata
+            | Self::StructuralComponentDurationMissing => Category::Container,
         }
     }
     fn example(&self) -> Option<&'static str> {
@@ -98,6 +112,8 @@ impl ValidationCode for St377_1_2011 {
                 "A live-streaming export shipped an OpenIncomplete Header partition and no Closed Footer partition with header metadata.",
             Self::MissingHeaderMetadata =>
                 "An MXF file whose Header partition advertises HeaderByteCount = 0 — no metadata sets follow the partition pack.",
+            Self::StructuralComponentDurationMissing =>
+                "A timed-text track file whose Source Clip on the Timeline Track carries no Duration item.",
         })
     }
 }
@@ -111,6 +127,7 @@ impl St377_1_2011 {
         Self::NonHeaderFirstPartition,
         Self::HeaderPartitionOpen,
         Self::MissingHeaderMetadata,
+        Self::StructuralComponentDurationMissing,
     ];
 }
 

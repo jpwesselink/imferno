@@ -6,7 +6,7 @@
 //!    emitted by the package validator.
 //!
 //! 2. **Core Constraints CPL codes** (`St2067_2_2013_Core` / `St2067_2_2016_Core` /
-//!    `St2067_2_2020_Core`) — CPL structure rules (XSD, §6.1, §6.9, §6.10, §8, §10,
+//!    `St2067_2_2020_Core`) — CPL structure rules (XSD, §6.1, §6.9, §6.10, §10,
 //!    ST 377-4) shared across all three spec editions, emitted by the CoreConstraints
 //!    validators.  A `macro_rules!` generates the three enums from a
 //!    single source-of-truth variant list.  Each enum also exposes `for_code` so that
@@ -223,7 +223,6 @@ pub enum CoreConstraintsCode {
     UniqueResourceId,
     IntrinsicDuration,
     EntryPoint,
-    SourceDuration,
     ResourceDuration,
     RepeatCount,
     TrackFileId,
@@ -241,18 +240,21 @@ pub enum CoreConstraintsCode {
     DigitalSignature,
     DanglingEssenceDescriptor,
     EssenceDescriptorList,
+    CplIdAssetMapMismatch,
 }
 
 macro_rules! define_core_constraints_enum {
     // No identical predecessor — trait default `None`.
-    ($name:ident, $prefix:literal) => {
-        define_core_constraints_enum!(@inner $name, $prefix, None);
+    // `$asset_id` is the edition's clause for Asset Identification (the
+    // table that identifies a CPL asset by its CompositionPlaylist Id).
+    ($name:ident, $prefix:literal, asset_id = $asset_id:literal) => {
+        define_core_constraints_enum!(@inner $name, $prefix, $asset_id, None);
     };
     // Identical to a prior edition (verified via snapshot diff).
-    ($name:ident, $prefix:literal, $previous:literal) => {
-        define_core_constraints_enum!(@inner $name, $prefix, Some($previous));
+    ($name:ident, $prefix:literal, asset_id = $asset_id:literal, $previous:literal) => {
+        define_core_constraints_enum!(@inner $name, $prefix, $asset_id, Some($previous));
     };
-    (@inner $name:ident, $prefix:literal, $previous:expr) => {
+    (@inner $name:ident, $prefix:literal, $asset_id:literal, $previous:expr) => {
         /// Validation codes for Core Constraints CPL checks, edition
         #[doc = $prefix]
         #[allow(non_camel_case_types)]
@@ -299,8 +301,6 @@ macro_rules! define_core_constraints_enum {
             /// EntryPoint shall be less than IntrinsicDuration.
             EntryPoint,
             /// EntryPoint + SourceDuration exceeds IntrinsicDuration.
-            SourceDuration,
-            /// SourceDuration shall be a positive integer.
             ResourceDuration,
             /// RepeatCount shall be a positive integer.
             RepeatCount,
@@ -328,12 +328,15 @@ macro_rules! define_core_constraints_enum {
             MCATagSymbol,
             /// Soundfield group channel count is inconsistent with WAVEPCMDescriptor.ChannelCount.
             SoundfieldChannelCount,
-            /// Digital signature validation (ST 2067-2 §8) is not currently performed.
+            /// The CPL carries a Signature (ST 2067-2 §6.9), which is not verified.
             DigitalSignature,
             /// EssenceDescriptor present in EssenceDescriptorList but not referenced by any Resource.
             DanglingEssenceDescriptor,
             /// EssenceDescriptorList is required per ST 2067-2 §6.4.2.
             EssenceDescriptorList,
+            /// The AssetMap asset that locates the CPL file carries an Id
+            /// other than the CPL's own Id (Asset Identification table).
+            CplIdAssetMapMismatch,
         }
 
         impl ValidationCode for $name {
@@ -359,7 +362,6 @@ macro_rules! define_core_constraints_enum {
                     Self::UniqueResourceId                     => concat!($prefix, ":6.1/UniqueResourceId"),
                     Self::IntrinsicDuration                    => concat!($prefix, ":6.10/IntrinsicDuration"),
                     Self::EntryPoint                           => concat!($prefix, ":6.10/EntryPoint"),
-                    Self::SourceDuration                       => concat!($prefix, ":6.10/SourceDuration"),
                     Self::ResourceDuration                     => concat!($prefix, ":6.10/ResourceDuration"),
                     Self::RepeatCount                          => concat!($prefix, ":6.10/RepeatCount"),
                     Self::TrackFileId                          => concat!($prefix, ":6.10/TrackFileId"),
@@ -374,9 +376,10 @@ macro_rules! define_core_constraints_enum {
                     Self::SoundfieldGroup                      => concat!($prefix, ":ST377-4/SoundfieldGroup"),
                     Self::MCATagSymbol                         => concat!($prefix, ":ST377-4/MCATagSymbol"),
                     Self::SoundfieldChannelCount               => concat!($prefix, ":ST377-4/SoundfieldChannelCount"),
-                    Self::DigitalSignature                     => concat!($prefix, ":8/DigitalSignature"),
+                    Self::DigitalSignature                     => concat!($prefix, ":6.9/DigitalSignature"),
                     Self::DanglingEssenceDescriptor            => concat!($prefix, ":6.4.2/DanglingEssenceDescriptor"),
                     Self::EssenceDescriptorList                => concat!($prefix, ":6.4.2/EssenceDescriptorList"),
+                    Self::CplIdAssetMapMismatch                => concat!($prefix, ":", $asset_id, "/CplIdAssetMapMismatch"),
                 }
             }
             fn description(&self) -> &'static str {
@@ -401,8 +404,7 @@ macro_rules! define_core_constraints_enum {
                     Self::UniqueResourceId                     => "Duplicate Resource Id within the CPL.",
                     Self::IntrinsicDuration                    => "IntrinsicDuration shall be greater than 0.",
                     Self::EntryPoint                           => "EntryPoint shall be less than IntrinsicDuration.",
-                    Self::SourceDuration                       => "EntryPoint + SourceDuration exceeds IntrinsicDuration.",
-                    Self::ResourceDuration                     => "SourceDuration shall be a positive integer.",
+                    Self::ResourceDuration                     => "EntryPoint + SourceDuration exceeds IntrinsicDuration.",
                     Self::RepeatCount                          => "RepeatCount shall be a positive integer.",
                     Self::TrackFileId                          => "A non-marker resource is missing a TrackFileId.",
                     Self::VirtualTrackContinuity               => "A virtual track is missing from one or more segments.",
@@ -416,9 +418,11 @@ macro_rules! define_core_constraints_enum {
                     Self::SoundfieldGroup                      => "WAVEPCMDescriptor SubDescriptors missing SoundfieldGroupLabelSubDescriptor.",
                     Self::MCATagSymbol                         => "SoundfieldGroupLabelSubDescriptor is missing MCATagSymbol.",
                     Self::SoundfieldChannelCount               => "Soundfield group channel count is inconsistent with WAVEPCMDescriptor.ChannelCount.",
-                    Self::DigitalSignature                     => "Digital signature validation (ST 2067-2 §8) is not currently performed.",
+                    Self::DigitalSignature                     => "The CPL carries a Signature (ST 2067-2 §6.9); signature verification is not performed.",
                     Self::DanglingEssenceDescriptor            => "EssenceDescriptor present in EssenceDescriptorList but not referenced by any Resource.",
                     Self::EssenceDescriptorList                => "EssenceDescriptorList is required per ST 2067-2 §6.4.2.",
+                    // https://github.com/Netflix/photon/issues/265
+                    Self::CplIdAssetMapMismatch                => "An AssetMap asset points at a CPL file whose Id differs from the asset Id.",
                 }
             }
             fn default_severity(&self) -> Severity {
@@ -452,7 +456,6 @@ macro_rules! define_core_constraints_enum {
                     | Self::CompositionTimecodeStartAddressFormat
                     | Self::IntrinsicDuration
                     | Self::EntryPoint
-                    | Self::SourceDuration
                     | Self::ResourceDuration
                     | Self::RepeatCount
                     | Self::VirtualTrackEditRate => Category::Timing,
@@ -468,7 +471,9 @@ macro_rules! define_core_constraints_enum {
                     | Self::MCATagSymbol
                     | Self::SoundfieldChannelCount => Category::Audio,
 
-                    Self::DanglingEssenceDescriptor | Self::TrackFileId => Category::Reference,
+                    Self::DanglingEssenceDescriptor
+                    | Self::TrackFileId
+                    | Self::CplIdAssetMapMismatch => Category::Reference,
 
                     Self::DigitalSignature => Category::Security,
 
@@ -500,8 +505,7 @@ macro_rules! define_core_constraints_enum {
                     Self::UniqueResourceId                     => "Two <Resource><Id>urn:uuid:abc…</Id></Resource> with the same Id",
                     Self::IntrinsicDuration                    => "<IntrinsicDuration>0</IntrinsicDuration>",
                     Self::EntryPoint                           => "<IntrinsicDuration>100</IntrinsicDuration><EntryPoint>150</EntryPoint>",
-                    Self::SourceDuration                       => "<IntrinsicDuration>100</IntrinsicDuration><EntryPoint>50</EntryPoint><SourceDuration>80</SourceDuration>  <!-- 50+80 > 100 -->",
-                    Self::ResourceDuration                     => "<SourceDuration>-5</SourceDuration>",
+                    Self::ResourceDuration                     => "<IntrinsicDuration>100</IntrinsicDuration><EntryPoint>50</EntryPoint><SourceDuration>80</SourceDuration>  <!-- 50+80 > 100 -->",
                     Self::RepeatCount                          => "<RepeatCount>0</RepeatCount>",
                     Self::TrackFileId                          => "<Resource xsi:type=\"TrackFileResourceType\">…</Resource>  <!-- no <TrackFileId> child -->",
                     Self::VirtualTrackContinuity               => "Two <Segment> entries, MainAudio track present in segment 0 but absent from segment 1",
@@ -518,6 +522,7 @@ macro_rules! define_core_constraints_enum {
                     Self::DigitalSignature                     => "CPL declares Signer/Signature but the engine does not yet verify them (info notice)",
                     Self::DanglingEssenceDescriptor            => "<EssenceDescriptor><Id>urn:uuid:abc…</Id></EssenceDescriptor>  <!-- no Resource references this Id -->",
                     Self::EssenceDescriptorList                => "CPL with `<SourceEncoding>` references but no top-level `<EssenceDescriptorList>` element",
+                    Self::CplIdAssetMapMismatch                => "AssetMap `<Id>urn:uuid:aaa…</Id>` with `<Path>CPL.xml</Path>`, but CPL.xml carries `<Id>urn:uuid:bbb…</Id>`",
                 })
             }
         }
@@ -544,7 +549,6 @@ macro_rules! define_core_constraints_enum {
                 Self::UniqueResourceId,
                 Self::IntrinsicDuration,
                 Self::EntryPoint,
-                Self::SourceDuration,
                 Self::ResourceDuration,
                 Self::RepeatCount,
                 Self::TrackFileId,
@@ -562,6 +566,7 @@ macro_rules! define_core_constraints_enum {
                 Self::DigitalSignature,
                 Self::DanglingEssenceDescriptor,
                 Self::EssenceDescriptorList,
+                Self::CplIdAssetMapMismatch,
             ];
 
             /// Dispatch from the spec-agnostic [`CoreConstraintsCode`] to this
@@ -588,7 +593,6 @@ macro_rules! define_core_constraints_enum {
                     CoreConstraintsCode::UniqueResourceId                     => concat!($prefix, ":6.1/UniqueResourceId"),
                     CoreConstraintsCode::IntrinsicDuration                    => concat!($prefix, ":6.10/IntrinsicDuration"),
                     CoreConstraintsCode::EntryPoint                           => concat!($prefix, ":6.10/EntryPoint"),
-                    CoreConstraintsCode::SourceDuration                       => concat!($prefix, ":6.10/SourceDuration"),
                     CoreConstraintsCode::ResourceDuration                     => concat!($prefix, ":6.10/ResourceDuration"),
                     CoreConstraintsCode::RepeatCount                          => concat!($prefix, ":6.10/RepeatCount"),
                     CoreConstraintsCode::TrackFileId                          => concat!($prefix, ":6.10/TrackFileId"),
@@ -603,9 +607,10 @@ macro_rules! define_core_constraints_enum {
                     CoreConstraintsCode::SoundfieldGroup                      => concat!($prefix, ":ST377-4/SoundfieldGroup"),
                     CoreConstraintsCode::MCATagSymbol                         => concat!($prefix, ":ST377-4/MCATagSymbol"),
                     CoreConstraintsCode::SoundfieldChannelCount               => concat!($prefix, ":ST377-4/SoundfieldChannelCount"),
-                    CoreConstraintsCode::DigitalSignature                     => concat!($prefix, ":8/DigitalSignature"),
+                    CoreConstraintsCode::DigitalSignature                     => concat!($prefix, ":6.9/DigitalSignature"),
                     CoreConstraintsCode::DanglingEssenceDescriptor            => concat!($prefix, ":6.4.2/DanglingEssenceDescriptor"),
                     CoreConstraintsCode::EssenceDescriptorList                => concat!($prefix, ":6.4.2/EssenceDescriptorList"),
+                    CoreConstraintsCode::CplIdAssetMapMismatch                => concat!($prefix, ":", $asset_id, "/CplIdAssetMapMismatch"),
                 }
             }
         }
@@ -618,7 +623,8 @@ macro_rules! define_core_constraints_enum {
     };
 }
 
-define_core_constraints_enum!(St2067_2_2013_Core, "ST2067-2:2013");
-// 2016 catalogue is bit-for-bit identical to 2013 (audit, 2026-06-04).
-define_core_constraints_enum!(St2067_2_2016_Core, "ST2067-2:2016", "ST2067-2:2013");
-define_core_constraints_enum!(St2067_2_2020_Core, "ST2067-2:2020");
+// Asset Identification: 2013 §7.2 (Table 18), 2016 and 2020 §7.3.1 (Table 19).
+define_core_constraints_enum!(St2067_2_2013_Core, "ST2067-2:2013", asset_id = "7.2");
+// 2016 differs from 2013 only in the Asset Identification clause.
+define_core_constraints_enum!(St2067_2_2016_Core, "ST2067-2:2016", asset_id = "7.3.1");
+define_core_constraints_enum!(St2067_2_2020_Core, "ST2067-2:2020", asset_id = "7.3.1");

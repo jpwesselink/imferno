@@ -522,6 +522,18 @@ fn sanitize_asset_path(root: &Path, chunk_path: &str) -> Option<PathBuf> {
 /// Keys are the **absolute** file paths. `from_file_map` (called by `parse`)
 /// derives the package `root_path` from these keys so that file-manifest
 /// and MXF-header validation work correctly on native targets.
+/// Collapse the per-CPL "signature not verified" notices into one finding
+/// for the package: it describes the tool, not the documents. The first
+/// notice (by CPL Id, for stable output) is kept, the other CPLs become its
+/// `additional_instances`.
+fn collapse_signature_notices(mut notices: Vec<ValidationIssue>) -> Option<ValidationIssue> {
+    notices.sort_by_key(|i| i.location.cpl_id.map(|id| id.to_string()));
+    let mut iter = notices.into_iter();
+    let mut first = iter.next()?;
+    first.additional_instances.extend(iter.map(|i| i.location));
+    Some(first)
+}
+
 pub fn read_dir(path: impl AsRef<Path>) -> Result<HashMap<String, String>> {
     use crate::storage::{fs::FsStorage, StorageUri};
 
@@ -854,16 +866,45 @@ impl Imferno {
             }
         };
 
-        // ASSETMAP.xml — required
-        let assetmap_xml = find("ASSETMAP.xml")
-            .ok_or_else(|| ImfError::MissingFile("ASSETMAP.xml".to_string()))?;
+        // ASSETMAP.xml — required. ST 429-9:2014 Annex A.4: the file shall be
+        // named exactly "ASSETMAP.xml". Prefer that name; fall back to a
+        // case-insensitive match so the rest of the validation still runs,
+        // and report the wrong name.
+        let mut parse_issues: Vec<ValidationIssue> = Vec::new();
+        let basename_of = |k: &str| -> String {
+            std::path::Path::new(k)
+                .file_name()
+                .and_then(|f| f.to_str())
+                .unwrap_or(k)
+                .to_string()
+        };
+        let assetmap_xml = match files.iter().find(|(k, _)| basename_of(k) == "ASSETMAP.xml") {
+            Some((_, v)) => v.as_str(),
+            None => {
+                let (key, xml) = files
+                    .iter()
+                    .find(|(k, _)| basename_of(k).eq_ignore_ascii_case("ASSETMAP.xml"))
+                    .ok_or_else(|| ImfError::MissingFile("ASSETMAP.xml".to_string()))?;
+                let name = basename_of(key);
+                parse_issues.push(
+                    ValidationIssue::from_code(
+                        codes::St429_9_2014::AssetMapFileName,
+                        format!(
+                            "Asset Map file is named '{name}'; ST 429-9 A.4 requires \
+                             'ASSETMAP.xml' (a case-sensitive reader finds no Asset Map)"
+                        ),
+                    )
+                    .with_context("file", name),
+                );
+                xml.as_str()
+            }
+        };
         let asset_map = crate::assetmap::parse_assetmap(assetmap_xml)?;
 
         // Asset UUID → path mapping.
         // When root_path is known (native disk load), build absolute paths
         // with path traversal protection. Otherwise keep relative paths (WASM).
         let mut asset_paths: HashMap<ImfUuid, PathBuf> = HashMap::new();
-        let mut parse_issues: Vec<ValidationIssue> = Vec::new();
         for asset in &asset_map.asset_list.assets {
             for chunk in &asset.chunk_list.chunks {
                 let path = if root_path.as_os_str().is_empty() {
@@ -958,7 +999,8 @@ impl Imferno {
                     .unwrap_or(&chunk.path);
                 if let Some(xml) = find(basename) {
                     match crate::cpl::parse_cpl(xml) {
-                        Ok(cpl) => {
+                        Ok(mut cpl) => {
+                            cpl.assetmap_asset_id = Some(asset.id);
                             cpl_xml_content.insert(asset.id, xml.to_string());
                             composition_playlists.insert(asset.id, cpl);
                         }
@@ -1118,15 +1160,16 @@ impl Imferno {
         }
     }
 
-    /// Emit `ImfernoCode::UnlistedEssence` warnings for any file in the
-    /// package directory that is not accounted for by the AssetMap, PKL,
-    /// VOLINDEX, or ASSETMAP itself.
+    /// Emit `ImfernoCode::UnlistedEssence` for any file in the package
+    /// directory that is not accounted for by the AssetMap, PKL, VOLINDEX,
+    /// or ASSETMAP itself. Severity comes from the catalogue (Info: ST
+    /// 2067-2:2020 §8.3 Note 3 lets the medium hold files that are not
+    /// ingested).
     ///
     /// Scans the root directory non-recursively.  Skipped on WASM and when
     /// `root_path` is unset (in-memory / WASM packages).
     #[cfg(not(target_arch = "wasm32"))]
     fn emit_unlisted_essence(&self, report: &mut ValidationReport) {
-        use crate::diagnostics::codes::ValidationCode as _;
         if self.root_path.as_os_str().is_empty() {
             return;
         }
@@ -1193,10 +1236,8 @@ impl Imferno {
             if known.iter().any(|k| k.eq_ignore_ascii_case(&filename)) {
                 continue;
             }
-            report.add(ValidationIssue::new(
-                Severity::Warning,
-                Category::Structure,
-                codes::ImfernoCode::UnlistedEssence.code(),
+            report.add(ValidationIssue::from_code(
+                codes::ImfernoCode::UnlistedEssence,
                 format!(
                     "File '{}' is present in the package directory but not listed in the AssetMap",
                     filename,
@@ -1749,13 +1790,21 @@ impl Imferno {
         }
 
         // CPL TrackFileId → AssetMap cross-references
+        let mut signature_notices = Vec::new();
         for cpl in self.composition_playlists.values() {
             self.validate_cpl_asset_references_accumulating(cpl, &mut report);
 
             // Optional external CPL-level validation injection
             for issue in cpl_validator(cpl) {
-                report.add(issue);
+                if issue.code.ends_with("/DigitalSignature") {
+                    signature_notices.push(issue);
+                } else {
+                    report.add(issue);
+                }
             }
+        }
+        if let Some(notice) = collapse_signature_notices(signature_notices) {
+            report.add(notice);
         }
 
         // SCM reference checks (ST 2067-9:2018 §6)
@@ -1772,8 +1821,12 @@ impl Imferno {
         #[cfg(not(target_arch = "wasm32"))]
         if !skip_disk_checks && !self.root_path.as_os_str().is_empty() {
             self.validate_mxf_headers(&mut report);
-            self.emit_unlisted_essence(&mut report);
         }
+
+        // Files the AssetMap does not list. A directory listing reads no
+        // asset, so this also runs with skip_disk_checks.
+        #[cfg(not(target_arch = "wasm32"))]
+        self.emit_unlisted_essence(&mut report);
 
         report
     }
@@ -1825,13 +1878,21 @@ impl Imferno {
         }
 
         // CPL TrackFileId → AssetMap cross-references
+        let mut signature_notices = Vec::new();
         for cpl in self.composition_playlists.values() {
             self.validate_cpl_asset_references_accumulating(cpl, &mut report);
 
             // Optional external CPL-level validation injection
             for issue in cpl_validator(cpl) {
-                report.add(issue);
+                if issue.code.ends_with("/DigitalSignature") {
+                    signature_notices.push(issue);
+                } else {
+                    report.add(issue);
+                }
             }
+        }
+        if let Some(notice) = collapse_signature_notices(signature_notices) {
+            report.add(notice);
         }
 
         // Multi-PKL consistency
@@ -3068,9 +3129,20 @@ mod tests {
     fn test_package_with_id_mismatch() {
         let test_path = test_data("MERIDIAN_Netflix_Photon_161006_ID_MISMATCH");
 
-        if let Ok(package) = Imferno::parse(read_dir(test_path).unwrap()) {
-            assert!(!package.composition_playlists.is_empty());
-        }
+        let package = Imferno::parse(read_dir(test_path).unwrap()).unwrap();
+        assert!(!package.composition_playlists.is_empty());
+        // Photon's ID_MISMATCH fixture: the AssetMap lists the CPL under
+        // ...dca85, the CPL document says ...dca84.
+        let report = package.validate(&skip_disk_options());
+        assert!(
+            report
+                .errors
+                .iter()
+                .any(|i| i.code == "ST2067-2:2013:7.2/CplIdAssetMapMismatch"
+                    && i.message.contains("0eb3d1b9-b77b-4d3f-bbe5-7c69b15dca84")),
+            "{:#?}",
+            report.errors
+        );
     }
 
     #[test]
@@ -4747,5 +4819,212 @@ mod tests {
                 );
             }
         }
+    }
+
+    /// Copy the XML documents (not the MXFs) of a test-data package into a
+    /// fresh temporary directory, so a test can edit them.
+    fn copy_xml_package(name: &str) -> tempfile::TempDir {
+        let dir = tempfile::TempDir::new().unwrap();
+        for entry in std::fs::read_dir(test_data(name)).unwrap() {
+            let path = entry.unwrap().path();
+            if path.extension().and_then(|e| e.to_str()) == Some("xml") {
+                std::fs::copy(&path, dir.path().join(path.file_name().unwrap())).unwrap();
+            }
+        }
+        dir
+    }
+
+    fn skip_disk_options() -> ValidationOptions {
+        ValidationOptions {
+            skip_disk_checks: true,
+            ..meridian_test_options()
+        }
+    }
+
+    /// The MERIDIAN CPL file in a copied package.
+    const MERIDIAN_CPL: &str = "CPL_0eb3d1b9-b77b-4d3f-bbe5-7c69b15dca85.xml";
+
+    /// DanglingEssenceDescriptor also runs at package level with
+    /// `skip_disk_checks` (the CLI's `--skip-disk-checks`, formerly
+    /// `--xml-only`): it needs only the CPL XML.
+    /// https://github.com/jpwesselink/imferno/issues/82
+    #[test]
+    fn dangling_essence_descriptor_reported_with_skip_disk_checks() {
+        let dir = copy_xml_package("MERIDIAN_Netflix_Photon_161006");
+        let cpl_path = dir.path().join(MERIDIAN_CPL);
+        let xml = std::fs::read_to_string(&cpl_path).unwrap().replacen(
+            "</EssenceDescriptorList>",
+            "<EssenceDescriptor><Id>urn:uuid:11111111-2222-4333-8444-555555555555</Id>\
+             </EssenceDescriptor></EssenceDescriptorList>",
+            1,
+        );
+        std::fs::write(&cpl_path, xml).unwrap();
+        let package = Imferno::parse(read_dir(dir.path()).unwrap()).unwrap();
+        let report = package.validate(&skip_disk_options());
+        let dangling: Vec<_> = report
+            .errors
+            .iter()
+            .filter(|i| i.code.ends_with("/DanglingEssenceDescriptor"))
+            .collect();
+        assert_eq!(dangling.len(), 1, "{:#?}", report.errors);
+        assert!(dangling[0]
+            .message
+            .contains("11111111-2222-4333-8444-555555555555"));
+    }
+
+    /// ST 429-9:2014 Annex A.4: each Asset Map document shall be a file
+    /// named exactly "ASSETMAP.xml". A lower-case `assetmap.xml` is still
+    /// read, so the rest of the validation runs, but it is reported: on a
+    /// case-sensitive filesystem a conforming reader finds no Asset Map.
+    /// https://github.com/jpwesselink/imferno/issues/80
+    #[test]
+    fn assetmap_file_name_must_be_exact() {
+        use crate::assetmap::volindex_codes::St429_9_2014;
+        let code = St429_9_2014::AssetMapFileName.code();
+
+        let clean = copy_xml_package("MERIDIAN_Netflix_Photon_161006");
+        let package = Imferno::parse(read_dir(clean.path()).unwrap()).unwrap();
+        let report = package.validate(&skip_disk_options());
+        assert!(
+            !report.errors.iter().any(|i| i.code == code),
+            "{:#?}",
+            report.errors
+        );
+
+        let dir = copy_xml_package("MERIDIAN_Netflix_Photon_161006");
+        std::fs::rename(
+            dir.path().join("ASSETMAP.xml"),
+            dir.path().join("assetmap.xml"),
+        )
+        .unwrap();
+        let package = Imferno::parse(read_dir(dir.path()).unwrap()).unwrap();
+        // Still parsed: the CPL is found through the Asset Map.
+        assert_eq!(package.composition_playlists.len(), 1);
+        let report = package.validate(&skip_disk_options());
+        let found: Vec<_> = report.errors.iter().filter(|i| i.code == code).collect();
+        assert_eq!(found.len(), 1, "{:#?}", report.errors);
+        assert!(found[0].message.contains("'assetmap.xml'"));
+    }
+
+    /// Files in the package directory that the AssetMap does not list are
+    /// reported once each as UnlistedEssence, also with `skip_disk_checks`
+    /// (a directory listing reads no asset). It is Info: ST 2067-2:2020 §8.3
+    /// Note 3 allows the delivery medium to hold other files that are not
+    /// ingested, so a stray file is not a violation.
+    /// https://github.com/jpwesselink/imferno/issues/84
+    #[test]
+    fn unlisted_file_reported_as_info_with_skip_disk_checks() {
+        let code = codes::ImfernoCode::UnlistedEssence.code();
+        let dir = copy_xml_package("MERIDIAN_Netflix_Photon_161006");
+        std::fs::write(dir.path().join("CPL_copy.xml"), "<x/>").unwrap();
+        let package = Imferno::parse(read_dir(dir.path()).unwrap()).unwrap();
+        let report = package.validate(&skip_disk_options());
+        let found: Vec<_> = report.info.iter().filter(|i| i.code == code).collect();
+        assert_eq!(found.len(), 1, "{:#?}", report.info);
+        assert!(found[0].message.contains("'CPL_copy.xml'"));
+        assert!(
+            !report
+                .errors
+                .iter()
+                .chain(&report.warnings)
+                .any(|i| i.code == code),
+            "UnlistedEssence is Info only"
+        );
+    }
+
+    /// The "signature not verified" notice is a property of the tool, not of
+    /// each document: one per package, listing every signed CPL as an
+    /// additional instance, instead of one line per CPL.
+    /// https://github.com/jpwesselink/imferno/issues/87
+    #[test]
+    fn digital_signature_notice_once_per_package() {
+        let dir = copy_xml_package("MERIDIAN_Netflix_Photon_161006");
+        let signature =
+            "<ds:Signature xmlns:ds=\"http://www.w3.org/2000/09/xmldsig#\"/></CompositionPlaylist>";
+        let cpl_a = std::fs::read_to_string(dir.path().join(MERIDIAN_CPL))
+            .unwrap()
+            .replacen("</CompositionPlaylist>", signature, 1);
+        std::fs::write(dir.path().join(MERIDIAN_CPL), &cpl_a).unwrap();
+        // A second signed CPL with its own Id, listed in the AssetMap and PKL.
+        let (a, b) = (
+            "0eb3d1b9-b77b-4d3f-bbe5-7c69b15dca85",
+            "0eb3d1b9-b77b-4d3f-bbe5-7c69b15dca86",
+        );
+        std::fs::write(dir.path().join("CPL_b.xml"), cpl_a.replacen(a, b, 1)).unwrap();
+        let am_path = dir.path().join("ASSETMAP.xml");
+        let am = std::fs::read_to_string(&am_path).unwrap().replacen(
+            "<AssetList>",
+            &format!(
+                "<AssetList><Asset><Id>urn:uuid:{b}</Id><ChunkList><Chunk>\
+                 <Path>CPL_b.xml</Path></Chunk></ChunkList></Asset>"
+            ),
+            1,
+        );
+        std::fs::write(&am_path, am).unwrap();
+        let pkl_path = dir
+            .path()
+            .join("PKL_f5e93462-aed2-44ad-a4ba-2adb65823e7c.xml");
+        let pkl = std::fs::read_to_string(&pkl_path).unwrap().replacen(
+            "<AssetList>",
+            &format!(
+                "<AssetList><Asset><Id>urn:uuid:{b}</Id>\
+                 <Hash>AX7vs/c1eJFL4eHfkLeIv79h3vE=</Hash><Size>1</Size>\
+                 <Type>text/xml</Type></Asset>"
+            ),
+            1,
+        );
+        std::fs::write(&pkl_path, pkl).unwrap();
+
+        let package = Imferno::parse(read_dir(dir.path()).unwrap()).unwrap();
+        assert_eq!(package.composition_playlists.len(), 2);
+        let report = package.validate(&skip_disk_options());
+        let notices: Vec<_> = report
+            .info
+            .iter()
+            .filter(|i| i.code.ends_with("/DigitalSignature"))
+            .collect();
+        assert_eq!(notices.len(), 1, "{:#?}", report.info);
+        assert_eq!(notices[0].instance_count(), 2, "{:#?}", notices[0]);
+    }
+
+    /// Asset Identification: a CPL asset is identified by the Id element of
+    /// the CompositionPlaylist, and ST 429-9 maps those asset Ids to files.
+    /// An AssetMap entry whose file is a CPL with another Id sends every
+    /// lookup by Id to the wrong composition. MERIDIAN is a 2013 CPL, so the
+    /// ST 2067-2:2013 code (§7.2, Table 18) fires; the per-edition codes are
+    /// tested in the validation module.
+    /// https://github.com/jpwesselink/imferno/issues/81
+    /// https://github.com/Netflix/photon/issues/265
+    #[test]
+    fn cpl_id_differing_from_assetmap_id_is_reported() {
+        let code = "ST2067-2:2013:7.2/CplIdAssetMapMismatch";
+
+        let clean = copy_xml_package("MERIDIAN_Netflix_Photon_161006");
+        let package = Imferno::parse(read_dir(clean.path()).unwrap()).unwrap();
+        let report = package.validate(&skip_disk_options());
+        assert!(
+            !report.errors.iter().any(|i| i.code == code),
+            "{:#?}",
+            report.errors
+        );
+
+        let dir = copy_xml_package("MERIDIAN_Netflix_Photon_161006");
+        let cpl_path = dir.path().join(MERIDIAN_CPL);
+        let xml = std::fs::read_to_string(&cpl_path).unwrap().replacen(
+            "<Id>urn:uuid:0eb3d1b9-b77b-4d3f-bbe5-7c69b15dca85</Id>",
+            "<Id>urn:uuid:99999999-b77b-4d3f-bbe5-7c69b15dca85</Id>",
+            1,
+        );
+        std::fs::write(&cpl_path, xml).unwrap();
+        let package = Imferno::parse(read_dir(dir.path()).unwrap()).unwrap();
+        let report = package.validate(&skip_disk_options());
+        let found: Vec<_> = report.errors.iter().filter(|i| i.code == code).collect();
+        assert_eq!(found.len(), 1, "{:#?}", report.errors);
+        assert!(found[0]
+            .message
+            .contains("0eb3d1b9-b77b-4d3f-bbe5-7c69b15dca85"));
+        assert!(found[0]
+            .message
+            .contains("99999999-b77b-4d3f-bbe5-7c69b15dca85"));
     }
 }

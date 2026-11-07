@@ -2475,6 +2475,12 @@ pub struct CompositionPlaylist {
     #[serde(skip)]
     pub has_signature: bool,
 
+    /// The Id of the AssetMap asset this CPL was loaded through, set by the
+    /// package loader. `None` for a CPL parsed on its own. The core
+    /// constraints compare it with `id` (Asset Identification, ST 2067-2).
+    #[serde(skip)]
+    pub assetmap_asset_id: Option<ImfUuid>,
+
     /// The raw CPL XML as parsed, retained so callers running through
     /// `validate_cpl(&cpl)` can transparently invoke the runtime-XSD
     /// validator (which needs the unparsed source). Set by `parse_cpl()`.

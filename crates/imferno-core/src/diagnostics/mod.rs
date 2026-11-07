@@ -165,6 +165,9 @@ pub struct Location {
     pub cpl_title: Option<String>,
     /// Segment index (0-based)
     pub segment: Option<usize>,
+    /// Segment Id (`urn:uuid:…`) if applicable
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub segment_id: Option<String>,
     /// Sequence UUID if applicable
     pub sequence_id: Option<String>,
     /// Resource UUID if applicable
@@ -204,6 +207,11 @@ impl Location {
 
     pub fn with_segment(mut self, segment: usize) -> Self {
         self.segment = Some(segment);
+        self
+    }
+
+    pub fn with_segment_id(mut self, segment_id: impl Into<String>) -> Self {
+        self.segment_id = Some(segment_id.into());
         self
     }
 

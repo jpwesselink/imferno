@@ -756,6 +756,7 @@ mod tests {
             composition_timecode: None,
             has_signer: false,
             has_signature: false,
+            assetmap_asset_id: None,
             source_xml: None,
             segment_list: SegmentList { segments: vec![] },
         }

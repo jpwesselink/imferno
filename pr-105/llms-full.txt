@@ -1435,7 +1435,7 @@ url: /imferno/pr-105/index.md
 [SMPTE ST-2067](https://www.smpte.org/standards/st2067)
 for Rust and JavaScript.
 
-A fast, modern IMF parser and validator. Runs on the command line, in Node.js, and entirely in your browser — your packages never leave your machine.
+Parse, validate, and inspect IMF packages. CLI, Rust, Node.js, and WebAssembly for the browser.
 
 [### Validates locally
 

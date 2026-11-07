@@ -102,6 +102,7 @@ ST2067-21:2020:6.2.5/J2K-2K-Resolution
 ST2067-21:2020:6.2.5/J2K-4K-Resolution
 ST2067-21:2020:6.2.5/J2K-BCP-Resolution
 ST2067-21:2020:6.2.5/J2K-HT-Not-Allowed
+ST2067-21:2020:6.2.5/J2K-Profile-Not-Allowed
 ST2067-21:2020:6.2.5/J2KRequired
 ST2067-21:2020:6.2/ColorSystem
 ST2067-21:2020:6.2/Required-ColorPrimaries
@@ -164,6 +165,7 @@ ST2067-21:2023:6.2.4/ColorPrimariesUnknown
 ST2067-21:2023:6.2.5/J2K-2K-Resolution
 ST2067-21:2023:6.2.5/J2K-4K-Resolution
 ST2067-21:2023:6.2.5/J2K-BCP-Resolution
+ST2067-21:2023:6.2.5/J2K-Profile-Not-Allowed
 ST2067-21:2023:6.2.5/J2KRequired
 ST2067-21:2023:6.2/ColorSystem
 ST2067-21:2023:6.2/Required-ColorPrimaries
@@ -235,6 +237,7 @@ ST2067-21:2026:7.2.3/CodingEquationsUnknown
 ST2067-21:2026:7.2.4/ColorPrimariesUnknown
 ST2067-21:2026:7.2.5/J2K-2K-Resolution
 ST2067-21:2026:7.2.5/J2K-4K-Resolution
+ST2067-21:2026:7.2.5/J2K-8K-Resolution
 ST2067-21:2026:7.2.5/J2K-BCP-Resolution
 ST2067-21:2026:7.2.5/J2KRequired
 ST2067-21:2026:7.2/ColorSystem

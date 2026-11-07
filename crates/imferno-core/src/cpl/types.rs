@@ -459,6 +459,11 @@ pub enum VideoCodec {
     /// JPEG 2000 — IMF 4K profile (ST 422 §A.3, byte [14]=0x03).
     /// Supports stored widths 2049–4096 per ST 2067-21.
     Jpeg2000Imf4k,
+    /// JPEG 2000 — IMF 8K profiles (byte [14]=0x04 Single Tile Lossy, 0x07
+    /// Single/Multi-Tile Reversible), at the Mainlevel/Sublevel combinations
+    /// ST 2067-21:2026 §6.5.2 Table 5 lists. Only the 2026 edition of
+    /// ST 2067-21 permits them.
+    Jpeg2000Imf8k,
     /// JPEG 2000 — Broadcast Contribution profile (ST 422 §A.1, byte [14]=0x01,
     /// sub-levels 0x11–0x17). Supports stored widths ≤ 3840 per ST 2067-21.
     Jpeg2000Broadcast,
@@ -561,9 +566,63 @@ const CODEC_TABLE: &[([u8; 4], VideoCodec)] = &[
     ([0x03, 0x01, 0x06, 0x14], VideoCodec::Jpeg2000Imf4k), // 4K M7S0 reversible
     ([0x03, 0x01, 0x06, 0x1a], VideoCodec::Jpeg2000Imf4k), // 4K M8S0 reversible
     //
-    // Note: byte [14]=0x07 ("8K") is not a recognised App2E JPEG 2000
-    // profile per ST 2067-21. Intentionally absent → maps to Unknown →
-    // fails is_jpeg2000_family().
+    // ── JPEG 2000 IMF 8K profiles ─────────────────────────────────────────────
+    // ULs copied from the SMPTE Labels register (resources/registers/
+    // Labels.xml, entries "8K IMF Single Tile Lossy Profile (Mainlevel m
+    // Sublevel s)" = 04010202.030104xx and "8K IMF Single/Multi-Tile
+    // Reversible Profile (Mainlevel m Sublevel s)" = 04010202.030107xx).
+    // Only the combinations of ST 2067-21:2026 §6.5.2 Table 5 are listed:
+    // Mainlevels 1–10; lossy all Sublevels except 0, reversible Sublevel 0
+    // only. Other register entries (Mainlevel 0 or 11, other Sublevels)
+    // stay Unknown.
+    ([0x03, 0x01, 0x04, 0x03], VideoCodec::Jpeg2000Imf8k), // lossy M1S1
+    ([0x03, 0x01, 0x04, 0x05], VideoCodec::Jpeg2000Imf8k), // lossy M2S1
+    ([0x03, 0x01, 0x04, 0x07], VideoCodec::Jpeg2000Imf8k), // lossy M3S1
+    ([0x03, 0x01, 0x04, 0x09], VideoCodec::Jpeg2000Imf8k), // lossy M4S1
+    ([0x03, 0x01, 0x04, 0x0a], VideoCodec::Jpeg2000Imf8k), // lossy M4S2
+    ([0x03, 0x01, 0x04, 0x0c], VideoCodec::Jpeg2000Imf8k), // lossy M5S1
+    ([0x03, 0x01, 0x04, 0x0d], VideoCodec::Jpeg2000Imf8k), // lossy M5S2
+    ([0x03, 0x01, 0x04, 0x0e], VideoCodec::Jpeg2000Imf8k), // lossy M5S3
+    ([0x03, 0x01, 0x04, 0x10], VideoCodec::Jpeg2000Imf8k), // lossy M6S1
+    ([0x03, 0x01, 0x04, 0x11], VideoCodec::Jpeg2000Imf8k), // lossy M6S2
+    ([0x03, 0x01, 0x04, 0x12], VideoCodec::Jpeg2000Imf8k), // lossy M6S3
+    ([0x03, 0x01, 0x04, 0x13], VideoCodec::Jpeg2000Imf8k), // lossy M6S4
+    ([0x03, 0x01, 0x04, 0x15], VideoCodec::Jpeg2000Imf8k), // lossy M7S1
+    ([0x03, 0x01, 0x04, 0x16], VideoCodec::Jpeg2000Imf8k), // lossy M7S2
+    ([0x03, 0x01, 0x04, 0x17], VideoCodec::Jpeg2000Imf8k), // lossy M7S3
+    ([0x03, 0x01, 0x04, 0x18], VideoCodec::Jpeg2000Imf8k), // lossy M7S4
+    ([0x03, 0x01, 0x04, 0x19], VideoCodec::Jpeg2000Imf8k), // lossy M7S5
+    ([0x03, 0x01, 0x04, 0x1b], VideoCodec::Jpeg2000Imf8k), // lossy M8S1
+    ([0x03, 0x01, 0x04, 0x1c], VideoCodec::Jpeg2000Imf8k), // lossy M8S2
+    ([0x03, 0x01, 0x04, 0x1d], VideoCodec::Jpeg2000Imf8k), // lossy M8S3
+    ([0x03, 0x01, 0x04, 0x1e], VideoCodec::Jpeg2000Imf8k), // lossy M8S4
+    ([0x03, 0x01, 0x04, 0x1f], VideoCodec::Jpeg2000Imf8k), // lossy M8S5
+    ([0x03, 0x01, 0x04, 0x20], VideoCodec::Jpeg2000Imf8k), // lossy M8S6
+    ([0x03, 0x01, 0x04, 0x22], VideoCodec::Jpeg2000Imf8k), // lossy M9S1
+    ([0x03, 0x01, 0x04, 0x23], VideoCodec::Jpeg2000Imf8k), // lossy M9S2
+    ([0x03, 0x01, 0x04, 0x24], VideoCodec::Jpeg2000Imf8k), // lossy M9S3
+    ([0x03, 0x01, 0x04, 0x25], VideoCodec::Jpeg2000Imf8k), // lossy M9S4
+    ([0x03, 0x01, 0x04, 0x26], VideoCodec::Jpeg2000Imf8k), // lossy M9S5
+    ([0x03, 0x01, 0x04, 0x27], VideoCodec::Jpeg2000Imf8k), // lossy M9S6
+    ([0x03, 0x01, 0x04, 0x28], VideoCodec::Jpeg2000Imf8k), // lossy M9S7
+    ([0x03, 0x01, 0x04, 0x2a], VideoCodec::Jpeg2000Imf8k), // lossy M10S1
+    ([0x03, 0x01, 0x04, 0x2b], VideoCodec::Jpeg2000Imf8k), // lossy M10S2
+    ([0x03, 0x01, 0x04, 0x2c], VideoCodec::Jpeg2000Imf8k), // lossy M10S3
+    ([0x03, 0x01, 0x04, 0x2d], VideoCodec::Jpeg2000Imf8k), // lossy M10S4
+    ([0x03, 0x01, 0x04, 0x2e], VideoCodec::Jpeg2000Imf8k), // lossy M10S5
+    ([0x03, 0x01, 0x04, 0x2f], VideoCodec::Jpeg2000Imf8k), // lossy M10S6
+    ([0x03, 0x01, 0x04, 0x30], VideoCodec::Jpeg2000Imf8k), // lossy M10S7
+    ([0x03, 0x01, 0x04, 0x31], VideoCodec::Jpeg2000Imf8k), // lossy M10S8
+    ([0x03, 0x01, 0x07, 0x02], VideoCodec::Jpeg2000Imf8k), // reversible M1S0
+    ([0x03, 0x01, 0x07, 0x04], VideoCodec::Jpeg2000Imf8k), // reversible M2S0
+    ([0x03, 0x01, 0x07, 0x06], VideoCodec::Jpeg2000Imf8k), // reversible M3S0
+    ([0x03, 0x01, 0x07, 0x08], VideoCodec::Jpeg2000Imf8k), // reversible M4S0
+    ([0x03, 0x01, 0x07, 0x0b], VideoCodec::Jpeg2000Imf8k), // reversible M5S0
+    ([0x03, 0x01, 0x07, 0x0f], VideoCodec::Jpeg2000Imf8k), // reversible M6S0
+    ([0x03, 0x01, 0x07, 0x14], VideoCodec::Jpeg2000Imf8k), // reversible M7S0
+    ([0x03, 0x01, 0x07, 0x1a], VideoCodec::Jpeg2000Imf8k), // reversible M8S0
+    ([0x03, 0x01, 0x07, 0x21], VideoCodec::Jpeg2000Imf8k), // reversible M9S0
+    ([0x03, 0x01, 0x07, 0x29], VideoCodec::Jpeg2000Imf8k), // reversible M10S0
     //
     // ── JPEG 2000 HT (ISO 15444-15, ST 2067-21 §6.2.5 + Annex I) ──────────
     ([0x03, 0x01, 0x08, 0x00], VideoCodec::Jpeg2000Ht), // HT-J2K generic
@@ -602,6 +661,7 @@ impl VideoCodec {
             Self::Jpeg2000
                 | Self::Jpeg2000Imf2k
                 | Self::Jpeg2000Imf4k
+                | Self::Jpeg2000Imf8k
                 | Self::Jpeg2000Broadcast
                 | Self::Jpeg2000Ht
         )
@@ -641,6 +701,7 @@ impl std::fmt::Display for VideoCodec {
             Self::Jpeg2000 => write!(f, "JPEG 2000"),
             Self::Jpeg2000Imf2k => write!(f, "JPEG 2000 IMF 2K"),
             Self::Jpeg2000Imf4k => write!(f, "JPEG 2000 IMF 4K"),
+            Self::Jpeg2000Imf8k => write!(f, "JPEG 2000 IMF 8K"),
             Self::Jpeg2000Broadcast => write!(f, "JPEG 2000 Broadcast"),
             Self::Jpeg2000Ht => write!(f, "JPEG 2000 HT"),
             Self::Vc5 => write!(f, "VC-5"),
@@ -1044,6 +1105,33 @@ mod tests {
     fn color_primaries_p3d65() {
         let cp = ColorPrimaries::from_ul("urn:smpte:ul:060e2b34.04010101.04010101.03060000");
         assert_eq!(cp, ColorPrimaries::P3D65);
+    }
+
+    /// Labels register: 8K IMF Single Tile Lossy ML1 S1 = …030104 03, ML10 S8
+    /// = …030104 31; Single/Multi-Tile Reversible ML1 S0 = …030107 02, ML10
+    /// S0 = …030107 29. ST 2067-21:2026 Table 5 excludes Mainlevel 0, lossy
+    /// Sublevel 0 and reversible Sublevels above 0.
+    #[test]
+    fn jpeg2000_imf_8k_profile_uls() {
+        for ul in [
+            "urn:smpte:ul:060e2b34.0401010d.04010202.03010403",
+            "urn:smpte:ul:060e2b34.0401010d.04010202.03010431",
+            "urn:smpte:ul:060e2b34.0401010d.04010202.03010702",
+            "urn:smpte:ul:060e2b34.0401010d.04010202.03010729",
+        ] {
+            assert_eq!(VideoCodec::from_ul(ul), VideoCodec::Jpeg2000Imf8k, "{ul}");
+        }
+        for ul in [
+            "urn:smpte:ul:060e2b34.0401010d.04010202.03010401",
+            "urn:smpte:ul:060e2b34.0401010d.04010202.03010402",
+            "urn:smpte:ul:060e2b34.0401010d.04010202.0301072a",
+            "urn:smpte:ul:060e2b34.0401010d.04010202.03010732",
+        ] {
+            assert!(
+                matches!(VideoCodec::from_ul(ul), VideoCodec::Unknown(_)),
+                "{ul}"
+            );
+        }
     }
 
     #[test]

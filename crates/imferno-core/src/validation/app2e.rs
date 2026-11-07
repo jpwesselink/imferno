@@ -113,6 +113,12 @@ impl App2EEdition {
         matches!(self, Self::V2023 | Self::V2026)
     }
 
+    /// The 8K IMF profiles are listed only in the 2026 JPEG 2000 table
+    /// (§6.5.2 Table 5, 4097..8192 x 1..6224).
+    fn allows_8k(&self) -> bool {
+        matches!(self, Self::V2026)
+    }
+
     /// The image-characteristics table each image frame shall fit one column
     /// of ("Each image frame shall conform to one of the permitted
     /// combinations"): 2020 and 2023 §5.2 Table 3, 2026 §6.2.1 Table 2.
@@ -775,6 +781,7 @@ impl App2E {
     /// - `Jpeg2000Ht`: listed from the 2023 edition on; not in the 2020 table.
     /// - `Jpeg2000Imf4k`: stored width must be 2049–4096, stored height ≤ 3112.
     /// - `Jpeg2000Imf2k`: stored width must be 1–2048, stored height ≤ 1556.
+    /// - `Jpeg2000Imf8k`: 2026 only; stored width 4097–8192, height ≤ 6224.
     /// - `Jpeg2000Broadcast`: stored width must be 1–3840, stored height ≤ 2160.
     /// - `Jpeg2000` (generic node): no resolution bounds enforced.
     /// - All other J2K variants (should not occur after CODEC_TABLE is correct): error.
@@ -848,6 +855,42 @@ impl App2E {
                             format!(
                                 "JPEG 2000 IMF 2K Profile does not support image resolution \
                                  ({}/{}); width must be 1–2048, height 1–1556",
+                                stored_width, stored_height
+                            ),
+                        )
+                        .with_location(loc.clone()),
+                    );
+                }
+            }
+            VideoCodec::Jpeg2000Imf8k => {
+                if !self.edition.allows_8k() {
+                    // 2020 and 2023 Table 6 have no 8K column.
+                    issues.push(
+                    ValidationIssue::new(
+                        Severity::Error,
+                        Category::Encoding,
+                        self.code(App2ERule::J2KProfileNotAllowed),
+                        format!(
+                            "JPEG 2000 IMF 8K profiles are not in the JPEG 2000 profile table of {}",
+                            self.edition.name()
+                        ),
+                    )
+                    .with_location(loc.clone()),
+                );
+                } else if !(stored_width > 4096
+                    && stored_width <= 8192
+                    && stored_height > 0
+                    && stored_height <= 6224)
+                {
+                    // 2026 §6.5.2 Table 5: 8K column is 4097..8192 x 1..6224.
+                    issues.push(
+                        ValidationIssue::new(
+                            Severity::Error,
+                            Category::Encoding,
+                            self.code(App2ERule::J2K8KResolution),
+                            format!(
+                                "JPEG 2000 IMF 8K Profile does not support image resolution \
+                             ({}/{}); width must be 4097–8192, height 1–6224",
                                 stored_width, stored_height
                             ),
                         )

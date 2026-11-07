@@ -487,7 +487,7 @@ export type McaTagSymbol = "Sg51" | "Sg71" | "Sg71Ds" | "SgSt" | "SgMono" | "Iab
 
 export type CodingEquations = "Bt601" | "Bt709" | "Bt2020Ncl" | { Unknown: string };
 
-export type VideoCodec = "Jpeg2000" | "Jpeg2000Imf2k" | "Jpeg2000Imf4k" | "Jpeg2000Broadcast" | "Jpeg2000Ht" | "Vc5" | "Mpeg2" | "H264" | "H265" | "ProRes" | "Av1" | { Unknown: string };
+export type VideoCodec = "Jpeg2000" | "Jpeg2000Imf2k" | "Jpeg2000Imf4k" | "Jpeg2000Imf8k" | "Jpeg2000Broadcast" | "Jpeg2000Ht" | "Vc5" | "Mpeg2" | "H264" | "H265" | "ProRes" | "Av1" | { Unknown: string };
 
 export type TransferCharacteristic = "Linear" | "Bt709" | "Smpte240M" | "XvYcc709" | "Bt2020" | "PqSt2084" | "Hlg" | { Unknown: string };
 

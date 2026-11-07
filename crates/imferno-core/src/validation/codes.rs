@@ -192,6 +192,10 @@ pub enum App2ERule {
     J2K2KResolution,
     /// JPEG 2000 Broadcast Contribution Profile: stored resolution is outside the permitted range.
     J2KBcpResolution,
+    /// JPEG 2000 IMF 8K Profile: stored resolution is outside the permitted range.
+    J2K8KResolution,
+    /// The JPEG 2000 profile is not one the edition's JPEG 2000 table lists.
+    J2KProfileNotAllowed,
 
     // ── Application identification ──────────────────────────────────────
     /// ApplicationIdentification is required for App2E compositions.
@@ -284,6 +288,8 @@ impl App2ERule {
             Self::J2K4KResolution                => "JPEG 2000 IMF 4K Profile: stored resolution is outside the permitted range.",
             Self::J2K2KResolution                => "JPEG 2000 IMF 2K Profile: stored resolution is outside the permitted range.",
             Self::J2KBcpResolution               => "JPEG 2000 Broadcast Contribution Profile: stored resolution is outside the permitted range.",
+            Self::J2K8KResolution                => "JPEG 2000 IMF 8K Profile: stored resolution is outside the permitted range.",
+            Self::J2KProfileNotAllowed           => "The JPEG 2000 profile is not listed in the edition's JPEG 2000 profile table.",
             Self::ApplicationIdentification      => "ApplicationIdentification is required for App2E compositions.",
             Self::ContentMaturityRatingAgency    => "ContentMaturityRating Agency is empty.",
             Self::ContentMaturityRatingAgencyUri => "ContentMaturityRating Agency is not a valid xs:anyURI.",
@@ -329,6 +335,8 @@ impl App2ERule {
             | Self::J2K4KResolution
             | Self::J2K2KResolution
             | Self::J2KBcpResolution
+            | Self::J2K8KResolution
+            | Self::J2KProfileNotAllowed
             | Self::RequiredStoredWidth
             | Self::RequiredStoredHeight
             | Self::RequiredSampleRate
@@ -471,6 +479,10 @@ impl App2ERule {
                 "<StoredWidth>2400</StoredWidth>  <!-- IMF 2K profile caps width at 2048 -->",
             Self::J2KBcpResolution =>
                 "<StoredWidth>4096</StoredWidth> with a Broadcast Contribution profile  <!-- profile column is 1..3840 x 1..2160 -->",
+            Self::J2K8KResolution =>
+                "<StoredWidth>3840</StoredWidth> with an 8K IMF profile  <!-- profile column is 4097..8192 x 1..6224 -->",
+            Self::J2KProfileNotAllowed =>
+                "<PictureCompression>urn:smpte:ul:060e2b34.0401010d.04010202.03010403</PictureCompression>  <!-- 8K IMF profile, not in the 2023 table -->",
             Self::ApplicationIdentification =>
                 "<CompositionPlaylist>…</CompositionPlaylist>  <!-- ExtensionProperties has no <ApplicationIdentification> -->",
             Self::ContentMaturityRatingAgency =>
@@ -656,6 +668,7 @@ define_app2e_edition! {
         J2K4KResolution => "ST2067-21:2020:6.2.5/J2K-4K-Resolution",
         J2K2KResolution => "ST2067-21:2020:6.2.5/J2K-2K-Resolution",
         J2KBcpResolution => "ST2067-21:2020:6.2.5/J2K-BCP-Resolution",
+        J2KProfileNotAllowed => "ST2067-21:2020:6.2.5/J2K-Profile-Not-Allowed",
         ApplicationIdentification => "ST2067-21:2020:7.1/ApplicationIdentification",
         HomogeneousImageEssence => "ST2067-21:2020:7.2/HomogeneousImageEssence",
         AppIdMismatch => "ST2067-21:2020:7.1/AppIdMismatch",
@@ -734,6 +747,7 @@ define_app2e_edition! {
         J2K4KResolution => "ST2067-21:2023:6.2.5/J2K-4K-Resolution",
         J2K2KResolution => "ST2067-21:2023:6.2.5/J2K-2K-Resolution",
         J2KBcpResolution => "ST2067-21:2023:6.2.5/J2K-BCP-Resolution",
+        J2KProfileNotAllowed => "ST2067-21:2023:6.2.5/J2K-Profile-Not-Allowed",
         ApplicationIdentification => "ST2067-21:2023:7.1/ApplicationIdentification",
         ContentMaturityRatingAgency => "ST2067-21:2023:7.1/ContentMaturityRating-Agency",
         ContentMaturityRatingAgencyUri => "ST2067-21:2023:7.1/ContentMaturityRating-Agency-URI",
@@ -805,6 +819,7 @@ define_app2e_edition! {
         J2K4KResolution => "ST2067-21:2026:7.2.5/J2K-4K-Resolution",
         J2K2KResolution => "ST2067-21:2026:7.2.5/J2K-2K-Resolution",
         J2KBcpResolution => "ST2067-21:2026:7.2.5/J2K-BCP-Resolution",
+        J2K8KResolution => "ST2067-21:2026:7.2.5/J2K-8K-Resolution",
         ApplicationIdentification => "ST2067-21:2026:8.1/ApplicationIdentification",
         AppIdMismatch => "ST2067-21:2026:8.1/AppIdMismatch",
         HomogeneousImageEssence => "ST2067-21:2026:8.2/HomogeneousImageEssence",

@@ -365,6 +365,7 @@ Each spec edition has its own codes, even when a rule is unchanged between editi
 | `ST2067-21:2020:6.2.5/J2K-4K-Resolution` | JPEG 2000 IMF 4K Profile: stored resolution is outside the permitted range. | ERROR | Encoding |
 | `ST2067-21:2020:6.2.5/J2K-2K-Resolution` | JPEG 2000 IMF 2K Profile: stored resolution is outside the permitted range. | ERROR | Encoding |
 | `ST2067-21:2020:6.2.5/J2K-BCP-Resolution` | JPEG 2000 Broadcast Contribution Profile: stored resolution is outside the permitted range. | ERROR | Encoding |
+| `ST2067-21:2020:6.2.5/J2K-Profile-Not-Allowed` | The JPEG 2000 profile is not listed in the edition's JPEG 2000 profile table. | ERROR | Encoding |
 | `ST2067-21:2020:7.1/ApplicationIdentification` | ApplicationIdentification is required for App2E compositions. | ERROR | Metadata |
 | `ST2067-21:2020:7.2/HomogeneousImageEssence` | All image essence in a composition shall use the same color system. | ERROR | Video |
 | `ST2067-21:2020:7.1/AppIdMismatch` | ApplicationIdentification in CPL ExtensionProperties does not include the expected App2E URI. | WARNING | Metadata |
@@ -437,6 +438,7 @@ Each spec edition has its own codes, even when a rule is unchanged between editi
 | `ST2067-21:2023:6.2.5/J2K-4K-Resolution` | JPEG 2000 IMF 4K Profile: stored resolution is outside the permitted range. | ERROR | Encoding |
 | `ST2067-21:2023:6.2.5/J2K-2K-Resolution` | JPEG 2000 IMF 2K Profile: stored resolution is outside the permitted range. | ERROR | Encoding |
 | `ST2067-21:2023:6.2.5/J2K-BCP-Resolution` | JPEG 2000 Broadcast Contribution Profile: stored resolution is outside the permitted range. | ERROR | Encoding |
+| `ST2067-21:2023:6.2.5/J2K-Profile-Not-Allowed` | The JPEG 2000 profile is not listed in the edition's JPEG 2000 profile table. | ERROR | Encoding |
 | `ST2067-21:2023:7.1/ApplicationIdentification` | ApplicationIdentification is required for App2E compositions. | ERROR | Metadata |
 | `ST2067-21:2023:7.1/ContentMaturityRating-Agency` | ContentMaturityRating Agency is empty. | ERROR | Metadata |
 | `ST2067-21:2023:7.1/ContentMaturityRating-Agency-URI` | ContentMaturityRating Agency is not a valid xs:anyURI. | ERROR | Metadata |
@@ -503,6 +505,7 @@ Each spec edition has its own codes, even when a rule is unchanged between editi
 | `ST2067-21:2026:7.2.5/J2K-4K-Resolution` | JPEG 2000 IMF 4K Profile: stored resolution is outside the permitted range. | ERROR | Encoding |
 | `ST2067-21:2026:7.2.5/J2K-2K-Resolution` | JPEG 2000 IMF 2K Profile: stored resolution is outside the permitted range. | ERROR | Encoding |
 | `ST2067-21:2026:7.2.5/J2K-BCP-Resolution` | JPEG 2000 Broadcast Contribution Profile: stored resolution is outside the permitted range. | ERROR | Encoding |
+| `ST2067-21:2026:7.2.5/J2K-8K-Resolution` | JPEG 2000 IMF 8K Profile: stored resolution is outside the permitted range. | ERROR | Encoding |
 | `ST2067-21:2026:8.1/ApplicationIdentification` | ApplicationIdentification is required for App2E compositions. | ERROR | Metadata |
 | `ST2067-21:2026:8.1/AppIdMismatch` | ApplicationIdentification in CPL ExtensionProperties does not include the expected App2E URI. | WARNING | Metadata |
 | `ST2067-21:2026:8.2/HomogeneousImageEssence` | All image essence in a composition shall use the same color system. | ERROR | Video |

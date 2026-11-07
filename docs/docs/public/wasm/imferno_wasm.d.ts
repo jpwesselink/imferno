@@ -464,7 +464,7 @@ export interface Resolution {
     height: number;
 }
 
-export type VideoCodec = "Jpeg2000" | "Jpeg2000Imf2k" | "Jpeg2000Imf4k" | "Jpeg2000Broadcast" | "Jpeg2000Ht" | "Vc5" | "Mpeg2" | "H264" | "H265" | "ProRes" | "Av1" | { Unknown: string };
+export type VideoCodec = "Jpeg2000" | "Jpeg2000Imf2k" | "Jpeg2000Imf4k" | "Jpeg2000Imf8k" | "Jpeg2000Broadcast" | "Jpeg2000Ht" | "Vc5" | "Mpeg2" | "H264" | "H265" | "ProRes" | "Av1" | { Unknown: string };
 
 export type CodingEquations = "Bt601" | "Bt709" | "Bt2020Ncl" | { Unknown: string };
 

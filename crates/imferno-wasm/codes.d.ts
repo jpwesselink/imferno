@@ -265,6 +265,7 @@ export declare const codes: {
     readonly J2K4KResolution: "ST2067-21:2020:6.2.5/J2K-4K-Resolution";
     readonly J2K2KResolution: "ST2067-21:2020:6.2.5/J2K-2K-Resolution";
     readonly J2KBCPResolution: "ST2067-21:2020:6.2.5/J2K-BCP-Resolution";
+    readonly J2KProfileNotAllowed: "ST2067-21:2020:6.2.5/J2K-Profile-Not-Allowed";
     readonly ApplicationIdentification: "ST2067-21:2020:7.1/ApplicationIdentification";
     readonly HomogeneousImageEssence: "ST2067-21:2020:7.2/HomogeneousImageEssence";
     readonly AppIdMismatch: "ST2067-21:2020:7.1/AppIdMismatch";
@@ -334,6 +335,7 @@ export declare const codes: {
     readonly J2K4KResolution: "ST2067-21:2023:6.2.5/J2K-4K-Resolution";
     readonly J2K2KResolution: "ST2067-21:2023:6.2.5/J2K-2K-Resolution";
     readonly J2KBCPResolution: "ST2067-21:2023:6.2.5/J2K-BCP-Resolution";
+    readonly J2KProfileNotAllowed: "ST2067-21:2023:6.2.5/J2K-Profile-Not-Allowed";
     readonly ApplicationIdentification: "ST2067-21:2023:7.1/ApplicationIdentification";
     readonly ContentMaturityRatingAgency: "ST2067-21:2023:7.1/ContentMaturityRating-Agency";
     readonly ContentMaturityRatingAgencyURI: "ST2067-21:2023:7.1/ContentMaturityRating-Agency-URI";
@@ -397,6 +399,7 @@ export declare const codes: {
     readonly J2K4KResolution: "ST2067-21:2026:7.2.5/J2K-4K-Resolution";
     readonly J2K2KResolution: "ST2067-21:2026:7.2.5/J2K-2K-Resolution";
     readonly J2KBCPResolution: "ST2067-21:2026:7.2.5/J2K-BCP-Resolution";
+    readonly J2K8KResolution: "ST2067-21:2026:7.2.5/J2K-8K-Resolution";
     readonly ApplicationIdentification: "ST2067-21:2026:8.1/ApplicationIdentification";
     readonly AppIdMismatch: "ST2067-21:2026:8.1/AppIdMismatch";
     readonly HomogeneousImageEssence: "ST2067-21:2026:8.2/HomogeneousImageEssence";

@@ -8727,4 +8727,49 @@ mod tests {
             .iter()
             .any(|i| i.code == "ST2067-21:2014:7/AppIdMismatch"));
     }
+
+    /// ST 2067-21:2026 §6.5.2 Table 5 adds a 4097..8192 x 1..6224 column
+    /// with the 8K IMF Single/Multi Tile Reversible (Sublevel 0 only) and
+    /// 8K IMF Single Tile Lossy (no Sublevel 0) profiles, Mainlevels 1–10.
+    /// ULs from the vendored SMPTE Labels register (Labels.xml):
+    /// `…04010202.03010403` "8K IMF Single Tile Lossy Profile (Mainlevel 1
+    /// Sublevel 1)", `…04010202.03010702` "8K IMF Single/Multi-Tile
+    /// Reversible Profile (Mainlevel 1 Sublevel 0)". The 2023 Table 6 has no
+    /// 8K column.
+    #[test]
+    fn app2e_8k_imf_profiles_are_2026_only() {
+        for ul in [
+            "urn:smpte:ul:060e2b34.0401010d.04010202.03010403",
+            "urn:smpte:ul:060e2b34.0401010d.04010202.03010729",
+            "urn:smpte:ul:060e2b34.0401010d.04010202.03010702",
+        ] {
+            let mut cpl = cdci_frame(7680, 4320, false, (24, 1), C3, 10, 2);
+            cdci_mut(&mut cpl).picture_compression = Some(VideoCodec::from_ul(ul));
+            let j2k = |issues: Vec<ValidationIssue>| {
+                issues
+                    .into_iter()
+                    .filter(|i| i.code.contains("/J2K"))
+                    .map(|i| i.code)
+                    .collect::<Vec<_>>()
+            };
+            assert_eq!(
+                j2k(App2E2026.validate_cpl(&cpl)),
+                Vec::<String>::new(),
+                "{ul} at 7680x4320 is a 2026 Table 5 profile"
+            );
+            assert_eq!(
+                j2k(App2E2023.validate_cpl(&cpl)),
+                vec!["ST2067-21:2023:6.2.5/J2K-Profile-Not-Allowed".to_string()],
+                "{ul}: no 8K profile in 2023 Table 6"
+            );
+
+            // 8K profiles cover 4097..8192 x 1..6224 only.
+            let mut small = cdci_frame(3840, 2160, false, (24, 1), C3, 10, 2);
+            cdci_mut(&mut small).picture_compression = Some(VideoCodec::from_ul(ul));
+            assert_eq!(
+                j2k(App2E2026.validate_cpl(&small)),
+                vec!["ST2067-21:2026:7.2.5/J2K-8K-Resolution".to_string()],
+            );
+        }
+    }
 }

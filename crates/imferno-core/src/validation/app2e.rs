@@ -25,8 +25,7 @@ use super::codes::{
     App2ERule, St2067_21_2014, St2067_21_2016, St2067_21_2020, St2067_21_2023, St2067_21_2026,
 };
 use super::{
-    cdci_ref_values, component_ref_values, is_valid_any_uri, ColorSystem, ConstraintsValidator,
-    QuantizationSystem,
+    cdci_ref_values, component_ref_values, ColorSystem, ConstraintsValidator, QuantizationSystem,
 };
 use crate::cpl::CompositionPlaylist;
 use crate::cpl::{CodingEquations, ColorPrimaries, EditRate, TransferCharacteristic};
@@ -693,14 +692,6 @@ impl App2E {
                 self.validate_homogeneous_image_essence(cpl, &mut issues);
                 self.validate_segment_duration(cpl, &mut issues);
                 self.validate_descriptor_completeness(cpl, &mut issues);
-                // The checks below are not ST 2067-21 provisions; only the
-                // 2023 code set carries codes for them (see
-                // `St2067_21_2023`), so for 2020 and 2026 their findings
-                // are dropped below.
-                self.validate_audio_quantization(cpl, &mut issues);
-                self.validate_audio_sample_rate(cpl, &mut issues);
-                self.validate_content_maturity_rating(cpl, &mut issues);
-                self.validate_locale_list(cpl, &mut issues);
             }
         }
         // A finding whose rule is not part of this edition has no code.
@@ -2222,94 +2213,10 @@ impl App2E {
         }
     }
 
-    /// QuantizationBits shall be 24 (ST 2067-2:2020 §5.3.2.3, applied by
-    /// ST 2067-21 §4; lower bit depths are padded to 24 bits).
-    fn validate_audio_quantization(
-        &self,
-        cpl: &CompositionPlaylist,
-        issues: &mut Vec<ValidationIssue>,
-    ) {
-        let edl = match &cpl.essence_descriptor_list {
-            Some(edl) => edl,
-            None => return,
-        };
-
-        for ed in &edl.essence_descriptors {
-            if let Some(ref wave) = ed.wave_pcm_descriptor {
-                if let Some(qb) = wave.quantization_bits {
-                    if qb != 24 {
-                        issues.push(
-                            ValidationIssue::new(
-                                Severity::Error,
-                                Category::Audio,
-                                self.code(App2ERule::QuantizationBits).to_string(),
-                                format!(
-                                    "WAVEPCMDescriptor {} has QuantizationBits {} \
-                                     but ST 2067-2 §5.3.2.3 requires 24",
-                                    ed.id, qb,
-                                ),
-                            )
-                            .with_location(
-                                Location::new()
-                                    .with_cpl(cpl.id)
-                                    .with_path(format!("EssenceDescriptor/{}", ed.id)),
-                            ),
-                        );
-                    }
-                }
-            }
-        }
-    }
-
-    /// AudioSampleRate shall be 48000 Hz or 96000 Hz
-    /// (ST 2067-2:2020 §5.3.2.2, applied by ST 2067-21 §4).
-    fn validate_audio_sample_rate(
-        &self,
-        cpl: &CompositionPlaylist,
-        issues: &mut Vec<ValidationIssue>,
-    ) {
-        let edl = match &cpl.essence_descriptor_list {
-            Some(edl) => edl,
-            None => return,
-        };
-
-        for ed in &edl.essence_descriptors {
-            let wave = match &ed.wave_pcm_descriptor {
-                Some(w) => w,
-                None => continue,
-            };
-
-            if let Some(ref rate) = wave.audio_sample_rate {
-                let hz = (rate.denominator != 0 && rate.numerator % rate.denominator == 0)
-                    .then(|| rate.numerator / rate.denominator);
-                if !matches!(hz, Some(48000) | Some(96000)) {
-                    issues.push(
-                        ValidationIssue::new(
-                            Severity::Error,
-                            Category::Audio,
-                            self.code(App2ERule::AudioSampleRate).to_string(),
-                            format!(
-                                "WAVEPCMDescriptor {}: AudioSampleRate {}/{} ({} Hz) is not 48000 Hz or 96000 Hz",
-                                ed.id, rate.numerator, rate.denominator,
-                                rate.numerator / rate.denominator.max(1)
-                            ),
-                        )
-                        .with_location(
-                            Location::new()
-                                .with_cpl(cpl.id)
-                                .with_path(format!("EssenceDescriptor/{}", ed.id)),
-                        ),
-                    );
-                }
-            }
-        }
-    }
-
     /// ST 2067-21 §6.2: Validate that required fields are present on essence descriptors.
     ///
     /// Image descriptors (RGBA/CDCI) must have: StoredWidth, StoredHeight, SampleRate,
     /// FrameLayout, ColorPrimaries, TransferCharacteristic, PictureCompression.
-    /// Audio descriptors (WAVE PCM) must have: ChannelCount, QuantizationBits.
     fn validate_descriptor_completeness(
         &self,
         cpl: &CompositionPlaylist,
@@ -2423,151 +2330,6 @@ impl App2E {
                         self.code(App2ERule::RequiredComponentDepth),
                         "ComponentDepth",
                     );
-                }
-            }
-
-            if let Some(ref wave) = ed.wave_pcm_descriptor {
-                let mut push = |code: &'static str, field: &'static str| {
-                    issues.push(
-                        ValidationIssue::new(
-                            Severity::Error,
-                            Category::Audio,
-                            code.to_string(),
-                            format!(
-                                "WAVEPCMDescriptor {}: required field {} is missing",
-                                ed.id, field
-                            ),
-                        )
-                        .with_location(ed_loc.clone()),
-                    );
-                };
-                if wave.channel_count.is_none() {
-                    push(self.code(App2ERule::RequiredChannelCount), "ChannelCount");
-                }
-                if wave.quantization_bits.is_none() {
-                    push(
-                        self.code(App2ERule::RequiredQuantizationBits),
-                        "QuantizationBits",
-                    );
-                }
-            }
-        }
-    }
-
-    /// ContentMaturityRating — if present, agency must be a non-empty
-    /// xs:anyURI. Not an ST 2067-21 provision; reported only under the 2023
-    /// code set (see `St2067_21_2023`).
-    fn validate_content_maturity_rating(
-        &self,
-        cpl: &CompositionPlaylist,
-        issues: &mut Vec<ValidationIssue>,
-    ) {
-        // Validate ContentMaturityRating entries in each Locale
-        if let Some(ref locale_list) = cpl.locale_list {
-            for (locale_idx, locale) in locale_list.locales.iter().enumerate() {
-                if let Some(ref cmr_list) = locale.content_maturity_rating_list {
-                    for (rating_idx, rating) in cmr_list.ratings.iter().enumerate() {
-                        // Agency is required and must be non-empty
-                        if rating.agency.trim().is_empty() {
-                            issues.push(
-                                ValidationIssue::new(
-                                    Severity::Error,
-                                    Category::Metadata,
-                                    self.code(App2ERule::ContentMaturityRatingAgency),
-                                    format!(
-                                        "ContentMaturityRating[{}] in Locale[{}] has empty Agency",
-                                        rating_idx, locale_idx
-                                    ),
-                                )
-                                .with_location(Location::new().with_cpl(cpl.id)),
-                            );
-                        } else if !is_valid_any_uri(&rating.agency) {
-                            // XSD: Agency is xs:anyURI — no ASCII whitespace allowed
-                            issues.push(
-                                ValidationIssue::new(
-                                    Severity::Error,
-                                    Category::Metadata,
-                                    self.code(App2ERule::ContentMaturityRatingAgencyUri),
-                                    format!(
-                                        "ContentMaturityRating[{}] in Locale[{}] Agency '{}' \
-                                         is not a valid xs:anyURI (contains whitespace)",
-                                        rating_idx, locale_idx, rating.agency,
-                                    ),
-                                )
-                                .with_location(Location::new().with_cpl(cpl.id)),
-                            );
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    /// Validate LocaleList language tags and region codes. Not an ST 2067-21
-    /// provision; reported only under the 2023 code set (see `St2067_21_2023`).
-    ///
-    /// Language tags should be well-formed RFC 5646 (start with alpha).
-    /// Region codes should be well-formed ISO 3166-1 alpha-2 (2 uppercase letters).
-    fn validate_locale_list(&self, cpl: &CompositionPlaylist, issues: &mut Vec<ValidationIssue>) {
-        let locale_list = match &cpl.locale_list {
-            Some(ll) => ll,
-            None => return,
-        };
-
-        let cpl_loc = Location::new().with_cpl(cpl.id);
-
-        for (i, locale) in locale_list.locales.iter().enumerate() {
-            // Validate language tags
-            if let Some(ref ll) = locale.language_list {
-                for tag in &ll.languages {
-                    let s = tag.as_str();
-                    if s.is_empty() {
-                        issues.push(
-                            ValidationIssue::new(
-                                Severity::Warning,
-                                Category::Metadata,
-                                self.code(App2ERule::EmptyLanguageTag).to_string(),
-                                format!("Locale[{}]: empty language tag in LanguageList", i),
-                            )
-                            .with_location(cpl_loc.clone()),
-                        );
-                    } else if !s.chars().next().unwrap_or(' ').is_ascii_alphabetic() {
-                        issues.push(
-                            ValidationIssue::new(
-                                Severity::Warning,
-                                Category::Metadata,
-                                self.code(App2ERule::MalformedLanguageTag).to_string(),
-                                format!(
-                                    "Locale[{}]: language tag '{}' does not start with an ASCII letter (RFC 5646)",
-                                    i, s,
-                                ),
-                            )
-                            .with_location(cpl_loc.clone()),
-                        );
-                    }
-                }
-            }
-
-            // Validate region codes: BCP 47 §2.2.4 — 2-letter ISO 3166-1 or 3-digit UN M.49
-            if let Some(ref rl) = locale.region_list {
-                for region in &rl.regions {
-                    let is_alpha2 =
-                        region.len() == 2 && region.chars().all(|c| c.is_ascii_uppercase());
-                    let is_un_m49 = region.len() == 3 && region.chars().all(|c| c.is_ascii_digit());
-                    if !is_alpha2 && !is_un_m49 {
-                        issues.push(
-                            ValidationIssue::new(
-                                Severity::Warning,
-                                Category::Metadata,
-                                self.code(App2ERule::RegionCode).to_string(),
-                                format!(
-                                    "Locale[{}]: region '{}' is not a valid BCP 47 region subtag (expected 2-letter ISO 3166-1 or 3-digit UN M.49)",
-                                    i, region,
-                                ),
-                            )
-                            .with_location(cpl_loc.clone()),
-                        );
-                    }
                 }
             }
         }

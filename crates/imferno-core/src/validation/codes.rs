@@ -39,14 +39,6 @@ pub enum App2ERule {
     /// Image resolution is not in the permitted set for App2E.
     Resolution,
 
-    // ── Language tags ────────────────────────────────────────────────────
-    /// Locale language tag is empty.
-    EmptyLanguageTag,
-    /// Locale language tag is not a valid BCP-47 subtag.
-    MalformedLanguageTag,
-    /// Region subtag in a language tag is not valid.
-    RegionCode,
-
     // ── Color system ────────────────────────────────────────────────────
     /// Color system designator is not in the permitted set.
     ColorSystem,
@@ -68,12 +60,6 @@ pub enum App2ERule {
     RequiredPictureCompression,
     /// CDCI descriptor is missing the required `ComponentDepth` field.
     RequiredComponentDepth,
-
-    // ── Required audio-descriptor fields ─────────────────────────────────
-    /// WavePCM descriptor is missing the required `ChannelCount` field.
-    RequiredChannelCount,
-    /// WavePCM descriptor is missing the required `QuantizationBits` field.
-    RequiredQuantizationBits,
 
     // ── Picture descriptor constraints ────────────────────────────────
     /// Alpha transparency mode is not permitted in App2E.
@@ -167,12 +153,6 @@ pub enum App2ERule {
     /// `WhiteRefLevel` value is inconsistent with bit depth.
     WhiteRefLevel,
 
-    // ── Audio ───────────────────────────────────────────────────────────
-    /// Audio sample rate is not 48 kHz or 96 kHz (ST 2067-2 §5.3.2.2).
-    AudioSampleRate,
-    /// `QuantizationBits` is not 24 (ST 2067-2 §5.3.2.3).
-    QuantizationBits,
-
     // ── JPEG 2000 sub-descriptor ─────────────────────────────────────
     /// J2K codestream coding style is not compliant.
     CodingStyle,
@@ -200,10 +180,6 @@ pub enum App2ERule {
     // ── Application identification ──────────────────────────────────────
     /// ApplicationIdentification is required for App2E compositions.
     ApplicationIdentification,
-    /// ContentMaturityRating agency is empty.
-    ContentMaturityRatingAgency,
-    /// ContentMaturityRating agency is not a valid xs:anyURI.
-    ContentMaturityRatingAgencyUri,
 
     // ── Homogeneous image essence ───────────────────────────────────────
     /// All image essence in a composition shall use the same color system.
@@ -227,9 +203,6 @@ impl App2ERule {
         match self {
             Self::FrameRate => "Frame rate is not in the permitted set for App2E.",
             Self::Resolution => "Image resolution is not in the permitted set for App2E.",
-            Self::EmptyLanguageTag => "Locale language tag is empty.",
-            Self::MalformedLanguageTag => "Locale language tag is not a valid BCP-47 subtag.",
-            Self::RegionCode => "Region subtag in a language tag is not valid.",
             Self::ColorSystem => "Color system designator is not in the permitted set.",
             Self::RequiredStoredWidth => "RGBA/CDCI descriptor is missing the required StoredWidth field.",
             Self::RequiredStoredHeight => "RGBA/CDCI descriptor is missing the required StoredHeight field.",
@@ -239,8 +212,6 @@ impl App2ERule {
             Self::RequiredTransferCharacteristic => "RGBA/CDCI descriptor is missing the required TransferCharacteristic field.",
             Self::RequiredPictureCompression => "RGBA/CDCI descriptor is missing the required PictureCompression field.",
             Self::RequiredComponentDepth => "CDCI descriptor is missing the required ComponentDepth field.",
-            Self::RequiredChannelCount => "WavePCM descriptor is missing the required ChannelCount field.",
-            Self::RequiredQuantizationBits => "WavePCM descriptor is missing the required QuantizationBits field.",
             Self::AlphaTransparency => "Alpha transparency mode is not permitted in App2E.",
             Self::CodingEquationsMissing => "CodingEquations field is absent from the picture descriptor.",
             Self::ColorPrimariesMissing => "ColorPrimaries field is absent from the picture descriptor.",
@@ -278,8 +249,6 @@ impl App2ERule {
             Self::BlackRefLevel => "BlackRefLevel value is inconsistent with ComponentDepth.",
             Self::ColorRange => "ColorRange value is not in the permitted set.",
             Self::WhiteRefLevel => "WhiteRefLevel value is inconsistent with ComponentDepth.",
-            Self::AudioSampleRate => "Audio sample rate must be 48 000 Hz or 96 000 Hz.",
-            Self::QuantizationBits => "QuantizationBits must be 24.",
             Self::CodingStyle => "JPEG 2000 codestream coding style is not compliant.",
             Self::J2CLayout => "JPEG 2000 codestream layout does not meet App2E requirements.",
             Self::J2KExtendedCapabilities => "JPEG 2000 extended capabilities are declared but not permitted.",
@@ -291,8 +260,6 @@ impl App2ERule {
             Self::J2K8KResolution                => "JPEG 2000 IMF 8K Profile: stored resolution is outside the permitted range.",
             Self::J2KProfileNotAllowed           => "The JPEG 2000 profile is not listed in the edition's JPEG 2000 profile table.",
             Self::ApplicationIdentification      => "ApplicationIdentification is required for App2E compositions.",
-            Self::ContentMaturityRatingAgency    => "ContentMaturityRating Agency is empty.",
-            Self::ContentMaturityRatingAgencyUri => "ContentMaturityRating Agency is not a valid xs:anyURI.",
             Self::HomogeneousImageEssence        => "All image essence in a composition shall use the same color system.",
             Self::AppIdMismatch => "ApplicationIdentification in CPL ExtensionProperties does not include the expected App2E URI.",
             Self::SegmentDurationMultiple => "Segment duration must be an integer multiple of 5 edit units.",
@@ -304,27 +271,13 @@ impl App2ERule {
         match self {
             Self::MaxCLLMaxFALL => Severity::Info,
             Self::AppIdMismatch | Self::Jpeg2000SubDescriptor => Severity::Warning,
-            Self::ContentMaturityRatingAgency | Self::ContentMaturityRatingAgencyUri => {
-                Severity::Error
-            }
             _ => Severity::Error,
         }
     }
 
     pub fn category(&self) -> Category {
         match self {
-            Self::EmptyLanguageTag
-            | Self::MalformedLanguageTag
-            | Self::RegionCode
-            | Self::AppIdMismatch
-            | Self::ApplicationIdentification
-            | Self::ContentMaturityRatingAgency
-            | Self::ContentMaturityRatingAgencyUri => Category::Metadata,
-
-            Self::RequiredChannelCount
-            | Self::RequiredQuantizationBits
-            | Self::AudioSampleRate
-            | Self::QuantizationBits => Category::Audio,
+            Self::AppIdMismatch | Self::ApplicationIdentification => Category::Metadata,
 
             Self::J2KRequired
             | Self::CodingStyle
@@ -357,12 +310,6 @@ impl App2ERule {
                 "<SampleRate>48/1</SampleRate>  <!-- 48 fps is not in Table 3 -->",
             Self::Resolution =>
                 "<StoredWidth>9000</StoredWidth><StoredHeight>7000</StoredHeight>  <!-- larger than every image-characteristics column -->",
-            Self::EmptyLanguageTag =>
-                "<Locale><LanguageList><Language></Language></LanguageList></Locale>",
-            Self::MalformedLanguageTag =>
-                "<Language>123-en</Language>  <!-- BCP-47 primary subtag must start with a letter -->",
-            Self::RegionCode =>
-                "<Language>en-XYZ</Language>  <!-- region subtag XYZ not in ISO 3166-1 -->",
             Self::ColorSystem =>
                 "ColorPrimaries + TransferCharacteristic + CodingEquations triple doesn't map to a permitted App2E ColorN system",
             Self::RequiredStoredWidth =>
@@ -381,10 +328,6 @@ impl App2ERule {
                 "<RGBADescriptor>…</RGBADescriptor>  <!-- no <PictureCompression> UL child -->",
             Self::RequiredComponentDepth =>
                 "<CDCIDescriptor>…</CDCIDescriptor>  <!-- no <ComponentDepth> child -->",
-            Self::RequiredChannelCount =>
-                "<WAVEPCMDescriptor>…</WAVEPCMDescriptor>  <!-- no <ChannelCount> child -->",
-            Self::RequiredQuantizationBits =>
-                "<WAVEPCMDescriptor>…</WAVEPCMDescriptor>  <!-- no <QuantizationBits> child -->",
             Self::AlphaTransparency =>
                 "<AlphaTransparency>true</AlphaTransparency>  <!-- App2E disallows alpha -->",
             Self::CodingEquationsMissing =>
@@ -459,10 +402,6 @@ impl App2ERule {
                 "<ComponentDepth>10</ComponentDepth><ColorRange>1019</ColorRange>  <!-- not in permitted set -->",
             Self::WhiteRefLevel =>
                 "<ComponentDepth>10</ComponentDepth><WhiteRefLevel>235</WhiteRefLevel>  <!-- expected 940 for 10-bit -->",
-            Self::AudioSampleRate =>
-                "<AudioSampleRate>44100/1</AudioSampleRate>  <!-- must be 48000/1 or 96000/1 -->",
-            Self::QuantizationBits =>
-                "<QuantizationBits>16</QuantizationBits>  <!-- must be 24 -->",
             Self::CodingStyle =>
                 "JPEG2000SubDescriptor CodingStyleDefault Scod byte declares non-compliant entropy coding",
             Self::J2CLayout =>
@@ -485,10 +424,6 @@ impl App2ERule {
                 "<PictureCompression>urn:smpte:ul:060e2b34.0401010d.04010202.03010403</PictureCompression>  <!-- 8K IMF profile, not in the 2023 table -->",
             Self::ApplicationIdentification =>
                 "<CompositionPlaylist>…</CompositionPlaylist>  <!-- ExtensionProperties has no <ApplicationIdentification> -->",
-            Self::ContentMaturityRatingAgency =>
-                "<ContentMaturityRating><Agency></Agency>…</ContentMaturityRating>",
-            Self::ContentMaturityRatingAgencyUri =>
-                "<ContentMaturityRating><Agency>imdb</Agency>…</ContentMaturityRating>  <!-- not a URI -->",
             Self::HomogeneousImageEssence =>
                 "Composition mixes Color1 (BT.709) and Color3 (BT.2020) resources across segments",
             Self::AppIdMismatch =>
@@ -680,16 +615,10 @@ define_app2e_edition! {
 define_app2e_edition! {
     /// Validation codes for SMPTE ST 2067-21:2023 (App #2E).
     ///
-    /// Code strings are kept as published by earlier releases. The
-    /// language-tag, region, ContentMaturityRating and audio codes are not
-    /// ST 2067-21 provisions (they come from ST 2067-2 / ST 2067-3); they are
-    /// kept here pending a decision on where they belong.
+    /// Code strings are kept as published by earlier releases.
     St2067_21_2023 {
         FrameRate => "ST2067-21:2023:5.2/FrameRate",
         Resolution => "ST2067-21:2023:5.2/Resolution",
-        EmptyLanguageTag => "ST2067-21:2023:5.3/EmptyLanguageTag",
-        MalformedLanguageTag => "ST2067-21:2023:5.3/MalformedLanguageTag",
-        RegionCode => "ST2067-21:2023:5.3/RegionCode",
         ColorSystem => "ST2067-21:2023:6.2/ColorSystem",
         RequiredStoredWidth => "ST2067-21:2023:6.2/Required-StoredWidth",
         RequiredStoredHeight => "ST2067-21:2023:6.2/Required-StoredHeight",
@@ -699,8 +628,6 @@ define_app2e_edition! {
         RequiredTransferCharacteristic => "ST2067-21:2023:6.2/Required-TransferCharacteristic",
         RequiredPictureCompression => "ST2067-21:2023:6.2/Required-PictureCompression",
         RequiredComponentDepth => "ST2067-21:2023:6.2/Required-ComponentDepth",
-        RequiredChannelCount => "ST2067-21:2023:6.5/Required-ChannelCount",
-        RequiredQuantizationBits => "ST2067-21:2023:6.5/Required-QuantizationBits",
         AlphaTransparency => "ST2067-21:2023:6.2.1/AlphaTransparency",
         CodingEquationsMissing => "ST2067-21:2023:6.2.1/CodingEquationsMissing",
         ColorPrimariesMissing => "ST2067-21:2023:6.2.1/ColorPrimariesMissing",
@@ -738,8 +665,6 @@ define_app2e_edition! {
         BlackRefLevel => "ST2067-21:2023:6.4.3/BlackRefLevel",
         ColorRange => "ST2067-21:2023:6.4.3/ColorRange",
         WhiteRefLevel => "ST2067-21:2023:6.4.3/WhiteRefLevel",
-        AudioSampleRate => "ST2067-21:2023:6.5/AudioSampleRate",
-        QuantizationBits => "ST2067-21:2023:6.5/QuantizationBits",
         CodingStyle => "ST2067-21:2023:6.5.2/CodingStyle",
         J2CLayout => "ST2067-21:2023:6.5.2/J2CLayout",
         J2KExtendedCapabilities => "ST2067-21:2023:6.5.2/J2KExtendedCapabilities",
@@ -749,8 +674,6 @@ define_app2e_edition! {
         J2KBcpResolution => "ST2067-21:2023:6.2.5/J2K-BCP-Resolution",
         J2KProfileNotAllowed => "ST2067-21:2023:6.2.5/J2K-Profile-Not-Allowed",
         ApplicationIdentification => "ST2067-21:2023:7.1/ApplicationIdentification",
-        ContentMaturityRatingAgency => "ST2067-21:2023:7.1/ContentMaturityRating-Agency",
-        ContentMaturityRatingAgencyUri => "ST2067-21:2023:7.1/ContentMaturityRating-Agency-URI",
         HomogeneousImageEssence => "ST2067-21:2023:7.2/HomogeneousImageEssence",
         AppIdMismatch => "ST2067-21:2023:7.1/AppIdMismatch",
         SegmentDurationMultiple => "ST2067-21:2023:7.4/SegmentDurationMultiple",

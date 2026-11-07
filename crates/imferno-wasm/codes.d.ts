@@ -275,9 +275,6 @@ export declare const codes: {
   readonly ST2067_21_2023: {
     readonly FrameRate: "ST2067-21:2023:5.2/FrameRate";
     readonly Resolution: "ST2067-21:2023:5.2/Resolution";
-    readonly EmptyLanguageTag: "ST2067-21:2023:5.3/EmptyLanguageTag";
-    readonly MalformedLanguageTag: "ST2067-21:2023:5.3/MalformedLanguageTag";
-    readonly RegionCode: "ST2067-21:2023:5.3/RegionCode";
     readonly ColorSystem: "ST2067-21:2023:6.2/ColorSystem";
     readonly RequiredStoredWidth: "ST2067-21:2023:6.2/Required-StoredWidth";
     readonly RequiredStoredHeight: "ST2067-21:2023:6.2/Required-StoredHeight";
@@ -287,8 +284,6 @@ export declare const codes: {
     readonly RequiredTransferCharacteristic: "ST2067-21:2023:6.2/Required-TransferCharacteristic";
     readonly RequiredPictureCompression: "ST2067-21:2023:6.2/Required-PictureCompression";
     readonly RequiredComponentDepth: "ST2067-21:2023:6.2/Required-ComponentDepth";
-    readonly RequiredChannelCount: "ST2067-21:2023:6.5/Required-ChannelCount";
-    readonly RequiredQuantizationBits: "ST2067-21:2023:6.5/Required-QuantizationBits";
     readonly AlphaTransparency: "ST2067-21:2023:6.2.1/AlphaTransparency";
     readonly CodingEquationsMissing: "ST2067-21:2023:6.2.1/CodingEquationsMissing";
     readonly ColorPrimariesMissing: "ST2067-21:2023:6.2.1/ColorPrimariesMissing";
@@ -326,8 +321,6 @@ export declare const codes: {
     readonly BlackRefLevel: "ST2067-21:2023:6.4.3/BlackRefLevel";
     readonly ColorRange: "ST2067-21:2023:6.4.3/ColorRange";
     readonly WhiteRefLevel: "ST2067-21:2023:6.4.3/WhiteRefLevel";
-    readonly AudioSampleRate: "ST2067-21:2023:6.5/AudioSampleRate";
-    readonly QuantizationBits: "ST2067-21:2023:6.5/QuantizationBits";
     readonly CodingStyle: "ST2067-21:2023:6.5.2/CodingStyle";
     readonly J2CLayout: "ST2067-21:2023:6.5.2/J2CLayout";
     readonly J2KExtendedCapabilities: "ST2067-21:2023:6.5.2/J2KExtendedCapabilities";
@@ -337,8 +330,6 @@ export declare const codes: {
     readonly J2KBCPResolution: "ST2067-21:2023:6.2.5/J2K-BCP-Resolution";
     readonly J2KProfileNotAllowed: "ST2067-21:2023:6.2.5/J2K-Profile-Not-Allowed";
     readonly ApplicationIdentification: "ST2067-21:2023:7.1/ApplicationIdentification";
-    readonly ContentMaturityRatingAgency: "ST2067-21:2023:7.1/ContentMaturityRating-Agency";
-    readonly ContentMaturityRatingAgencyURI: "ST2067-21:2023:7.1/ContentMaturityRating-Agency-URI";
     readonly HomogeneousImageEssence: "ST2067-21:2023:7.2/HomogeneousImageEssence";
     readonly AppIdMismatch: "ST2067-21:2023:7.1/AppIdMismatch";
     readonly SegmentDurationMultiple: "ST2067-21:2023:7.4/SegmentDurationMultiple";

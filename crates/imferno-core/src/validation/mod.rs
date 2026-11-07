@@ -593,14 +593,6 @@ impl std::fmt::Display for ColorSystem {
 // gutted along with their XSD-overlap emission sites — see the runtime-XSD
 // architecture spike (uppsala-based) for the replacement path.
 
-/// Validates xs:anyURI: must not contain ASCII whitespace.
-///
-/// xs:anyURI allows empty strings per XSD spec, but IMF requires non-empty Agency values
-/// (checked separately). This validates the character-level constraint.
-fn is_valid_any_uri(s: &str) -> bool {
-    !s.chars().any(|c| c.is_ascii_whitespace())
-}
-
 // `validate_resource_list_non_empty` was gutted — XSD-overlap check
 // (CoreConstraintsCode::ResourceListEmpty mirrors xs:sequence + minOccurs=1
 // on the Resource element). Replacement comes via runtime-XSD validation.
@@ -5233,86 +5225,6 @@ mod tests {
     // App2E QuantizationBits tests
     // ════════════════════════════════════════════════════════════════════════
 
-    #[test]
-    fn app2e_accepts_24bit_audio() {
-        let cpl = cpl_with_audio(WAVEPCMDescriptor {
-            instance_id: None,
-            sample_rate: None,
-            audio_sample_rate: Some(EditRate::new(48000, 1)),
-            channel_count: Some(2),
-            quantization_bits: Some(24),
-            linked_track_id: None,
-            sub_descriptors: None,
-        });
-        let issues = App2E2023.validate_cpl(&cpl);
-        assert!(
-            !issues.iter().any(|i| i.code.contains("QuantizationBits")),
-            "24-bit audio should be accepted: {:#?}",
-            issues,
-        );
-    }
-
-    /// ST 2067-2:2020 §5.3.2.3: samples are 24-bit; lower bit depths are
-    /// padded to 24, so a QuantizationBits of 16 is not conformant.
-    #[test]
-    fn app2e_rejects_16bit_audio() {
-        let cpl = cpl_with_audio(WAVEPCMDescriptor {
-            instance_id: None,
-            sample_rate: None,
-            audio_sample_rate: Some(EditRate::new(48000, 1)),
-            channel_count: Some(2),
-            quantization_bits: Some(16),
-            linked_track_id: None,
-            sub_descriptors: None,
-        });
-        let issues = App2E2023.validate_cpl(&cpl);
-        assert!(
-            issues
-                .iter()
-                .any(|i| i.code == St2067_21_2023::QuantizationBits.code()),
-            "16-bit audio should be rejected: {:#?}",
-            issues,
-        );
-    }
-
-    #[test]
-    fn app2e_rejects_8bit_audio() {
-        let cpl = cpl_with_audio(WAVEPCMDescriptor {
-            instance_id: None,
-            sample_rate: None,
-            audio_sample_rate: Some(EditRate::new(48000, 1)),
-            channel_count: Some(2),
-            quantization_bits: Some(8), // Not allowed by ST 2067-2 §5.3.2.3
-            linked_track_id: None,
-            sub_descriptors: None,
-        });
-        let issues = App2E2023.validate_cpl(&cpl);
-        assert!(
-            issues.iter().any(|i| i.code.contains("QuantizationBits")),
-            "8-bit audio should be rejected: {:#?}",
-            issues,
-        );
-    }
-
-    #[test]
-    fn app2e_rejects_32bit_audio() {
-        let cpl = cpl_with_audio(WAVEPCMDescriptor {
-            instance_id: None,
-            sample_rate: None,
-            audio_sample_rate: Some(EditRate::new(48000, 1)),
-            channel_count: Some(2),
-            quantization_bits: Some(32), // Not allowed by ST 2067-2 §5.3.2.3
-            linked_track_id: None,
-            sub_descriptors: None,
-        });
-        let issues = App2E2023.validate_cpl(&cpl);
-        assert!(
-            issues.iter().any(|i| i.code.contains("QuantizationBits")),
-            "32-bit audio should be rejected: {:#?}",
-            issues,
-        );
-    }
-
     // ── Image resolution validation (Table 3) ───────────────────────────────
 
     /// HT-J2K (ISO/IEC 15444-15) is permitted by ST 2067-21:2023
@@ -5777,64 +5689,6 @@ mod tests {
 
     // ── Audio sample rate validation (§6.5) ────────────────────────────────
 
-    #[test]
-    fn app2e_accepts_48000hz_audio() {
-        let cpl = cpl_with_audio(WAVEPCMDescriptor {
-            instance_id: None,
-            sample_rate: None,
-            audio_sample_rate: Some(EditRate::new(48000, 1)),
-            channel_count: Some(2),
-            quantization_bits: Some(24),
-            linked_track_id: None,
-            sub_descriptors: None,
-        });
-        let issues = App2E2023.validate_cpl(&cpl);
-        assert!(
-            !issues.iter().any(|i| i.code.contains("AudioSampleRate")),
-            "48000 Hz should be accepted: {:#?}",
-            issues,
-        );
-    }
-
-    #[test]
-    fn app2e_rejects_44100hz_audio() {
-        let cpl = cpl_with_audio(WAVEPCMDescriptor {
-            instance_id: None,
-            sample_rate: None,
-            audio_sample_rate: Some(EditRate::new(44100, 1)),
-            channel_count: Some(2),
-            quantization_bits: Some(24),
-            linked_track_id: None,
-            sub_descriptors: None,
-        });
-        let issues = App2E2023.validate_cpl(&cpl);
-        assert!(
-            issues.iter().any(|i| i.code.contains("AudioSampleRate")),
-            "44100 Hz should be rejected: {:#?}",
-            issues,
-        );
-    }
-
-    /// ST 2067-2:2020 §5.3.2.2 permits 48000 Hz or 96000 Hz.
-    #[test]
-    fn app2e_accepts_96000hz_audio() {
-        let cpl = cpl_with_audio(WAVEPCMDescriptor {
-            instance_id: None,
-            sample_rate: None,
-            audio_sample_rate: Some(EditRate::new(96000, 1)),
-            channel_count: Some(2),
-            quantization_bits: Some(24),
-            linked_track_id: None,
-            sub_descriptors: None,
-        });
-        let issues = App2E2023.validate_cpl(&cpl);
-        assert!(
-            !issues.iter().any(|i| i.code.contains("AudioSampleRate")),
-            "96000 Hz should be accepted: {:#?}",
-            issues,
-        );
-    }
-
     // ════════════════════════════════════════════════════════════════════════
     // Essence descriptor completeness (§6.2)
     // ════════════════════════════════════════════════════════════════════════
@@ -5899,48 +5753,6 @@ mod tests {
                 .iter()
                 .any(|i| i.code == St2067_21_2023::RequiredSampleRate.code()),
             "Missing SampleRate should be flagged: {:#?}",
-            issues,
-        );
-    }
-
-    #[test]
-    fn app2e_flags_wave_missing_channel_count() {
-        let cpl = cpl_with_audio(WAVEPCMDescriptor {
-            instance_id: None,
-            sample_rate: None,
-            audio_sample_rate: Some(EditRate::new(48000, 1)),
-            channel_count: None, // Missing!
-            quantization_bits: Some(24),
-            linked_track_id: None,
-            sub_descriptors: None,
-        });
-        let issues = App2E2023.validate_cpl(&cpl);
-        assert!(
-            issues
-                .iter()
-                .any(|i| i.code == St2067_21_2023::RequiredChannelCount.code()),
-            "Missing ChannelCount should be flagged: {:#?}",
-            issues,
-        );
-    }
-
-    #[test]
-    fn app2e_flags_wave_missing_quantization_bits() {
-        let cpl = cpl_with_audio(WAVEPCMDescriptor {
-            instance_id: None,
-            sample_rate: None,
-            audio_sample_rate: Some(EditRate::new(48000, 1)),
-            channel_count: Some(2),
-            quantization_bits: None, // Missing!
-            linked_track_id: None,
-            sub_descriptors: None,
-        });
-        let issues = App2E2023.validate_cpl(&cpl);
-        assert!(
-            issues
-                .iter()
-                .any(|i| i.code == St2067_21_2023::RequiredQuantizationBits.code()),
-            "Missing QuantizationBits should be flagged: {:#?}",
             issues,
         );
     }
@@ -7035,94 +6847,6 @@ mod tests {
 
     // ── #47: LocaleList / RFC 5646 / ISO 3166-1 validation ──────────────
 
-    /// Valid LocaleList with proper language tags and region codes should pass.
-    #[test]
-    fn app2e_accepts_valid_locale_list() {
-        let mut cpl = minimal_cpl();
-        cpl.edit_rate = Some(EditRate::new(24, 1));
-        cpl.extension_properties = Some(ExtensionProperties {
-            application_identification: Some(APP2E_APPLICATION_IDENTIFICATION.to_string()),
-            max_cll: None,
-            max_fall: None,
-        });
-        cpl.locale_list = Some(LocaleList {
-            locales: vec![Locale {
-                language_list: Some(LanguageList {
-                    languages: vec![LanguageTag::new("en"), LanguageTag::new("fr")],
-                }),
-                content_maturity_rating_list: None,
-                region_list: Some(RegionList {
-                    regions: vec!["US".to_string(), "FR".to_string()],
-                }),
-            }],
-        });
-        let v = App2E2023;
-        let issues = v.validate_cpl(&cpl);
-        assert!(
-            !issues.iter().any(|i| i.code.contains("5.3/")),
-            "Valid locale should not be flagged: {:#?}",
-            issues,
-        );
-    }
-
-    /// Invalid region code (lowercase) should be flagged.
-    #[test]
-    fn app2e_flags_invalid_region_code() {
-        let mut cpl = minimal_cpl();
-        cpl.edit_rate = Some(EditRate::new(24, 1));
-        cpl.extension_properties = Some(ExtensionProperties {
-            application_identification: Some(APP2E_APPLICATION_IDENTIFICATION.to_string()),
-            max_cll: None,
-            max_fall: None,
-        });
-        cpl.locale_list = Some(LocaleList {
-            locales: vec![Locale {
-                language_list: None,
-                region_list: Some(RegionList {
-                    regions: vec!["us".to_string()], // Lowercase = invalid
-                }),
-                content_maturity_rating_list: None,
-            }],
-        });
-        let v = App2E2023;
-        let issues = v.validate_cpl(&cpl);
-        assert!(
-            issues.iter().any(|i| i.code.contains("5.3/RegionCode")),
-            "Invalid region code should be flagged: {:#?}",
-            issues,
-        );
-    }
-
-    /// Empty language tag should be flagged.
-    #[test]
-    fn app2e_flags_empty_locale_language_tag() {
-        let mut cpl = minimal_cpl();
-        cpl.edit_rate = Some(EditRate::new(24, 1));
-        cpl.extension_properties = Some(ExtensionProperties {
-            application_identification: Some(APP2E_APPLICATION_IDENTIFICATION.to_string()),
-            max_cll: None,
-            max_fall: None,
-        });
-        cpl.locale_list = Some(LocaleList {
-            locales: vec![Locale {
-                language_list: Some(LanguageList {
-                    languages: vec![LanguageTag::new("")],
-                }),
-                region_list: None,
-                content_maturity_rating_list: None,
-            }],
-        });
-        let v = App2E2023;
-        let issues = v.validate_cpl(&cpl);
-        assert!(
-            issues
-                .iter()
-                .any(|i| i.code.contains("5.3/EmptyLanguageTag")),
-            "Empty language tag should be flagged: {:#?}",
-            issues,
-        );
-    }
-
     // ── #48: Timed text extended validation ──────────────────────────────
 
     /// Timed text descriptor missing SampleRate should be warned.
@@ -7917,22 +7641,7 @@ mod tests {
     // ── XSD constraint helpers ────────────────────────────────────────────────
     // helper_timecode_address_* and helper_total_running_time_* were deleted
     // along with the helper functions they exercised (gutted as part of the
-    // runtime-XSD migration). Only is_valid_any_uri remains.
-
-    #[test]
-    fn helper_any_uri_valid() {
-        assert!(is_valid_any_uri("http://www.movielabs.com/md/ratings"));
-        assert!(is_valid_any_uri("urn:smpte:2067-3:ag"));
-        assert!(is_valid_any_uri("https://example.com/agency"));
-        assert!(is_valid_any_uri("relative/path"));
-    }
-
-    #[test]
-    fn helper_any_uri_invalid() {
-        assert!(!is_valid_any_uri("http://example.com with space"));
-        assert!(!is_valid_any_uri("has\ttab"));
-        assert!(!is_valid_any_uri("has\nnewline"));
-    }
+    // runtime-XSD migration).
 
     // ── XSD: TotalRunningTime pattern ────────────────────────────────────────
 
@@ -8180,58 +7889,6 @@ mod tests {
     }
 
     // ── XSD: ContentMaturityRating.Agency as xs:anyURI ───────────────────────
-
-    #[test]
-    fn app2e_flags_agency_with_whitespace() {
-        let mut cpl = minimal_cpl();
-        cpl.locale_list = Some(LocaleList {
-            locales: vec![Locale {
-                language_list: None,
-                region_list: None,
-                content_maturity_rating_list: Some(ContentMaturityRatingList {
-                    ratings: vec![ContentMaturityRating {
-                        agency: "http://www.example.com bad uri".to_string(),
-                        rating: Some("PG".to_string()),
-                        audience: None,
-                    }],
-                }),
-            }],
-        });
-        let issues = App2E2023.validate_cpl(&cpl);
-        assert!(
-            issues
-                .iter()
-                .any(|i| i.code.contains("ContentMaturityRating-Agency-URI")),
-            "Agency with whitespace should be flagged: {:#?}",
-            issues,
-        );
-    }
-
-    #[test]
-    fn app2e_accepts_valid_agency_uri() {
-        let mut cpl = minimal_cpl();
-        cpl.locale_list = Some(LocaleList {
-            locales: vec![Locale {
-                language_list: None,
-                region_list: None,
-                content_maturity_rating_list: Some(ContentMaturityRatingList {
-                    ratings: vec![ContentMaturityRating {
-                        agency: "http://www.movielabs.com/md/ratings".to_string(),
-                        rating: Some("PG-13".to_string()),
-                        audience: None,
-                    }],
-                }),
-            }],
-        });
-        let issues = App2E2023.validate_cpl(&cpl);
-        assert!(
-            !issues
-                .iter()
-                .any(|i| i.code.contains("ContentMaturityRating-Agency-URI")),
-            "Valid Agency URI should be accepted: {:#?}",
-            issues,
-        );
-    }
 
     // ── Per-edition App #2E: image-characteristics columns ───────────────
     //
@@ -8549,15 +8206,6 @@ mod tests {
                 }
             }
         }
-        // Not ST 2067-21 provisions: only the 2023 set (kept codes) has them.
-        let region = |v: &dyn ConstraintsValidator| {
-            v.validate_cpl(&broken)
-                .iter()
-                .any(|i| i.code.ends_with("/RegionCode"))
-        };
-        assert!(region(&App2E2023));
-        assert!(!region(&App2E2020));
-        assert!(!region(&App2E2026));
     }
 
     // ── ST 2067-21:2014 / 2016 ───────────────────────────────────────────
@@ -8769,6 +8417,94 @@ mod tests {
             assert_eq!(
                 j2k(App2E2026.validate_cpl(&small)),
                 vec!["ST2067-21:2026:7.2.5/J2K-8K-Resolution".to_string()],
+            );
+        }
+    }
+
+    /// Language tags, region codes, ContentMaturityRating and audio sample
+    /// rate / quantization are not provisions of ST 2067-21:2023: §5.3 is
+    /// Colorimetry (p9), §6.5 the JPEG 2000 Picture Sub Descriptor (p19) and
+    /// §7.1 ApplicationIdentification (p20). The App #2E validator does not
+    /// report them under any edition.
+    #[test]
+    fn app2e_does_not_report_rules_from_other_documents() {
+        let mut cpl = cpl_with_audio(WAVEPCMDescriptor {
+            instance_id: None,
+            sample_rate: Some(EditRate::new(44100, 1)),
+            quantization_bits: None,
+            channel_count: None,
+            audio_sample_rate: Some(EditRate::new(44100, 1)),
+            linked_track_id: None,
+            sub_descriptors: None,
+        });
+        let mut wave16 = cpl_with_audio(WAVEPCMDescriptor {
+            instance_id: None,
+            sample_rate: Some(EditRate::new(48000, 1)),
+            quantization_bits: Some(16),
+            channel_count: Some(2),
+            audio_sample_rate: Some(EditRate::new(48000, 1)),
+            linked_track_id: None,
+            sub_descriptors: None,
+        });
+        for c in [&mut cpl, &mut wave16] {
+            c.locale_list = Some(LocaleList {
+                locales: vec![Locale {
+                    language_list: Some(LanguageList {
+                        languages: vec![LanguageTag::new(""), LanguageTag::new("1en")],
+                    }),
+                    content_maturity_rating_list: Some(ContentMaturityRatingList {
+                        ratings: vec![
+                            ContentMaturityRating {
+                                agency: String::new(),
+                                rating: Some("R".to_string()),
+                                audience: None,
+                            },
+                            ContentMaturityRating {
+                                agency: "not a uri".to_string(),
+                                rating: Some("R".to_string()),
+                                audience: None,
+                            },
+                        ],
+                    }),
+                    region_list: Some(RegionList {
+                        regions: vec!["usa".to_string()],
+                    }),
+                }],
+            });
+        }
+        let gone = [
+            "/EmptyLanguageTag",
+            "/MalformedLanguageTag",
+            "/RegionCode",
+            "/AudioSampleRate",
+            "/QuantizationBits",
+            "/Required-ChannelCount",
+            "/Required-QuantizationBits",
+            "/ContentMaturityRating-Agency",
+            "/ContentMaturityRating-Agency-URI",
+        ];
+        for v in [
+            &App2E2014 as &dyn ConstraintsValidator,
+            &App2E2016,
+            &App2E2020,
+            &App2E2023,
+            &App2E2026,
+        ] {
+            for c in [&cpl, &wave16] {
+                for i in v.validate_cpl(c) {
+                    assert!(
+                        !gone.iter().any(|g| i.code.ends_with(g)),
+                        "{} emitted {}",
+                        v.spec_id(),
+                        i.code
+                    );
+                }
+            }
+        }
+        for g in gone {
+            assert!(
+                !St2067_21_2023::ALL.iter().any(|c| c.code().ends_with(g)),
+                "{g} still in the 2023 code set"
             );
         }
     }

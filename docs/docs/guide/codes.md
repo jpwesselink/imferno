@@ -378,9 +378,6 @@ Each spec edition has its own codes, even when a rule is unchanged between editi
 |------|-------------|-----------------|----------|
 | `ST2067-21:2023:5.2/FrameRate` | Frame rate is not in the permitted set for App2E. | ERROR | Video |
 | `ST2067-21:2023:5.2/Resolution` | Image resolution is not in the permitted set for App2E. | ERROR | Video |
-| `ST2067-21:2023:5.3/EmptyLanguageTag` | Locale language tag is empty. | ERROR | Metadata |
-| `ST2067-21:2023:5.3/MalformedLanguageTag` | Locale language tag is not a valid BCP-47 subtag. | ERROR | Metadata |
-| `ST2067-21:2023:5.3/RegionCode` | Region subtag in a language tag is not valid. | ERROR | Metadata |
 | `ST2067-21:2023:6.2/ColorSystem` | Color system designator is not in the permitted set. | ERROR | Video |
 | `ST2067-21:2023:6.2/Required-StoredWidth` | RGBA/CDCI descriptor is missing the required StoredWidth field. | ERROR | Encoding |
 | `ST2067-21:2023:6.2/Required-StoredHeight` | RGBA/CDCI descriptor is missing the required StoredHeight field. | ERROR | Encoding |
@@ -390,8 +387,6 @@ Each spec edition has its own codes, even when a rule is unchanged between editi
 | `ST2067-21:2023:6.2/Required-TransferCharacteristic` | RGBA/CDCI descriptor is missing the required TransferCharacteristic field. | ERROR | Encoding |
 | `ST2067-21:2023:6.2/Required-PictureCompression` | RGBA/CDCI descriptor is missing the required PictureCompression field. | ERROR | Encoding |
 | `ST2067-21:2023:6.2/Required-ComponentDepth` | CDCI descriptor is missing the required ComponentDepth field. | ERROR | Encoding |
-| `ST2067-21:2023:6.5/Required-ChannelCount` | WavePCM descriptor is missing the required ChannelCount field. | ERROR | Audio |
-| `ST2067-21:2023:6.5/Required-QuantizationBits` | WavePCM descriptor is missing the required QuantizationBits field. | ERROR | Audio |
 | `ST2067-21:2023:6.2.1/AlphaTransparency` | Alpha transparency mode is not permitted in App2E. | ERROR | Video |
 | `ST2067-21:2023:6.2.1/CodingEquationsMissing` | CodingEquations field is absent from the picture descriptor. | ERROR | Video |
 | `ST2067-21:2023:6.2.1/ColorPrimariesMissing` | ColorPrimaries field is absent from the picture descriptor. | ERROR | Video |
@@ -429,8 +424,6 @@ Each spec edition has its own codes, even when a rule is unchanged between editi
 | `ST2067-21:2023:6.4.3/BlackRefLevel` | BlackRefLevel value is inconsistent with ComponentDepth. | ERROR | Video |
 | `ST2067-21:2023:6.4.3/ColorRange` | ColorRange value is not in the permitted set. | ERROR | Video |
 | `ST2067-21:2023:6.4.3/WhiteRefLevel` | WhiteRefLevel value is inconsistent with ComponentDepth. | ERROR | Video |
-| `ST2067-21:2023:6.5/AudioSampleRate` | Audio sample rate must be 48 000 Hz or 96 000 Hz. | ERROR | Audio |
-| `ST2067-21:2023:6.5/QuantizationBits` | QuantizationBits must be 24. | ERROR | Audio |
 | `ST2067-21:2023:6.5.2/CodingStyle` | JPEG 2000 codestream coding style is not compliant. | ERROR | Encoding |
 | `ST2067-21:2023:6.5.2/J2CLayout` | JPEG 2000 codestream layout does not meet App2E requirements. | ERROR | Encoding |
 | `ST2067-21:2023:6.5.2/J2KExtendedCapabilities` | JPEG 2000 extended capabilities are declared but not permitted. | ERROR | Encoding |
@@ -440,8 +433,6 @@ Each spec edition has its own codes, even when a rule is unchanged between editi
 | `ST2067-21:2023:6.2.5/J2K-BCP-Resolution` | JPEG 2000 Broadcast Contribution Profile: stored resolution is outside the permitted range. | ERROR | Encoding |
 | `ST2067-21:2023:6.2.5/J2K-Profile-Not-Allowed` | The JPEG 2000 profile is not listed in the edition's JPEG 2000 profile table. | ERROR | Encoding |
 | `ST2067-21:2023:7.1/ApplicationIdentification` | ApplicationIdentification is required for App2E compositions. | ERROR | Metadata |
-| `ST2067-21:2023:7.1/ContentMaturityRating-Agency` | ContentMaturityRating Agency is empty. | ERROR | Metadata |
-| `ST2067-21:2023:7.1/ContentMaturityRating-Agency-URI` | ContentMaturityRating Agency is not a valid xs:anyURI. | ERROR | Metadata |
 | `ST2067-21:2023:7.2/HomogeneousImageEssence` | All image essence in a composition shall use the same color system. | ERROR | Video |
 | `ST2067-21:2023:7.1/AppIdMismatch` | ApplicationIdentification in CPL ExtensionProperties does not include the expected App2E URI. | WARNING | Metadata |
 | `ST2067-21:2023:7.4/SegmentDurationMultiple` | Segment duration must be an integer multiple of 5 edit units. | ERROR | Timing |

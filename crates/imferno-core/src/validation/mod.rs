@@ -35,7 +35,10 @@ pub mod iab;
 pub mod isxd;
 
 pub use app2e::{App2E, App2E2014, App2E2016, App2E2020, App2E2023, App2E2026, App2EEdition};
-pub use edition::{application_identification_core_edition, declared_core_constraints_editions};
+pub use edition::{
+    application_identification_core_edition, cpl_core_edition, cpl_core_evidence,
+    declared_core_constraints_editions, resolve as resolve_edition, EditionChoice, Evidence,
+};
 pub use iab::{AppIabPlugin2019, AppIabPlugin2021, AppIabPlugin2026, URI_2019, URI_2019_SCHEMAS};
 pub use isxd::{AppIsxdPlugin2023, URI_2022};
 
@@ -45,7 +48,7 @@ use crate::catalogue::imferno::{self, ImfernoEdition};
 use crate::catalogue::st2067_2::{self, St2067_2Edition};
 use crate::catalogue::st2067_3::{self, St2067_3Edition};
 use crate::cpl::CompositionPlaylist;
-use crate::cpl::{CodingEquations, ColorPrimaries, CplNamespace, EditRate, TransferCharacteristic};
+use crate::cpl::{CodingEquations, ColorPrimaries, EditRate, TransferCharacteristic};
 use crate::diagnostics::{Location, ValidationIssue};
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -79,10 +82,16 @@ pub trait ValidatorRegistry {
     fn resolve_for_cpl(&self, cpl: &CompositionPlaylist) -> Vec<Box<dyn ConstraintsValidator>> {
         let mut validators: Vec<Box<dyn ConstraintsValidator>> = Vec::new();
 
-        let core_ns = auto_core_namespace(cpl);
-        if let Some(ns) = core_ns {
-            if let Some(v) = self.resolve_namespace(ns) {
+        if let Some(core) = cpl_core_edition(cpl) {
+            if let Some(v) =
+                self.resolve_namespace(CoreSpecTarget::of(core.edition).namespace_uri())
+            {
                 validators.push(v);
+            }
+            if let Some(notice) = core.assumed {
+                validators.push(Box::new(EditionNotices {
+                    notices: vec![notice],
+                }));
             }
         }
 
@@ -136,6 +145,28 @@ fn push_application_validators(
             unrecognised,
             not_app_profile,
         }));
+    }
+}
+
+/// Emits one `IMFERNO:Package/EditionAssumed` per edition of a CPL that
+/// was assumed rather than determined (see [`edition::resolve`]).
+struct EditionNotices {
+    notices: Vec<String>,
+}
+
+impl ConstraintsValidator for EditionNotices {
+    fn spec_id(&self) -> &str {
+        "imferno edition resolution"
+    }
+
+    fn validate_cpl(&self, cpl: &CompositionPlaylist) -> Vec<ValidationIssue> {
+        self.notices
+            .iter()
+            .map(|n| {
+                ValidationIssue::from_rule(&imferno::EditionAssumed, ImfernoEdition::Current, n)
+                    .with_location(Location::new().with_cpl(cpl.id))
+            })
+            .collect()
     }
 }
 
@@ -300,6 +331,24 @@ pub enum CoreSpecTarget {
 }
 
 impl CoreSpecTarget {
+    /// The edition this target selects.
+    pub fn edition(&self) -> St2067_2Edition {
+        match self {
+            Self::St2067_2_2013 => St2067_2Edition::V2013,
+            Self::St2067_2_2016 => St2067_2Edition::V2016,
+            Self::St2067_2_2020 => St2067_2Edition::V2020,
+        }
+    }
+
+    /// The target of `edition`.
+    pub fn of(edition: St2067_2Edition) -> Self {
+        match edition {
+            St2067_2Edition::V2013 => Self::St2067_2_2013,
+            St2067_2Edition::V2016 => Self::St2067_2_2016,
+            St2067_2Edition::V2020 => Self::St2067_2_2020,
+        }
+    }
+
     pub fn namespace_uri(&self) -> &'static str {
         match self {
             Self::St2067_2_2013 => "http://www.smpte-ra.org/schemas/2067-2/2013",
@@ -372,77 +421,6 @@ impl std::str::FromStr for AppSpecTarget {
     }
 }
 
-/// The ST 2067-2 edition whose Core Constraints namespace a CPL declares
-/// (e.g. `xmlns:cc="http://www.smpte-ra.org/ns/2067-2/2020"`), or `None`
-/// when it declares none, several, or its source XML was not kept.
-pub fn declared_core_constraints_edition(
-    cpl: &CompositionPlaylist,
-) -> Option<crate::catalogue::st2067_2::St2067_2Edition> {
-    match edition::declared_core_constraints_editions(cpl).as_slice() {
-        [one] => Some(*one),
-        _ => None,
-    }
-}
-
-/// The ST 2067-2 edition a CPL is checked against when the caller pins none.
-///
-/// ST 2067-2:2020 reuses the ST 2067-3:2016 CPL namespace, so a 2016-namespace
-/// CPL is checked against 2067-2:2020 when its ApplicationIdentification names
-/// an App #2E edition that normatively references 2067-2:2020 (2020, 2023,
-/// 2026), or when the element is in (or the CPL declares only) the 2020 Core
-/// Constraints namespace (working-group finding #12).
-pub fn cpl_core_edition(
-    cpl: &CompositionPlaylist,
-) -> Option<crate::catalogue::st2067_2::St2067_2Edition> {
-    use crate::catalogue::st2067_2::St2067_2Edition;
-    match &cpl.namespace {
-        CplNamespace::Smpte2067_3_2013 => Some(St2067_2Edition::V2013),
-        CplNamespace::Smpte2067_3_2016 => {
-            let core_2020 = app2e_references_core_2020(cpl)
-                || application_identification_core_edition(cpl)
-                    .or_else(|| declared_core_constraints_edition(cpl))
-                    == Some(St2067_2Edition::V2020);
-            Some(if core_2020 {
-                St2067_2Edition::V2020
-            } else {
-                St2067_2Edition::V2016
-            })
-        }
-        _ => None,
-    }
-}
-
-/// The Core Constraints namespace of [`cpl_core_edition`].
-fn auto_core_namespace(cpl: &CompositionPlaylist) -> Option<&'static str> {
-    use crate::catalogue::st2067_2::St2067_2Edition;
-    cpl_core_edition(cpl).map(|e| match e {
-        St2067_2Edition::V2013 => CoreSpecTarget::St2067_2_2013.namespace_uri(),
-        St2067_2Edition::V2016 => CoreSpecTarget::St2067_2_2016.namespace_uri(),
-        St2067_2Edition::V2020 => CoreSpecTarget::St2067_2_2020.namespace_uri(),
-    })
-}
-
-/// Whether the CPL's ApplicationIdentification names an App #2E edition
-/// whose normative reference is ST 2067-2:2020 (ST 2067-21:2020, 2023, 2026).
-fn app2e_references_core_2020(cpl: &CompositionPlaylist) -> bool {
-    let Some(app_id) = cpl
-        .extension_properties
-        .as_ref()
-        .and_then(|e| e.application_identification.as_deref())
-    else {
-        return false;
-    };
-    [
-        App2EEdition::V2020,
-        App2EEdition::V2023,
-        App2EEdition::V2026,
-    ]
-    .iter()
-    .any(|ed| {
-        app2e::application_identification_includes(app_id, ed.application_identification_uri())
-    })
-}
-
 /// Parse a core spec string, handling `"auto"` as `None` (auto-detect).
 pub fn parse_core_spec_target(s: &str) -> Result<Option<CoreSpecTarget>, String> {
     match s {
@@ -505,18 +483,25 @@ impl ValidatorRegistry for ConfigurableValidatorRegistry {
     fn resolve_for_cpl(&self, cpl: &CompositionPlaylist) -> Vec<Box<dyn ConstraintsValidator>> {
         let mut validators: Vec<Box<dyn ConstraintsValidator>> = Vec::new();
 
+        let mut notices = Vec::new();
         let core_ns = if let Some(core_spec) = self.selection.core_spec {
             Some(core_spec.namespace_uri())
         } else if let Some(uri) = self.selection.core_namespace_uri.as_deref() {
             Some(uri)
         } else {
-            auto_core_namespace(cpl)
+            cpl_core_edition(cpl).map(|core| {
+                notices.extend(core.assumed);
+                CoreSpecTarget::of(core.edition).namespace_uri()
+            })
         };
 
         if let Some(ns) = core_ns {
             if let Some(v) = self.resolve_namespace(ns) {
                 validators.push(v);
             }
+        }
+        if !notices.is_empty() {
+            validators.push(Box::new(EditionNotices { notices }));
         }
 
         if let Some(ref app_specs) = self.selection.app_specs {
@@ -2147,6 +2132,7 @@ mod tests {
     use super::*;
     use crate::assetmap::ImfUuid;
     use crate::catalogue::st2067_21::{self, App2EEdition};
+    use crate::cpl::CplNamespace;
     use crate::cpl::{
         CDCIDescriptor, CompositionTimecode, ContentKindElement, ContentMaturityRating,
         ContentMaturityRatingList, ContentVersion, ContentVersionList, DCTimedTextDescriptor,
@@ -2684,10 +2670,17 @@ mod tests {
         });
 
         let validators = registry.resolve_for_cpl(&cpl);
-        assert_eq!(validators.len(), 2);
-        // The core edition comes from the CPL (no ApplicationIdentification).
-        assert_eq!(validators[0].spec_id(), "ST 2067-2:2016");
-        assert_eq!(validators[1].spec_id(), "ST 2067-21:2023 (App2E)");
+        // The core edition comes from the CPL: nothing in it names one, so
+        // the newest the 2016 namespace allows, announced.
+        let ids: Vec<&str> = validators.iter().map(|v| v.spec_id()).collect();
+        assert_eq!(
+            ids,
+            [
+                "ST 2067-2:2020",
+                "imferno edition resolution",
+                "ST 2067-21:2023 (App2E)"
+            ]
+        );
     }
 
     #[test]
@@ -2713,17 +2706,49 @@ mod tests {
 
     // ── Registry auto-detection — older namespaces ───────────────────────────
 
+    /// The 2016 CPL namespace is used by ST 2067-2:2016 and :2020; with
+    /// nothing in the CPL naming one, the newest is applied and announced.
     #[test]
-    fn get_validators_for_cpl_returns_core_2016_for_2016_namespace() {
+    fn get_validators_for_cpl_assumes_core_2020_for_a_bare_2016_namespace() {
         let mut cpl = minimal_cpl();
         cpl.namespace = CplNamespace::Smpte2067_3_2016;
         let validators = get_validators_for_cpl(&cpl);
-        assert_eq!(validators.len(), 2); // + no-AppId notice (photon#407)
+        let ids: Vec<&str> = validators.iter().map(|v| v.spec_id()).collect();
         assert_eq!(
-            validators[1].spec_id(),
-            "imferno application-profile dispatch"
+            ids,
+            [
+                "ST 2067-2:2020",
+                "imferno edition resolution",
+                "imferno application-profile dispatch" // photon#407
+            ]
         );
+        let notices: Vec<_> = validators[1].validate_cpl(&cpl);
+        assert_eq!(notices.len(), 1);
+        assert!(notices[0].is(&imferno::EditionAssumed));
+        assert!(notices[0]
+            .message
+            .contains("http://www.smpte-ra.org/schemas/2067-3/2016"));
+        assert!(notices[0].message.contains("ST 2067-2:2020"));
+    }
+
+    /// App #2E 2016 references ST 2067-20:2016, which references
+    /// ST 2067-2:2016: that names the edition.
+    #[test]
+    fn get_validators_for_cpl_returns_core_2016_for_app2e_2016() {
+        let mut cpl = minimal_cpl();
+        cpl.namespace = CplNamespace::Smpte2067_3_2016;
+        cpl.extension_properties = Some(ExtensionProperties {
+            application_identification: Some(
+                "http://www.smpte-ra.org/schemas/2067-21/2016".to_string(),
+            ),
+            max_cll: None,
+            max_fall: None,
+        });
+        let validators = get_validators_for_cpl(&cpl);
         assert_eq!(validators[0].spec_id(), "ST 2067-2:2016");
+        assert!(validators
+            .iter()
+            .all(|v| v.spec_id() != "imferno edition resolution"));
     }
 
     #[test]
@@ -2823,10 +2848,17 @@ mod tests {
             ..Default::default()
         });
         let validators = registry.resolve_for_cpl(&cpl);
-        assert_eq!(validators.len(), 2);
-        // The core edition comes from the CPL (no ApplicationIdentification).
-        assert_eq!(validators[0].spec_id(), "ST 2067-2:2016");
-        assert_eq!(validators[1].spec_id(), "ST 2067-21:2023 (App2E)");
+        // The core edition comes from the CPL: nothing in it names one, so
+        // the newest the 2016 namespace allows, announced.
+        let ids: Vec<&str> = validators.iter().map(|v| v.spec_id()).collect();
+        assert_eq!(
+            ids,
+            [
+                "ST 2067-2:2020",
+                "imferno edition resolution",
+                "ST 2067-21:2023 (App2E)"
+            ]
+        );
     }
 
     // ── ColorSystem Tests ────────────────────────────────────────────────────

@@ -328,14 +328,7 @@ fn pkg_or_pkl_issue(
 
 /// The ST 2067-2 edition applied to a package's package-level rules (see
 /// [`Imferno::package_edition`]).
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct PackageEdition {
-    /// The edition applied.
-    pub edition: St2067_2Edition,
-    /// Why the edition was assumed rather than determined; reported as
-    /// `IMFERNO:Package/EditionAssumed`.
-    pub assumed: Option<String>,
-}
+pub type PackageEdition = crate::validation::EditionChoice<St2067_2Edition>;
 
 /// The ST 2067-2 delivery rules of ST 429-9 (Annex A Basic Map Profile v2,
 /// the VOLINDEX of the deprecated profile): ST 2067-2:2016/2020 §8 apply
@@ -1208,33 +1201,30 @@ impl Imferno {
     /// 2. The Packing Lists: an ST 429-8 PKL is ST 2067-2:2013 (2013 §7.1);
     ///    the `.../2067-2/2016/PKL` namespace is used by both 2016 (Annex K)
     ///    and 2020 (Annex J).
-    /// 3. Between 2016 and 2020: the Core Constraints namespace the CPLs
-    ///    declare.
+    /// 3. The CPLs whose Core Constraints edition is determined
+    ///    ([`crate::validation::cpl_core_edition`], the resolution the CPL
+    ///    validators use) name the edition.
     ///
     /// When that leaves more than one edition, the newest is used and
-    /// [`PackageEdition::assumed`] says so.
+    /// `assumed` says so ([`crate::validation::resolve_edition`]).
     pub fn package_edition(
         &self,
         core_spec: Option<crate::validation::CoreSpecTarget>,
     ) -> PackageEdition {
         use crate::assetmap::PklNamespace;
         use crate::diagnostics::Edition;
-        use crate::validation::CoreSpecTarget;
+        use crate::validation::{resolve_edition, Evidence};
         use St2067_2Edition::{V2013, V2016, V2020};
 
         if let Some(target) = core_spec {
-            let edition = match target {
-                CoreSpecTarget::St2067_2_2013 => V2013,
-                CoreSpecTarget::St2067_2_2016 => V2016,
-                CoreSpecTarget::St2067_2_2020 => V2020,
-            };
             return PackageEdition {
-                edition,
+                edition: target.edition(),
                 assumed: None,
             };
         }
 
         let mut candidates: Vec<St2067_2Edition> = vec![V2013, V2016, V2020];
+        let mut namespaces: Vec<String> = Vec::new();
         for pkl in self.packing_lists.values() {
             let allowed: &[St2067_2Edition] = match pkl.namespace {
                 PklNamespace::Dci429_8 | PklNamespace::Smpte2067_2_2013 => &[V2013],
@@ -1244,50 +1234,38 @@ impl Imferno {
                 PklNamespace::Unknown(_) => &[V2013, V2016, V2020],
             };
             candidates.retain(|e| allowed.contains(e));
+            namespaces.push(pkl.namespace.to_string());
+        }
+        namespaces.sort();
+        namespaces.dedup();
+        if candidates.is_empty() {
+            // Packing Lists of different editions: every edition remains.
+            candidates = vec![V2013, V2016, V2020];
         }
 
-        let mut declared: Vec<St2067_2Edition> = self
-            .composition_playlists
-            .values()
-            .filter_map(crate::validation::declared_core_constraints_edition)
-            .collect();
-        declared.sort();
-        declared.dedup();
-
-        match (candidates.as_slice(), declared.as_slice()) {
-            ([only], _) => PackageEdition {
-                edition: *only,
-                assumed: None,
-            },
-            (_, [cpl]) if candidates.contains(cpl) => PackageEdition {
-                edition: *cpl,
-                assumed: None,
-            },
-            _ => {
-                let newest = candidates.last().copied().unwrap_or(V2020);
-                let why = if candidates.is_empty() {
-                    "the Packing Lists are of different ST 2067-2 editions".to_string()
-                } else if declared.is_empty() {
-                    "the Packing List namespace is shared by several editions and no CPL \
-                     declares a Core Constraints namespace"
-                        .to_string()
-                } else {
-                    let list: Vec<_> = declared.iter().map(|e| e.label()).collect();
-                    format!(
-                        "the CPLs declare Core Constraints namespaces of {}",
-                        list.join(", ")
+        // The CPLs whose own Core Constraints edition is determined (the
+        // same resolution the CPL validators use) are the evidence.
+        let mut cpls: Vec<&CompositionPlaylist> = self.composition_playlists.values().collect();
+        cpls.sort_by_key(|c| c.id.to_string());
+        let evidence: Vec<Evidence<St2067_2Edition>> = cpls
+            .into_iter()
+            .filter_map(|cpl| {
+                let choice = crate::validation::cpl_core_edition(cpl)?;
+                choice.assumed.is_none().then(|| {
+                    Evidence::one(
+                        choice.edition,
+                        format!("CPL {} is ST 2067-2:{}", cpl.id, choice.edition.label()),
                     )
-                };
-                PackageEdition {
-                    edition: newest,
-                    assumed: Some(format!(
-                        "ST 2067-2 edition of the package could not be determined ({why}); \
-                         package-level rules were checked against ST 2067-2:{}",
-                        newest.label()
-                    )),
-                }
-            }
-        }
+                })
+            })
+            .collect();
+
+        let namespace = match namespaces.as_slice() {
+            [] => "it has no Packing List, so its namespace".to_string(),
+            [one] => format!("its Packing List namespace {one}"),
+            many => format!("its Packing List namespaces {}", many.join(", ")),
+        };
+        resolve_edition("the package", &namespace, &candidates, &evidence)
     }
 
     /// One notice naming the ST 429-9 edition assumed when the report holds

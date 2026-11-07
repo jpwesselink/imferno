@@ -2073,6 +2073,99 @@ impl App2E {
                 );
             }
         }
+
+        self.check_ht_irv_parameter_b(j2k_sub, loc, issues);
+    }
+
+    /// APP2.HT.IRV parameter B limits: 2026 Annex H Table H.1 says MAGB_P
+    /// per parameter B "shall" be at most 31 and "should" be at most the
+    /// Table H.3 value. This is the resolution of
+    /// https://github.com/SMPTE/st2067-21/issues/7 (table values are
+    /// maxima, not exact values). Only the 2026 edition has codes for these
+    /// rules; the 2023 Annex I gives B as a calculated value instead.
+    ///
+    /// The APP2.HT.REV row still reads "calculated according to Table H.2",
+    /// which is not a limit, so no REV check is made.
+    ///
+    /// MAGB_P is read from bits 0-4 of Ccap15 in the CPL descriptor's
+    /// J2KExtendedCapabilities; bit 5 selects HTIRV.
+    fn check_ht_irv_parameter_b(
+        &self,
+        j2k_sub: &crate::cpl::JPEG2000SubDescriptor,
+        loc: &Location,
+        issues: &mut Vec<ValidationIssue>,
+    ) {
+        let Some(ccap15) = j2k_sub
+            .j2k_extended_capabilities
+            .as_ref()
+            .and_then(|c| c.ccap15())
+        else {
+            return;
+        };
+        if ccap15 & (1 << 5) == 0 {
+            return; // HTREV
+        }
+        let magb_p = ccap15 & 0x1f;
+
+        if magb_p > magb_p_for_parameter_b(31) {
+            issues.push(
+                ValidationIssue::new(
+                    Severity::Error,
+                    Category::Encoding,
+                    self.code(App2ERule::HtIrvParameterBMax).to_string(),
+                    format!(
+                        "Ccap15 signals MAGB_P {magb_p} (parameter B up to {}); \
+                         APP2.HT.IRV requires parameter B of at most 31",
+                        parameter_b_bound(magb_p)
+                    ),
+                )
+                .with_location(loc.clone()),
+            );
+            return;
+        }
+
+        // Table H.3: recommended B by Ssiz and SGcod.C (multiple component
+        // transform). Skipped when either is unknown or Ssiz is not a row.
+        let ssiz = j2k_sub.picture_component_sizing.as_ref().and_then(|pcs| {
+            let first = pcs.components.first()?.ssiz?;
+            pcs.components
+                .iter()
+                .all(|c| c.ssiz == Some(first))
+                .then_some(first)
+        });
+        let mct = j2k_sub
+            .coding_style_default
+            .as_deref()
+            .and_then(|cod| cod.get(8..10))
+            .and_then(|b| u8::from_str_radix(b, 16).ok());
+        let (Some(ssiz), Some(mct)) = (ssiz, mct) else {
+            return;
+        };
+        let recommended = match (ssiz, mct) {
+            (7, 0) | (7, 1) => 9,
+            (9, 0) | (9, 1) => 11,
+            (11, 0) => 13,
+            (11, 1) => 14,
+            (15, 0) => 17,
+            (15, 1) => 18,
+            _ => return,
+        };
+        if magb_p > magb_p_for_parameter_b(recommended) {
+            issues.push(
+                ValidationIssue::new(
+                    Severity::Warning,
+                    Category::Encoding,
+                    self.code(App2ERule::HtIrvParameterBRecommended).to_string(),
+                    format!(
+                        "Ccap15 signals MAGB_P {magb_p} (parameter B up to {}); \
+                         for Ssiz {ssiz} and SGcod.C = {mct}, parameter B should be \
+                         at most {recommended}",
+                        parameter_b_bound(magb_p)
+                    ),
+                )
+                .with_location(loc.clone()),
+            );
+        }
     }
 
     /// Section 7.2: All image descriptors in a composition must use the same color system.
@@ -2851,3 +2944,133 @@ const SYSTEMS_2016: &[EditionColorSystem] = &[
         ref_levels: REF_COLOR5_7_2016,
     },
 ];
+
+/// The smallest MAGB_P whose set admits `b` (ISO/IEC 15444-15 Table 4:
+/// P = 0 for B <= 8, B = P + 8 for 0 < P < 20, B <= 4P - 49 for
+/// 20 <= P < 31, P = 31 above that).
+fn magb_p_for_parameter_b(b: u16) -> u16 {
+    match b {
+        0..=8 => 0,
+        9..=27 => b - 8,
+        28..=74 => (b + 49).div_ceil(4),
+        _ => 31,
+    }
+}
+
+/// The largest parameter B a codestream signalling `magb_p` may use.
+fn parameter_b_bound(magb_p: u16) -> u16 {
+    match magb_p {
+        0 => 8,
+        1..=19 => magb_p + 8,
+        20..=30 => 4 * magb_p - 49,
+        _ => 74,
+    }
+}
+
+#[cfg(test)]
+mod ht_parameter_b_tests {
+    use super::*;
+    use crate::cpl::parse_cpl;
+
+    const HT_CPL: &str = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../test-data/HT/IMP/CPL_67be5fc8-87f1-4172-8d52-819ca14c7a20.xml"
+    ));
+
+    /// The HT fixture is 12-bit (Ssiz 11), MCT on, HTIRV; its Ccap15 is 38
+    /// (bit 5 set, MAGB_P 6, B = 14 = the Table H.3 value).
+    fn issues_with_ccap15(edition: App2EEdition, ccap15: u16) -> Vec<ValidationIssue> {
+        let xml = HT_CPL.replace(
+            "<r2:UInt16>38</r2:UInt16>",
+            &format!("<r2:UInt16>{ccap15}</r2:UInt16>"),
+        );
+        let cpl = parse_cpl(&xml).expect("HT fixture parses");
+        App2E::new(edition).validate(&cpl)
+    }
+
+    fn has(issues: &[ValidationIssue], code: &str) -> bool {
+        issues.iter().any(|i| i.code == code)
+    }
+
+    const MAX: &str = "ST2067-21:2026:H/HT-IRV-ParameterB-Max";
+    const REC: &str = "ST2067-21:2026:H/HT-IRV-ParameterB-Recommended";
+
+    #[test]
+    fn magb_mapping_round_trips() {
+        assert_eq!(magb_p_for_parameter_b(31), 20);
+        assert_eq!(parameter_b_bound(20), 31);
+        assert_eq!(magb_p_for_parameter_b(14), 6);
+        assert_eq!(parameter_b_bound(21), 35);
+        for b in 9..=74 {
+            assert!(parameter_b_bound(magb_p_for_parameter_b(b)) >= b, "{b}");
+        }
+    }
+
+    #[test]
+    fn ccap15_is_read_from_cpl_descriptor() {
+        let cpl = parse_cpl(HT_CPL).unwrap();
+        let eds = &cpl
+            .essence_descriptor_list
+            .as_ref()
+            .unwrap()
+            .essence_descriptors;
+        let ccap15 = eds.iter().find_map(|d| {
+            let sd = d
+                .rgba_descriptor
+                .as_ref()
+                .and_then(|r| r.sub_descriptors.as_ref())
+                .or_else(|| {
+                    d.cdci_descriptor
+                        .as_ref()
+                        .and_then(|c| c.sub_descriptors.as_ref())
+                })?;
+            sd.jpeg2000_sub_descriptor
+                .as_ref()?
+                .j2k_extended_capabilities
+                .as_ref()?
+                .ccap15()
+        });
+        assert_eq!(ccap15, Some(38));
+    }
+
+    #[test]
+    fn table_value_passes() {
+        let issues = issues_with_ccap15(App2EEdition::V2026, 38);
+        assert!(!has(&issues, MAX) && !has(&issues, REC), "{issues:#?}");
+    }
+
+    #[test]
+    fn above_table_value_warns() {
+        // MAGB_P 7: B = 15 > 14 (Ssiz 11, SGcod.C = 1).
+        let issues = issues_with_ccap15(App2EEdition::V2026, 32 | 7);
+        assert!(!has(&issues, MAX), "{issues:#?}");
+        let i = issues.iter().find(|i| i.code == REC).expect("warning");
+        assert_eq!(i.severity, Severity::Warning);
+    }
+
+    #[test]
+    fn b_31_is_allowed_but_above_is_an_error() {
+        let at_31 = issues_with_ccap15(App2EEdition::V2026, 32 | 20);
+        assert!(!has(&at_31, MAX), "{at_31:#?}");
+        assert!(has(&at_31, REC));
+        let above = issues_with_ccap15(App2EEdition::V2026, 32 | 21);
+        let i = above.iter().find(|i| i.code == MAX).expect("max error");
+        assert_eq!(i.severity, Severity::Error);
+        assert!(!has(&above, REC));
+    }
+
+    #[test]
+    fn htrev_is_not_checked() {
+        let issues = issues_with_ccap15(App2EEdition::V2026, 25);
+        assert!(!has(&issues, MAX) && !has(&issues, REC), "{issues:#?}");
+    }
+
+    #[test]
+    fn not_reported_under_2023() {
+        let issues = issues_with_ccap15(App2EEdition::V2023, 32 | 25);
+        assert!(
+            !issues.iter().any(|i| i.code.contains("ParameterB")),
+            "{issues:#?}"
+        );
+    }
+}

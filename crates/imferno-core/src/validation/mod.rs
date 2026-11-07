@@ -3155,6 +3155,7 @@ mod tests {
                             }),
                             j2k_extended_capabilities: Some(J2KExtendedCapabilities {
                                 pcap: Some(131072),
+                                ccapi: None,
                             }),
                             picture_component_sizing: None,
                         }),
@@ -3260,6 +3261,7 @@ mod tests {
                             }),
                             j2k_extended_capabilities: Some(J2KExtendedCapabilities {
                                 pcap: Some(131072),
+                                ccapi: None,
                             }),
                             picture_component_sizing: None,
                         }),
@@ -3355,6 +3357,7 @@ mod tests {
                             j2c_layout: None, // Missing!
                             j2k_extended_capabilities: Some(J2KExtendedCapabilities {
                                 pcap: Some(131072),
+                                ccapi: None,
                             }),
                             picture_component_sizing: None,
                         }),

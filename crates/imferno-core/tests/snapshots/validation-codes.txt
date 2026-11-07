@@ -260,6 +260,8 @@ ST2067-21:2026:8.1/ApplicationIdentification
 ST2067-21:2026:8.2/HomogeneousImageEssence
 ST2067-21:2026:8.3.2/SegmentDurationMultiple
 ST2067-21:2026:8.3.3/MaxCLLMaxFALL
+ST2067-21:2026:H/HT-IRV-ParameterB-Max
+ST2067-21:2026:H/HT-IRV-ParameterB-Recommended
 ST2067-2:2013:10/TimedText-EmptyLanguageTag
 ST2067-2:2013:10/TimedText-MalformedLanguageTag
 ST2067-2:2013:10/TimedText-SampleRate

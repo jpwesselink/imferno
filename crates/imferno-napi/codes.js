@@ -387,6 +387,8 @@ const codes = {
     J2CLayout: "ST2067-21:2026:7.5.2/J2CLayout",
     J2KExtendedCapabilities: "ST2067-21:2026:7.5.1/J2KExtendedCapabilities",
     JPEG2000SubDescriptor: "ST2067-21:2026:7.5.1/JPEG2000SubDescriptor",
+    HTIRVParameterBMax: "ST2067-21:2026:H/HT-IRV-ParameterB-Max",
+    HTIRVParameterBRecommended: "ST2067-21:2026:H/HT-IRV-ParameterB-Recommended",
     J2K4KResolution: "ST2067-21:2026:7.2.5/J2K-4K-Resolution",
     J2K2KResolution: "ST2067-21:2026:7.2.5/J2K-2K-Resolution",
     J2KBCPResolution: "ST2067-21:2026:7.2.5/J2K-BCP-Resolution",

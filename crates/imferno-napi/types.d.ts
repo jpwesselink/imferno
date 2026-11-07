@@ -190,13 +190,7 @@ export type RuleSeverity = "off" | "info" | "warn" | "error" | "critical";
  * @deprecated
  * Legacy report summary. Deprecated since v2.3.0.
  *
- * Use [`ValidationResult`] from [`validate()`](crate::package::validate) or [`Imferno::parse_and_validate()`] instead. `ImfReport` is a lossy summary that drops essence descriptors, locales, content versions, and other parsed data from the package.
- *
- * # Migration
- *
- * Before: ```ignore let report = build_report(&package, &options, None)?; for cpl in &report.cpls { /* ... * / } ```
- *
- * After: ```ignore let result = package.validate(&options); for (id, cpl) in &package.composition_playlists { /* ... * / } ```
+ * Use `ValidationResult` from `validate()` or `Imferno::parse_and_validate()` instead. `ImfReport` is a lossy summary that drops essence descriptors, locales, content versions, and other parsed data from the package.
  */
 export interface ImfReport {
   cpls: CplReport[];
@@ -336,7 +330,7 @@ export interface ValidationReport {
  */
 export interface ValidationIssue {
   /**
-   * Other `Location`s when this issue represents an aggregation of multiple identical-code occurrences (see [`ValidationReport::aggregate`]). Empty for fresh, un-aggregated issues. Skipped during serialisation when empty so the on-wire shape stays back-compatible for callers that don't aggregate.
+   * Other `Location`s when this issue represents an aggregation of multiple identical-code occurrences (see `ValidationReport::aggregate`). Empty for fresh, un-aggregated issues. Skipped during serialisation when empty so the on-wire shape stays back-compatible for callers that don't aggregate.
    */
   additional_instances?: Location[];
   category: Category;
@@ -1156,7 +1150,7 @@ export interface SubtitlesSequence {
  *
  * Defines output processing instructions for a composition: image scaling, cropping, pixel encoding, and audio routing/mixing macros.
  *
- * `macros` carries every `<Macro xsi:type="...">` entry from the `<MacroList>`. The list is structurally extracted via a small `quick_xml` walker rather than serde because the XSD uses `xsi:type` polymorphism with vendor-specific extension namespaces (`opl:PresetMacroType`, `arm:AudioRoutingMixingMacroType`, etc.). Type-specific payload fields land in [`OplMacro::extra_fields`] as `(local_name, text)` pairs so the parser doesn't have to know every macro subtype to round-trip the list.
+ * `macros` carries every `<Macro xsi:type="...">` entry from the `<MacroList>`. The list is structurally extracted via a small `quick_xml` walker rather than serde because the XSD uses `xsi:type` polymorphism with vendor-specific extension namespaces (`opl:PresetMacroType`, `arm:AudioRoutingMixingMacroType`, etc.). Type-specific payload fields land in `OplMacro::extra_fields` as `(local_name, text)` pairs so the parser doesn't have to know every macro subtype to round-trip the list.
  */
 export interface OutputProfileList {
   annotation?: string | null;
@@ -1176,7 +1170,7 @@ export interface OutputProfileList {
 /**
  * A single macro entry from an OPL `<MacroList>`.
  *
- * Captures the polymorphic `xsi:type` attribute plus the common `Name` / `Annotation` fields from the abstract `MacroType`. All other children of the macro are stored as `(local_name, text)` pairs in [`Self::extra_fields`] so that vendor-specific extensions remain accessible without the parser knowing each subtype.
+ * Captures the polymorphic `xsi:type` attribute plus the common `Name` / `Annotation` fields from the abstract `MacroType`. All other children of the macro are stored as `(local_name, text)` pairs in `Self::extra_fields` so that vendor-specific extensions remain accessible without the parser knowing each subtype.
  */
 export interface OplMacro {
   /**
@@ -1294,7 +1288,7 @@ export interface VolumeIndex {
  *
  * Keys are either: - A rule suffix — `"SegmentDuration"` — matched against the part of the issue code after the last `/`. - A full normalised code — `"ST2067-3:2020:7.2.2/SegmentDuration"`.
  *
- * Values are the desired [`RuleSeverity`], or [`RuleSeverity::Off`] to suppress the rule entirely.
+ * Values are the desired `RuleSeverity`, or `RuleSeverity::Off` to suppress the rule entirely.
  *
  * An empty map (the default) is a no-op.
  */

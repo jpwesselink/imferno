@@ -43,7 +43,33 @@ function collapseRefWrappers(node) {
   for (const k of keys) out[k] = collapseRefWrappers(node[k]);
   return out;
 }
-const normalised = collapseRefWrappers(schema);
+const normalised = cleanDocs(collapseRefWrappers(schema));
+
+// Rustdoc → JSDoc: drop fenced (Rust) code examples, which schemars flattens
+// onto one line and json-schema-to-typescript mangles (`*/` → `* /`), and
+// unwrap intra-doc links ([`Foo`](crate::x) / [`Foo`] → `Foo`).
+function cleanDocText(text) {
+  return text
+    .replace(/```[\s\S]*?```/g, "")
+    // Labels whose code example was just removed ("Before:"), then headings
+    // left with an empty section.
+    .replace(/^[A-Za-z ]+:[ \t]*$/gm, "")
+    .replace(/^#+ .*\n(?=\s*(?:#|(?![\s\S])))/gm, "")
+    .replace(/\[(`[^`\]]+`)\]\([^)]*\)/g, "$1")
+    .replace(/\[(`[^`\]]+`)\]/g, "$1")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+function cleanDocs(node) {
+  if (Array.isArray(node)) return node.map(cleanDocs);
+  if (typeof node !== "object" || node === null) return node;
+  const out = {};
+  for (const [k, v] of Object.entries(node)) {
+    out[k] = (k === "description" || k === "deprecated") && typeof v === "string" ? cleanDocText(v) : cleanDocs(v);
+  }
+  return out;
+}
 
 const banner = `/**
  * TypeScript declarations for the values imferno passes across the JS boundary.

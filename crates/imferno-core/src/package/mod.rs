@@ -1224,6 +1224,7 @@ impl Imferno {
             return PackageEdition {
                 edition: target.edition(),
                 assumed: None,
+                determined: true,
             };
         }
 
@@ -1263,7 +1264,7 @@ impl Imferno {
             .into_iter()
             .filter_map(|cpl| {
                 let choice = crate::validation::cpl_core_edition(cpl)?;
-                choice.assumed.is_none().then(|| {
+                choice.determined.then(|| {
                     Evidence::one(
                         choice.edition,
                         format!("CPL {} is ST 2067-2:{}", cpl.id, choice.edition.label()),
@@ -2397,7 +2398,7 @@ impl Imferno {
                 });
                 let iab_ref = iab_choice
                     .as_ref()
-                    .filter(|c| c.assumed.is_none())
+                    .filter(|c| c.determined)
                     .map(|c| c.edition);
                 // The ST 2067-2 editions of the CPLs that reference the file (the
                 // package's when none does).

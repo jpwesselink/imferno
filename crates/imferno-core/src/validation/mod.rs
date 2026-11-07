@@ -182,6 +182,7 @@ impl ConstraintsValidator for NotImfCpl {
             Some(edition) => EditionChoice {
                 edition,
                 assumed: None,
+                determined: true,
             },
             None => resolve_edition(
                 &format!("CPL {}", cpl.id),

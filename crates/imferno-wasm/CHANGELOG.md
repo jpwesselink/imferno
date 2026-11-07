@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.1.0](https://github.com/jpwesselink/imferno/compare/imferno-wasm-v3.0.1...imferno-wasm-v3.1.0) - 2026-11-07
+
+### Added
+
+- *(bindings)* formatReport accepts the ValidationResult from validate()
+- *(validation)* report CPLs whose application profile was not validated
+- *(assetmap)* check ST 429-9:2014 Annex A.2 path rules on disk
+- *(mxf)* require Duration on Timeline Track structural components
+- *(validation)* check APP2.HT.IRV parameter B limits (ST 2067-21:2026)
+- *(validation)* validate each ST 2067-21 edition against its own text
+- *(validation)* audit P3 batch — IAB §5.10.2/Annex C.2/§6.2 and ISXD §6/§9.3 gap rules, font/otf (AUDIT-18, AUDIT-21, AUDIT-13 partial)
+
+### Fixed
+
+- *(types)* clean rustdoc artefacts out of the generated JSDoc
+- *(wasm)* declare the functions index.js actually exports, with generated types
+- *(package)* report CPL track files outside the package as info
+- *(validation)* drop non-ST 2067-21 rules from the App #2E 2023 code set
+- *(validation)* accept the 8K JPEG 2000 IMF profiles under ST 2067-21:2026
+- *(validation)* audit P2 batch — 9 spec-conformance findings across audio MCA, IAB, ISXD
+- *(validation)* audit P1 batch — invented IAB rule, timed-text UL byte, ADM-gated Mode A
+
+### Other
+
+- *(types)* regenerate types.d.ts after merging main
+- Merge remote-tracking branch 'origin/main' into fix/napi-typescript-types
+- *(wasm)* delete stale demo/scratch files and unused docs WASM artifacts
+- contract for the WASM declarations; reachable-any and export checks
+- *(wasm)* drop the raw wasm export and the Tsify declarations
+- guard that binding outputs match their declared TypeScript types
+- regenerate validation code reference and JS code maps
+
 ## [3.0.1](https://github.com/jpwesselink/imferno/compare/imferno-wasm-v3.0.0...imferno-wasm-v3.0.1) - 2026-06-19
 
 ### Added

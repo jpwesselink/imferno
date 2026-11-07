@@ -769,6 +769,7 @@ impl Imferno {
 
         let selection = ValidatorSelection {
             core_spec: options.core_spec,
+            cpl_spec: options.cpl_spec,
             app_specs: options.app_specs.clone(),
             ..Default::default()
         };
@@ -802,6 +803,7 @@ impl Imferno {
 
         let selection = ValidatorSelection {
             core_spec: options.core_spec,
+            cpl_spec: options.cpl_spec,
             app_specs: options.app_specs.clone(),
             ..Default::default()
         };
@@ -2547,7 +2549,7 @@ impl Imferno {
                         report.add(
                             ValidationIssue::from_rule(
                                 &st2067_3::SegmentDuration,
-                                crate::cpl::validate::st2067_3_edition(&cpl.namespace),
+                                crate::validation::cpl_edition(cpl).edition,
                                 format!(
                                     "Segment {} has mismatched virtual track durations: \
                                      track {} = {:.6}s but track {} = {:.6}s",
@@ -2878,6 +2880,9 @@ pub struct ValidationOptions {
     pub rules: RulesConfig,
     /// Core constraints spec version. `None` = auto-detect from CPL namespace.
     pub core_spec: Option<crate::validation::CoreSpecTarget>,
+    /// ST 2067-3 edition for the CPL rules. `None` = resolve it per CPL from
+    /// its namespace and contents (newest when they do not tell, announced).
+    pub cpl_spec: Option<crate::validation::CplSpecTarget>,
     /// Application profile spec versions. `None` = auto-detect from CPL.
     pub app_specs: Option<Vec<crate::validation::AppSpecTarget>>,
     /// When `true`, collapse repeat-offender issues (same code in the

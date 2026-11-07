@@ -1,6 +1,6 @@
 //! Rule table: SMPTE ST 2067-3 (Composition Playlist).
 //!
-//! Every row checked against the text of its edition (C1/C4).
+//! Every row checked against the text of its edition (C1/C4; 2020 rows C9).
 
 #![allow(non_upper_case_globals)]
 
@@ -13,6 +13,7 @@ crate::diagnostics::rule::editions! {
     pub enum St2067_3Edition for Spec::St2067_3 {
         V2013 => "2013",
         V2016 => "2016",
+        V2020 => "2020",
     }
 }
 
@@ -27,6 +28,7 @@ pub static ContentKindUnknown: Rule<E> = Rule {
     editions: &[
         checked(E::V2013, "6.1.8", Shall).interpret("'match' read as exact, case-sensitive comparison against the Table 3/4 tokens (the text does not define case-insensitive matching). Netflix Photon (d5fe149) does not check ContentKind values at all.", None),
         checked(E::V2016, "6.1.8", Shall).interpret("'match' read as exact, case-sensitive comparison against the Table 3/4 tokens (the text does not define case-insensitive matching). Netflix Photon (d5fe149) does not check ContentKind values at all.", None),
+        checked(E::V2020, "6.1.8", Shall).interpret("'match' read as exact, case-sensitive comparison against the Table 3/4 tokens (the text does not define case-insensitive matching). Netflix Photon (d5fe149) does not check ContentKind values at all.", None),
     ],
 };
 
@@ -39,6 +41,7 @@ pub static SourceEncodingNoEssenceDescriptorList: Rule<E> = Rule {
     editions: &[
         checked(E::V2013, "6.12.1", Shall),
         checked(E::V2016, "6.12.1", Shall),
+        checked(E::V2020, "6.12.1", Shall),
     ],
 };
 
@@ -51,6 +54,7 @@ pub static SourceEncodingUnresolved: Rule<E> = Rule {
     editions: &[
         checked(E::V2013, "6.12.1", Shall),
         checked(E::V2016, "6.12.1", Shall),
+        checked(E::V2020, "6.12.1", Shall),
     ],
 };
 
@@ -63,6 +67,7 @@ pub static EssenceDescriptorListEmpty: Rule<E> = Rule {
     editions: &[
         checked(E::V2013, "6.1", Shall),
         checked(E::V2016, "6.1", Shall),
+        checked(E::V2020, "6.1", Shall),
     ],
 };
 
@@ -75,6 +80,7 @@ pub static ContentVersionListEmpty: Rule<E> = Rule {
     editions: &[
         checked(E::V2013, "6.1", Shall),
         checked(E::V2016, "6.1", Shall),
+        checked(E::V2020, "6.1", Shall),
     ],
 };
 
@@ -87,6 +93,7 @@ pub static ContentVersionIdInvalid: Rule<E> = Rule {
     editions: &[
         checked(E::V2013, "6.8.1", Shall),
         checked(E::V2016, "6.8.1", Shall),
+        checked(E::V2020, "6.8.1", Shall),
     ],
 };
 
@@ -99,6 +106,7 @@ pub static ContentVersionLabelTextMissing: Rule<E> = Rule {
     editions: &[
         checked(E::V2013, "6.8", Shall),
         checked(E::V2016, "6.8", Shall),
+        checked(E::V2020, "6.8", Shall),
     ],
 };
 
@@ -111,6 +119,7 @@ pub static LocaleLanguageTagInvalid: Rule<E> = Rule {
     editions: &[
         checked(E::V2013, "6.5.2", Shall),
         checked(E::V2016, "6.5.2", Shall),
+        checked(E::V2020, "6.5.2", Shall),
     ],
 };
 
@@ -123,6 +132,7 @@ pub static TrackIdNotUnique: Rule<E> = Rule {
     editions: &[
         checked(E::V2013, "6.9.3", Shall),
         checked(E::V2016, "6.9.3", Shall),
+        checked(E::V2020, "6.9.3", Shall),
     ],
 };
 
@@ -135,6 +145,7 @@ pub static MarkerOffsetOutOfRange: Rule<E> = Rule {
     editions: &[
         checked(E::V2013, "6.13", Shall).interpret("The bound is IntrinsicDuration, inclusive (Offset == IntrinsicDuration passes); EntryPoint/SourceDuration do not constrain Offset.", Some("https://github.com/Netflix/photon/issues/273")),
         checked(E::V2016, "6.13", Shall).interpret("The bound is IntrinsicDuration, inclusive (Offset == IntrinsicDuration passes); EntryPoint/SourceDuration do not constrain Offset.", Some("https://github.com/Netflix/photon/issues/273")),
+        checked(E::V2020, "6.13", Shall).interpret("The bound is IntrinsicDuration, inclusive (Offset == IntrinsicDuration passes); EntryPoint/SourceDuration do not constrain Offset.", Some("https://github.com/Netflix/photon/issues/273")),
     ],
 };
 
@@ -147,6 +158,7 @@ pub static MarkerLabelUnknown: Rule<E> = Rule {
     editions: &[
         checked(E::V2013, "6.14.2", Shall).interpret("Labels under the default scope must be in Table 19; other scopes are out of scope.", Some("https://github.com/Netflix/photon/issues/394")),
         checked(E::V2016, "6.14.1.2", May).interpret("2016 says Table 21 lists values that may be used (the 2013 shall-match sentence is gone); a label outside Table 21 under a standard-marker scope is reported as Info.", Some("https://github.com/Netflix/photon/issues/394")),
+        checked(E::V2020, "6.14.1.2", May).interpret("2020 keeps the 2016 wording: Table 21 lists values that may be used, now under three standard-marker scopes (2013, 2016 and the 2020 scope with FFEI/FFER/FFUN/LFEI/LFER/LFUN); a label outside its scope's Table 21 list is reported as Info.", Some("https://github.com/Netflix/photon/issues/394")),
     ],
 };
 
@@ -161,6 +173,7 @@ pub static SegmentDuration: Rule<E> = Rule {
     editions: &[
         checked(E::V2013, "7.2", Shall),
         checked(E::V2016, "7.2", Shall),
+        checked(E::V2020, "7.2", Shall),
     ],
 };
 
@@ -173,6 +186,7 @@ pub static ContentVersionIdDuplicate: Rule<E> = Rule {
     editions: &[
         checked(E::V2013, "6.1.9", Shall),
         checked(E::V2016, "6.1.9", Shall),
+        checked(E::V2020, "6.1.9", Shall),
     ],
 };
 
@@ -185,6 +199,7 @@ pub static SegmentDurationIntegerEditUnits: Rule<E> = Rule {
     editions: &[
         checked(E::V2013, "7.3", Shall),
         checked(E::V2016, "7.3", Shall),
+        checked(E::V2020, "7.3", Shall),
     ],
 };
 
@@ -197,6 +212,7 @@ pub static UniqueSegmentId: Rule<E> = Rule {
     editions: &[
         checked(E::V2013, "6.9.1", Shall),
         checked(E::V2016, "6.9.1", Shall),
+        checked(E::V2020, "6.9.1", Shall),
     ],
 };
 
@@ -211,6 +227,7 @@ pub static UniqueEssenceDescriptorId: Rule<E> = Rule {
     editions: &[
         checked(E::V2013, "6.7.1", Shall),
         checked(E::V2016, "6.7.1", Shall),
+        checked(E::V2020, "6.7.1", Shall),
     ],
 };
 
@@ -223,6 +240,7 @@ pub static UniqueResourceId: Rule<E> = Rule {
     editions: &[
         checked(E::V2013, "6.11.1", Shall),
         checked(E::V2016, "6.11.1", Shall),
+        checked(E::V2020, "6.11.1", Shall).interpret("2020 allows two Resources with the same Id when they are identical; a duplicate Id is reported only when the Resources differ (compared as parsed).", None),
     ],
 };
 
@@ -235,6 +253,7 @@ pub static EntryPoint: Rule<E> = Rule {
     editions: &[
         checked(E::V2013, "6.11.6", Shall).interpret("Flags EntryPoint > IntrinsicDuration. EntryPoint == IntrinsicDuration is allowed: SourceDuration is then 0, which 6.11.6 permits.", None),
         checked(E::V2016, "6.11.6", Shall).interpret("Flags EntryPoint > IntrinsicDuration. EntryPoint == IntrinsicDuration is allowed: SourceDuration is then 0, which 6.11.6 permits.", None),
+        checked(E::V2020, "6.11.6", Shall).interpret("Flags EntryPoint > IntrinsicDuration. EntryPoint == IntrinsicDuration is allowed: SourceDuration is then 0, which 6.11.6 permits.", None),
     ],
 };
 
@@ -247,6 +266,7 @@ pub static ResourceDuration: Rule<E> = Rule {
     editions: &[
         checked(E::V2013, "6.11.6", Shall),
         checked(E::V2016, "6.11.6", Shall),
+        checked(E::V2020, "6.11.6", Shall),
     ],
 };
 
@@ -259,6 +279,7 @@ pub static RepeatCount: Rule<E> = Rule {
     editions: &[
         checked(E::V2013, "6.11", Shall),
         checked(E::V2016, "6.11", Shall),
+        checked(E::V2020, "6.11", Shall),
     ],
 };
 
@@ -271,6 +292,7 @@ pub static TrackFileId: Rule<E> = Rule {
     editions: &[
         checked(E::V2013, "6.12", Shall),
         checked(E::V2016, "6.12", Shall),
+        checked(E::V2020, "6.12", Shall),
     ],
 };
 
@@ -285,6 +307,7 @@ pub static VirtualTrackContinuity: Rule<E> = Rule {
     editions: &[
         checked(E::V2013, "6.9.3", Shall),
         checked(E::V2016, "6.9.3", Shall),
+        checked(E::V2020, "6.9.3", Shall),
     ],
 };
 
@@ -297,6 +320,7 @@ pub static DanglingEssenceDescriptor: Rule<E> = Rule {
     editions: &[
         checked(E::V2013, "6.1.10.1", Shall),
         checked(E::V2016, "6.1.10.1", Shall),
+        checked(E::V2020, "6.1.10.1", Shall),
     ],
 };
 
@@ -309,6 +333,7 @@ pub static ContentTitleEmpty: Rule<E> = Rule {
     editions: &[
         checked(E::V2013, "6.1.7", Shall),
         checked(E::V2016, "6.1.7", Shall),
+        checked(E::V2020, "6.1.7", Shall),
     ],
 };
 
@@ -321,6 +346,7 @@ pub static ResourceListEmpty: Rule<E> = Rule {
     editions: &[
         checked(E::V2013, "6.10", Shall).interpret("Sequences sit in an xs:any lax slot, so the runtime XSD layer does not check Resource minOccurs; imferno does.", None),
         checked(E::V2016, "6.10", Shall).interpret("Sequences sit in an xs:any lax slot, so the runtime XSD layer does not check Resource minOccurs; imferno does.", None),
+        checked(E::V2020, "6.10", Shall).interpret("Sequences sit in an xs:any lax slot, so the runtime XSD layer does not check Resource minOccurs; imferno does.", None),
     ],
 };
 

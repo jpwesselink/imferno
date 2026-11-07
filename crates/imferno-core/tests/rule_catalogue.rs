@@ -116,7 +116,7 @@ fn rule_info_round_trips_through_json() {
         .iter()
         .find(|r| r.id.0 == "ST2067-3/SegmentDuration")
         .unwrap();
-    assert_eq!(seg.editions.len(), 2);
+    assert_eq!(seg.editions.len(), 3);
     assert_eq!(
         seg.editions[0].code.as_deref(),
         Some("ST2067-3:2013:7.2/SegmentDuration")

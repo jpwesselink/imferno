@@ -117,6 +117,9 @@ imferno auto-detects the CPL's core spec version and application profile from th
 # Force a specific core spec version
 imferno validate ./my-package --core-spec v2020
 
+# Force the Composition Playlist (ST 2067-3) edition
+imferno validate ./my-package --cpl-spec v2016
+
 # Force a specific application profile
 imferno validate ./my-package --app2e-spec v2023
 
@@ -139,6 +142,8 @@ let options = ValidationOptions {
 
 **`CoreSpecTarget`**: `St2067_2_2013`, `St2067_2_2016`, `St2067_2_2020`
 
+**`CplSpecTarget`** (`cpl_spec`): `St2067_3_2013`, `St2067_3_2016`, `St2067_3_2020`
+
 **`AppSpecTarget`**: `St2067_21_2014`, `St2067_21_2016`, `St2067_21_2020`, `St2067_21_2023`, `St2067_21_2026`
 
 ### WASM
@@ -151,6 +156,7 @@ const result = await validate(files, {
 ```
 
 - `coreSpec`: `"auto"` | `"v2013"` | `"v2016"` | `"v2020"`
+- `cplSpec`: `"auto"` | `"v2013"` | `"v2016"` | `"v2020"` (ST 2067-3)
 - `app2eSpec`: `"auto"` | `"none"` | `"v2014"` | `"v2016"` | `"v2020"` | `"v2023"` | `"v2026"`
 
 ### Node.js
@@ -165,6 +171,7 @@ const result = validatePath('./my-imp', {
 ```
 
 - `coreSpec`: `"auto"` | `"v2013"` | `"v2016"` | `"v2020"`
+- `cplSpec`: `"auto"` | `"v2013"` | `"v2016"` | `"v2020"` (ST 2067-3)
 - `app2eSpec`: `"auto"` | `"none"` | `"v2014"` | `"v2016"` | `"v2020"` | `"v2023"` | `"v2026"`
 
 `listRules()` (Node and WASM) returns the catalogue with each rule's edition table.
@@ -192,12 +199,29 @@ with a suppression, at their original level.
 
 ## Which edition is applied
 
-Package-level rules (Packing List, Asset Map, ingest) are checked against the
-ST 2067-2 edition of the package: `--core-spec` / `coreSpec` when given;
-else an ST 429-8 Packing List means ST 2067-2:2013, and the
-`.../2067-2/2016/PKL` namespace (shared by 2016 and 2020) is resolved by the
-Core Constraints namespace the CPLs declare. When that is not conclusive the
-newest edition is used and an `IMFERNO:Package/EditionAssumed` notice says so.
+Every edition choice follows one rule: an edition pinned by an option wins;
+otherwise the document's namespace gives the candidate editions, and evidence
+in the document that only some editions' text defines narrows them. When one
+edition is left it is applied; otherwise the newest is applied and an
+`IMFERNO:Package/EditionAssumed` notice names the namespace seen and the
+edition used (one per package, and per CPL).
+
+- **ST 2067-2, package** (Packing List, Asset Map, ingest; `--core-spec` /
+  `coreSpec`): an ST 429-8 Packing List means 2013; the `.../2067-2/2016/PKL`
+  namespace is shared by 2016 and 2020, and the CPLs whose own Core
+  Constraints edition is determined (below) decide.
+- **ST 2067-2, CPL** (`--core-spec` / `coreSpec`): the 2013 CPL namespace means
+  2013; the 2016 CPL namespace is shared by 2016 and 2020. Evidence: the
+  namespace of the `ApplicationIdentification` element (else the Core
+  Constraints namespaces the CPL declares), and the ST 2067-2 edition each
+  listed App #2E edition references (2014 → 2013, 2016 → 2016, 2020/2023/2026
+  → 2020).
+- **ST 2067-3, CPL** (`--cpl-spec` / `cplSpec`): the 2013 namespace means 2013;
+  2016 and 2020 share the 2016 namespace, and the only evidence is a Marker
+  Label in the `2020#standard-markers` scope, which only 2020 defines. An
+  ST 429-7 (DCI) or unknown namespace is not an ST 2067-3 namespace: the newest
+  edition is applied and announced.
+
 ST 2067-2:2013 defines no delivery requirements, so for a 2013 package the
 delivery rules of later editions are not checked and
 `IMFERNO:Package/DeliveryNotChecked` is reported instead. Packing List Size

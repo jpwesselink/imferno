@@ -6,7 +6,7 @@ use imferno_core::package::{
     format_validation_result, validate, FormatOptions, Imferno, ReportFormat, RulesConfig,
     ValidationOptions, ValidationResult,
 };
-use imferno_core::validation::{AppSpecTarget, CoreSpecTarget};
+use imferno_core::validation::{AppSpecTarget, CoreSpecTarget, CplSpecTarget};
 use imferno_core::{ValidationIssue, ValidationProfile, ValidationReport};
 use std::io::IsTerminal;
 use std::path::PathBuf;
@@ -99,6 +99,12 @@ enum Commands {
         #[arg(long, value_enum, default_value = "auto")]
         core_spec: CoreSpecVersion,
 
+        /// Composition Playlist (ST 2067-3) edition selection. ST 2067-3:2016 and
+        /// :2020 share one namespace; `auto` applies the newest unless the CPL
+        /// uses something only one edition defines, and reports the choice
+        #[arg(long, value_enum, default_value = "auto")]
+        cpl_spec: CoreSpecVersion,
+
         /// Application profile selection (App2E + ST 2067-201 IAB plug-ins)
         #[arg(long, value_enum, default_value = "auto")]
         app2e_spec: App2eSpecVersion,
@@ -179,6 +185,7 @@ async fn main() -> Result<()> {
             hash_concurrency,
             format,
             core_spec,
+            cpl_spec,
             app2e_spec,
             skip_disk_checks,
             exit_zero,
@@ -191,6 +198,7 @@ async fn main() -> Result<()> {
                 hash_concurrency,
                 format,
                 core_spec,
+                cpl_spec,
                 app2e_spec,
                 skip_disk_checks,
                 exit_zero,
@@ -258,6 +266,7 @@ fn parse_rules(path: Option<&std::path::Path>, inline: &[String]) -> Result<Rule
 
 fn make_options(
     core_spec: CoreSpecVersion,
+    cpl_spec: CoreSpecVersion,
     app2e_spec: App2eSpecVersion,
     skip_disk_checks: bool,
     rules: RulesConfig,
@@ -267,6 +276,13 @@ fn make_options(
         CoreSpecVersion::V2013 => Some(CoreSpecTarget::St2067_2_2013),
         CoreSpecVersion::V2016 => Some(CoreSpecTarget::St2067_2_2016),
         CoreSpecVersion::V2020 => Some(CoreSpecTarget::St2067_2_2020),
+    };
+
+    let cpl_spec_target = match cpl_spec {
+        CoreSpecVersion::Auto => None,
+        CoreSpecVersion::V2013 => Some(CplSpecTarget::St2067_3_2013),
+        CoreSpecVersion::V2016 => Some(CplSpecTarget::St2067_3_2016),
+        CoreSpecVersion::V2020 => Some(CplSpecTarget::St2067_3_2020),
     };
 
     let app_spec_targets = match app2e_spec {
@@ -282,6 +298,7 @@ fn make_options(
     ValidationOptions {
         rules,
         core_spec: core_spec_target,
+        cpl_spec: cpl_spec_target,
         app_specs: app_spec_targets,
         skip_disk_checks,
         ..Default::default()
@@ -297,6 +314,7 @@ async fn cmd_validate(
     hash_concurrency: usize,
     format: OutputFormat,
     core_spec: CoreSpecVersion,
+    cpl_spec: CoreSpecVersion,
     app2e_spec: App2eSpecVersion,
     skip_disk_checks: bool,
     exit_zero: bool,
@@ -315,7 +333,7 @@ async fn cmd_validate(
             describe_rule_warning(&w.reason)
         );
     }
-    let options = make_options(core_spec, app2e_spec, skip_disk_checks, rules);
+    let options = make_options(core_spec, cpl_spec, app2e_spec, skip_disk_checks, rules);
     let color = use_color() && !matches!(format, OutputFormat::Json | OutputFormat::Sarif);
 
     // Read files

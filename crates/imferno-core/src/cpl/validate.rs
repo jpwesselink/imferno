@@ -25,30 +25,24 @@ use std::collections::HashSet;
 use crate::diagnostics::{Location, ValidationIssue};
 
 use crate::catalogue::st2067_3::{self, St2067_3Edition};
-use crate::cpl::{CompositionPlaylist, ContentKind, CplNamespace, CONTENT_KIND_DEFAULT_SCOPE};
-
-// ─── Edition dispatch ──────────────────────────────────────────────────────────
-
-/// The ST 2067-3 edition whose rules are applied to a CPL of namespace `ns`.
-pub fn st2067_3_edition(ns: &CplNamespace) -> St2067_3Edition {
-    match ns {
-        CplNamespace::Dci429_7 | CplNamespace::Smpte2067_3_2013 => St2067_3Edition::V2013,
-        // ST 2067-3:2020 reuses the 2016 namespace (canonical XSD is byte-identical
-        // to 2016), so 2020-era CPLs land here too. Unknown namespaces default to
-        // the latest real ruleset.
-        CplNamespace::Smpte2067_3_2016 | CplNamespace::Unknown(_) => St2067_3Edition::V2016,
-    }
-}
+use crate::cpl::{CompositionPlaylist, ContentKind, CONTENT_KIND_DEFAULT_SCOPE};
 
 // ─── Public entry point ───────────────────────────────────────────────────────
 
 /// Validate a `CompositionPlaylist` against the normative constraints of ST 2067-3.
 ///
-/// Runs the normative rules listed in the module documentation.
-/// The spec year in issue codes is derived from the CPL's detected namespace.
+/// Runs the normative rules listed in the module documentation, against
+/// the edition [`crate::validation::cpl_edition`] resolves for the CPL.
 pub fn validate_cpl(cpl: &CompositionPlaylist) -> Vec<ValidationIssue> {
+    validate_cpl_for(cpl, crate::validation::cpl_edition(cpl).edition)
+}
+
+/// [`validate_cpl`] against ST 2067-3 edition `spec_ed`.
+pub fn validate_cpl_for(
+    cpl: &CompositionPlaylist,
+    spec_ed: St2067_3Edition,
+) -> Vec<ValidationIssue> {
     let mut issues = Vec::new();
-    let spec_ed = st2067_3_edition(&cpl.namespace);
 
     validate_content_kind_vocabulary(cpl, spec_ed, &mut issues);
     validate_source_encoding_refs(cpl, spec_ed, &mut issues);
@@ -159,10 +153,7 @@ fn validate_content_kind_vocabulary(
     issues: &mut Vec<ValidationIssue>,
 ) {
     let scope = cpl.content_kind.effective_scope();
-    let is_2013_edition = matches!(
-        cpl.namespace,
-        CplNamespace::Dci429_7 | CplNamespace::Smpte2067_3_2013
-    );
+    let is_2013_edition = spec_ed == St2067_3Edition::V2013;
     let (allowed, table) = if scope == CONTENT_KIND_DEFAULT_SCOPE {
         (CONTENT_KINDS_TABLE_3, "Table 3")
     } else if scope == CONTENT_KIND_SCOPE_2016 && !is_2013_edition {
@@ -555,21 +546,22 @@ const STANDARD_MARKER_LABELS_2013: &[&str] = &[
 /// Table 21. This scope does not exist in the 2013 edition.
 const STANDARD_MARKER_LABELS_2016: &[&str] = &["FFDC", "LFDC"];
 
-/// ST 2067-3:2013 §6.14.2 / ST 2067-3:2016 §6.14.1.2: labels under the SMPTE
-/// standard-marker scopes shall use the values of Table 19 / Table 21.
-/// Other scopes are outside the scope of the specification. The 2016 scope is
-/// only checked on 2016 (and later/unknown) CPLs; for a 2013 CPL it is a
-/// non-default scope and therefore out of scope.
+/// Labels for the `2020#standard-markers` scope: ST 2067-3:2020 §6.14.1.2
+/// Table 21. This scope exists only in the 2020 edition.
+const STANDARD_MARKER_LABELS_2020: &[&str] = &["FFEI", "FFER", "FFUN", "LFEI", "LFER", "LFUN"];
+
+/// ST 2067-3:2013 §6.14.2 / 2016 and 2020 §6.14.1.2: labels under the SMPTE
+/// standard-marker scopes of the applied edition are checked against its
+/// Table 19 / Table 21. Other scopes are outside the specification: the 2016
+/// scope does not exist in 2013, the 2020 scope exists only in 2020.
 fn validate_marker_labels(
     cpl: &CompositionPlaylist,
     spec_ed: St2067_3Edition,
     issues: &mut Vec<ValidationIssue>,
 ) {
     let cpl_id = cpl.id;
-    let check_2016_scope = !matches!(
-        cpl.namespace,
-        CplNamespace::Dci429_7 | CplNamespace::Smpte2067_3_2013
-    );
+    let check_2016_scope = spec_ed != St2067_3Edition::V2013;
+    let check_2020_scope = spec_ed == St2067_3Edition::V2020;
 
     for (seg_idx, segment) in cpl.segment_list.segments.iter().enumerate() {
         for seq in &segment.sequence_list.marker_sequences {
@@ -580,6 +572,10 @@ fn validate_marker_labels(
                         (STANDARD_MARKER_LABELS_2013, "SMPTE standard marker")
                     } else if scope == SMPTE_MARKER_SCOPE_2016 && check_2016_scope {
                         (STANDARD_MARKER_LABELS_2016, "SMPTE 2016 standard marker")
+                    } else if scope == crate::validation::edition::MARKER_SCOPE_2020
+                        && check_2020_scope
+                    {
+                        (STANDARD_MARKER_LABELS_2020, "SMPTE 2020 standard marker")
                     } else {
                         continue;
                     };
@@ -757,6 +753,7 @@ fn lcm_u64(a: u64, b: u64) -> u64 {
 mod tests {
     use super::*;
     use crate::assetmap::ImfUuid;
+    use crate::cpl::CplNamespace;
     use crate::cpl::{
         ContentKind, ContentKindElement, ContentVersion, ContentVersionList, EditRate,
         LanguageString, MainImageSequence, Resource, ResourceList, Segment, SegmentList,
@@ -1086,6 +1083,42 @@ mod tests {
     fn marker_labels_2016_scope_not_checked_on_2013_cpl() {
         let cpl = cpl_with_marker(NS_2013, Some(SCOPE_2016), "UNKNOWN_LABEL");
         assert!(!has_marker_label_unknown(&cpl));
+    }
+
+    const SCOPE_2020: &str = "http://www.smpte-ra.org/schemas/2067-3/2020#standard-markers";
+
+    fn marker_label_unknown_codes(cpl: &CompositionPlaylist, ed: St2067_3Edition) -> Vec<String> {
+        validate_cpl_for(cpl, ed)
+            .into_iter()
+            .filter(|i| i.code.contains("MarkerLabelUnknown"))
+            .map(|i| i.code)
+            .collect()
+    }
+
+    /// ST 2067-3:2020 §6.14.1.2 Table 21 adds the `2020#standard-markers`
+    /// scope; it is checked under 2020 only.
+    #[test]
+    fn marker_labels_2020_scope_checked_under_2020_only() {
+        for label in ["FFEI", "FFER", "FFUN", "LFEI", "LFER", "LFUN"] {
+            let cpl = cpl_with_marker(NS_2016, Some(SCOPE_2020), label);
+            assert!(marker_label_unknown_codes(&cpl, St2067_3Edition::V2020).is_empty());
+        }
+        let cpl = cpl_with_marker(NS_2016, Some(SCOPE_2020), "FFOC");
+        assert_eq!(
+            marker_label_unknown_codes(&cpl, St2067_3Edition::V2020),
+            ["ST2067-3:2020:6.14.1.2/MarkerLabelUnknown"]
+        );
+        // Outside the scope of the 2016 text.
+        assert!(marker_label_unknown_codes(&cpl, St2067_3Edition::V2016).is_empty());
+        // The 2020 scope names the edition: auto applies 2020.
+        assert_eq!(
+            validate_cpl(&cpl)
+                .into_iter()
+                .filter(|i| i.code.contains("MarkerLabelUnknown"))
+                .map(|i| i.code)
+                .collect::<Vec<_>>(),
+            ["ST2067-3:2020:6.14.1.2/MarkerLabelUnknown"]
+        );
     }
 
     // ── ContentKindUnknown vocabulary (ST 2067-3 §6.1.8 Tables 3 and 4) ─────

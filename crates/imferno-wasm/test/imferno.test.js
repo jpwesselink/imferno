@@ -175,7 +175,7 @@ describe('listRules', () => {
         const rules = wasm.listRules();
         expect(rules.length).toBeGreaterThan(100);
         const seg = rules.find((r) => r.id === 'ST2067-3/SegmentDuration');
-        expect(seg.editions.map((e) => e.edition)).toEqual(['2013', '2016']);
+        expect(seg.editions.map((e) => e.edition)).toEqual(['2013', '2016', '2020']);
         expect(seg.editions[1].code).toBe('ST2067-3:2016:7.2/SegmentDuration');
     });
 });

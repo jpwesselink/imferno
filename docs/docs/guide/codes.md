@@ -123,33 +123,33 @@ Unmarked rows are carried over from earlier catalogues and not yet checked.
 
 ## SMPTE ST 2067-3 — Composition Playlist
 
-| Rule | Description | Category | 2013 | 2016 |
-|------|-------------|----------|------|------|
-| `ST2067-3/ContentTitleEmpty` | ContentTitle is empty; it shall contain a human-readable title. | Metadata | 6.1.7✓ error | 6.1.7✓ error |
-| `ST2067-3/ResourceListEmpty` | A Sequence has an empty ResourceList; the SequenceType schema requires one or more Resource elements. | Structure | 6.10✓ error | 6.10✓ error |
-| `ST2067-3/ContentKindUnknown` | ContentKind uses an unrecognized value under the SMPTE scope. | Metadata | 6.1.8✓ error | 6.1.8✓ error |
-| `ST2067-3/SourceEncodingNoEssenceDescriptorList` | SourceEncoding present but EssenceDescriptorList absent. | Reference | 6.12.1✓ error | 6.12.1✓ error |
-| `ST2067-3/SourceEncodingUnresolved` | SourceEncoding does not match any EssenceDescriptor Id. | Reference | 6.12.1✓ error | 6.12.1✓ error |
-| `ST2067-3/EssenceDescriptorListEmpty` | EssenceDescriptorList present but contains no descriptors. | Structure | 6.1✓ error | 6.1✓ error |
-| `ST2067-3/ContentVersionListEmpty` | ContentVersionList present but empty. | Structure | 6.1✓ error | 6.1✓ error |
-| `ST2067-3/ContentVersionIdInvalid` | ContentVersion/Id is empty (shall be a URI). | Metadata | 6.8.1✓ error | 6.8.1✓ error |
-| `ST2067-3/ContentVersionLabelTextMissing` | ContentVersion/LabelText is absent. | Metadata | 6.8✓ error | 6.8✓ error |
-| `ST2067-3/LocaleLanguageTagInvalid` | Locale language tag does not conform to RFC 5646. | Metadata | 6.5.2✓ error | 6.5.2✓ error |
-| `ST2067-3/TrackIdNotUnique` | TrackId is not unique within a segment. | Structure | 6.9.3✓ error | 6.9.3✓ error |
-| `ST2067-3/MarkerOffsetOutOfRange` | Marker offset exceeds the resource IntrinsicDuration. | Timing | 6.13✓ error | 6.13✓ error |
-| `ST2067-3/MarkerLabelUnknown` | Marker label is not a recognized SMPTE standard value. | Metadata | 6.14.2✓ error | 6.14.1.2✓ info |
-| `ST2067-3/SegmentDuration` | All virtual tracks in a segment must span the same number of edit units. | Timing | 7.2✓ error | 7.2✓ error |
-| `ST2067-3/ContentVersionIdDuplicate` | No two ContentVersion elements shall have identical Id values. | Structure | 6.1.9✓ error | 6.1.9✓ error |
-| `ST2067-3/SegmentDurationIntegerEditUnits` | Sequence duration shall be an integer number of Composition Edit Units. | Timing | 7.3✓ error | 7.3✓ error |
-| `ST2067-3/UniqueSegmentId` | Duplicate Segment Id within the CPL. | Structure | 6.9.1✓ error | 6.9.1✓ error |
-| `ST2067-3/UniqueEssenceDescriptorId` | Duplicate EssenceDescriptor Id within the CPL. | Structure | 6.7.1✓ error | 6.7.1✓ error |
-| `ST2067-3/UniqueResourceId` | Duplicate Resource Id within the CPL. | Structure | 6.11.1✓ error | 6.11.1✓ error |
-| `ST2067-3/EntryPoint` | EntryPoint exceeds IntrinsicDuration, leaving no valid SourceDuration. | Timing | 6.11.6✓ error | 6.11.6✓ error |
-| `ST2067-3/ResourceDuration` | EntryPoint + SourceDuration exceeds IntrinsicDuration. | Timing | 6.11.6✓ error | 6.11.6✓ error |
-| `ST2067-3/RepeatCount` | RepeatCount shall be a positive integer. | Timing | 6.11✓ error | 6.11✓ error |
-| `ST2067-3/TrackFileId` | A non-marker resource is missing a TrackFileId. | Reference | 6.12✓ error | 6.12✓ error |
-| `ST2067-3/VirtualTrackContinuity` | A virtual track is missing from one or more segments. | Structure | 6.9.3✓ error | 6.9.3✓ error |
-| `ST2067-3/DanglingEssenceDescriptor` | EssenceDescriptor present in EssenceDescriptorList but not referenced by any Resource. | Reference | 6.1.10.1✓ error | 6.1.10.1✓ error |
+| Rule | Description | Category | 2013 | 2016 | 2020 |
+|------|-------------|----------|------|------|------|
+| `ST2067-3/ContentTitleEmpty` | ContentTitle is empty; it shall contain a human-readable title. | Metadata | 6.1.7✓ error | 6.1.7✓ error | 6.1.7✓ error |
+| `ST2067-3/ResourceListEmpty` | A Sequence has an empty ResourceList; the SequenceType schema requires one or more Resource elements. | Structure | 6.10✓ error | 6.10✓ error | 6.10✓ error |
+| `ST2067-3/ContentKindUnknown` | ContentKind uses an unrecognized value under the SMPTE scope. | Metadata | 6.1.8✓ error | 6.1.8✓ error | 6.1.8✓ error |
+| `ST2067-3/SourceEncodingNoEssenceDescriptorList` | SourceEncoding present but EssenceDescriptorList absent. | Reference | 6.12.1✓ error | 6.12.1✓ error | 6.12.1✓ error |
+| `ST2067-3/SourceEncodingUnresolved` | SourceEncoding does not match any EssenceDescriptor Id. | Reference | 6.12.1✓ error | 6.12.1✓ error | 6.12.1✓ error |
+| `ST2067-3/EssenceDescriptorListEmpty` | EssenceDescriptorList present but contains no descriptors. | Structure | 6.1✓ error | 6.1✓ error | 6.1✓ error |
+| `ST2067-3/ContentVersionListEmpty` | ContentVersionList present but empty. | Structure | 6.1✓ error | 6.1✓ error | 6.1✓ error |
+| `ST2067-3/ContentVersionIdInvalid` | ContentVersion/Id is empty (shall be a URI). | Metadata | 6.8.1✓ error | 6.8.1✓ error | 6.8.1✓ error |
+| `ST2067-3/ContentVersionLabelTextMissing` | ContentVersion/LabelText is absent. | Metadata | 6.8✓ error | 6.8✓ error | 6.8✓ error |
+| `ST2067-3/LocaleLanguageTagInvalid` | Locale language tag does not conform to RFC 5646. | Metadata | 6.5.2✓ error | 6.5.2✓ error | 6.5.2✓ error |
+| `ST2067-3/TrackIdNotUnique` | TrackId is not unique within a segment. | Structure | 6.9.3✓ error | 6.9.3✓ error | 6.9.3✓ error |
+| `ST2067-3/MarkerOffsetOutOfRange` | Marker offset exceeds the resource IntrinsicDuration. | Timing | 6.13✓ error | 6.13✓ error | 6.13✓ error |
+| `ST2067-3/MarkerLabelUnknown` | Marker label is not a recognized SMPTE standard value. | Metadata | 6.14.2✓ error | 6.14.1.2✓ info | 6.14.1.2✓ info |
+| `ST2067-3/SegmentDuration` | All virtual tracks in a segment must span the same number of edit units. | Timing | 7.2✓ error | 7.2✓ error | 7.2✓ error |
+| `ST2067-3/ContentVersionIdDuplicate` | No two ContentVersion elements shall have identical Id values. | Structure | 6.1.9✓ error | 6.1.9✓ error | 6.1.9✓ error |
+| `ST2067-3/SegmentDurationIntegerEditUnits` | Sequence duration shall be an integer number of Composition Edit Units. | Timing | 7.3✓ error | 7.3✓ error | 7.3✓ error |
+| `ST2067-3/UniqueSegmentId` | Duplicate Segment Id within the CPL. | Structure | 6.9.1✓ error | 6.9.1✓ error | 6.9.1✓ error |
+| `ST2067-3/UniqueEssenceDescriptorId` | Duplicate EssenceDescriptor Id within the CPL. | Structure | 6.7.1✓ error | 6.7.1✓ error | 6.7.1✓ error |
+| `ST2067-3/UniqueResourceId` | Duplicate Resource Id within the CPL. | Structure | 6.11.1✓ error | 6.11.1✓ error | 6.11.1✓ error |
+| `ST2067-3/EntryPoint` | EntryPoint exceeds IntrinsicDuration, leaving no valid SourceDuration. | Timing | 6.11.6✓ error | 6.11.6✓ error | 6.11.6✓ error |
+| `ST2067-3/ResourceDuration` | EntryPoint + SourceDuration exceeds IntrinsicDuration. | Timing | 6.11.6✓ error | 6.11.6✓ error | 6.11.6✓ error |
+| `ST2067-3/RepeatCount` | RepeatCount shall be a positive integer. | Timing | 6.11✓ error | 6.11✓ error | 6.11✓ error |
+| `ST2067-3/TrackFileId` | A non-marker resource is missing a TrackFileId. | Reference | 6.12✓ error | 6.12✓ error | 6.12✓ error |
+| `ST2067-3/VirtualTrackContinuity` | A virtual track is missing from one or more segments. | Structure | 6.9.3✓ error | 6.9.3✓ error | 6.9.3✓ error |
+| `ST2067-3/DanglingEssenceDescriptor` | EssenceDescriptor present in EssenceDescriptorList but not referenced by any Resource. | Reference | 6.1.10.1✓ error | 6.1.10.1✓ error | 6.1.10.1✓ error |
 
 ## SMPTE ST 2067-5 — Essence Component
 

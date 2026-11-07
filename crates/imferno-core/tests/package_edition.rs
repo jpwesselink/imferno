@@ -176,8 +176,16 @@ fn package_and_cpl_core_editions_agree() {
         .into_iter()
         .filter(|i| i.is(&imferno::EditionAssumed))
         .collect();
-    // One for the package, one for its CPL.
-    assert_eq!(notices.len(), 2, "{notices:#?}");
+    // ST 2067-2: one for the package, one for its CPL; ST 2067-3: one for
+    // the CPL (2016 and 2020 share its namespace).
+    assert_eq!(notices.len(), 3, "{notices:#?}");
+    assert_eq!(
+        notices
+            .iter()
+            .filter(|n| n.message.starts_with("ST 2067-2 edition of"))
+            .count(),
+        2
+    );
     assert!(notices.iter().any(|n| n.location.cpl_id.is_some()));
 }
 

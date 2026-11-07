@@ -8,6 +8,7 @@
 //! namespace seen and the edition used.
 
 use crate::catalogue::st2067_2::St2067_2Edition;
+use crate::catalogue::st2067_3::St2067_3Edition;
 use crate::cpl::{CompositionPlaylist, CplNamespace};
 use crate::diagnostics::rule::Edition;
 
@@ -76,7 +77,9 @@ pub fn resolve<E: Edition + Ord>(
     evidence: &[Evidence<E>],
 ) -> EditionChoice<E> {
     let spec = spec_name::<E>();
-    let mut candidates: Vec<E> = if candidates.is_empty() {
+    // An empty list: the namespace is not one of any edition of the spec.
+    let names_none = candidates.is_empty();
+    let mut candidates: Vec<E> = if names_none {
         E::all().to_vec()
     } else {
         candidates.to_vec()
@@ -94,44 +97,41 @@ pub fn resolve<E: Edition + Ord>(
         .copied()
         .filter(|c| evidence.iter().all(|ev| ev.editions.contains(c)))
         .collect();
-    let (edition, why) = match left.as_slice() {
-        [only] => {
-            return EditionChoice {
-                edition: *only,
-                assumed: None,
-            }
-        }
-        [] => {
-            let seen: Vec<String> = evidence
-                .iter()
-                .map(|ev| format!("{} ({})", ev.what, labels(&ev.editions)))
-                .collect();
-            (
-                *candidates.last().expect("at least two candidates"),
-                format!(
-                    "{namespace} allows {}, and the evidence does not agree: {}",
-                    labels(&candidates),
-                    seen.join("; ")
-                ),
-            )
-        }
-        several => (
-            *several.last().expect("at least two left"),
-            if evidence.is_empty() {
-                format!(
-                    "{namespace} is used by {}, and nothing in it tells them apart",
-                    labels(several)
-                )
-            } else {
-                let seen: Vec<&str> = evidence.iter().map(|ev| ev.what.as_str()).collect();
-                format!(
-                    "{namespace} is used by {}, and {} does not tell {} apart",
-                    labels(&candidates),
-                    seen.join("; "),
-                    labels(several)
-                )
-            },
-        ),
+    if let [only] = left.as_slice() {
+        return EditionChoice {
+            edition: *only,
+            assumed: None,
+        };
+    }
+    let ns = if names_none {
+        format!("{namespace} is not the namespace of any {spec} edition")
+    } else {
+        format!("{namespace} is used by {}", labels(&candidates))
+    };
+    let (edition, why) = if left.is_empty() {
+        let seen: Vec<String> = evidence
+            .iter()
+            .map(|ev| format!("{} ({})", ev.what, labels(&ev.editions)))
+            .collect();
+        (
+            *candidates.last().expect("at least two candidates"),
+            format!("{ns}, and the evidence does not agree: {}", seen.join("; ")),
+        )
+    } else if evidence.is_empty() {
+        (
+            *left.last().expect("at least two left"),
+            format!("{ns}, and nothing in it tells them apart"),
+        )
+    } else {
+        let seen: Vec<&str> = evidence.iter().map(|ev| ev.what.as_str()).collect();
+        (
+            *left.last().expect("at least two left"),
+            format!(
+                "{ns}, and {} does not tell {} apart",
+                seen.join("; "),
+                labels(&left)
+            ),
+        )
     };
     EditionChoice {
         edition,
@@ -141,6 +141,58 @@ pub fn resolve<E: Edition + Ord>(
             edition.label()
         )),
     }
+}
+
+/// Marker Label scope that only ST 2067-3:2020 defines (§6.14.1.2 Table 21).
+pub(crate) const MARKER_SCOPE_2020: &str =
+    "http://www.smpte-ra.org/schemas/2067-3/2020#standard-markers";
+
+/// What in a CPL names an ST 2067-3 edition: a Marker Label in the
+/// `2020#standard-markers` scope, which only ST 2067-3:2020 defines. The
+/// 2016 and 2020 texts otherwise define the same schema and namespace.
+pub fn cpl_evidence(cpl: &CompositionPlaylist) -> Vec<Evidence<St2067_3Edition>> {
+    let uses_2020_scope = cpl.segment_list.segments.iter().any(|s| {
+        s.sequence_list.marker_sequences.iter().any(|seq| {
+            seq.resource_list
+                .resources
+                .iter()
+                .flat_map(|r| r.markers.iter())
+                .any(|m| m.label.effective_scope() == MARKER_SCOPE_2020)
+        })
+    });
+    if uses_2020_scope {
+        vec![Evidence::one(
+            St2067_3Edition::V2020,
+            format!("it uses the Marker Label scope {MARKER_SCOPE_2020}, which only ST 2067-3:2020 defines"),
+        )]
+    } else {
+        Vec::new()
+    }
+}
+
+/// The ST 2067-3 edition whose rules are applied to a CPL when the caller
+/// pins none (see [`resolve`]). The 2013 namespace is ST 2067-3:2013; 2016
+/// and 2020 share the 2016 namespace; an ST 429-7 (DCI) or unknown
+/// namespace is not an ST 2067-3 namespace, so every edition is a
+/// candidate and the newest is applied, announced.
+pub fn cpl_edition(cpl: &CompositionPlaylist) -> EditionChoice<St2067_3Edition> {
+    use St2067_3Edition::{V2013, V2016, V2020};
+    let candidates: &[St2067_3Edition] = match &cpl.namespace {
+        CplNamespace::Smpte2067_3_2013 => &[V2013],
+        CplNamespace::Smpte2067_3_2016 => &[V2016, V2020],
+        CplNamespace::Dci429_7 | CplNamespace::Unknown(_) => &[],
+    };
+    let namespace = match &cpl.namespace {
+        CplNamespace::Dci429_7 => format!("its namespace {} (ST 429-7)", cpl.namespace),
+        CplNamespace::Unknown(ns) if ns.is_empty() => "its (empty) namespace".into(),
+        ns => format!("its namespace {ns}"),
+    };
+    resolve(
+        &format!("CPL {}", cpl.id),
+        &namespace,
+        candidates,
+        &cpl_evidence(cpl),
+    )
 }
 
 /// The ST 2067-2 editions a CPL namespace allows: ST 2067-2:2013 uses
@@ -432,6 +484,73 @@ mod tests {
         assert_eq!(
             declared_core_constraints_editions(&cpl(&xml)),
             vec![St2067_2Edition::V2016, St2067_2Edition::V2020]
+        );
+    }
+
+    fn with_namespace(ns: CplNamespace) -> CompositionPlaylist {
+        let mut c = crate::cpl::parse_cpl(BASE).expect("base CPL parses");
+        c.namespace = ns;
+        c
+    }
+
+    #[test]
+    fn st2067_3_2013_namespace_is_determined() {
+        let c = cpl_edition(&with_namespace(CplNamespace::Smpte2067_3_2013));
+        assert_eq!(c.edition, St2067_3Edition::V2013);
+        assert_eq!(c.assumed, None);
+    }
+
+    /// 2016 and 2020 share the namespace; nothing tells them apart.
+    #[test]
+    fn st2067_3_2016_namespace_assumes_2020_and_says_so() {
+        let c = cpl_edition(&with_namespace(CplNamespace::Smpte2067_3_2016));
+        assert_eq!(c.edition, St2067_3Edition::V2020);
+        let why = c.assumed.expect("announced");
+        assert!(
+            why.contains("its namespace http://www.smpte-ra.org/schemas/2067-3/2016 is used by ST 2067-3:2016 and ST 2067-3:2020"),
+            "{why}"
+        );
+        assert!(
+            why.ends_with("checked against ST 2067-3:2020 (the newest)"),
+            "{why}"
+        );
+    }
+
+    /// An ST 429-7 (DCI) or unknown namespace is not an ST 2067-3
+    /// namespace: the newest edition, announced (was 2013 / 2016 silently).
+    #[test]
+    fn non_st2067_3_namespaces_assume_the_newest_and_say_so() {
+        for ns in [
+            CplNamespace::Dci429_7,
+            CplNamespace::Unknown("urn:example".into()),
+            CplNamespace::Unknown(String::new()),
+        ] {
+            let c = cpl_edition(&with_namespace(ns.clone()));
+            assert_eq!(c.edition, St2067_3Edition::V2020, "{ns:?}");
+            let why = c.assumed.expect("announced");
+            assert!(
+                why.contains("is not the namespace of any ST 2067-3 edition"),
+                "{why}"
+            );
+        }
+    }
+
+    #[test]
+    fn evidence_narrows_and_conflicts_are_announced() {
+        use St2067_2Edition::{V2016, V2020};
+        let c = resolve("X", "ns", &[V2016, V2020], &[Evidence::one(V2016, "a")]);
+        assert_eq!((c.edition, c.assumed), (V2016, None));
+        let c = resolve(
+            "X",
+            "ns",
+            &[V2016, V2020],
+            &[Evidence::one(V2016, "a"), Evidence::one(V2020, "b")],
+        );
+        assert_eq!(c.edition, V2020);
+        let why = c.assumed.unwrap();
+        assert!(
+            why.contains("the evidence does not agree: a (ST 2067-2:2016); b (ST 2067-2:2020)"),
+            "{why}"
         );
     }
 

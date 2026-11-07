@@ -279,8 +279,8 @@ pub static MCATagSymbol: Rule<E> = Rule {
 pub static SoundfieldChannelCount: Rule<E> = Rule {
     name: "SoundfieldChannelCount",
     category: Category::Audio,
-    description: "Soundfield group channel count is inconsistent with WAVEPCMDescriptor.ChannelCount.",
-    example: Some("<WAVEPCMDescriptor><ChannelCount>2</ChannelCount>…</WAVEPCMDescriptor> but soundfield group declares 6 channels"),
+    description: "WAVEPCMDescriptor.ChannelCount exceeds the number of channels of its soundfield group (a subset is allowed).",
+    example: Some("<WAVEPCMDescriptor><ChannelCount>8</ChannelCount>…</WAVEPCMDescriptor> but the SoundfieldGroupLabelSubDescriptor MCATagSymbol is sg51 (6 channels)"),
     editions: &[
         checked(E::V2013, "5.3.6.6", Shall),
         checked(E::V2016, "5.3.6.6", Shall),

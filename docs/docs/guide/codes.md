@@ -94,7 +94,7 @@ Unmarked rows are carried over from earlier catalogues and not yet checked.
 | `ST2067-2/MCASubDescriptors` | WAVEPCMDescriptor has no MCA SubDescriptors. | Audio | 5.3.6.2✓ error | 5.3.6.2✓ error | 5.3.6.2✓ error |
 | `ST2067-2/SoundfieldGroup` | WAVEPCMDescriptor SubDescriptors missing SoundfieldGroupLabelSubDescriptor. | Audio | 5.3.6.3✓ error | 5.3.6.3✓ error | 5.3.6.3✓ error |
 | `ST2067-2/MCATagSymbol` | SoundfieldGroupLabelSubDescriptor is missing MCATagSymbol. | Audio | 5.3.6.1✓ error | 5.3.6.1✓ error | 5.3.6.1✓ error |
-| `ST2067-2/SoundfieldChannelCount` | Soundfield group channel count is inconsistent with WAVEPCMDescriptor.ChannelCount. | Audio | 5.3.6.6✓ error | 5.3.6.6✓ error | 5.3.6.6✓ error |
+| `ST2067-2/SoundfieldChannelCount` | WAVEPCMDescriptor.ChannelCount exceeds the number of channels of its soundfield group (a subset is allowed). | Audio | 5.3.6.6✓ error | 5.3.6.6✓ error | 5.3.6.6✓ error |
 | `ST2067-2/DigitalSignature` | The CPL carries a Signature (ST 2067-2 §6.9); signature verification is not performed. | Security | 6.9✓ info | 6.9✓ info | 6.9✓ info |
 | `ST2067-2/EssenceDescriptorList` | EssenceDescriptorList is required per ST 2067-2 §6.4.2. | Structure | 6.8✓ error | 6.8✓ error | 6.8✓ error |
 | `ST2067-2/CplIdAssetMapMismatch` | An AssetMap asset points at a CPL file whose Id differs from the asset Id. | Reference | 7.2✓ error | 7.3.1✓ error | 7.3.1✓ error |

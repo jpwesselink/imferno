@@ -983,7 +983,7 @@ pub static HtIrvParameterBRecommended: Rule<E> = Rule {
         absent(E::V2016).verified(),
         absent(E::V2020).verified(),
         absent(E::V2023).verified(),
-        checked(E::V2026, "H", Should).interpret("Table values are maxima; B shall not exceed 31.", Some("https://github.com/SMPTE/st2067-21/issues/7")),
+        checked(E::V2026, "H", Should).interpret("APP2.HT.IRV: parameter B (from the Ccap15 MAGB_P set) should not exceed the Table H.3 value for the bit depth and multiple component transform; the values are maxima, not exact values.", Some("https://github.com/SMPTE/st2067-21/issues/7")),
     ],
 };
 

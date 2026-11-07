@@ -89,10 +89,6 @@
     {
       "label": "#96 feat/docs-sample-imp-browser",
       "path": "/pr-96/"
-    },
-    {
-      "label": "#103 feat/rule-model-per-edition",
-      "path": "/pr-103/"
     }
   ],
   "latest": "/v3.0.1/"

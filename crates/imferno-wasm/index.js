@@ -18,7 +18,7 @@ function ensureInit() {
                 const __dirname = path.dirname(fileURLToPath(import.meta.url));
                 const wasmPath = path.join(__dirname, 'imferno_wasm_bg.wasm');
                 const wasmBuffer = readFileSync(wasmPath);
-                initPromise = wasmInit(wasmBuffer);
+                initPromise = wasmInit({ module_or_path: wasmBuffer });
             } catch (error) {
                 console.error('Failed to load WASM in Node.js:', error);
                 throw error;
@@ -63,6 +63,13 @@ export async function getVersion() {
 // Typed validation codes
 export { codes } from './codes.js';
 
-// For users who want manual control
-export { wasmInit as init };
-export { wasm };
+/**
+ * Initialise the WASM module explicitly (optional — every function does it on
+ * first use). Pass the `.wasm` bytes or a compiled module to skip fetching.
+ */
+export function init(wasmBytes) {
+    if (!initPromise) {
+        initPromise = wasmInit(wasmBytes === undefined ? undefined : { module_or_path: wasmBytes });
+    }
+    return initPromise.then(() => undefined);
+}

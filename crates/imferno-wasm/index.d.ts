@@ -48,11 +48,11 @@ export function formatReport(report: ImfReport): Promise<string>;
 /** Get the library version */
 export function getVersion(): Promise<string>;
 
-/** Manual WASM initialization (for advanced use) */
-export function init(wasmBuffer?: ArrayBuffer): Promise<void>;
+/**
+ * Initialise the WASM module explicitly. Optional: every function initialises
+ * on first use. Pass the `.wasm` bytes to avoid fetching them.
+ */
+export function init(wasmBytes?: ArrayBuffer | ArrayBufferView): Promise<void>;
 
 /** Typed validation code constants for use in rules config */
 export { codes } from './codes.js';
-
-/** Raw WASM bindings (for advanced use) */
-export declare const wasm: typeof import('./imferno_wasm.js');

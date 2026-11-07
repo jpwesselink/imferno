@@ -37,8 +37,6 @@ use xmlsec::{XmlSecKey, XmlSecKeyFormat, XmlSecSignatureContext};
 #[cfg(feature = "typescript")]
 use ts_rs::TS;
 
-#[cfg(feature = "wasm")]
-use tsify::Tsify;
 
 // =============================================================================
 // Error type
@@ -704,8 +702,6 @@ pub const CONTENT_KIND_DEFAULT_SCOPE: &str =
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
-#[cfg_attr(feature = "wasm", derive(Tsify))]
-#[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
 pub struct ContentKindElement {
     pub kind: ContentKind,
     /// Scope URI. `None` means the XSD default applies.
@@ -876,8 +872,6 @@ pub const MARKER_LABEL_DEFAULT_SCOPE: &str =
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
-#[cfg_attr(feature = "wasm", derive(Tsify))]
-#[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
 pub struct MarkerLabelElement {
     pub label: MarkerLabel,
     /// Scope URI. `None` means the XSD default applies.
@@ -1060,8 +1054,6 @@ pub fn strip_xml_namespaces(xml: &str) -> String {
 #[derive(Debug, Default, PartialEq, Clone)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
-#[cfg_attr(feature = "wasm", derive(Tsify))]
-#[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
 pub struct LanguageString {
     pub text: String,
     pub language: Option<LanguageTag>, // RFC 5646 language tag
@@ -1210,8 +1202,6 @@ impl schemars::JsonSchema for LanguageString {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
-#[cfg_attr(feature = "wasm", derive(Tsify))]
-#[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
 pub struct LocaleList {
     #[cfg_attr(not(feature = "wasm"), serde(rename = "Locale", default))]
     #[cfg_attr(feature = "wasm", serde(rename = "locales", alias = "Locale", default))]
@@ -1222,8 +1212,6 @@ pub struct LocaleList {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
-#[cfg_attr(feature = "wasm", derive(Tsify))]
-#[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
 pub struct Locale {
     #[cfg_attr(not(feature = "wasm"), serde(rename = "LanguageList", default))]
     #[cfg_attr(
@@ -1258,8 +1246,6 @@ pub struct Locale {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
-#[cfg_attr(feature = "wasm", derive(Tsify))]
-#[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
 pub struct ContentMaturityRatingList {
     #[cfg_attr(not(feature = "wasm"), serde(rename = "ContentMaturityRating"))]
     #[cfg_attr(
@@ -1274,8 +1260,6 @@ pub struct ContentMaturityRatingList {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
-#[cfg_attr(feature = "wasm", derive(Tsify))]
-#[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
 pub struct ContentMaturityRating {
     #[cfg_attr(not(feature = "wasm"), serde(rename = "Agency"))]
     #[cfg_attr(feature = "wasm", serde(rename = "agency", alias = "Agency"))]
@@ -1298,8 +1282,6 @@ pub struct ContentMaturityRating {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
-#[cfg_attr(feature = "wasm", derive(Tsify))]
-#[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
 pub struct AudienceElement {
     #[serde(rename = "@scope", default)]
     pub scope: Option<String>,
@@ -1312,8 +1294,6 @@ pub struct AudienceElement {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
-#[cfg_attr(feature = "wasm", derive(Tsify))]
-#[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
 pub struct LanguageList {
     #[cfg_attr(not(feature = "wasm"), serde(rename = "Language"))]
     #[cfg_attr(feature = "wasm", serde(rename = "languages", alias = "Language"))]
@@ -1324,8 +1304,6 @@ pub struct LanguageList {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
-#[cfg_attr(feature = "wasm", derive(Tsify))]
-#[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
 pub struct RegionList {
     #[cfg_attr(not(feature = "wasm"), serde(rename = "Region"))]
     #[cfg_attr(feature = "wasm", serde(rename = "regions", alias = "Region"))]
@@ -1340,8 +1318,6 @@ pub struct RegionList {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
-#[cfg_attr(feature = "wasm", derive(Tsify))]
-#[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
 pub struct ExtensionProperties {
     #[cfg_attr(
         not(feature = "wasm"),
@@ -1377,8 +1353,6 @@ pub struct ExtensionProperties {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
-#[cfg_attr(feature = "wasm", derive(Tsify))]
-#[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
 pub struct EssenceDescriptorList {
     #[cfg_attr(not(feature = "wasm"), serde(rename = "EssenceDescriptor"))]
     #[cfg_attr(
@@ -1392,8 +1366,6 @@ pub struct EssenceDescriptorList {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
-#[cfg_attr(feature = "wasm", derive(Tsify))]
-#[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
 pub struct EssenceDescriptor {
     #[cfg_attr(not(feature = "wasm"), serde(rename = "Id"))]
     #[cfg_attr(feature = "wasm", serde(rename = "id", alias = "Id"))]
@@ -1465,8 +1437,6 @@ pub struct EssenceDescriptor {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
-#[cfg_attr(feature = "wasm", derive(Tsify))]
-#[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
 pub struct RGBADescriptor {
     #[serde(rename = "InstanceID", default)]
     pub instance_id: Option<String>,
@@ -1611,8 +1581,6 @@ pub struct RGBADescriptor {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
-#[cfg_attr(feature = "wasm", derive(Tsify))]
-#[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
 pub struct CDCIDescriptor {
     #[serde(rename = "InstanceUID", alias = "InstanceID", default)]
     pub instance_id: Option<String>,
@@ -1780,8 +1748,6 @@ pub struct CDCIDescriptor {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
-#[cfg_attr(feature = "wasm", derive(Tsify))]
-#[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
 pub struct VideoSubDescriptors {
     /// Presence indicates Dolby Vision HDR
     #[serde(rename = "PHDRMetadataTrackSubDescriptor", default)]
@@ -1797,8 +1763,6 @@ pub struct VideoSubDescriptors {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
-#[cfg_attr(feature = "wasm", derive(Tsify))]
-#[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
 pub struct JPEG2000SubDescriptor {
     #[serde(rename = "InstanceID", default)]
     pub instance_id: Option<String>,
@@ -1869,8 +1833,6 @@ pub struct JPEG2000SubDescriptor {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
-#[cfg_attr(feature = "wasm", derive(Tsify))]
-#[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
 pub struct J2CLayout {
     #[serde(rename = "RGBAComponent", default)]
     pub components: Vec<RGBALayoutComponent>,
@@ -1881,8 +1843,6 @@ pub struct J2CLayout {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
-#[cfg_attr(feature = "wasm", derive(Tsify))]
-#[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
 pub struct RGBALayoutComponent {
     /// Absent in intentionally malformed corpus files (e.g. RGBAError1).
     /// Default to empty string so the parser succeeds; the validator flags missing codes.
@@ -1898,8 +1858,6 @@ pub struct RGBALayoutComponent {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
-#[cfg_attr(feature = "wasm", derive(Tsify))]
-#[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
 pub struct J2KExtendedCapabilities {
     /// Profile capabilities (Pcap)
     #[serde(rename = "Pcap", default)]
@@ -1911,8 +1869,6 @@ pub struct J2KExtendedCapabilities {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
-#[cfg_attr(feature = "wasm", derive(Tsify))]
-#[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
 pub struct PictureComponentSizing {
     #[serde(rename = "J2KComponentSizing", default)]
     pub components: Vec<J2KComponentSizing>,
@@ -1923,8 +1879,6 @@ pub struct PictureComponentSizing {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
-#[cfg_attr(feature = "wasm", derive(Tsify))]
-#[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
 pub struct J2KComponentSizing {
     /// Component bit depth minus 1
     #[serde(rename = "Ssiz", default)]
@@ -1944,8 +1898,6 @@ pub struct J2KComponentSizing {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
-#[cfg_attr(feature = "wasm", derive(Tsify))]
-#[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
 pub struct PHDRMetadataTrackSubDescriptor {
     #[serde(rename = "InstanceID", default)]
     pub instance_id: Option<String>,
@@ -1965,8 +1917,6 @@ pub struct PHDRMetadataTrackSubDescriptor {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
-#[cfg_attr(feature = "wasm", derive(Tsify))]
-#[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
 pub struct WAVEPCMDescriptor {
     #[serde(rename = "InstanceID", alias = "InstanceUID", default)]
     pub instance_id: Option<String>,
@@ -2003,8 +1953,6 @@ pub struct WAVEPCMDescriptor {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
-#[cfg_attr(feature = "wasm", derive(Tsify))]
-#[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
 pub struct AudioSubDescriptors {
     #[serde(rename = "SoundfieldGroupLabelSubDescriptor", default)]
     pub soundfield_group_label_sub_descriptor: Option<SoundfieldGroupLabelSubDescriptor>,
@@ -2015,8 +1963,6 @@ pub struct AudioSubDescriptors {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
-#[cfg_attr(feature = "wasm", derive(Tsify))]
-#[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
 pub struct SoundfieldGroupLabelSubDescriptor {
     #[serde(
         rename = "MCATagSymbol",
@@ -2046,8 +1992,6 @@ pub struct SoundfieldGroupLabelSubDescriptor {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
-#[cfg_attr(feature = "wasm", derive(Tsify))]
-#[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
 pub struct DCTimedTextDescriptor {
     #[serde(rename = "InstanceID", alias = "InstanceUID", default)]
     pub instance_id: Option<String>,
@@ -2079,8 +2023,6 @@ pub struct DCTimedTextDescriptor {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
-#[cfg_attr(feature = "wasm", derive(Tsify))]
-#[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
 pub struct IABEssenceDescriptor {
     #[serde(rename = "InstanceID", alias = "InstanceUID", default)]
     pub instance_id: Option<String>,
@@ -2133,8 +2075,6 @@ pub struct IABEssenceDescriptor {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
-#[cfg_attr(feature = "wasm", derive(Tsify))]
-#[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
 pub struct IABSubDescriptors {
     #[serde(rename = "IABSoundfieldLabelSubDescriptor", default)]
     pub iab_soundfield_label_sub_descriptor: Option<IABSoundfieldLabelSubDescriptor>,
@@ -2161,8 +2101,6 @@ pub struct IABSubDescriptors {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone, Default)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
-#[cfg_attr(feature = "wasm", derive(Tsify))]
-#[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
 pub struct IABChannelSubDescriptor {
     /// Annex E §E.2 — IAB Bed MetaID of the associated BedDefinition.
     #[serde(rename = "IABBedMetaID", default)]
@@ -2177,8 +2115,6 @@ pub struct IABChannelSubDescriptor {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
-#[cfg_attr(feature = "wasm", derive(Tsify))]
-#[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
 pub struct IABSoundfieldLabelSubDescriptor {
     #[serde(rename = "InstanceID", alias = "InstanceUID", default)]
     pub instance_id: Option<String>,
@@ -2211,8 +2147,6 @@ pub struct IABSoundfieldLabelSubDescriptor {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone, Default)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
-#[cfg_attr(feature = "wasm", derive(Tsify))]
-#[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
 pub struct IsxdSubDescriptors {
     /// ST 2067-202: ContainerConstraintsSubDescriptor shall be present.
     #[serde(rename = "ContainerConstraintsSubDescriptor", default)]
@@ -2224,8 +2158,6 @@ pub struct IsxdSubDescriptors {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
-#[cfg_attr(feature = "wasm", derive(Tsify))]
-#[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
 pub struct ContainerConstraintsSubDescriptor {
     #[serde(rename = "InstanceID", alias = "InstanceUID", default)]
     pub instance_id: Option<String>,
@@ -2236,8 +2168,6 @@ pub struct ContainerConstraintsSubDescriptor {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
-#[cfg_attr(feature = "wasm", derive(Tsify))]
-#[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
 pub struct ISXDDataEssenceDescriptor {
     #[serde(rename = "InstanceID", alias = "InstanceUID", default)]
     pub instance_id: Option<String>,
@@ -2313,8 +2243,6 @@ pub struct ISXDDataEssenceDescriptor {
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
-#[cfg_attr(feature = "wasm", derive(Tsify))]
-#[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
 pub struct CompositionPlaylist {
     /// The SMPTE spec version detected from the root xmlns of the CPL XML.
     /// Set after deserialization by `parse_cpl()`.
@@ -2492,8 +2420,6 @@ pub struct CompositionPlaylist {
 #[cfg_attr(feature = "wasm", serde(rename_all = "camelCase"))]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
-#[cfg_attr(feature = "wasm", derive(Tsify))]
-#[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
 pub struct CompositionTimecode {
     #[cfg_attr(not(feature = "wasm"), serde(rename = "TimecodeDropFrame"))]
     #[cfg_attr(
@@ -2525,8 +2451,6 @@ pub struct CompositionTimecode {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
-#[cfg_attr(feature = "wasm", derive(Tsify))]
-#[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
 pub struct ContentVersionList {
     #[cfg_attr(not(feature = "wasm"), serde(rename = "ContentVersion"))]
     #[cfg_attr(
@@ -2540,8 +2464,6 @@ pub struct ContentVersionList {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
-#[cfg_attr(feature = "wasm", derive(Tsify))]
-#[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
 pub struct ContentVersion {
     #[cfg_attr(not(feature = "wasm"), serde(rename = "Id"))]
     #[cfg_attr(feature = "wasm", serde(rename = "id", alias = "Id"))]
@@ -2563,8 +2485,6 @@ pub struct ContentVersion {
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
-#[cfg_attr(feature = "wasm", derive(Tsify))]
-#[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
 pub struct SegmentList {
     #[cfg_attr(not(feature = "wasm"), serde(rename = "Segment", default))]
     #[cfg_attr(
@@ -2578,8 +2498,6 @@ pub struct SegmentList {
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
-#[cfg_attr(feature = "wasm", derive(Tsify))]
-#[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
 pub struct Segment {
     #[cfg_attr(not(feature = "wasm"), serde(rename = "Id"))]
     #[cfg_attr(feature = "wasm", serde(rename = "id", alias = "Id"))]
@@ -2597,8 +2515,6 @@ pub struct Segment {
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
-#[cfg_attr(feature = "wasm", derive(Tsify))]
-#[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
 pub struct SequenceList {
     #[cfg_attr(not(feature = "wasm"), serde(rename = "MarkerSequence", default))]
     #[cfg_attr(
@@ -2749,8 +2665,6 @@ macro_rules! define_sequence_type {
         #[derive(Debug, Serialize, Deserialize, PartialEq)]
         #[cfg_attr(feature = "typescript", derive(TS))]
         #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
-        #[cfg_attr(feature = "wasm", derive(Tsify))]
-        #[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
         pub struct $name {
             #[cfg_attr(not(feature = "wasm"), serde(rename = "Id"))]
             #[cfg_attr(feature = "wasm", serde(rename = "id", alias = "Id"))]
@@ -2799,8 +2713,6 @@ define_sequence_type!(ISXDSequence);
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
-#[cfg_attr(feature = "wasm", derive(Tsify))]
-#[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
 pub struct ResourceList {
     #[cfg_attr(not(feature = "wasm"), serde(rename = "Resource", default))]
     #[cfg_attr(
@@ -2814,8 +2726,6 @@ pub struct ResourceList {
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
-#[cfg_attr(feature = "wasm", derive(Tsify))]
-#[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
 pub struct Resource {
     #[cfg_attr(not(feature = "wasm"), serde(rename = "Id"))]
     #[cfg_attr(feature = "wasm", serde(rename = "id", alias = "Id"))]
@@ -2906,8 +2816,6 @@ pub struct Resource {
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
-#[cfg_attr(feature = "wasm", derive(Tsify))]
-#[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
 pub struct MarkerInfo {
     #[cfg_attr(not(feature = "wasm"), serde(rename = "Annotation", default))]
     #[cfg_attr(
@@ -2934,8 +2842,6 @@ pub struct MarkerInfo {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "typescript", derive(TS))]
 #[cfg_attr(feature = "typescript", ts(export, rename_all = "camelCase"))]
-#[cfg_attr(feature = "wasm", derive(Tsify))]
-#[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
 pub struct TrackInfo {
     pub track_id: String,
     pub track_type: String, // "video", "audio", "subtitle"

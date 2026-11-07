@@ -1520,7 +1520,11 @@ fn validate_segment_track_durations(cpl: &CompositionPlaylist, issues: &mut Vec<
 
     for (seg_idx, segment) in cpl.segment_list.segments.iter().enumerate() {
         let sl = &segment.sequence_list;
-        let seg_loc = Location::new().with_cpl(cpl.id).with_segment(seg_idx);
+        let seg_urn = format!("urn:uuid:{}", segment.id);
+        let seg_loc = Location::new()
+            .with_cpl(cpl.id)
+            .with_segment(seg_idx)
+            .with_segment_id(seg_urn.clone());
 
         let er = cpl.edit_rate.as_ref();
 
@@ -1571,9 +1575,10 @@ fn validate_segment_track_durations(cpl: &CompositionPlaylist, issues: &mut Vec<
                         Category::Timing,
                         seg_dur_code,
                         format!(
-                            "Segment {} {} track {}: duration {:.3}s differs from {} track {}: duration {:.3}s — \
+                            "Segment {} ({}) {} track {}: duration {:.3}s differs from {} track {}: duration {:.3}s — \
                              all virtual tracks in a segment shall have equal duration",
                             seg_idx + 1,
+                            seg_urn,
                             track_type,
                             &track_id[..8.min(track_id.len())],
                             duration_secs,
@@ -3723,6 +3728,83 @@ mod tests {
                 .any(|i| i.code.contains("6.2.1/SampledXOffset")),
             "Should flag SampledXOffset != 0: {:#?}",
             issues
+        );
+    }
+
+    // ── ST 2067-3 §7.2: Sequences in a Segment have the same duration ──────
+
+    /// Composition at 24/1 with one Segment (Id uuid(70)) holding a
+    /// MainImage resource of `image_eu` edit units at 24/1 and a MainAudio
+    /// resource of `audio_samples` samples at 48000/1.
+    fn cpl_with_image_and_audio(image_eu: u64, audio_samples: u64) -> CompositionPlaylist {
+        let resource = |id: u8, edit_rate: Option<EditRate>, dur: u64| Resource {
+            id: uuid(id),
+            annotation: None,
+            edit_rate,
+            intrinsic_duration: dur,
+            entry_point: None,
+            source_duration: Some(dur),
+            source_encoding: None,
+            track_file_id: Some(uuid(id + 10)),
+            repeat_count: None,
+            key_id: None,
+            hash: None,
+            markers: vec![],
+        };
+        let mut cpl = minimal_cpl();
+        cpl.edit_rate = Some(EditRate::new(24, 1));
+        let mut sl = empty_sequence_list();
+        sl.main_image_sequences.push(MainImageSequence {
+            id: uuid(30),
+            track_id: uuid(40),
+            resource_list: ResourceList {
+                resources: vec![resource(50, None, image_eu)],
+            },
+        });
+        sl.main_audio_sequences.push(MainAudioSequence {
+            id: uuid(31),
+            track_id: uuid(41),
+            resource_list: ResourceList {
+                resources: vec![resource(51, Some(EditRate::new(48000, 1)), audio_samples)],
+            },
+        });
+        cpl.segment_list = SegmentList {
+            segments: vec![Segment {
+                id: uuid(70),
+                sequence_list: sl,
+            }],
+        };
+        cpl
+    }
+
+    fn segment_duration_issues(cpl: &CompositionPlaylist) -> Vec<ValidationIssue> {
+        let mut issues = Vec::new();
+        validate_segment_track_durations(cpl, &mut issues);
+        issues
+            .into_iter()
+            .filter(|i| i.code.ends_with("/SegmentDuration"))
+            .collect()
+    }
+
+    /// The SegmentDuration finding names the Segment by its Id as well as
+    /// its ordinal, in the message and in the location.
+    /// https://github.com/jpwesselink/imferno/issues/86
+    #[test]
+    fn segment_duration_names_segment_id() {
+        let issues = segment_duration_issues(&cpl_with_image_and_audio(100, 192_000));
+        assert_eq!(issues.len(), 1, "{issues:#?}");
+        let seg_id = uuid(70).to_string();
+        assert!(
+            issues[0]
+                .message
+                .starts_with(&format!("Segment 1 (urn:uuid:{seg_id})")),
+            "{}",
+            issues[0].message
+        );
+        assert_eq!(issues[0].location.segment, Some(0));
+        assert_eq!(
+            issues[0].location.segment_id.as_deref(),
+            Some(format!("urn:uuid:{seg_id}").as_str())
         );
     }
 

@@ -93,6 +93,10 @@
     {
       "label": "#104 fix/catalogue-verified-clauses",
       "path": "/pr-104/"
+    },
+    {
+      "label": "#105 docs/homepage-why",
+      "path": "/pr-105/"
     }
   ],
   "latest": "/v3.0.1/"

@@ -6,7 +6,7 @@
 //!    emitted by the package validator.
 //!
 //! 2. **Core Constraints CPL codes** (`St2067_2_2013_Core` / `St2067_2_2016_Core` /
-//!    `St2067_2_2020_Core`) — CPL structure rules (XSD, §6.1, §6.9, §6.10, §8, §10,
+//!    `St2067_2_2020_Core`) — CPL structure rules (XSD, §6.1, §6.9, §6.10, §10,
 //!    ST 377-4) shared across all three spec editions, emitted by the CoreConstraints
 //!    validators.  A `macro_rules!` generates the three enums from a
 //!    single source-of-truth variant list.  Each enum also exposes `for_code` so that
@@ -337,7 +337,7 @@ macro_rules! define_core_constraints_enum {
             MCATagSymbol,
             /// Soundfield group channel count is inconsistent with WAVEPCMDescriptor.ChannelCount.
             SoundfieldChannelCount,
-            /// Digital signature validation (ST 2067-2 §8) is not currently performed.
+            /// The CPL carries a Signature (ST 2067-2 §6.9), which is not verified.
             DigitalSignature,
             /// EssenceDescriptor present in EssenceDescriptorList but not referenced by any Resource.
             DanglingEssenceDescriptor,
@@ -382,7 +382,7 @@ macro_rules! define_core_constraints_enum {
                     Self::SoundfieldGroup                      => concat!($prefix, ":ST377-4/SoundfieldGroup"),
                     Self::MCATagSymbol                         => concat!($prefix, ":ST377-4/MCATagSymbol"),
                     Self::SoundfieldChannelCount               => concat!($prefix, ":ST377-4/SoundfieldChannelCount"),
-                    Self::DigitalSignature                     => concat!($prefix, ":8/DigitalSignature"),
+                    Self::DigitalSignature                     => concat!($prefix, ":6.9/DigitalSignature"),
                     Self::DanglingEssenceDescriptor            => concat!($prefix, ":6.4.2/DanglingEssenceDescriptor"),
                     Self::EssenceDescriptorList                => concat!($prefix, ":6.4.2/EssenceDescriptorList"),
                 }
@@ -423,7 +423,7 @@ macro_rules! define_core_constraints_enum {
                     Self::SoundfieldGroup                      => "WAVEPCMDescriptor SubDescriptors missing SoundfieldGroupLabelSubDescriptor.",
                     Self::MCATagSymbol                         => "SoundfieldGroupLabelSubDescriptor is missing MCATagSymbol.",
                     Self::SoundfieldChannelCount               => "Soundfield group channel count is inconsistent with WAVEPCMDescriptor.ChannelCount.",
-                    Self::DigitalSignature                     => "Digital signature validation (ST 2067-2 §8) is not currently performed.",
+                    Self::DigitalSignature                     => "The CPL carries a Signature (ST 2067-2 §6.9); signature verification is not performed.",
                     Self::DanglingEssenceDescriptor            => "EssenceDescriptor present in EssenceDescriptorList but not referenced by any Resource.",
                     Self::EssenceDescriptorList                => "EssenceDescriptorList is required per ST 2067-2 §6.4.2.",
                 }
@@ -606,7 +606,7 @@ macro_rules! define_core_constraints_enum {
                     CoreConstraintsCode::SoundfieldGroup                      => concat!($prefix, ":ST377-4/SoundfieldGroup"),
                     CoreConstraintsCode::MCATagSymbol                         => concat!($prefix, ":ST377-4/MCATagSymbol"),
                     CoreConstraintsCode::SoundfieldChannelCount               => concat!($prefix, ":ST377-4/SoundfieldChannelCount"),
-                    CoreConstraintsCode::DigitalSignature                     => concat!($prefix, ":8/DigitalSignature"),
+                    CoreConstraintsCode::DigitalSignature                     => concat!($prefix, ":6.9/DigitalSignature"),
                     CoreConstraintsCode::DanglingEssenceDescriptor            => concat!($prefix, ":6.4.2/DanglingEssenceDescriptor"),
                     CoreConstraintsCode::EssenceDescriptorList                => concat!($prefix, ":6.4.2/EssenceDescriptorList"),
                 }

@@ -120,7 +120,7 @@ Each spec edition has its own codes, even when a rule is unchanged between editi
 | `ST2067-2:2013:ST377-4/SoundfieldGroup` | WAVEPCMDescriptor SubDescriptors missing SoundfieldGroupLabelSubDescriptor. | WARNING | Audio |
 | `ST2067-2:2013:ST377-4/MCATagSymbol` | SoundfieldGroupLabelSubDescriptor is missing MCATagSymbol. | WARNING | Audio |
 | `ST2067-2:2013:ST377-4/SoundfieldChannelCount` | Soundfield group channel count is inconsistent with WAVEPCMDescriptor.ChannelCount. | ERROR | Audio |
-| `ST2067-2:2013:8/DigitalSignature` | Digital signature validation (ST 2067-2 §8) is not currently performed. | INFO | Security |
+| `ST2067-2:2013:6.9/DigitalSignature` | The CPL carries a Signature (ST 2067-2 §6.9); signature verification is not performed. | INFO | Security |
 | `ST2067-2:2013:6.4.2/DanglingEssenceDescriptor` | EssenceDescriptor present in EssenceDescriptorList but not referenced by any Resource. | ERROR | Reference |
 | `ST2067-2:2013:6.4.2/EssenceDescriptorList` | EssenceDescriptorList is required per ST 2067-2 §6.4.2. | ERROR | Structure |
 
@@ -162,7 +162,7 @@ Each spec edition has its own codes, even when a rule is unchanged between editi
 | `ST2067-2:2016:ST377-4/SoundfieldGroup` | WAVEPCMDescriptor SubDescriptors missing SoundfieldGroupLabelSubDescriptor. | WARNING | Audio |
 | `ST2067-2:2016:ST377-4/MCATagSymbol` | SoundfieldGroupLabelSubDescriptor is missing MCATagSymbol. | WARNING | Audio |
 | `ST2067-2:2016:ST377-4/SoundfieldChannelCount` | Soundfield group channel count is inconsistent with WAVEPCMDescriptor.ChannelCount. | ERROR | Audio |
-| `ST2067-2:2016:8/DigitalSignature` | Digital signature validation (ST 2067-2 §8) is not currently performed. | INFO | Security |
+| `ST2067-2:2016:6.9/DigitalSignature` | The CPL carries a Signature (ST 2067-2 §6.9); signature verification is not performed. | INFO | Security |
 | `ST2067-2:2016:6.4.2/DanglingEssenceDescriptor` | EssenceDescriptor present in EssenceDescriptorList but not referenced by any Resource. | ERROR | Reference |
 | `ST2067-2:2016:6.4.2/EssenceDescriptorList` | EssenceDescriptorList is required per ST 2067-2 §6.4.2. | ERROR | Structure |
 
@@ -204,7 +204,7 @@ Each spec edition has its own codes, even when a rule is unchanged between editi
 | `ST2067-2:2020:ST377-4/SoundfieldGroup` | WAVEPCMDescriptor SubDescriptors missing SoundfieldGroupLabelSubDescriptor. | WARNING | Audio |
 | `ST2067-2:2020:ST377-4/MCATagSymbol` | SoundfieldGroupLabelSubDescriptor is missing MCATagSymbol. | WARNING | Audio |
 | `ST2067-2:2020:ST377-4/SoundfieldChannelCount` | Soundfield group channel count is inconsistent with WAVEPCMDescriptor.ChannelCount. | ERROR | Audio |
-| `ST2067-2:2020:8/DigitalSignature` | Digital signature validation (ST 2067-2 §8) is not currently performed. | INFO | Security |
+| `ST2067-2:2020:6.9/DigitalSignature` | The CPL carries a Signature (ST 2067-2 §6.9); signature verification is not performed. | INFO | Security |
 | `ST2067-2:2020:6.4.2/DanglingEssenceDescriptor` | EssenceDescriptor present in EssenceDescriptorList but not referenced by any Resource. | ERROR | Reference |
 | `ST2067-2:2020:6.4.2/EssenceDescriptorList` | EssenceDescriptorList is required per ST 2067-2 §6.4.2. | ERROR | Structure |
 

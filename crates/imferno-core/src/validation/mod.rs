@@ -1670,28 +1670,25 @@ fn validate_segment_track_durations(cpl: &CompositionPlaylist, issues: &mut Vec<
     }
 }
 
-/// ST 2067-2 §8: Digital signature notice.
+/// ST 2067-2 §6.9 (2013, 2016 and 2020): Digital signature notice.
 ///
-/// Digital signatures (XML-DSIG Signer/Signature elements) are not currently
-/// parsed or validated. This outputs an info-level notice for CPLs using spec
-/// versions that support digital signatures.
+/// Every edition constrains the Signature element of a CPL in §6.9, but the
+/// signature is not verified here. A CPL that carries a Signature gets an
+/// info-level notice saying so; an unsigned CPL has nothing to verify. The
+/// package validator collapses the notices to one per package.
 fn validate_digital_signature_notice(
     cpl: &CompositionPlaylist,
     code: fn(CoreConstraintsCode) -> &'static str,
     issues: &mut Vec<ValidationIssue>,
 ) {
-    // Digital signatures are supported from ST 2067-2:2016 onwards.
-    // Since we don't parse Signer/Signature XML elements, we cannot validate them.
-    // Output an info notice for awareness.
-    let supports_signatures = matches!(cpl.namespace, CplNamespace::Smpte2067_3_2016);
-    if supports_signatures {
+    if cpl.has_signature {
         issues.push(
             ValidationIssue::new(
                 Severity::Info,
                 Category::Security,
                 code(CoreConstraintsCode::DigitalSignature),
-                "Digital signature validation (ST 2067-2 §8) is not currently performed; \
-                 Signer/Signature XML elements are not parsed",
+                "The CPL carries a Signature (ST 2067-2 §6.9); signature verification \
+                 is not performed",
             )
             .with_location(Location::new().with_cpl(cpl.id)),
         );
@@ -4460,6 +4457,40 @@ mod tests {
                 "{}: only the unreferenced descriptor is dangling: {dangling:#?}",
                 edition.spec_id(),
             );
+        }
+    }
+
+    /// ST 2067-2 §6.9 (2013, 2016 and 2020) constrains the Signature element
+    /// of a CPL. imferno does not verify signatures, and says so, but only
+    /// for a CPL that carries a Signature: there is nothing to verify in an
+    /// unsigned CPL.
+    /// https://github.com/jpwesselink/imferno/issues/87
+    #[test]
+    fn digital_signature_notice_only_for_signed_cpls() {
+        for edition in [
+            &CoreConstraints2013 as &dyn ConstraintsValidator,
+            &CoreConstraints2016,
+            &CoreConstraints2020,
+        ] {
+            let mut cpl = minimal_cpl();
+            let notices = |cpl: &CompositionPlaylist| {
+                edition
+                    .validate_cpl(cpl)
+                    .into_iter()
+                    .filter(|i| i.code.ends_with("/DigitalSignature"))
+                    .collect::<Vec<_>>()
+            };
+            assert!(notices(&cpl).is_empty(), "{}: unsigned", edition.spec_id());
+            cpl.has_signature = true;
+            let found = notices(&cpl);
+            assert_eq!(found.len(), 1, "{}: {found:#?}", edition.spec_id());
+            assert!(
+                found[0].code.ends_with(":6.9/DigitalSignature"),
+                "{}: {}",
+                edition.spec_id(),
+                found[0].code
+            );
+            assert_eq!(found[0].severity, Severity::Info);
         }
     }
 
@@ -7508,32 +7539,20 @@ mod tests {
 
     // ── #43: Digital Signatures notice ───────────────────────────────────
 
-    /// CPL with 2016+ namespace should emit digital signature info notice.
+    /// A signed CPL in the 2013 namespace gets the notice too: ST 2067-2:2013
+    /// §6.9 already constrains the CPL Signature element.
     #[test]
-    fn core_emits_digital_signature_notice_for_modern_cpl() {
-        let cpl = minimal_cpl(); // Uses Smpte2067_3_2016
-        let v = CoreConstraints2020;
-        let issues = v.validate_cpl(&cpl);
+    fn core_emits_digital_signature_notice_for_signed_2013_cpl() {
+        let mut cpl = minimal_cpl();
+        cpl.namespace = CplNamespace::Smpte2067_3_2013;
+        cpl.has_signature = true;
+        let issues = CoreConstraints2013.validate_cpl(&cpl);
         assert!(
             issues
                 .iter()
-                .any(|i| i.code.contains("DigitalSignature") && i.severity == Severity::Info),
-            "2020 CPL should emit digital signature info notice: {:#?}",
-            issues,
-        );
-    }
-
-    /// CPL with 2013 namespace should not emit digital signature notice.
-    #[test]
-    fn core_no_digital_signature_notice_for_2013_cpl() {
-        let mut cpl = minimal_cpl();
-        cpl.namespace = CplNamespace::Smpte2067_3_2013;
-        let v = CoreConstraints2013;
-        let issues = v.validate_cpl(&cpl);
-        assert!(
-            !issues.iter().any(|i| i.code.contains("DigitalSignature")),
-            "2013 CPL should not emit digital signature notice: {:#?}",
-            issues,
+                .any(|i| i.code == "ST2067-2:2013:6.9/DigitalSignature"
+                    && i.severity == Severity::Info),
+            "{issues:#?}",
         );
     }
 

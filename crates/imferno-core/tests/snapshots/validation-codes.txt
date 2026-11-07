@@ -277,8 +277,8 @@ ST2067-2:2013:6.10/TrackFileId
 ST2067-2:2013:6.4.2/DanglingEssenceDescriptor
 ST2067-2:2013:6.4.2/EssenceDescriptorList
 ST2067-2:2013:6.9.3/VirtualTrackEditRate
+ST2067-2:2013:6.9/DigitalSignature
 ST2067-2:2013:6.9/VirtualTrackContinuity
-ST2067-2:2013:8/DigitalSignature
 ST2067-2:2013:ST377-4/AudioSampleRate
 ST2067-2:2013:ST377-4/ChannelCount
 ST2067-2:2013:ST377-4/MCASubDescriptors
@@ -314,8 +314,8 @@ ST2067-2:2016:6.10/TrackFileId
 ST2067-2:2016:6.4.2/DanglingEssenceDescriptor
 ST2067-2:2016:6.4.2/EssenceDescriptorList
 ST2067-2:2016:6.9.3/VirtualTrackEditRate
+ST2067-2:2016:6.9/DigitalSignature
 ST2067-2:2016:6.9/VirtualTrackContinuity
-ST2067-2:2016:8/DigitalSignature
 ST2067-2:2016:ST377-4/AudioSampleRate
 ST2067-2:2016:ST377-4/ChannelCount
 ST2067-2:2016:ST377-4/MCASubDescriptors
@@ -352,6 +352,7 @@ ST2067-2:2020:6.4.2/DanglingEssenceDescriptor
 ST2067-2:2020:6.4.2/EssenceDescriptorList
 ST2067-2:2020:6.4.2/EssenceDescriptorList
 ST2067-2:2020:6.9.3/VirtualTrackEditRate
+ST2067-2:2020:6.9/DigitalSignature
 ST2067-2:2020:6.9/VirtualTrackContinuity
 ST2067-2:2020:7.1/TrackFileNotInPackage
 ST2067-2:2020:7.3.1/CplIdAssetMapMismatch
@@ -363,7 +364,6 @@ ST2067-2:2020:7/UnresolvedUuid
 ST2067-2:2020:8.3/ChecksumMismatch
 ST2067-2:2020:8.3/FileNotFound
 ST2067-2:2020:8.3/SizeMismatch
-ST2067-2:2020:8/DigitalSignature
 ST2067-2:2020:9/MalformedXml
 ST2067-2:2020:9/PklUnknownNamespace
 ST2067-2:2020:ST377-4/AudioSampleRate

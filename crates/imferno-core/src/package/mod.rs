@@ -506,6 +506,18 @@ fn sanitize_asset_path(root: &Path, chunk_path: &str) -> Option<PathBuf> {
 /// Keys are the **absolute** file paths. `from_file_map` (called by `parse`)
 /// derives the package `root_path` from these keys so that file-manifest
 /// and MXF-header validation work correctly on native targets.
+/// Collapse the per-CPL "signature not verified" notices into one finding
+/// for the package: it describes the tool, not the documents. The first
+/// notice (by CPL Id, for stable output) is kept, the other CPLs become its
+/// `additional_instances`.
+fn collapse_signature_notices(mut notices: Vec<ValidationIssue>) -> Option<ValidationIssue> {
+    notices.sort_by_key(|i| i.location.cpl_id.map(|id| id.to_string()));
+    let mut iter = notices.into_iter();
+    let mut first = iter.next()?;
+    first.additional_instances.extend(iter.map(|i| i.location));
+    Some(first)
+}
+
 pub fn read_dir(path: impl AsRef<Path>) -> Result<HashMap<String, String>> {
     use crate::storage::{fs::FsStorage, StorageUri};
 
@@ -1763,13 +1775,21 @@ impl Imferno {
         self.validate_cpl_ids_match_assetmap(&mut report);
 
         // CPL TrackFileId → AssetMap cross-references
+        let mut signature_notices = Vec::new();
         for cpl in self.composition_playlists.values() {
             self.validate_cpl_asset_references_accumulating(cpl, &mut report);
 
             // Optional external CPL-level validation injection
             for issue in cpl_validator(cpl) {
-                report.add(issue);
+                if issue.code.ends_with("/DigitalSignature") {
+                    signature_notices.push(issue);
+                } else {
+                    report.add(issue);
+                }
             }
+        }
+        if let Some(notice) = collapse_signature_notices(signature_notices) {
+            report.add(notice);
         }
 
         // SCM reference checks (ST 2067-9:2018 §6)
@@ -1845,13 +1865,21 @@ impl Imferno {
         self.validate_cpl_ids_match_assetmap(&mut report);
 
         // CPL TrackFileId → AssetMap cross-references
+        let mut signature_notices = Vec::new();
         for cpl in self.composition_playlists.values() {
             self.validate_cpl_asset_references_accumulating(cpl, &mut report);
 
             // Optional external CPL-level validation injection
             for issue in cpl_validator(cpl) {
-                report.add(issue);
+                if issue.code.ends_with("/DigitalSignature") {
+                    signature_notices.push(issue);
+                } else {
+                    report.add(issue);
+                }
             }
+        }
+        if let Some(notice) = collapse_signature_notices(signature_notices) {
+            report.add(notice);
         }
 
         // Multi-PKL consistency
@@ -4920,6 +4948,61 @@ mod tests {
                 .any(|i| i.code == code),
             "UnlistedEssence is Info only"
         );
+    }
+
+    /// The "signature not verified" notice is a property of the tool, not of
+    /// each document: one per package, listing every signed CPL as an
+    /// additional instance, instead of one line per CPL.
+    /// https://github.com/jpwesselink/imferno/issues/87
+    #[test]
+    fn digital_signature_notice_once_per_package() {
+        let dir = copy_xml_package("MERIDIAN_Netflix_Photon_161006");
+        let signature =
+            "<ds:Signature xmlns:ds=\"http://www.w3.org/2000/09/xmldsig#\"/></CompositionPlaylist>";
+        let cpl_a = std::fs::read_to_string(dir.path().join(MERIDIAN_CPL))
+            .unwrap()
+            .replacen("</CompositionPlaylist>", signature, 1);
+        std::fs::write(dir.path().join(MERIDIAN_CPL), &cpl_a).unwrap();
+        // A second signed CPL with its own Id, listed in the AssetMap and PKL.
+        let (a, b) = (
+            "0eb3d1b9-b77b-4d3f-bbe5-7c69b15dca85",
+            "0eb3d1b9-b77b-4d3f-bbe5-7c69b15dca86",
+        );
+        std::fs::write(dir.path().join("CPL_b.xml"), cpl_a.replacen(a, b, 1)).unwrap();
+        let am_path = dir.path().join("ASSETMAP.xml");
+        let am = std::fs::read_to_string(&am_path).unwrap().replacen(
+            "<AssetList>",
+            &format!(
+                "<AssetList><Asset><Id>urn:uuid:{b}</Id><ChunkList><Chunk>\
+                 <Path>CPL_b.xml</Path></Chunk></ChunkList></Asset>"
+            ),
+            1,
+        );
+        std::fs::write(&am_path, am).unwrap();
+        let pkl_path = dir
+            .path()
+            .join("PKL_f5e93462-aed2-44ad-a4ba-2adb65823e7c.xml");
+        let pkl = std::fs::read_to_string(&pkl_path).unwrap().replacen(
+            "<AssetList>",
+            &format!(
+                "<AssetList><Asset><Id>urn:uuid:{b}</Id>\
+                 <Hash>AX7vs/c1eJFL4eHfkLeIv79h3vE=</Hash><Size>1</Size>\
+                 <Type>text/xml</Type></Asset>"
+            ),
+            1,
+        );
+        std::fs::write(&pkl_path, pkl).unwrap();
+
+        let package = Imferno::parse(read_dir(dir.path()).unwrap()).unwrap();
+        assert_eq!(package.composition_playlists.len(), 2);
+        let report = package.validate(&skip_disk_options());
+        let notices: Vec<_> = report
+            .info
+            .iter()
+            .filter(|i| i.code.ends_with("/DigitalSignature"))
+            .collect();
+        assert_eq!(notices.len(), 1, "{:#?}", report.info);
+        assert_eq!(notices[0].instance_count(), 2, "{:#?}", notices[0]);
     }
 
     /// ST 2067-2:2020 §7.3.1 Table 19: a CPL asset is identified by the Id

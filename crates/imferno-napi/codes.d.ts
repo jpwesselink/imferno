@@ -73,7 +73,7 @@ export declare const codes: {
     readonly SoundfieldGroup: "ST2067-2:2013:ST377-4/SoundfieldGroup";
     readonly MCATagSymbol: "ST2067-2:2013:ST377-4/MCATagSymbol";
     readonly SoundfieldChannelCount: "ST2067-2:2013:ST377-4/SoundfieldChannelCount";
-    readonly DigitalSignature: "ST2067-2:2013:8/DigitalSignature";
+    readonly DigitalSignature: "ST2067-2:2013:6.9/DigitalSignature";
     readonly DanglingEssenceDescriptor: "ST2067-2:2013:6.4.2/DanglingEssenceDescriptor";
     readonly EssenceDescriptorList: "ST2067-2:2013:6.4.2/EssenceDescriptorList";
   };
@@ -112,7 +112,7 @@ export declare const codes: {
     readonly SoundfieldGroup: "ST2067-2:2016:ST377-4/SoundfieldGroup";
     readonly MCATagSymbol: "ST2067-2:2016:ST377-4/MCATagSymbol";
     readonly SoundfieldChannelCount: "ST2067-2:2016:ST377-4/SoundfieldChannelCount";
-    readonly DigitalSignature: "ST2067-2:2016:8/DigitalSignature";
+    readonly DigitalSignature: "ST2067-2:2016:6.9/DigitalSignature";
     readonly DanglingEssenceDescriptor: "ST2067-2:2016:6.4.2/DanglingEssenceDescriptor";
     readonly EssenceDescriptorList: "ST2067-2:2016:6.4.2/EssenceDescriptorList";
   };
@@ -151,7 +151,7 @@ export declare const codes: {
     readonly SoundfieldGroup: "ST2067-2:2020:ST377-4/SoundfieldGroup";
     readonly MCATagSymbol: "ST2067-2:2020:ST377-4/MCATagSymbol";
     readonly SoundfieldChannelCount: "ST2067-2:2020:ST377-4/SoundfieldChannelCount";
-    readonly DigitalSignature: "ST2067-2:2020:8/DigitalSignature";
+    readonly DigitalSignature: "ST2067-2:2020:6.9/DigitalSignature";
     readonly DanglingEssenceDescriptor: "ST2067-2:2020:6.4.2/DanglingEssenceDescriptor";
     readonly EssenceDescriptorList: "ST2067-2:2020:6.4.2/EssenceDescriptorList";
   };

@@ -97,6 +97,10 @@
     {
       "label": "#100 fix/napi-typescript-types",
       "path": "/pr-100/"
+    },
+    {
+      "label": "#101 fix/working-group-resolutions",
+      "path": "/pr-101/"
     }
   ],
   "latest": "/v3.0.1/"

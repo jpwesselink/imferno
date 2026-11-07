@@ -77,23 +77,7 @@ pub trait ValidatorRegistry {
     fn resolve_for_cpl(&self, cpl: &CompositionPlaylist) -> Vec<Box<dyn ConstraintsValidator>> {
         let mut validators: Vec<Box<dyn ConstraintsValidator>> = Vec::new();
 
-        // ST 2067-2:2020 reuses the ST 2067-3:2016 CPL namespace. A CPL is
-        // checked against 2067-2:2020 when its ApplicationIdentification
-        // names an App #2E edition that normatively references 2067-2:2020
-        // (2020, 2023, 2026), or when the element is in (or the CPL declares
-        // only) the 2020 Core Constraints namespace (working-group finding #12).
-        let core_2020 = app2e_references_core_2020(cpl)
-            || application_identification_core_edition(cpl)
-                .or_else(|| declared_core_constraints_edition(cpl))
-                == Some(crate::catalogue::st2067_2::St2067_2Edition::V2020);
-        let core_ns = match &cpl.namespace {
-            CplNamespace::Smpte2067_3_2013 => Some(CoreSpecTarget::St2067_2_2013.namespace_uri()),
-            CplNamespace::Smpte2067_3_2016 if core_2020 => {
-                Some(CoreSpecTarget::St2067_2_2020.namespace_uri())
-            }
-            CplNamespace::Smpte2067_3_2016 => Some(CoreSpecTarget::St2067_2_2016.namespace_uri()),
-            _ => None,
-        };
+        let core_ns = auto_core_namespace(cpl);
         if let Some(ns) = core_ns {
             if let Some(v) = self.resolve_namespace(ns) {
                 validators.push(v);
@@ -409,6 +393,44 @@ pub fn declared_core_constraints_edition(
     }
 }
 
+/// The ST 2067-2 edition a CPL is checked against when the caller pins none.
+///
+/// ST 2067-2:2020 reuses the ST 2067-3:2016 CPL namespace, so a 2016-namespace
+/// CPL is checked against 2067-2:2020 when its ApplicationIdentification names
+/// an App #2E edition that normatively references 2067-2:2020 (2020, 2023,
+/// 2026), or when the element is in (or the CPL declares only) the 2020 Core
+/// Constraints namespace (working-group finding #12).
+pub fn cpl_core_edition(
+    cpl: &CompositionPlaylist,
+) -> Option<crate::catalogue::st2067_2::St2067_2Edition> {
+    use crate::catalogue::st2067_2::St2067_2Edition;
+    match &cpl.namespace {
+        CplNamespace::Smpte2067_3_2013 => Some(St2067_2Edition::V2013),
+        CplNamespace::Smpte2067_3_2016 => {
+            let core_2020 = app2e_references_core_2020(cpl)
+                || application_identification_core_edition(cpl)
+                    .or_else(|| declared_core_constraints_edition(cpl))
+                    == Some(St2067_2Edition::V2020);
+            Some(if core_2020 {
+                St2067_2Edition::V2020
+            } else {
+                St2067_2Edition::V2016
+            })
+        }
+        _ => None,
+    }
+}
+
+/// The Core Constraints namespace of [`cpl_core_edition`].
+fn auto_core_namespace(cpl: &CompositionPlaylist) -> Option<&'static str> {
+    use crate::catalogue::st2067_2::St2067_2Edition;
+    cpl_core_edition(cpl).map(|e| match e {
+        St2067_2Edition::V2013 => CoreSpecTarget::St2067_2_2013.namespace_uri(),
+        St2067_2Edition::V2016 => CoreSpecTarget::St2067_2_2016.namespace_uri(),
+        St2067_2Edition::V2020 => CoreSpecTarget::St2067_2_2020.namespace_uri(),
+    })
+}
+
 /// Whether the CPL's ApplicationIdentification names an App #2E edition
 /// whose normative reference is ST 2067-2:2020 (ST 2067-21:2020, 2023, 2026).
 fn app2e_references_core_2020(cpl: &CompositionPlaylist) -> bool {
@@ -533,15 +555,7 @@ impl ValidatorRegistry for ConfigurableValidatorRegistry {
         } else if let Some(uri) = self.selection.core_namespace_uri.as_deref() {
             Some(uri)
         } else {
-            match &cpl.namespace {
-                CplNamespace::Smpte2067_3_2013 => {
-                    Some("http://www.smpte-ra.org/schemas/2067-2/2013")
-                }
-                CplNamespace::Smpte2067_3_2016 => {
-                    Some("http://www.smpte-ra.org/schemas/2067-2/2016")
-                }
-                _ => None,
-            }
+            auto_core_namespace(cpl)
         };
 
         if let Some(ns) = core_ns {
@@ -2821,7 +2835,9 @@ mod tests {
             1,
             "empty app_specs should suppress app profile"
         );
-        assert_eq!(validators[0].spec_id(), "ST 2067-2:2016");
+        // The CPL's App #2E 2023 identification still selects ST 2067-2:2020
+        // as its core edition.
+        assert_eq!(validators[0].spec_id(), "ST 2067-2:2020");
     }
 
     #[test]

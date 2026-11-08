@@ -40,7 +40,9 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Install wasm-pack
-        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+        # From crates.io, not GitHub release assets: a GitHub download outage
+        # (HTTP 504 on 2026-11-08) must not break CI. rust-cache keeps ~/.cargo/bin.
+        run: command -v wasm-pack || cargo install wasm-pack --version 0.13.1 --locked
 
       - name: Setup Node.js
         uses: actions/setup-node@v4

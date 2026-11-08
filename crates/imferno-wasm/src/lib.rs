@@ -54,9 +54,12 @@ pub fn get_version() -> String {
 /// validation results. This is the same JSON that the CLI `export` command produces.
 ///
 /// Options (all optional):
-/// - `coreSpec`: `"auto"` | `"v2013"` | `"v2016"` | `"v2020"`
-/// - `cplSpec`: `"auto"` | `"v2013"` | `"v2016"` | `"v2020"` (ST 2067-3)
-/// - `iabSpec`: `"auto"` | `"v2019"` | `"v2021"` | `"v2026"` (ST 2067-201)
+/// - `coreSpec`: `"auto"` | `"v2013"` | `"v2016"` | `"v2020"` (ST 2067-2; a
+///   pin also pins the editions it cites: ST 2067-3, ST 2067-201, ST 377-1/-4)
+/// - `cplSpec`: `"auto"` | `"v2013"` | `"v2016"` | `"v2020"` (ST 2067-3; wins
+///   over the edition `coreSpec` implies)
+/// - `iabSpec`: `"auto"` | `"v2019"` | `"v2021"` | `"v2026"` (ST 2067-201; wins
+///   over the edition `coreSpec` implies)
 /// - `app2eSpec`: `"auto"` | `"none"` | `"v2014"` | `"v2016"` | `"v2020"` | `"v2023"` | `"v2026"`
 /// - `rules`: ESLint-style rules configuration object
 #[allow(deprecated)]

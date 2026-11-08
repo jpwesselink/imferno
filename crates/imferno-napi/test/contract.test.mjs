@@ -248,6 +248,21 @@ describe("runtime outputs conform to their declared types", () => {
     expect(r.rule_warnings).toEqual([{ key: "BogusKey", reason: { kind: "matches_nothing" } }]);
   });
 
+  it("coreSpec pins the ST 2067-3 edition it cites unless cplSpec pins it", () => {
+    const dir = join(testData, "MERIDIAN_Netflix_Photon_161006");
+    const findings = (r) =>
+      ["critical", "errors", "warnings", "info"].flatMap((k) => r.validation[k] ?? []);
+    const pinned = findings(api.validatePath(dir, { coreSpec: "v2016", skipDiskChecks: true }));
+    expect(pinned.some((i) => i.rule === "IMFERNO/EditionConflict")).toBe(false);
+    const cpl = pinned.filter((i) => i.spec === "ST2067-3");
+    expect(cpl.length).toBeGreaterThan(0);
+    for (const i of cpl) expect(i.edition, i.code).toBe("2016");
+    const both = findings(
+      api.validatePath(dir, { coreSpec: "v2016", cplSpec: "v2013", skipDiskChecks: true }),
+    );
+    for (const i of both.filter((i) => i.spec === "ST2067-3")) expect(i.edition, i.code).toBe("2013");
+  });
+
   it("toSarif → a SARIF 2.1.0 log of the findings", () => {
     const r = api.validatePath(join(testData, "MERIDIAN_Netflix_Photon_161006"));
     const log = api.toSarif(r);

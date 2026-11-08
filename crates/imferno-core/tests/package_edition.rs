@@ -256,3 +256,58 @@ fn unknown_rules_keys_are_reported_with_the_result() {
     assert_eq!(result.rule_warnings.len(), 1);
     assert_eq!(result.rule_warnings[0].key, "BogusKey");
 }
+
+/// One pin for everything: pinning the ST 2067-2 edition pins the editions
+/// that follow from it through its dated references (ST 2067-3 here), over
+/// the CPL's namespace, unless they are pinned separately. MERIDIAN has
+/// 2013 namespaces and lists App #2E 2016.
+#[test]
+fn core_pin_carries_the_editions_that_follow_from_it() {
+    use imferno_core::validation::CplSpecTarget;
+    let pkg = package("MERIDIAN_Netflix_Photon_161006");
+    let report = pkg.validate(&ValidationOptions {
+        core_spec: Some(CoreSpecTarget::St2067_2_2016),
+        skip_disk_checks: true,
+        ..Default::default()
+    });
+    let issues = all(&report);
+    assert!(
+        !issues.iter().any(|i| i.is(&imferno::EditionConflict)),
+        "{issues:#?}"
+    );
+    let st2067_3: Vec<_> = issues
+        .iter()
+        .filter(|i| i.spec == imferno_core::diagnostics::Spec::St2067_3)
+        .collect();
+    assert!(
+        !st2067_3.is_empty(),
+        "ContentKindUnknown is an ST 2067-3 rule"
+    );
+    for i in &st2067_3 {
+        assert_eq!(i.edition, "2016", "{}", i.code);
+    }
+    for i in issues
+        .iter()
+        .filter(|i| i.spec == imferno_core::diagnostics::Spec::St2067_2)
+    {
+        assert_eq!(i.edition, "2016", "{}", i.code);
+    }
+
+    // A separate ST 2067-3 pin wins over the one that follows from the core.
+    let report = pkg.validate(&ValidationOptions {
+        core_spec: Some(CoreSpecTarget::St2067_2_2016),
+        cpl_spec: Some(CplSpecTarget::St2067_3_2013),
+        skip_disk_checks: true,
+        ..Default::default()
+    });
+    let issues = all(&report);
+    assert!(!issues.iter().any(|i| i.is(&imferno::EditionConflict)));
+    let st2067_3: Vec<_> = issues
+        .iter()
+        .filter(|i| i.spec == imferno_core::diagnostics::Spec::St2067_3)
+        .collect();
+    assert!(!st2067_3.is_empty());
+    for i in st2067_3 {
+        assert_eq!(i.edition, "2013", "{}", i.code);
+    }
+}

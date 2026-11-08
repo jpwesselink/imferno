@@ -207,7 +207,11 @@ with a suppression, at their original level.
 ## Which edition is applied
 
 Every edition choice follows one rule: an edition pinned by an option wins;
-otherwise the document's namespace gives the candidate editions, and evidence
+a pinned ST 2067-2 edition (`--core-spec` / `coreSpec`) also pins the editions
+it cites (ST 2067-3, ST 2067-201 for IAB, ST 377-1/377-4 for MXF), over the
+documents' namespaces, unless `--cpl-spec` / `--iab-spec` pin those separately
+(`--core-spec v2016` alone checks a 2013-namespace CPL against ST 2067-2:2016
+and ST 2067-3:2016); otherwise the document's namespace gives the candidate editions, and evidence
 in the document that only some editions' text defines narrows them. When one
 edition is left it is applied; otherwise the newest is applied and an
 `IMFERNO:Package/EditionAssumed` (Info) notice names the namespace seen and the

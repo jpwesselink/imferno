@@ -111,19 +111,26 @@ if (dts.includes("This interface was referenced by")) {
 // against the keys each `parse_options` reads, and every declared spec literal
 // and rule severity against the engine.
 dts += `
-/** Core constraints (ST 2067-2) edition to validate against. \`"auto"\` detects it from the CPL. */
+/**
+ * Core constraints (ST 2067-2) edition to validate against. \`"auto"\` detects
+ * it from the package and CPLs. A pinned edition also pins the editions it
+ * cites (ST 2067-3, ST 2067-201 for IAB, ST 377-1/377-4 for MXF), over the
+ * documents' namespaces, unless \`cplSpec\` / \`iabSpec\` pin those separately.
+ */
 export type CoreSpec = "auto" | "v2013" | "v2016" | "v2020";
 
 /**
- * Composition Playlist (ST 2067-3) edition to validate against. ST 2067-3:2016
- * and :2020 share one namespace; \`"auto"\` applies the newest unless the CPL
- * uses something only one edition defines, and reports the choice.
+ * Composition Playlist (ST 2067-3) edition to validate against; wins over the
+ * edition \`coreSpec\` implies. ST 2067-3:2016 and :2020 share one namespace;
+ * \`"auto"\` applies the newest unless the CPL uses something only one edition
+ * defines, and reports the choice.
  */
 export type CplSpec = "auto" | "v2013" | "v2016" | "v2020";
 
 /**
- * IAB plug-in (ST 2067-201) edition to validate against. Every edition shares
- * one namespace; \`"auto"\` applies the newest and reports the choice.
+ * IAB plug-in (ST 2067-201) edition to validate against; wins over the edition
+ * \`coreSpec\` implies. Every edition shares one namespace; \`"auto"\` applies
+ * the newest and reports the choice.
  */
 export type IabSpec = "auto" | "v2019" | "v2021" | "v2026";
 

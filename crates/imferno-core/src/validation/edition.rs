@@ -249,16 +249,30 @@ pub fn cpl_evidence(
 }
 
 /// The ST 2067-3 edition whose rules are applied to a CPL when the caller
-/// pins none (see [`resolve`]). The 2013 namespace is ST 2067-3:2013; 2016
-/// and 2020 share the 2016 namespace; an ST 429-7 (DCI) or unknown
-/// namespace is not an ST 2067-3 namespace, so every edition is a
-/// candidate and the newest is applied, announced.
+/// pins none (see [`resolve`]).
+///
+/// A pinned ST 2067-2 edition (`core_pin`) pins the ST 2067-3 edition it
+/// cites, over the CPL's namespace and contents (one pin for everything;
+/// a separate ST 2067-3 pin is applied by the caller instead of this).
+///
+/// Otherwise: the 2013 namespace is ST 2067-3:2013; 2016 and 2020 share the
+/// 2016 namespace; an ST 429-7 (DCI) or unknown namespace is not an
+/// ST 2067-3 namespace, so every edition is a candidate and the newest is
+/// applied, announced.
 pub fn cpl_edition(
     cpl: &CompositionPlaylist,
     core_pin: Option<St2067_2Edition>,
     iab_pin: Option<St2067_201Edition>,
 ) -> EditionChoice<St2067_3Edition> {
     use St2067_3Edition::{V2013, V2016, V2020};
+    if let Some(core) = core_pin {
+        return EditionChoice {
+            edition: st2067_3_of_core(core),
+            assumed: None,
+            conflict: None,
+            determined: true,
+        };
+    }
     let candidates: &[St2067_3Edition] = match &cpl.namespace {
         CplNamespace::Smpte2067_3_2013 => &[V2013],
         CplNamespace::Smpte2067_3_2016 => &[V2016, V2020],
@@ -377,10 +391,11 @@ pub fn mxf_editions(
 
 /// The ST 2067-201 edition of the IAB rules applied to a CPL (and to the
 /// track files its IAB Virtual Tracks reference): `pin` when the caller
-/// gives one. Every edition (2019, 2021, 2026) uses the 2019 namespace; the
-/// evidence is:
-/// - the ST 2067-2 edition (`core_pin`, else the CPL's when determined):
-///   ST 2067-201:2019 §3 cites ST 2067-2:2016, :2021 and :2026 cite :2020;
+/// gives one. A pinned ST 2067-2 edition (`core_pin`) leaves only the
+/// editions that cite it (ST 2067-201:2019 §3 cites ST 2067-2:2016, :2021
+/// and :2026 cite :2020): one pin for everything. Every edition (2019, 2021,
+/// 2026) uses the 2019 namespace; the evidence is:
+/// - the CPL's ST 2067-2 edition when determined and none is pinned;
 /// - the ST 2067-3 edition when the `2020#standard-markers` scope names it
 ///   (2021 and 2026 cite ST 2067-3:2020). The IAB-derived ST 2067-3 edition
 ///   is never fed back;
@@ -401,24 +416,39 @@ pub fn cpl_iab_edition(
             conflict: None,
         };
     }
+    // The editions that cite a pinned ST 2067-2 edition are the only
+    // candidates (one pin for everything); no edition cites ST 2067-2:2013.
+    let pinned_candidates: Option<&[St2067_201Edition]> = match core_pin {
+        Some(St2067_2Edition::V2016) => Some(&[V2019]),
+        Some(St2067_2Edition::V2020) => Some(&[V2021, V2026]),
+        Some(St2067_2Edition::V2013) | None => None,
+    };
+    if let Some([only]) = pinned_candidates {
+        return EditionChoice {
+            edition: *only,
+            assumed: None,
+            determined: true,
+            conflict: None,
+        };
+    }
     let mut evidence = Vec::new();
-    let core = core_pin.map(|e| (e, "the pinned")).or_else(|| {
-        cpl_core_edition(cpl)
+    if core_pin.is_none() {
+        match cpl_core_edition(cpl)
             .filter(|c| c.determined)
-            .map(|c| (c.edition, "its"))
-    });
-    match core {
-        Some((St2067_2Edition::V2016, whose)) => evidence.push(Evidence::one(
-            V2019,
-            format!("{whose} ST 2067-2 edition is ST 2067-2:2016, which ST 2067-201:2019 cites"),
-        )),
-        Some((St2067_2Edition::V2020, whose)) => evidence.push(Evidence {
-            editions: vec![V2021, V2026],
-            what: format!(
-                "{whose} ST 2067-2 edition is ST 2067-2:2020, which ST 2067-201:2021 and :2026 cite"
-            ),
-        }),
-        _ => {}
+            .map(|c| c.edition)
+        {
+            Some(St2067_2Edition::V2016) => evidence.push(Evidence::one(
+                V2019,
+                "its ST 2067-2 edition is ST 2067-2:2016, which ST 2067-201:2019 cites",
+            )),
+            Some(St2067_2Edition::V2020) => evidence.push(Evidence {
+                editions: vec![V2021, V2026],
+                what: "its ST 2067-2 edition is ST 2067-2:2020, which ST 2067-201:2021 and :2026 \
+                       cite"
+                    .into(),
+            }),
+            _ => {}
+        }
     }
     if uses_marker_scope_2020(cpl) {
         evidence.push(Evidence {
@@ -437,12 +467,24 @@ pub fn cpl_iab_edition(
             ),
         ));
     }
-    resolve(
-        &format!("CPL {}", cpl.id),
-        "its IAB namespace http://www.smpte-ra.org/ns/2067-201/2019",
-        St2067_201Edition::ALL,
-        &evidence,
-    )
+    let namespace = "its IAB namespace http://www.smpte-ra.org/ns/2067-201/2019";
+    match (pinned_candidates, core_pin) {
+        (Some(candidates), Some(core)) => resolve(
+            &format!("CPL {}", cpl.id),
+            &format!(
+                "{namespace} with the pinned ST 2067-2:{} (the editions that cite it)",
+                core.label()
+            ),
+            candidates,
+            &evidence,
+        ),
+        _ => resolve(
+            &format!("CPL {}", cpl.id),
+            namespace,
+            St2067_201Edition::ALL,
+            &evidence,
+        ),
+    }
 }
 
 /// Whether a CPL uses the Marker Label scope only ST 2067-3:2020 defines.
@@ -804,9 +846,9 @@ mod tests {
         assert_eq!((c.edition, c.assumed), (St2067_3Edition::V2016, None));
     }
 
-    /// The 2020 marker scope against a 2016 core: the conflict is announced.
+    /// The 2020 marker scope names ST 2067-3:2020, unless the core is pinned.
     #[test]
-    fn st2067_3_2020_marker_scope_against_a_2016_core_is_announced() {
+    fn st2067_3_2020_marker_scope_yields_to_a_core_pin() {
         let mut bare = with_namespace(CplNamespace::Smpte2067_3_2016);
         bare.source_xml = None;
         let xml = BASE.replace(
@@ -816,10 +858,57 @@ mod tests {
         let cpl = crate::cpl::parse_cpl(&xml).unwrap();
         let c = cpl_edition(&cpl, None, None);
         assert_eq!((c.edition, c.assumed), (St2067_3Edition::V2020, None));
+        // A pinned ST 2067-2 edition pins the ST 2067-3 edition it cites;
+        // the document's evidence does not override the pin.
         let c = cpl_edition(&cpl, Some(St2067_2Edition::V2016), None);
-        assert_eq!(c.edition, St2067_3Edition::V2020);
-        let why = c.assumed.expect("conflict announced");
-        assert!(why.contains("the evidence does not agree"), "{why}");
+        assert_eq!(c.edition, St2067_3Edition::V2016);
+        assert_eq!((c.assumed, c.conflict), (None, None));
+    }
+
+    /// A pinned ST 2067-2 edition pins the ST 2067-3 edition it cites over
+    /// the CPL namespace (2013 namespace, pinned 2016 core: ST 2067-3:2016).
+    #[test]
+    fn core_pin_overrides_the_cpl_namespace() {
+        let cpl = with_namespace(CplNamespace::Smpte2067_3_2013);
+        for (core, cpl_ed) in [
+            (St2067_2Edition::V2013, St2067_3Edition::V2013),
+            (St2067_2Edition::V2016, St2067_3Edition::V2016),
+            (St2067_2Edition::V2020, St2067_3Edition::V2020),
+        ] {
+            let c = cpl_edition(&cpl, Some(core), None);
+            assert_eq!(c.edition, cpl_ed, "{core:?}");
+            assert_eq!((c.assumed, c.conflict), (None, None), "{core:?}");
+        }
+    }
+
+    /// The ST 2067-201 edition follows a pinned ST 2067-2 edition: 2016 is
+    /// cited only by ST 2067-201:2019; 2020 by :2021 and :2026, which the
+    /// CPL may still tell apart. A separate ST 2067-201 pin wins.
+    #[test]
+    fn iab_edition_follows_the_core_pin() {
+        let path = concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../test-data/IAB/CompleteIMP/CPL_e0265fda-cb35-4e35-a4e4-4f44d82d2a52.xml"
+        );
+        let iab = crate::cpl::parse_cpl(&std::fs::read_to_string(path).unwrap()).unwrap();
+        // The CPL's own core edition is 2016; pinning 2020 moves IAB along.
+        let c = cpl_iab_edition(&iab, None, None);
+        assert_eq!(c.edition, St2067_201Edition::V2019);
+        let c = cpl_iab_edition(&iab, Some(St2067_2Edition::V2016), None);
+        assert_eq!((c.edition, c.determined), (St2067_201Edition::V2019, true));
+        assert_eq!((c.assumed, c.conflict), (None, None));
+        let c = cpl_iab_edition(&iab, Some(St2067_2Edition::V2020), None);
+        assert_eq!(c.edition, St2067_201Edition::V2026);
+        assert!(!c.determined);
+        let why = c.assumed.expect("2021 and 2026 both cite ST 2067-2:2020");
+        assert!(why.contains("ST 2067-201:2021"), "{why}");
+        assert!(!why.contains("ST 2067-201:2019"), "{why}");
+        let c = cpl_iab_edition(
+            &iab,
+            Some(St2067_2Edition::V2016),
+            Some(St2067_201Edition::V2021),
+        );
+        assert_eq!(c.edition, St2067_201Edition::V2021);
     }
 
     #[test]

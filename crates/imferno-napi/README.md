@@ -121,7 +121,9 @@ console.log(getVersion()); // e.g. "2.0.0"
 
 | Option | Type | Description |
 |--------|------|-------------|
-| `coreSpec` | `"auto" \| "v2013" \| "v2016" \| "v2020"` | Core constraints spec version |
+| `coreSpec` | `"auto" \| "v2013" \| "v2016" \| "v2020"` | Core constraints (ST 2067-2) edition; a pin also pins the editions it cites (ST 2067-3, ST 2067-201, ST 377-1/-4) |
+| `cplSpec` | `"auto" \| "v2013" \| "v2016" \| "v2020"` | Composition Playlist (ST 2067-3) edition; wins over the one `coreSpec` implies |
+| `iabSpec` | `"auto" \| "v2019" \| "v2021" \| "v2026"` | IAB plug-in (ST 2067-201) edition; wins over the one `coreSpec` implies |
 | `app2eSpec` | `"auto" \| "none" \| "v2014" \| "v2016" \| "v2020" \| "v2023" \| "v2026"` | Application spec version |
 | `rules` | `Record<string, "off" \| "info" \| "warn" \| "error" \| "critical">` | ESLint-style per-rule severity overrides |
 | `aggregateRepeats` | `boolean` | Collapse repeated identical findings into one issue with `additional_instances` |

@@ -712,15 +712,17 @@ pub fn parse_app_spec_targets(s: &str) -> Result<Option<Vec<AppSpecTarget>>, Str
 
 #[derive(Debug, Clone, Default)]
 pub struct ValidatorSelection {
-    /// Preferred typed core constraints selection.
+    /// ST 2067-2 edition pin. It also pins the editions it cites: ST 2067-3
+    /// ([`cpl_edition`]), ST 2067-201 ([`cpl_iab_edition`]) and ST 377-1/-4
+    /// ([`mxf_editions`]), unless `cpl_spec` / `iab_spec` pin them.
     pub core_spec: Option<CoreSpecTarget>,
 
-    /// ST 2067-3 edition for the CPL rules; `None` resolves it per CPL
-    /// ([`cpl_edition`]).
+    /// ST 2067-3 edition for the CPL rules (wins over the one `core_spec`
+    /// implies); `None` resolves it per CPL ([`cpl_edition`]).
     pub cpl_spec: Option<CplSpecTarget>,
 
-    /// ST 2067-201 edition for the IAB plug-in rules; `None` resolves it per
-    /// CPL ([`cpl_iab_edition`]).
+    /// ST 2067-201 edition for the IAB plug-in rules (wins over the one
+    /// `core_spec` implies); `None` resolves it per CPL ([`cpl_iab_edition`]).
     pub iab_spec: Option<IabSpecTarget>,
 
     /// Preferred typed app profile selection.

@@ -3013,13 +3013,20 @@ pub struct ValidationOptions {
     /// ESLint-style per-rule severity overrides applied to the output.
     /// An empty map (the default) is a no-op.
     pub rules: RulesConfig,
-    /// Core constraints spec version. `None` = auto-detect from CPL namespace.
+    /// Core constraints (ST 2067-2) edition. `None` = resolve it from the
+    /// package and each CPL. A pinned edition also pins the editions it cites
+    /// (ST 2067-3, ST 2067-201 for IAB, ST 377-1/377-4 for MXF) over the
+    /// documents' namespaces, unless `cpl_spec` / `iab_spec` pin them.
     pub core_spec: Option<crate::validation::CoreSpecTarget>,
-    /// ST 2067-3 edition for the CPL rules. `None` = resolve it per CPL from
-    /// its namespace and contents (newest when they do not tell, announced).
+    /// ST 2067-3 edition for the CPL rules; wins over the one `core_spec`
+    /// implies. `None` = the edition `core_spec` cites when pinned, else
+    /// resolve it per CPL from its namespace and contents (newest when they
+    /// do not tell, announced).
     pub cpl_spec: Option<crate::validation::CplSpecTarget>,
-    /// ST 2067-201 (IAB) edition. `None` = resolve it per CPL (newest,
-    /// announced: the editions share one namespace).
+    /// ST 2067-201 (IAB) edition; wins over the one `core_spec` implies.
+    /// `None` = resolve it per CPL among the editions that cite the pinned
+    /// `core_spec`, if any (newest, announced: the editions share one
+    /// namespace).
     pub iab_spec: Option<crate::validation::IabSpecTarget>,
     /// Application profile spec versions. `None` = auto-detect from CPL.
     pub app_specs: Option<Vec<crate::validation::AppSpecTarget>>,

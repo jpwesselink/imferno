@@ -215,7 +215,10 @@ mod tests {
         for e in st2067_2::NotImfCompositionPlaylist.editions {
             assert_eq!(e.clause, Some("6.1"));
             let text = e.interpretation.unwrap().text;
-            assert!(text.contains("ST 2067-3") && text.contains("§5.1"), "{text}");
+            assert!(
+                text.contains("ST 2067-3") && text.contains("§5.1"),
+                "{text}"
+            );
             assert!(!text.contains("JP"), "{text}");
         }
     }

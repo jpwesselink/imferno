@@ -1178,89 +1178,140 @@ fn validate_cpl_id_matches_assetmap(
 // UUID uniqueness validation
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// `urn:uuid:ABC…` → `abc…`.
+/// `urn:uuid:ABC…` (any case) → `abc…`.
 fn normalise_uuid(s: &str) -> String {
     s.trim()
-        .trim_start_matches("urn:uuid:")
         .to_ascii_lowercase()
+        .trim_start_matches("urn:uuid:")
+        .to_string()
 }
 
 /// The distinct canonical forms of the `Resource` elements of a CPL's
-/// source XML, by Resource Id. The canonical form keeps element local
-/// names, attributes other than namespace declarations (sorted) and
-/// trimmed non-empty text, so whitespace and prefixes do not matter.
-/// `None` when the XML cannot be read.
+/// source XML, by Resource Id. The canonical form names elements and
+/// attributes by namespace URI and local name, drops namespace
+/// declarations, sorts attributes, and keeps the text (character data,
+/// CDATA, character and predefined entity references, resolved) trimmed per
+/// run, so whitespace, prefixes and escaping do not matter. Values are
+/// compared lexically (`01` is not `1`) and QName-valued attributes such as
+/// `xsi:type` are not resolved. `None` when the XML cannot be read.
 fn raw_resource_forms(xml: &str) -> Option<HashMap<String, HashSet<String>>> {
     use quick_xml::events::Event;
-    let mut reader = quick_xml::Reader::from_str(xml);
+    use quick_xml::name::ResolveResult;
+
+    fn uri(r: &ResolveResult<'_>) -> String {
+        match r {
+            ResolveResult::Bound(n) => n.as_ref().to_string(),
+            _ => String::new(),
+        }
+    }
+
+    struct Open {
+        depth: usize,
+        form: String,
+        id: String,
+        in_id: bool,
+        text: String,
+    }
+    impl Open {
+        fn flush(&mut self) {
+            let t = self.text.trim();
+            if !t.is_empty() {
+                if self.in_id {
+                    // A UUID (RFC 4122 compares hex digits case-insensitively).
+                    self.id.push_str(t);
+                    self.form.push_str(&normalise_uuid(t));
+                } else {
+                    self.form.push_str(t);
+                }
+            }
+            self.text.clear();
+        }
+    }
+
+    let mut reader = quick_xml::NsReader::from_str(xml);
     let mut out: HashMap<String, HashSet<String>> = HashMap::new();
-    // (depth of the open Resource, canonical form, Id, in the Id child)
-    let mut cur: Option<(usize, String, String, bool)> = None;
+    let mut cur: Option<Open> = None;
     let mut depth = 0usize;
-    let tag = |e: &quick_xml::events::BytesStart| {
-        let mut attrs: Vec<String> = e
-            .attributes()
-            .flatten()
-            .filter(|a| {
-                let k = a.key.as_ref();
-                k != "xmlns" && !k.starts_with("xmlns:")
-            })
-            .map(|a| {
-                let v = a
-                    .normalized_value(quick_xml::XmlVersion::Implicit1_0)
-                    .map(|v| v.into_owned())
-                    .unwrap_or_default();
-                format!("{}={v}", a.key.local_name().as_ref())
-            })
-            .collect();
-        attrs.sort();
-        format!("<{} {}>", e.local_name().as_ref(), attrs.join(" "))
-    };
     loop {
-        match reader.read_event().ok()? {
-            Event::Start(e) => {
-                depth += 1;
+        let (ns, event) = reader.read_resolved_event().ok()?;
+        let ns = uri(&ns);
+        let is_empty = matches!(event, Event::Empty(_));
+        match event {
+            Event::Start(e) | Event::Empty(e) => {
                 let local = e.local_name().as_ref().to_string();
+                let mut attrs: Vec<String> = e
+                    .attributes()
+                    .flatten()
+                    .filter(|a| {
+                        let k = a.key.as_ref();
+                        k != "xmlns" && !k.starts_with("xmlns:")
+                    })
+                    .map(|a| {
+                        let (ans, alocal) = reader.resolver().resolve_attribute(a.key);
+                        let v = a
+                            .normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                            .map(|v| v.into_owned())
+                            .unwrap_or_default();
+                        format!("{{{}}}{}={v}", uri(&ans), alocal.as_ref())
+                    })
+                    .collect();
+                attrs.sort();
+                let tag = format!("<{{{ns}}}{local} {}>", attrs.join(" "));
+                depth += 1;
                 match &mut cur {
                     None if local == "Resource" => {
-                        cur = Some((depth, tag(&e), String::new(), false));
+                        cur = Some(Open {
+                            depth,
+                            form: tag,
+                            id: String::new(),
+                            in_id: false,
+                            text: String::new(),
+                        });
                     }
-                    Some((d, form, _, in_id)) => {
-                        *in_id = local == "Id" && depth == *d + 1;
-                        form.push_str(&tag(&e));
+                    Some(o) => {
+                        o.flush();
+                        o.in_id = local == "Id" && depth == o.depth + 1;
+                        o.form.push_str(&tag);
                     }
                     None => {}
                 }
-            }
-            Event::Empty(e) => {
-                if let Some((_, form, _, _)) = &mut cur {
-                    form.push_str(&tag(&e));
-                    form.push_str("</>");
+                if is_empty {
+                    // An empty element opens and closes here.
+                    if let Some(o) = &mut cur {
+                        o.in_id = false;
+                        o.form.push_str("</>");
+                        if depth == o.depth {
+                            let o = cur.take().expect("open Resource");
+                            out.entry(normalise_uuid(&o.id)).or_default().insert(o.form);
+                        }
+                    }
+                    depth -= 1;
                 }
             }
             Event::Text(t) => {
-                if let Some((_, form, id, in_id)) = &mut cur {
-                    let text = quick_xml::escape::unescape(&t)
-                        .map(|c| c.into_owned())
-                        .unwrap_or_default();
-                    let text = text.trim();
-                    if !text.is_empty() {
-                        form.push_str(text);
-                        if *in_id {
-                            id.push_str(text);
-                        }
-                    }
+                if let Some(o) = &mut cur {
+                    o.text.push_str(&quick_xml::escape::unescape(&t).ok()?);
+                }
+            }
+            Event::CData(c) => {
+                if let Some(o) = &mut cur {
+                    o.text.push_str(&c);
+                }
+            }
+            Event::GeneralRef(r) => {
+                if let Some(o) = &mut cur {
+                    let entity = format!("&{};", r.into_inner());
+                    o.text.push_str(&quick_xml::escape::unescape(&entity).ok()?);
                 }
             }
             Event::End(_) => {
-                if let Some((d, form, id, in_id)) = &mut cur {
-                    *in_id = false;
-                    form.push_str("</>");
-                    if depth == *d {
-                        out.entry(normalise_uuid(id))
-                            .or_default()
-                            .insert(std::mem::take(form));
-                        cur = None;
+                if let Some(o) = &mut cur {
+                    o.flush();
+                    o.in_id = false;
+                    o.form.push_str("</>");
+                    if depth == o.depth {
+                        let o = cur.take().expect("open Resource");
+                        out.entry(normalise_uuid(&o.id)).or_default().insert(o.form);
                     }
                 }
                 depth = depth.saturating_sub(1);
@@ -9729,6 +9780,28 @@ mod tests {
             .resource_list
             .resources;
         assert!(r[0] == r[1], "the difference is in unparsed content");
+        assert_eq!(codes(&differ), ["ST2067-3:2020:6.11.1/UniqueResourceId"]);
+
+        // The same content written with CDATA, character and predefined
+        // entity references, another prefix for the same namespace, or an
+        // upper-case Id is identical.
+        let id = |r: String, id: &str| {
+            r.replace(
+                "urn:uuid:00000000-0000-0000-0000-000000000020",
+                &format!("urn:uuid:00000000-0000-0000-0000-0000000000{id}"),
+            )
+        };
+        let a = id(res(r#"<x:Ext xmlns:x="urn:x">A&amp;B</x:Ext>"#), "ab");
+        let b = id(
+            res(r#"<y:Ext xmlns:y="urn:x"><![CDATA[A&B]]></y:Ext>"#),
+            "ab",
+        );
+        let c = id(res(r#"<x:Ext xmlns:x="urn:x">&#65;&amp;B</x:Ext>"#), "AB");
+        let same = c1_cpl("2016", "T", &seq(&a, &format!("{b}{c}")));
+        assert!(codes(&same).is_empty(), "{:?}", codes(&same));
+        // Same local name in another namespace is a different element.
+        let d = id(res(r#"<x:Ext xmlns:x="urn:other">A&amp;B</x:Ext>"#), "ab");
+        let differ = c1_cpl("2016", "T", &seq(&a, &d));
         assert_eq!(codes(&differ), ["ST2067-3:2020:6.11.1/UniqueResourceId"]);
     }
 

@@ -240,7 +240,7 @@ pub static UniqueResourceId: Rule<E> = Rule {
     editions: &[
         checked(E::V2013, "6.11.1", Shall),
         checked(E::V2016, "6.11.1", Shall),
-        checked(E::V2020, "6.11.1", Shall).interpret("2020 allows two Resources with the same Id when they are identical; a duplicate Id is reported only when the Resources differ, compared on the raw Resource elements (local names, attributes without namespace declarations, trimmed text) when the source XML is kept, else as parsed (which omits content imferno does not parse).", None),
+        checked(E::V2020, "6.11.1", Shall).interpret("2020 allows two Resources with the same Id when they are identical; a duplicate Id is reported only when the Resources differ, compared on the raw Resource elements when the source XML is kept (names by namespace URI and local name, attributes sorted without namespace declarations, text with CDATA and character/predefined entity references resolved, trimmed; the Id case-insensitively), else as parsed (which omits content imferno does not parse). Values are compared lexically (01 is not 1) and QName values such as xsi:type are not resolved.", None),
     ],
 };
 

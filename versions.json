@@ -93,6 +93,10 @@
     {
       "label": "#107 ci/wasm-pack-from-crates",
       "path": "/pr-107/"
+    },
+    {
+      "label": "#108 feat/edition-pins-readable-notices",
+      "path": "/pr-108/"
     }
   ],
   "latest": "/v3.0.1/"

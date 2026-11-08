@@ -12,6 +12,8 @@
  *
  * Options (all optional):
  * - `coreSpec`: `"auto"` | `"v2013"` | `"v2016"` | `"v2020"`
+ * - `cplSpec`: `"auto"` | `"v2013"` | `"v2016"` | `"v2020"` (ST 2067-3)
+ * - `iabSpec`: `"auto"` | `"v2019"` | `"v2021"` | `"v2026"` (ST 2067-201)
  * - `app2eSpec`: `"auto"` | `"none"` | `"v2014"` | `"v2016"` | `"v2020"` | `"v2023"` | `"v2026"`
  * - `rules`: ESLint-style rules configuration object
  */

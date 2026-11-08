@@ -1485,23 +1485,23 @@ url: /imferno/beta/index.md
 [SMPTE ST-2067](https://www.smpte.org/standards/st2067)
 for Rust and JavaScript.
 
-Parse, validate, and inspect IMF packages with native Node.js bindings and a WebAssembly target for the browser.
+Parse and validate IMF packages. CLI, Rust, Node.js, and WebAssembly for the browser.
 
-[### IMF core + applications
+[### Validates locally
 
-Parse AssetMaps, PKLs, CPLs, and Sidecar Composition Maps across the IMF core (ST 2067-2/-3/-9, ST 429-9) plus application profiles: App #2E (ST 2067-21), IAB Level 0 through the 2026 Annex E revision (ST 2067-201), ISXD (ST 2067-202), and S-ADM/ADM audio essence detection (ST 2067-203/-204). MXF header metadata via RegXML (ST 377-1/-4).
+The WebAssembly build validates entirely in the browser. Nothing is uploaded, there is no server and no log of anyone's titles — honoring confidentiality.
 
-](/imferno/beta/reference/standards)[### Flexible strictness
+](/imferno/beta/reference/wasm)[### Strict, and yours to tune
 
-180+ typed validation rules across 10 SMPTE standards, plus XSD pre-pass and imferno-native structural checks. Tune each rule individually: set any code to `off`, `info`, `warn`, `error`, or `critical` to match your workflow.
+Strict to the SMPTE text by default. Requirements differ per company, so every rule can be set per spec edition to `off`, `info`, `warn`, `error` or `critical`.
 
-](/imferno/beta/guide/config)[### Rust, Node.js & WASM
+](/imferno/beta/guide/config)[### Typed output
 
-Use the native Rust library or CLI directly, `@imferno/node` bindings for server-side pipelines, or the WebAssembly build for the browser.
+Every result is typed — Rust, TypeScript, JSON Schema and SARIF. Build your own checks on top without needing imferno, and let agents read the results directly.
 
-](/imferno/beta/guide/quick-start)[### IMF reference corpus
+](/imferno/beta/reference/node)[### Findings you can act on
 
-Tested against the Netflix Photon MERIDIAN corpus, the Fraunhofer SMPTE working-group ST 2067-203/-204 corpus, and vendored fixtures for App #2E, App5 (IMAX HDR), IAB, ISXD, HT (JPEG 2000 High Throughput), S-ADM, and Netflix–Sony Plugfest.
+Each finding names the rule, the spec edition and the clause it was checked against — `ST2067-3:2016:7.2/SegmentDuration` — so people and agents know exactly what to fix.
 
 ](/imferno/beta/guide/validation)
 

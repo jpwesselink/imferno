@@ -196,7 +196,9 @@ fn iab_edition_follows_the_core_edition_unless_pinned() {
         .filter(|i| i.is(&EditionAssumed))
         .collect();
     assert_eq!(notices.len(), 1, "{notices:#?}");
-    assert!(notices[0].message.starts_with("ST 2067-201 edition of CPL"));
+    assert!(notices[0]
+        .message
+        .starts_with("Could not tell which ST 2067-201 edition this CPL follows"));
     assert!(notices[0]
         .message
         .contains("ST 2067-201:2021 and ST 2067-201:2026"));
@@ -228,8 +230,7 @@ fn iab_uri_validator_resolves_the_edition_per_cpl() {
     // Without that evidence the edition is assumed and announced.
     cpl.source_xml = None;
     cpl.extension_properties = None;
-    assert!(v
-        .validate_cpl(&cpl)
-        .iter()
-        .any(|i| i.is(&EditionAssumed) && i.message.starts_with("ST 2067-201 edition of CPL")));
+    assert!(v.validate_cpl(&cpl).iter().any(|i| i.is(&EditionAssumed)
+        && i.message
+            .starts_with("Could not tell which ST 2067-201 edition this CPL follows")));
 }

@@ -127,16 +127,44 @@ pub fn pinned_message(
         [one] => one.clone(),
         [init @ .., last] => format!("{} and {last}", init.join(", ")),
     };
-    let on_its_own = if own == applied {
-        "it gives the same on its own".to_string()
+    let without = if own == applied {
+        format!("{} gives the same without pins", capitalize(subject))
     } else {
-        format!("on its own it gives {}", and(own))
+        format!("Without pins, {subject} gives {}", and(own))
     };
     format!(
-        "{} applied: {}. {subject}: {declared}; {on_its_own}.",
+        "{} applied: {}. {without} ({declared}).",
         and(applied),
         source.describe(applied.len() > 1),
     )
+}
+
+/// `this CPL` → `This CPL`.
+fn capitalize(s: &str) -> String {
+    let mut c = s.chars();
+    match c.next() {
+        Some(f) => f.to_uppercase().chain(c).collect(),
+        None => String::new(),
+    }
+}
+
+/// The option that pins `E`'s spec, if any.
+fn pin_option_of<E: Edition>() -> Option<PinOption> {
+    use crate::diagnostics::rule::Spec;
+    match E::SPEC {
+        Spec::St2067_2 => Some(PinOption::Core),
+        Spec::St2067_3 => Some(PinOption::Cpl),
+        Spec::St2067_201 => Some(PinOption::Iab),
+        _ => None,
+    }
+}
+
+/// ` If you know the edition, pin it (cplSpec / --cpl-spec).` for a spec
+/// with a pin option; empty otherwise.
+fn pin_hint<E: Edition>() -> String {
+    pin_option_of::<E>()
+        .map(|o| format!(" If you know the edition, pin it ({}).", o.name()))
+        .unwrap_or_default()
 }
 
 /// `ST 2067-3:2016`.
@@ -147,7 +175,6 @@ fn label_of<E: Edition>(e: E) -> String {
 /// `edition` set by `source` on a CPL: the EditionPinned choice, with what
 /// the CPL declares and the edition it gives without pins (`own`).
 fn pinned_on_cpl<E: Edition>(
-    cpl: &CompositionPlaylist,
     edition: E,
     source: &PinSource,
     declared: &[String],
@@ -158,7 +185,7 @@ fn pinned_on_cpl<E: Edition>(
         pinned_message(
             &[label_of(edition)],
             source,
-            &format!("CPL {}", cpl.id),
+            "this CPL",
             &declared.join("; "),
             &[label_of(own)],
         ),
@@ -172,7 +199,6 @@ pub fn cpl_edition_pinned(
 ) -> EditionChoice<St2067_3Edition> {
     let own = cpl_edition(cpl, None, None).edition;
     pinned_on_cpl(
-        cpl,
         edition,
         &PinSource::Direct(PinOption::Cpl),
         &[cpl_namespace_declared(cpl)],
@@ -184,7 +210,7 @@ pub fn cpl_edition_pinned(
 fn cpl_namespace_declared(cpl: &CompositionPlaylist) -> String {
     match &cpl.namespace {
         CplNamespace::Unknown(ns) if ns.is_empty() => "it has no namespace".into(),
-        ns => format!("its namespace {ns}"),
+        ns => format!("its namespace `{ns}`"),
     }
 }
 
@@ -199,13 +225,7 @@ pub fn cpl_core_edition_pinned(
     let own = cpl_core_edition(cpl)
         .map(|c| c.edition)
         .unwrap_or(St2067_2Edition::V2020);
-    pinned_on_cpl(
-        cpl,
-        edition,
-        &PinSource::Direct(PinOption::Core),
-        &declared,
-        own,
-    )
+    pinned_on_cpl(edition, &PinSource::Direct(PinOption::Core), &declared, own)
 }
 
 /// Something in a document that only some editions' text defines.
@@ -290,10 +310,12 @@ pub fn resolve<E: Edition + Ord>(
             pinned: None,
             conflict: (!against.is_empty()).then(|| {
                 format!(
-                    "{spec} edition of {subject}: {namespace} allows only {spec}:{ed}, but other \
-                     evidence names {}: {}. {spec} rules were checked against {spec}:{ed}",
+                    "The namespace of {subject} means {spec}:{ed}, but its contents point to {}; \
+                     checked against {spec}:{ed}. {} allows only {spec}:{ed}; {}.{}",
                     labels(&named),
+                    capitalize(namespace),
                     whats.join("; "),
+                    pin_hint::<E>(),
                     ed = only.label(),
                 )
             }),
@@ -342,7 +364,7 @@ pub fn resolve<E: Edition + Ord>(
         (
             *left.last().expect("at least two left"),
             format!(
-                "{ns}, and {} does not tell {} apart",
+                "{ns}; {}. That leaves {}, and nothing in it tells them apart",
                 seen.join("; "),
                 labels(&left)
             ),
@@ -354,9 +376,11 @@ pub fn resolve<E: Edition + Ord>(
         conflict: None,
         pinned: None,
         assumed: Some(format!(
-            "{spec} edition of {subject} could not be determined: {why}; {spec} rules were \
-             checked against {spec}:{} (the newest)",
-            edition.label()
+            "Could not tell which {spec} edition {subject} follows; checked against {spec}:{} \
+             (the newest). {}.{}",
+            edition.label(),
+            capitalize(&why),
+            pin_hint::<E>(),
         )),
     }
 }
@@ -418,7 +442,7 @@ pub fn cpl_evidence(
     if uses_marker_scope_2020(cpl) {
         out.push(Evidence::one(
             St2067_3Edition::V2020,
-            format!("it uses the Marker Label scope {MARKER_SCOPE_2020}, which only ST 2067-3:2020 defines"),
+            format!("it uses the Marker Label scope `{MARKER_SCOPE_2020}`, which only ST 2067-3:2020 defines"),
         ));
     }
     out
@@ -444,7 +468,6 @@ pub fn cpl_edition(
     if let Some(core) = core_pin {
         let own = cpl_edition(cpl, None, None).edition;
         return pinned_on_cpl(
-            cpl,
             st2067_3_of_core(core),
             &PinSource::core(core),
             &[cpl_namespace_declared(cpl)],
@@ -457,12 +480,12 @@ pub fn cpl_edition(
         CplNamespace::Dci429_7 | CplNamespace::Unknown(_) => &[],
     };
     let namespace = match &cpl.namespace {
-        CplNamespace::Dci429_7 => format!("its namespace {} (ST 429-7)", cpl.namespace),
+        CplNamespace::Dci429_7 => format!("its namespace `{}` (ST 429-7)", cpl.namespace),
         CplNamespace::Unknown(ns) if ns.is_empty() => "its (empty) namespace".into(),
-        ns => format!("its namespace {ns}"),
+        ns => format!("its namespace `{ns}`"),
     };
     resolve(
-        &format!("CPL {}", cpl.id),
+        "this CPL",
         &namespace,
         candidates,
         &cpl_evidence(cpl, core_pin, iab_pin),
@@ -588,14 +611,13 @@ pub fn cpl_iab_edition(
     use St2067_201Edition::{V2019, V2021, V2026};
     let iab_declared = || {
         [format!(
-            "its IAB namespace {}, which every ST 2067-201 edition uses",
+            "its IAB namespace `{}`, which every ST 2067-201 edition uses",
             super::iab::URI_2019
         )]
     };
     if let Some(edition) = pin {
         let own = cpl_iab_edition(cpl, None, None).edition;
         return pinned_on_cpl(
-            cpl,
             edition,
             &PinSource::Direct(PinOption::Iab),
             &iab_declared(),
@@ -611,7 +633,7 @@ pub fn cpl_iab_edition(
     };
     if let (Some([only]), Some(core)) = (pinned_candidates, core_pin) {
         let own = cpl_iab_edition(cpl, None, None).edition;
-        return pinned_on_cpl(cpl, *only, &PinSource::core(core), &iab_declared(), own);
+        return pinned_on_cpl(*only, &PinSource::core(core), &iab_declared(), own);
     }
     let mut evidence = Vec::new();
     if core_pin.is_none() {
@@ -636,7 +658,7 @@ pub fn cpl_iab_edition(
         evidence.push(Evidence {
             editions: vec![V2021, V2026],
             what: format!(
-                "it uses the Marker Label scope {MARKER_SCOPE_2020} (ST 2067-3:2020), which \
+                "it uses the Marker Label scope `{MARKER_SCOPE_2020}` (ST 2067-3:2020), which \
                  ST 2067-201:2021 and :2026 cite"
             ),
         });
@@ -649,10 +671,10 @@ pub fn cpl_iab_edition(
             ),
         ));
     }
-    let namespace = "its IAB namespace http://www.smpte-ra.org/ns/2067-201/2019";
+    let namespace = "its IAB namespace `http://www.smpte-ra.org/ns/2067-201/2019`";
     match (pinned_candidates, core_pin) {
         (Some(candidates), Some(core)) => resolve(
-            &format!("CPL {}", cpl.id),
+            "this CPL",
             &format!(
                 "{namespace} with the pinned ST 2067-2:{} (the editions that cite it)",
                 core.label()
@@ -660,12 +682,7 @@ pub fn cpl_iab_edition(
             candidates,
             &evidence,
         ),
-        _ => resolve(
-            &format!("CPL {}", cpl.id),
-            namespace,
-            St2067_201Edition::ALL,
-            &evidence,
-        ),
+        _ => resolve("this CPL", namespace, St2067_201Edition::ALL, &evidence),
     }
 }
 
@@ -783,8 +800,8 @@ pub fn cpl_core_evidence(cpl: &CompositionPlaylist) -> Vec<Evidence<St2067_2Edit
 pub fn cpl_core_edition(cpl: &CompositionPlaylist) -> Option<EditionChoice<St2067_2Edition>> {
     let candidates = core_candidates(&cpl.namespace)?;
     Some(resolve(
-        &format!("CPL {}", cpl.id),
-        &format!("its namespace {}", cpl.namespace),
+        "this CPL",
+        &format!("its namespace `{}`", cpl.namespace),
         candidates,
         &cpl_core_evidence(cpl),
     ))
@@ -1107,11 +1124,18 @@ mod tests {
         assert_eq!(c.edition, St2067_3Edition::V2020);
         let why = c.assumed.expect("announced");
         assert!(
-            why.contains("its namespace http://www.smpte-ra.org/schemas/2067-3/2016 is used by ST 2067-3:2016 and ST 2067-3:2020"),
+            why.starts_with(
+                "Could not tell which ST 2067-3 edition this CPL follows; checked against \
+                 ST 2067-3:2020 (the newest). "
+            ),
             "{why}"
         );
         assert!(
-            why.ends_with("checked against ST 2067-3:2020 (the newest)"),
+            why.contains("Its namespace `http://www.smpte-ra.org/schemas/2067-3/2016` is used by ST 2067-3:2016 and ST 2067-3:2020"),
+            "{why}"
+        );
+        assert!(
+            why.ends_with("If you know the edition, pin it (cplSpec / --cpl-spec)."),
             "{why}"
         );
     }

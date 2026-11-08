@@ -210,7 +210,7 @@ pub static EditionAssumed: Rule<E> = Rule {
     name: "EditionAssumed",
     category: Category::Structure,
     description: "The edition of a spec applied to a document (the package, a CPL, the Asset Map) could not be determined: its namespace is shared by several editions and nothing in it tells them apart, or the evidence names no single one of them. The newest candidate was applied; the message names the namespace seen and the edition used.",
-    example: Some("CPL in the ST 2067-3:2016 namespace (used by ST 2067-2:2016 and :2020) with no Core Constraints namespace and no App #2E ApplicationIdentification: Core Constraints checked against ST 2067-2:2020"),
+    example: Some("Could not tell which ST 2067-2 edition this CPL follows; checked against ST 2067-2:2020 (the newest). Its namespace `http://www.smpte-ra.org/schemas/2067-3/2016` is used by ST 2067-2:2016 and ST 2067-2:2020, and nothing in it tells them apart. If you know the edition, pin it (coreSpec / --core-spec)."),
     editions: &[row(E::Current, "Package", Severity::Info)],
 };
 
@@ -220,7 +220,7 @@ pub static EditionConflict: Rule<E> = Rule {
     name: "EditionConflict",
     category: Category::Structure,
     description: "The namespace of a document allows only one edition of a spec, but other evidence in it (e.g. the ApplicationIdentification) names another edition. The namespace's edition was applied; the message names both editions and the evidence.",
-    example: Some("CPL in the ST 2067-3:2013 namespace (ST 2067-2:2013) whose ApplicationIdentification lists ST 2067-21:2016, which cites ST 2067-2:2016"),
+    example: Some("The namespace of this CPL means ST 2067-2:2013, but its contents point to ST 2067-2:2016; checked against ST 2067-2:2013. Its namespace `http://www.smpte-ra.org/schemas/2067-3/2013` allows only ST 2067-2:2013; its ApplicationIdentification lists ST 2067-21:2016, which references ST 2067-2:2016. If you know the edition, pin it (coreSpec / --core-spec)."),
     editions: &[row(E::Current, "Package", Severity::Warning)],
 };
 
@@ -229,8 +229,8 @@ pub static EditionConflict: Rule<E> = Rule {
 pub static DeliveryNotChecked: Rule<E> = Rule {
     name: "DeliveryNotChecked",
     category: Category::Structure,
-    description: "ST 2067-2:2013 defines no delivery requirements (an IMP is a Packing List and its assets, §7); the delivery rules of later editions (Asset Map ingest, ASSETMAP.xml name, Annex A paths, VOLINDEX) were not checked; Packing List Size and Hash are checked under ST 429-8.",
-    example: Some("ST 429-8 Packing List with CPLs in the ST 2067-3:2013 namespace"),
+    description: "The package follows ST 2067-2:2013, which defines no delivery requirements (§7: an IMP is a Packing List and the assets it references): the delivery rules of later editions (Asset Map ingest, ASSETMAP.xml name, ST 429-9 Annex A paths, VOLINDEX) were not checked. Packing List Size and Hash are checked under ST 429-8.",
+    example: Some("Package follows ST 2067-2:2013: delivery requirements from 2016+ (Asset Map, file names, paths, VOLINDEX) were not checked. File size and hash were checked (ST 429-8)."),
     editions: &[row(E::Current, "Package", Severity::Info)],
 };
 
@@ -242,7 +242,7 @@ pub static EditionPinned: Rule<E> = Rule {
     name: "EditionPinned",
     category: Category::Structure,
     description: "The edition of a spec applied to a document (the package, a CPL, an MXF track file) was set by the caller: pinned by an option (coreSpec / --core-spec, cplSpec / --cpl-spec, iabSpec / --iab-spec), or following from a pinned ST 2067-2 edition through its dated references. The message names the edition applied, the pin it comes from, and what the document itself declares and would give on its own. Reported whenever a pin was applied, also when it agrees with the document.",
-    example: Some("ST 2067-3:2016 applied: follows from the ST 2067-2:2016 pin (coreSpec / --core-spec). CPL …: its namespace http://www.smpte-ra.org/schemas/2067-3/2013; on its own it gives ST 2067-3:2013."),
+    example: Some("ST 2067-3:2016 applied: follows from the ST 2067-2:2016 pin (coreSpec / --core-spec). Without pins, this CPL gives ST 2067-3:2013 (its namespace `http://www.smpte-ra.org/schemas/2067-3/2013`)."),
     editions: &[row(E::Current, "Package", Severity::Info)],
 };
 

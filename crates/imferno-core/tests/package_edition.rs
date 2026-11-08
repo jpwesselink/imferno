@@ -183,7 +183,9 @@ fn package_and_cpl_core_editions_agree() {
     assert_eq!(
         notices
             .iter()
-            .filter(|n| n.message.starts_with("ST 2067-2 edition of"))
+            .filter(|n| n
+                .message
+                .starts_with("Could not tell which ST 2067-2 edition"))
             .count(),
         2
     );
@@ -418,4 +420,127 @@ fn every_pinned_edition_is_announced() {
             n.message
         );
     }
+}
+
+/// The first sentence of a message (up to the first ". ").
+fn first_sentence(message: &str) -> &str {
+    message.split(". ").next().unwrap_or(message)
+}
+
+/// Edition notices and ContentKindUnknown read as one short plain sentence
+/// first, details after; URIs are written as code, not as links.
+#[test]
+fn notices_lead_with_one_short_plain_sentence() {
+    use imferno_core::validation::CplSpecTarget;
+    let pkg = package("MERIDIAN_Netflix_Photon_161006");
+    let report = pkg.validate(&ValidationOptions {
+        skip_disk_checks: true,
+        ..Default::default()
+    });
+    let issues = all(&report);
+    let message = |rule: &str| -> String {
+        issues
+            .iter()
+            .find(|i| i.rule.0.ends_with(rule))
+            .unwrap_or_else(|| panic!("{rule}: {issues:#?}"))
+            .message
+            .clone()
+    };
+
+    let m = message("/ContentKindUnknown");
+    assert!(
+        m.starts_with(
+            r#"ContentKind "Test" is not a Table 3 value (ST 2067-3:2013 §6.1.8); values are case-sensitive, e.g. "test"."#
+        ),
+        "{m}"
+    );
+    assert!(
+        m.contains("`http://www.smpte-ra.org/schemas/2067-3/2013#content-kind`"),
+        "{m}"
+    );
+
+    let m = message("/DeliveryNotChecked");
+    assert!(
+        m.starts_with(
+            "Package follows ST 2067-2:2013: delivery requirements from 2016+ (Asset Map, \
+             file names, paths, VOLINDEX) were not checked."
+        ),
+        "{m}"
+    );
+    assert!(
+        m.contains("File size and hash were checked (ST 429-8)"),
+        "{m}"
+    );
+
+    let m = message("/EditionConflict");
+    assert!(
+        m.starts_with(
+            "The namespace of this CPL means ST 2067-2:2013, but its contents point to \
+             ST 2067-2:2016; checked against ST 2067-2:2013."
+        ),
+        "{m}"
+    );
+    assert!(m.contains("ST 2067-21:2016"), "{m}");
+    assert!(
+        m.contains("`http://www.smpte-ra.org/schemas/2067-3/2013`"),
+        "{m}"
+    );
+
+    // Every notice, in every pin combination and on an ambiguous package.
+    let mut ambiguous = package("MissingFilesAndAssetMapEntries");
+    for cpl in ambiguous.composition_playlists.values_mut() {
+        cpl.source_xml = None;
+    }
+    let reports = [
+        report.clone(),
+        pkg.validate(&ValidationOptions {
+            core_spec: Some(CoreSpecTarget::St2067_2_2016),
+            ..Default::default()
+        }),
+        pkg.validate(&ValidationOptions {
+            core_spec: Some(CoreSpecTarget::St2067_2_2016),
+            cpl_spec: Some(CplSpecTarget::St2067_3_2013),
+            skip_disk_checks: true,
+            ..Default::default()
+        }),
+        ambiguous.validate(&ValidationOptions::default()),
+        package("IAB/CompleteIMP").validate(&ValidationOptions::default()),
+    ];
+    let mut seen = 0;
+    for r in &reports {
+        for i in all(r).into_iter().filter(|i| {
+            [
+                &imferno::EditionAssumed,
+                &imferno::EditionConflict,
+                &imferno::EditionPinned,
+                &imferno::DeliveryNotChecked,
+            ]
+            .iter()
+            .any(|rule| i.is(*rule))
+        }) {
+            seen += 1;
+            let first = first_sentence(&i.message);
+            assert!(first.len() <= 125, "{} chars: {first}", first.len());
+            if let Some(id) = i.location.cpl_id {
+                assert!(!first.contains(&id.to_string()), "{first}");
+            }
+            assert!(
+                !i.message.contains(" http://"),
+                "URIs are code: {}",
+                i.message
+            );
+        }
+        let assumed: Vec<_> = all(r)
+            .into_iter()
+            .filter(|i| i.is(&imferno::EditionAssumed))
+            .collect();
+        for a in assumed {
+            assert!(
+                a.message.starts_with("Could not tell which "),
+                "{}",
+                a.message
+            );
+        }
+    }
+    assert!(seen >= 10, "{seen}");
 }

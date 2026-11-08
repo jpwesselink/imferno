@@ -1230,8 +1230,14 @@ impl Imferno {
         namespaces.dedup();
         let namespace = match namespaces.as_slice() {
             [] => "it has no Packing List, so its namespace".to_string(),
-            [one] => format!("its Packing List namespace {one}"),
-            many => format!("its Packing List namespaces {}", many.join(", ")),
+            [one] => format!("its Packing List namespace `{one}`"),
+            many => format!(
+                "its Packing List namespaces {}",
+                many.iter()
+                    .map(|n| format!("`{n}`"))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
         };
 
         if let Some(target) = core_spec {
@@ -1249,7 +1255,7 @@ impl Imferno {
                 pinned_message(
                     &[label(edition)],
                     &PinSource::Direct(PinOption::Core),
-                    "The package",
+                    "the package",
                     &declared,
                     &[label(own)],
                 ),
@@ -1315,9 +1321,9 @@ impl Imferno {
             report.add(ValidationIssue::from_rule(
                 &imferno::EditionAssumed,
                 ImfernoEdition::Current,
-                "ST 429-9 edition of the Asset Map could not be determined (ST 429-9:2007 and \
-                 ST 429-9:2014 share the namespace http://www.smpte-ra.org/schemas/429-9/2007/AM); \
-                 ST 429-9 rules were checked against ST 429-9:2014",
+                "Could not tell which ST 429-9 edition the Asset Map follows; checked against \
+                 ST 429-9:2014 (the newest). ST 429-9:2007 and ST 429-9:2014 share its namespace \
+                 `http://www.smpte-ra.org/schemas/429-9/2007/AM`.",
             ));
         }
     }
@@ -1350,10 +1356,12 @@ impl Imferno {
             report.add(ValidationIssue::from_rule(
                 &imferno::DeliveryNotChecked,
                 ImfernoEdition::Current,
-                "ST 2067-2:2013 defines no delivery requirements (an IMP is a Packing List \
-                 and the assets it references, §7); delivery rules of later editions \
-                 (Asset Map ingest, ASSETMAP.xml name, ST 429-9 Annex A paths, VOLINDEX) \
-                 were not checked; Packing List Size and Hash are checked under ST 429-8",
+                "Package follows ST 2067-2:2013: delivery requirements from 2016+ (Asset Map, \
+                 file names, paths, VOLINDEX) were not checked. File size and hash were checked \
+                 (ST 429-8). ST 2067-2:2013 defines no delivery requirements (§7: an IMP is a \
+                 Packing List and the assets it references); the later editions' Asset Map \
+                 ingest, ASSETMAP.xml name, ST 429-9 Annex A paths and VOLINDEX rules do not \
+                 apply to it.",
             ));
         }
     }
@@ -2415,10 +2423,6 @@ impl Imferno {
                 // The ST 377-1 / ST 377-4 editions of this track file, from the
                 // dated references of the specs that apply to it; the ST 2067-201
                 // edition from the CPLs whose IAB Virtual Tracks reference it.
-                let file_name = path
-                    .file_name()
-                    .map(|n| n.to_string_lossy().into_owned())
-                    .unwrap_or_default();
                 // The IAB edition of a referenced file is its CPL's (the CPL
                 // announces it when assumed); only a determined (pinned) edition
                 // is evidence for the ST 377 editions.
@@ -2432,10 +2436,10 @@ impl Imferno {
                     .as_ref()
                     .filter(|c| c.determined)
                     .map(|c| c.edition);
-                let subject = format!("MXF track file '{file_name}'");
+                let subject = "this MXF file";
                 let (c1, c4) = self.mxf_editions_of(
                     &asset.id,
-                    &subject,
+                    subject,
                     core_pin,
                     iab_ref,
                     (spec_ed, package_determined),
@@ -2463,7 +2467,7 @@ impl Imferno {
                         .map(|c| c.edition);
                     let (o1, o4) = self.mxf_editions_of(
                         &asset.id,
-                        &subject,
+                        subject,
                         None,
                         own_iab,
                         (own_pkg.edition, own_pkg.determined),
@@ -2477,8 +2481,8 @@ impl Imferno {
                     pinned_message(
                         &labels(c1.edition, c4.edition),
                         &PinSource::Follows(pins),
-                        &subject,
-                        "it carries no namespace (MXF has none); the dated references of the \
+                        subject,
+                        "MXF carries no namespace; the dated references of the \
                          specs that apply to it decide",
                         &labels(o1.edition, o4.edition),
                     )
@@ -2620,12 +2624,11 @@ impl Imferno {
                 // ST 2067-201 one only for a file that carries IAB).
                 let iab_assumed =
                     (carries_iab && iab_choice.is_none() && iab_pin.is_none()).then(|| {
-                        format!(
-                            "ST 2067-201 edition of MXF track file '{file_name}' could not be \
-                         determined: no CPL IAB Virtual Track references it, and every \
-                         ST 2067-201 edition shares one namespace; ST 2067-201 rules were \
-                         checked against ST 2067-201:2026 (the newest)"
-                        )
+                        "Could not tell which ST 2067-201 edition this MXF file follows; checked \
+                         against ST 2067-201:2026 (the newest). No CPL IAB Virtual Track \
+                         references it, and every ST 2067-201 edition uses one namespace. If you \
+                         know the edition, pin it (iabSpec / --iab-spec)."
+                            .to_string()
                     });
                 let notices = [
                     (&imferno::EditionPinned, pinned_notice),

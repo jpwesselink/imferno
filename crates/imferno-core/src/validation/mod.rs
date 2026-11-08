@@ -185,8 +185,8 @@ impl ConstraintsValidator for NotImfCpl {
         let choice = match self.core_pin {
             Some(edition) => cpl_core_edition_pinned(cpl, edition),
             None => resolve_edition(
-                &format!("CPL {}", cpl.id),
-                &format!("its namespace {}", cpl.namespace),
+                "this CPL",
+                &format!("its namespace `{}`", cpl.namespace),
                 &[],
                 &[],
             ),

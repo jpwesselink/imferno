@@ -93,10 +93,6 @@
     {
       "label": "#105 docs/homepage-why",
       "path": "/pr-105/"
-    },
-    {
-      "label": "#106 fix/edition-resolution",
-      "path": "/pr-106/"
     }
   ],
   "latest": "/v3.0.1/"

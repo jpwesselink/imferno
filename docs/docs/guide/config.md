@@ -220,10 +220,16 @@ allows only one edition but other evidence names another, the namespace's
 edition is applied and `IMFERNO:Package/EditionConflict` (Warning) names both
 editions and the evidence. Every edition a pin sets, directly or through a
 pinned ST 2067-2 edition, is announced by `IMFERNO:Package/EditionPinned`
-(Info), one per document and spec (one per MXF file for ST 377-1 and
-ST 377-4): the edition applied, the pin it comes from, what the document
-declares, and what it gives on its own. It is reported also when the pin
-agrees with the document, so a report always shows the manual choices.
+(Info), one per document and spec: the edition applied, the pin it comes
+from, what the document declares and gives on its own (and whether that would
+have been an `EditionConflict` or `EditionAssumed`), and any evidence in the
+document that points elsewhere (the pin wins; no `EditionConflict`). For the
+package and CPLs it is reported also when the pin agrees with the document,
+so a report always shows the manual choices. For an MXF track file (one
+notice for ST 377-1, ST 377-4 and ST 2067-201) it is reported only when the
+pins change its editions: every ST 2067-2 edition cites the same ST 377
+editions. A Core Constraints validator chosen by an ApplicationIdentification
+URI is not a pin: its edition is evidence, and the CPL namespace decides.
 
 - **ST 2067-2, package** (Packing List, Asset Map, ingest; `--core-spec` /
   `coreSpec`): an ST 429-8 Packing List means 2013; the `.../2067-2/2016/PKL`

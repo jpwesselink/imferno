@@ -37,9 +37,9 @@ pub mod isxd;
 pub use app2e::{App2E, App2E2014, App2E2016, App2E2020, App2E2023, App2E2026, App2EEdition};
 pub use edition::{
     application_identification_core_edition, cpl_core_edition, cpl_core_edition_pinned,
-    cpl_core_evidence, cpl_edition, cpl_edition_pinned, cpl_evidence, cpl_iab_edition,
-    declared_core_constraints_editions, mxf_editions, pinned_message, resolve as resolve_edition,
-    EditionChoice, Evidence, PinOption, PinSource,
+    cpl_core_evidence, cpl_edition, cpl_edition_checked_with, cpl_edition_pinned, cpl_evidence,
+    cpl_iab_edition, declared_core_constraints_editions, mxf_editions, pinned_choice,
+    pinned_message, resolve as resolve_edition, EditionChoice, Evidence, PinOption, PinSource,
 };
 pub use iab::{AppIabPlugin2019, AppIabPlugin2021, AppIabPlugin2026, URI_2019, URI_2019_SCHEMAS};
 pub use isxd::{AppIsxdPlugin2023, URI_2022};
@@ -730,7 +730,10 @@ pub struct ValidatorSelection {
     /// When set, these app specs are used instead of CPL `ApplicationIdentification`.
     pub app_specs: Option<Vec<AppSpecTarget>>,
 
-    /// Override for the core constraints namespace URI.
+    /// The ST 2067-2 edition pin as a Core Constraints namespace URI: the
+    /// same full pin as `core_spec` (package, CPLs, MXF, IAB), which wins
+    /// when both are set. A URI that is no Core Constraints namespace pins
+    /// nothing.
     ///
     /// Example: `http://www.smpte-ra.org/schemas/2067-2/2016`
     ///
@@ -742,6 +745,18 @@ pub struct ValidatorSelection {
     /// When set, these URIs are used instead of CPL `ApplicationIdentification`.
     /// Prefer `app_specs` for strongly typed selection.
     pub application_identification_uris: Option<Vec<String>>,
+}
+
+impl ValidatorSelection {
+    /// The ST 2067-2 edition pinned by the caller: `core_spec`, else
+    /// `core_namespace_uri` when it is a Core Constraints namespace.
+    pub fn core_pin(&self) -> Option<CoreSpecTarget> {
+        self.core_spec.or_else(|| {
+            self.core_namespace_uri
+                .as_deref()
+                .and_then(CoreSpecTarget::from_namespace_uri)
+        })
+    }
 }
 
 /// Registry that applies caller-provided selection overrides, then resolves
@@ -769,13 +784,7 @@ impl ValidatorRegistry for ConfigurableValidatorRegistry {
         // A core edition pinned by the caller is evidence for the ST 2067-3
         // edition (its dated reference); a resolved one counts only when
         // determined (cpl_evidence).
-        let core_pin = self.selection.core_spec.map(|t| t.edition()).or_else(|| {
-            self.selection
-                .core_namespace_uri
-                .as_deref()
-                .and_then(CoreSpecTarget::from_namespace_uri)
-                .map(|t| t.edition())
-        });
+        let core_pin = self.selection.core_pin().map(|t| t.edition());
         let pins = Pins {
             core: core_pin,
             iab: iab_pin,
@@ -799,8 +808,6 @@ impl ValidatorRegistry for ConfigurableValidatorRegistry {
         let core = if let Some(edition) = core_pin {
             notices.splice(0..0, notices_of(&cpl_core_edition_pinned(cpl, edition)));
             Some(core_of(edition))
-        } else if let Some(uri) = self.selection.core_namespace_uri.as_deref() {
-            self.resolve_namespace(uri)
         } else {
             cpl_core_edition(cpl).map(|core| {
                 notices.splice(0..0, notices_of(&core));
@@ -2334,8 +2341,9 @@ fn validate_dangling_essence_descriptors(
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// The Core Constraints of one ST 2067-2 edition, with the ST 2067-3 rules
-/// of edition `cpl` when pinned, else of the edition
-/// [`cpl_edition`] resolves for the CPL.
+/// of edition `cpl` when the registry sets it (pinned or resolved), else of
+/// the edition [`cpl_edition_checked_with`] resolves for the CPL with this
+/// validator's edition as evidence, not as a pin: the CPL namespace decides.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CoreConstraints {
     /// ST 2067-2 edition.
@@ -2356,10 +2364,12 @@ impl ConstraintsValidator for CoreConstraints {
     fn validate_cpl(&self, cpl: &CompositionPlaylist) -> Vec<ValidationIssue> {
         use crate::diagnostics::Edition;
         let mut issues = Vec::new();
-        // Used directly, the validator's own edition is the caller's choice.
+        // Chosen by namespace (or used directly), the validator's own
+        // edition is evidence for the ST 2067-3 edition, not a caller pin:
+        // the CPL's namespace still decides.
         let cpl_ed = self
             .cpl
-            .unwrap_or_else(|| cpl_edition(cpl, Some(self.edition), None).edition);
+            .unwrap_or_else(|| cpl_edition_checked_with(cpl, Some(self.edition), None).edition);
 
         validate_core_structure(cpl, self.edition, cpl_ed, &mut issues);
 
@@ -2386,7 +2396,8 @@ impl ConstraintsValidator for CoreConstraints {
 }
 
 /// ST 2067-2:2020 Core Constraints ([`CoreConstraints`] with the CPL's own
-/// ST 2067-3 edition).
+/// ST 2067-3 edition: chosen by namespace or used directly, the validator's
+/// edition is evidence for it, not a caller pin).
 pub struct CoreConstraints2020;
 
 impl ConstraintsValidator for CoreConstraints2020 {
@@ -2404,7 +2415,8 @@ impl ConstraintsValidator for CoreConstraints2020 {
 }
 
 /// ST 2067-2:2016 Core Constraints ([`CoreConstraints`] with the CPL's own
-/// ST 2067-3 edition).
+/// ST 2067-3 edition: chosen by namespace or used directly, the validator's
+/// edition is evidence for it, not a caller pin).
 pub struct CoreConstraints2016;
 
 impl ConstraintsValidator for CoreConstraints2016 {
@@ -2422,7 +2434,8 @@ impl ConstraintsValidator for CoreConstraints2016 {
 }
 
 /// ST 2067-2:2013 Core Constraints ([`CoreConstraints`] with the CPL's own
-/// ST 2067-3 edition).
+/// ST 2067-3 edition: chosen by namespace or used directly, the validator's
+/// edition is evidence for it, not a caller pin).
 pub struct CoreConstraints2013;
 
 impl ConstraintsValidator for CoreConstraints2013 {
@@ -2999,6 +3012,28 @@ mod tests {
             max_fall: None,
         });
         cpl
+    }
+
+    /// A Core Constraints validator chosen by namespace (an
+    /// ApplicationIdentification listing a Core Constraints URI, or used
+    /// directly) is not a caller pin: its edition is evidence, and the CPL's
+    /// namespace still decides ST 2067-3 (2013 namespace → ST 2067-3:2013).
+    #[test]
+    fn a_core_validator_by_namespace_is_evidence_not_a_pin() {
+        let mut cpl = with_app_id(Some("http://www.smpte-ra.org/schemas/2067-2/2016"));
+        cpl.namespace = CplNamespace::Smpte2067_3_2013;
+        cpl.content_kind = ContentKindElement::from(ContentKind::Other("Banana".to_string()));
+        for issues in [validate_cpl(&cpl), CoreConstraints2016.validate_cpl(&cpl)] {
+            let st3: Vec<_> = issues
+                .iter()
+                .filter(|i| i.spec == crate::diagnostics::Spec::St2067_3)
+                .collect();
+            assert!(!st3.is_empty(), "{issues:#?}");
+            for i in st3 {
+                assert_eq!(i.edition, "2013", "{}", i.code);
+            }
+            assert!(!issues.iter().any(|i| i.is(&imferno::EditionPinned)));
+        }
     }
 
     /// https://github.com/Netflix/photon/issues/407: a CPL whose application

@@ -401,24 +401,108 @@ fn every_pinned_edition_is_announced() {
     });
     assert_eq!(notices.len(), 3, "{notices:#?}");
 
-    // MXF track files: their ST 377-1 / ST 377-4 editions follow the pin.
+    // MXF track files: announced only when the pins change their editions
+    // (JP). Every ST 2067-2 edition cites ST 377-1:2011 / ST 377-4:2012, so
+    // MERIDIAN's files stay as they are under a core pin.
     let notices = pinned(ValidationOptions {
         core_spec: Some(CoreSpecTarget::St2067_2_2016),
         ..Default::default()
     });
-    let mxf: Vec<_> = notices
+    assert!(
+        !notices.iter().any(|n| n.location.file.is_some()),
+        "{notices:#?}"
+    );
+    // The IAB file of IAB/CompleteIMP is ST 2067-201:2019 on its own
+    // (ST 377-1:2011); pinning ST 2067-201:2021 makes it ST 377-1:2019.
+    use imferno_core::validation::IabSpecTarget;
+    let iab = package("IAB/CompleteIMP");
+    let notices: Vec<ValidationIssue> = all(&iab.validate(&ValidationOptions {
+        iab_spec: Some(IabSpecTarget::St2067_201_2021),
+        ..Default::default()
+    }))
+    .into_iter()
+    .filter(|i| i.is(&imferno::EditionPinned) && i.location.file.is_some())
+    .cloned()
+    .collect();
+    assert_eq!(notices.len(), 1, "{notices:#?}");
+    let m = &notices[0].message;
+    assert!(
+        m.starts_with(
+            "ST 377-1:2019, ST 377-4:2012 and ST 2067-201:2021 applied: follow from the \
+             ST 2067-201:2021 pin (iabSpec / --iab-spec)"
+        ),
+        "{m}"
+    );
+    assert!(m.contains("gives ST 377-1:2011"), "{m}");
+}
+
+/// What the unpinned resolution would have reported, and document evidence
+/// against the pin, are in the EditionPinned message (no EditionConflict).
+#[test]
+fn pinned_notices_name_the_conflict_and_the_evidence_they_override() {
+    let pkg = package("MERIDIAN_Netflix_Photon_161006");
+    let report = pkg.validate(&ValidationOptions {
+        core_spec: Some(CoreSpecTarget::St2067_2_2016),
+        skip_disk_checks: true,
+        ..Default::default()
+    });
+    let core = all(&report)
+        .into_iter()
+        .find(|i| {
+            i.is(&imferno::EditionPinned)
+                && i.location.cpl_id.is_some()
+                && i.message.starts_with("ST 2067-2:2016 applied")
+        })
+        .expect("CPL ST 2067-2 notice")
+        .message
+        .clone();
+    assert!(
+        core.contains(
+            "Without pins this would be an EditionConflict: the namespace of this CPL means \
+             ST 2067-2:2013, but its contents point to ST 2067-2:2016"
+        ),
+        "{core}"
+    );
+    assert!(
+        core.contains(
+            "Against the pin, this CPL points to ST 2067-2:2013: its ApplicationIdentification \
+             element is in the ST 2067-2:2013 Core Constraints namespace"
+        ),
+        "{core}"
+    );
+    // The App #2E 2016 listing supports the pin: listed with the namespace.
+    assert!(core.contains("ST 2067-21:2016"), "{core}");
+}
+
+/// `core_namespace_uri` is the same full pin as `core_spec`: package, CPL
+/// and the editions that follow from it.
+#[test]
+fn core_namespace_uri_is_a_full_pin() {
+    use imferno_core::validation::{
+        validate_cpl_with_registry, ConfigurableValidatorRegistry, ValidatorSelection,
+    };
+    let pkg = package("MERIDIAN_Netflix_Photon_161006");
+    let selection = ValidatorSelection {
+        core_namespace_uri: Some("http://www.smpte-ra.org/schemas/2067-2/2016".into()),
+        ..Default::default()
+    };
+    let registry = ConfigurableValidatorRegistry::new(selection.clone());
+    let report = pkg.validate_package_structure_for(
+        |cpl| validate_cpl_with_registry(cpl, &registry),
+        true,
+        &selection,
+    );
+    let issues = all(&report);
+    assert!(!issues.iter().any(|i| i.is(&imferno::DeliveryNotChecked)));
+    assert!(!issues.iter().any(|i| i.is(&imferno::EditionConflict)));
+    assert!(issues
         .iter()
-        .filter(|n| n.location.file.is_some())
-        .collect();
-    assert!(!mxf.is_empty(), "{notices:#?}");
-    for n in mxf {
-        assert!(
-            n.message.starts_with(
-                "ST 377-1:2011 and ST 377-4:2012 applied: follow from the ST 2067-2:2016 pin"
-            ),
-            "{}",
-            n.message
-        );
+        .any(|i| i.is(&imferno::EditionPinned) && i.location.cpl_id.is_none()));
+    for i in issues
+        .iter()
+        .filter(|i| i.spec == imferno_core::diagnostics::Spec::St2067_3)
+    {
+        assert_eq!(i.edition, "2016", "{}", i.code);
     }
 }
 
@@ -542,5 +626,5 @@ fn notices_lead_with_one_short_plain_sentence() {
             );
         }
     }
-    assert!(seen >= 10, "{seen}");
+    assert!(seen >= 8, "{seen}");
 }

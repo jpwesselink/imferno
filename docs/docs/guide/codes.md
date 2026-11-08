@@ -300,7 +300,8 @@ Unmarked rows are carried over from earlier catalogues and not yet checked.
 
 | Rule | Description | Category | Clause |
 |------|-------------|----------|------|
-| `IMFERNO/EditionAssumed` | The edition of a spec applied to a document (the package, a CPL, the Asset Map) could not be determined: its namespace is shared by several editions and nothing in it tells them apart (or the evidence conflicts). The newest candidate was applied; the message names the namespace seen and the edition used. | Structure | Package info |
+| `IMFERNO/EditionAssumed` | The edition of a spec applied to a document (the package, a CPL, the Asset Map) could not be determined: its namespace is shared by several editions and nothing in it tells them apart, or the evidence names no single one of them. The newest candidate was applied; the message names the namespace seen and the edition used. | Structure | Package info |
+| `IMFERNO/EditionConflict` | The namespace of a document allows only one edition of a spec, but other evidence in it (e.g. the ApplicationIdentification) names another edition. The namespace's edition was applied; the message names both editions and the evidence. | Structure | Package warning |
 | `IMFERNO/DeliveryNotChecked` | ST 2067-2:2013 defines no delivery requirements (an IMP is a Packing List and its assets, §7); the delivery rules of later editions (Asset Map ingest, ASSETMAP.xml name, Annex A paths, VOLINDEX) were not checked; Packing List Size and Hash are checked under ST 429-8. | Structure | Package info |
 | `IMFERNO/OpenFailed` | MXF file could not be opened for reading. | Container | Mxf critical |
 | `IMFERNO/PartitionPackParseFailed` | MXF header partition pack failed to parse. | Container | Mxf critical |

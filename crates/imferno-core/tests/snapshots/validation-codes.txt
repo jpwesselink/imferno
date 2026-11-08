@@ -716,6 +716,7 @@ XSD/NotValidated | OPL-2014 | absent
 XSD/NotValidated | custom | absent
 XSD/NotValidated | unvendored | XSD:unvendored/NotValidated | Info | may | unverified
 IMFERNO/EditionAssumed | - | IMFERNO:Package/EditionAssumed | Info | may | unverified
+IMFERNO/EditionConflict | - | IMFERNO:Package/EditionConflict | Warning | should | unverified
 IMFERNO/DeliveryNotChecked | - | IMFERNO:Package/DeliveryNotChecked | Info | may | unverified
 IMFERNO/OpenFailed | - | IMFERNO:Mxf/OpenFailed | Critical | shall | unverified
 IMFERNO/PartitionPackParseFailed | - | IMFERNO:Mxf/PartitionPackParseFailed | Critical | shall | unverified

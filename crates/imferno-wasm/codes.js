@@ -234,6 +234,7 @@ export const codes = {
   },
   IMFERNO: {
     EditionAssumed: "IMFERNO/EditionAssumed",
+    EditionConflict: "IMFERNO/EditionConflict",
     DeliveryNotChecked: "IMFERNO/DeliveryNotChecked",
     OpenFailed: "IMFERNO/OpenFailed",
     PartitionPackParseFailed: "IMFERNO/PartitionPackParseFailed",

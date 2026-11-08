@@ -1225,6 +1225,7 @@ impl Imferno {
                 edition: target.edition(),
                 assumed: None,
                 determined: true,
+                conflict: None,
             };
         }
 
@@ -1309,6 +1310,13 @@ impl Imferno {
         if let Some(why) = &edition.assumed {
             report.add(ValidationIssue::from_rule(
                 &imferno::EditionAssumed,
+                ImfernoEdition::Current,
+                why.clone(),
+            ));
+        }
+        if let Some(why) = &edition.conflict {
+            report.add(ValidationIssue::from_rule(
+                &imferno::EditionConflict,
                 ImfernoEdition::Current,
                 why.clone(),
             ));
@@ -2568,15 +2576,18 @@ impl Imferno {
                          checked against ST 2067-201:2026 (the newest)"
                         )
                     });
-                for why in [c1.assumed, c4.assumed, iab_assumed].into_iter().flatten() {
+                let notices = [
+                    (&imferno::EditionAssumed, c1.assumed),
+                    (&imferno::EditionAssumed, c4.assumed),
+                    (&imferno::EditionAssumed, iab_assumed),
+                    (&imferno::EditionConflict, c1.conflict),
+                    (&imferno::EditionConflict, c4.conflict),
+                ];
+                for (rule, why) in notices.into_iter().filter_map(|(r, w)| w.map(|w| (r, w))) {
                     report.add(
-                        ValidationIssue::from_rule(
-                            &imferno::EditionAssumed,
-                            ImfernoEdition::Current,
-                            why,
-                        )
-                        .with_location(Location::new().with_file(path.clone()))
-                        .with_context("asset_uuid", asset.id.to_string()),
+                        ValidationIssue::from_rule(rule, ImfernoEdition::Current, why)
+                            .with_location(Location::new().with_file(path.clone()))
+                            .with_context("asset_uuid", asset.id.to_string()),
                     );
                 }
             }

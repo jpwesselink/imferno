@@ -210,8 +210,11 @@ Every edition choice follows one rule: an edition pinned by an option wins;
 otherwise the document's namespace gives the candidate editions, and evidence
 in the document that only some editions' text defines narrows them. When one
 edition is left it is applied; otherwise the newest is applied and an
-`IMFERNO:Package/EditionAssumed` notice names the namespace seen and the
-edition used (one per package, and per CPL).
+`IMFERNO:Package/EditionAssumed` (Info) notice names the namespace seen and the
+edition used, one per document (package, CPL, MXF file). When the namespace
+allows only one edition but other evidence names another, the namespace's
+edition is applied and `IMFERNO:Package/EditionConflict` (Warning) names both
+editions and the evidence.
 
 - **ST 2067-2, package** (Packing List, Asset Map, ingest; `--core-spec` /
   `coreSpec`): an ST 429-8 Packing List means 2013; the `.../2067-2/2016/PKL`

@@ -94,7 +94,10 @@ pub trait ValidatorRegistry {
                 edition: core.edition,
                 cpl: Some(cpl_choice.edition),
             });
-            let notices: Vec<String> = core.assumed.into_iter().chain(cpl_choice.assumed).collect();
+            let notices: Vec<Notice> = notices_of(&core)
+                .into_iter()
+                .chain(notices_of(&cpl_choice))
+                .collect();
             validators.push(EditionNotices::wrap(v, notices));
         }
 
@@ -183,6 +186,7 @@ impl ConstraintsValidator for NotImfCpl {
                 edition,
                 assumed: None,
                 determined: true,
+                conflict: None,
             },
             None => resolve_edition(
                 &format!("CPL {}", cpl.id),
@@ -224,12 +228,30 @@ impl ConstraintsValidator for NotImfCpl {
     }
 }
 
-/// Emits one `IMFERNO:Package/EditionAssumed` per edition of a CPL that
-/// was assumed rather than determined (see [`edition::resolve`]).
+/// An edition notice: `IMFERNO:Package/EditionAssumed` or `EditionConflict`,
+/// and its message.
+type Notice = (&'static crate::diagnostics::Rule<ImfernoEdition>, String);
+
+/// The notices of an edition choice: assumed (undetermined, newest
+/// applied) and conflict (namespace vs evidence).
+fn notices_of<E>(c: &EditionChoice<E>) -> Vec<Notice> {
+    c.assumed
+        .iter()
+        .map(|m| (&imferno::EditionAssumed, m.clone()))
+        .chain(
+            c.conflict
+                .iter()
+                .map(|m| (&imferno::EditionConflict, m.clone())),
+        )
+        .collect()
+}
+
+/// Emits the edition notices of a CPL (see [`edition::resolve`]) before
+/// the findings of the validator whose editions they concern.
 struct EditionNotices {
-    /// The validator whose editions were assumed.
+    /// The validator the notices concern.
     inner: Box<dyn ConstraintsValidator>,
-    notices: Vec<String>,
+    notices: Vec<Notice>,
 }
 
 impl EditionNotices {
@@ -237,7 +259,7 @@ impl EditionNotices {
     /// when there are none).
     fn wrap(
         inner: Box<dyn ConstraintsValidator>,
-        notices: Vec<String>,
+        notices: Vec<Notice>,
     ) -> Box<dyn ConstraintsValidator> {
         if notices.is_empty() {
             inner
@@ -256,8 +278,8 @@ impl ConstraintsValidator for EditionNotices {
         let mut issues: Vec<ValidationIssue> = self
             .notices
             .iter()
-            .map(|n| {
-                ValidationIssue::from_rule(&imferno::EditionAssumed, ImfernoEdition::Current, n)
+            .map(|(rule, n)| {
+                ValidationIssue::from_rule(*rule, ImfernoEdition::Current, n)
                     .with_location(Location::new().with_cpl(cpl.id))
             })
             .collect();
@@ -409,10 +431,7 @@ struct Pins {
 
 fn iab_for_cpl(cpl: &CompositionPlaylist, pins: Pins) -> Box<dyn ConstraintsValidator> {
     let choice = cpl_iab_edition(cpl, pins.core, pins.iab);
-    EditionNotices::wrap(
-        iab_validator(choice.edition),
-        choice.assumed.into_iter().collect(),
-    )
+    EditionNotices::wrap(iab_validator(choice.edition), notices_of(&choice))
 }
 
 /// Resolve an ApplicationIdentification URI of `cpl`: an IAB namespace URI
@@ -767,7 +786,7 @@ impl ValidatorRegistry for ConfigurableValidatorRegistry {
             Some(e) => e,
             None => {
                 let choice = cpl_edition(cpl, core_pin, iab_pin);
-                notices.extend(choice.assumed);
+                notices.extend(notices_of(&choice));
                 choice.edition
             }
         };
@@ -783,11 +802,10 @@ impl ValidatorRegistry for ConfigurableValidatorRegistry {
             self.resolve_namespace(uri)
         } else {
             cpl_core_edition(cpl).map(|core| {
-                notices.insert(0, core.assumed.unwrap_or_default());
+                notices.splice(0..0, notices_of(&core));
                 core_of(core.edition)
             })
         };
-        notices.retain(|n| !n.is_empty());
 
         if let Some(v) = core {
             // The ST 2067-3 rules run inside the Core Constraints validator.

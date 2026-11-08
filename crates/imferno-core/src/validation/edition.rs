@@ -23,9 +23,12 @@ pub struct EditionChoice<E> {
     /// The edition applied.
     pub edition: E,
     /// The `IMFERNO:Package/EditionAssumed` message: why the edition was
-    /// assumed, or which evidence contradicts the namespace's edition.
-    /// `None` when there is nothing to report.
+    /// assumed (undetermined, so the newest was applied). `None` otherwise.
     pub assumed: Option<String>,
+    /// The `IMFERNO:Package/EditionConflict` message: the namespace allows
+    /// one edition and other evidence names another (the namespace's edition
+    /// is applied). `None` when there is no such conflict.
+    pub conflict: Option<String>,
     /// `true` when the namespace or the evidence leave one edition (also
     /// when contradicting evidence is reported); only a determined edition
     /// is evidence for another spec's edition.
@@ -96,20 +99,27 @@ pub fn resolve<E: Edition + Ord>(
     if let [only] = candidates.as_slice() {
         // The namespace decides; evidence that names another edition is
         // reported, not followed.
-        let against: Vec<String> = evidence
+        let against: Vec<&Evidence<E>> = evidence
             .iter()
             .filter(|ev| !ev.editions.contains(only))
-            .map(|ev| ev.what.clone())
             .collect();
+        let mut named: Vec<E> = against
+            .iter()
+            .flat_map(|ev| ev.editions.iter().copied())
+            .collect();
+        named.sort();
+        named.dedup();
+        let whats: Vec<&str> = against.iter().map(|ev| ev.what.as_str()).collect();
         return EditionChoice {
             edition: *only,
             determined: true,
-            assumed: (!against.is_empty()).then(|| {
+            assumed: None,
+            conflict: (!against.is_empty()).then(|| {
                 format!(
-                    "{spec} edition of {subject} is {spec}:{ed}, the only edition {namespace} \
-                     allows, but other evidence contradicts it: {}. {spec} rules were checked \
-                     against {spec}:{ed}",
-                    against.join("; "),
+                    "{spec} edition of {subject}: {namespace} allows only {spec}:{ed}, but other \
+                     evidence names {}: {}. {spec} rules were checked against {spec}:{ed}",
+                    labels(&named),
+                    whats.join("; "),
                     ed = only.label(),
                 )
             }),
@@ -124,6 +134,7 @@ pub fn resolve<E: Edition + Ord>(
         return EditionChoice {
             edition: *only,
             determined: true,
+            conflict: None,
             assumed: None,
         };
     }
@@ -165,6 +176,7 @@ pub fn resolve<E: Edition + Ord>(
     EditionChoice {
         edition,
         determined: false,
+        conflict: None,
         assumed: Some(format!(
             "{spec} edition of {subject} could not be determined: {why}; {spec} rules were \
              checked against {spec}:{} (the newest)",
@@ -386,6 +398,7 @@ pub fn cpl_iab_edition(
             edition,
             assumed: None,
             determined: true,
+            conflict: None,
         };
     }
     let mut evidence = Vec::new();
@@ -855,12 +868,18 @@ mod tests {
     fn evidence_against_the_namespace_edition_is_announced() {
         use St2067_2Edition::{V2013, V2020};
         let c = resolve("X", "ns", &[V2013], &[Evidence::one(V2013, "a")]);
-        assert_eq!((c.edition, c.assumed), (V2013, None));
+        assert_eq!((c.edition, c.assumed, c.conflict), (V2013, None, None));
         let c = resolve("X", "ns", &[V2013], &[Evidence::one(V2020, "b")]);
         assert_eq!(c.edition, V2013, "the namespace decides");
         assert!(c.determined, "the namespace still determines it");
-        let why = c.assumed.expect("the conflict is announced");
-        assert!(why.contains("contradicts it: b."), "{why}");
+        // A conflict, not an assumption (EditionConflict, not EditionAssumed).
+        assert_eq!(c.assumed, None);
+        let why = c.conflict.expect("the conflict is reported");
+        assert!(
+            why.contains("ST 2067-2:2013") && why.contains("ST 2067-2:2020"),
+            "{why}"
+        );
+        assert!(why.contains("b"), "{why}");
         assert!(why.contains("checked against ST 2067-2:2013"), "{why}");
     }
 

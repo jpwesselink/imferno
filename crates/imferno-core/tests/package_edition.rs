@@ -211,6 +211,31 @@ fn core_constraints_namespace_on_a_pkl_names_no_edition() {
     assert_eq!((e.edition, e.assumed), (St2067_2Edition::V2016, None));
 }
 
+/// A 2013-namespace CPL listing App #2E 2016 (which cites ST 2067-2:2016):
+/// the namespace decides, and the contradiction is EditionConflict (Warning),
+/// naming both editions and the evidence; EditionAssumed is not used for it.
+#[test]
+fn namespace_vs_evidence_is_an_edition_conflict_warning() {
+    let pkg = package("MERIDIAN_Netflix_Photon_161006");
+    let report = pkg.validate(&ValidationOptions {
+        skip_disk_checks: true,
+        ..Default::default()
+    });
+    let conflicts: Vec<_> = all(&report)
+        .into_iter()
+        .filter(|i| i.is(&imferno::EditionConflict))
+        .collect();
+    assert_eq!(conflicts.len(), 1, "{conflicts:#?}");
+    let c = conflicts[0];
+    assert_eq!(c.severity, imferno_core::Severity::Warning);
+    assert!(c.message.contains("ST 2067-2:2013"), "{}", c.message);
+    assert!(c.message.contains("ST 2067-2:2016"), "{}", c.message);
+    assert!(c.message.contains("ST 2067-21:2016"), "{}", c.message);
+    assert!(!all(&report)
+        .iter()
+        .any(|i| i.is(&imferno::EditionAssumed) && i.message.contains("contradicts")));
+}
+
 /// Rules-config keys that select nothing come back with the result.
 #[test]
 fn unknown_rules_keys_are_reported_with_the_result() {

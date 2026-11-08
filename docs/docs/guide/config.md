@@ -218,7 +218,12 @@ edition is left it is applied; otherwise the newest is applied and an
 edition used, one per document (package, CPL, MXF file). When the namespace
 allows only one edition but other evidence names another, the namespace's
 edition is applied and `IMFERNO:Package/EditionConflict` (Warning) names both
-editions and the evidence.
+editions and the evidence. Every edition a pin sets, directly or through a
+pinned ST 2067-2 edition, is announced by `IMFERNO:Package/EditionPinned`
+(Info), one per document and spec (one per MXF file for ST 377-1 and
+ST 377-4): the edition applied, the pin it comes from, what the document
+declares, and what it gives on its own. It is reported also when the pin
+agrees with the document, so a report always shows the manual choices.
 
 - **ST 2067-2, package** (Packing List, Asset Map, ingest; `--core-spec` /
   `coreSpec`): an ST 429-8 Packing List means 2013; the `.../2067-2/2016/PKL`

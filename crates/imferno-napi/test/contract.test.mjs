@@ -263,6 +263,22 @@ describe("runtime outputs conform to their declared types", () => {
     for (const i of both.filter((i) => i.spec === "ST2067-3")) expect(i.edition, i.code).toBe("2013");
   });
 
+  it("every pinned edition is announced (EditionPinned), naming the option neutrally", () => {
+    const dir = join(testData, "MERIDIAN_Netflix_Photon_161006");
+    const pinned = (opts) =>
+      ["critical", "errors", "warnings", "info"]
+        .flatMap((k) => api.validatePath(dir, { skipDiskChecks: true, ...opts }).validation[k] ?? [])
+        .filter((i) => i.rule === "IMFERNO/EditionPinned");
+    expect(pinned({})).toHaveLength(0);
+    const notices = pinned({ coreSpec: "v2016" });
+    expect(notices).toHaveLength(3);
+    for (const n of notices) {
+      expect(n.severity).toBe("Info");
+      expect(n.message).toContain("coreSpec / --core-spec");
+    }
+    expect(notices.some((n) => n.message.startsWith("ST 2067-3:2016 applied"))).toBe(true);
+  });
+
   it("toSarif → a SARIF 2.1.0 log of the findings", () => {
     const r = api.validatePath(join(testData, "MERIDIAN_Netflix_Photon_161006"));
     const log = api.toSarif(r);

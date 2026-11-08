@@ -30,9 +30,182 @@ pub struct EditionChoice<E> {
     /// is applied). `None` when there is no such conflict.
     pub conflict: Option<String>,
     /// `true` when the namespace or the evidence leave one edition (also
-    /// when contradicting evidence is reported); only a determined edition
-    /// is evidence for another spec's edition.
+    /// when contradicting evidence is reported), or a pin sets it; only a
+    /// determined edition is evidence for another spec's edition.
     pub determined: bool,
+    /// The `IMFERNO:Package/EditionPinned` message: the caller set the
+    /// edition, by a pin or through the dated references of a pinned
+    /// ST 2067-2 edition. `None` when no pin set it.
+    pub pinned: Option<String>,
+}
+
+impl<E> EditionChoice<E> {
+    /// `edition`, set by a pin; `message` is the EditionPinned message.
+    pub fn pinned(edition: E, message: String) -> Self {
+        Self {
+            edition,
+            assumed: None,
+            conflict: None,
+            determined: true,
+            pinned: Some(message),
+        }
+    }
+}
+
+/// An option that pins an edition. Messages name it neutrally, as the API
+/// option and the CLI flag, since the core is used from both.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PinOption {
+    /// ST 2067-2 (`coreSpec` / `--core-spec`).
+    Core,
+    /// ST 2067-3 (`cplSpec` / `--cpl-spec`).
+    Cpl,
+    /// ST 2067-201 (`iabSpec` / `--iab-spec`).
+    Iab,
+}
+
+impl PinOption {
+    /// `coreSpec / --core-spec`.
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Core => "coreSpec / --core-spec",
+            Self::Cpl => "cplSpec / --cpl-spec",
+            Self::Iab => "iabSpec / --iab-spec",
+        }
+    }
+}
+
+/// How a pinned edition came about: directly from its own option, or
+/// through the dated references of a pinned edition of another spec.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PinSource {
+    /// Pinned by the caller with this option.
+    Direct(PinOption),
+    /// Follows from these pins (`ST 2067-2:2016`, option).
+    Follows(Vec<(String, PinOption)>),
+}
+
+impl PinSource {
+    /// Follows from the pinned ST 2067-2 edition `core`.
+    pub fn core(core: St2067_2Edition) -> Self {
+        Self::Follows(vec![(
+            format!("ST 2067-2:{}", core.label()),
+            PinOption::Core,
+        )])
+    }
+
+    /// `pinned by the caller (…)` / `follows from the ST 2067-2:2016 pin (…)`
+    /// (`follow` for several editions).
+    fn describe(&self, plural: bool) -> String {
+        match self {
+            Self::Direct(o) => format!("pinned by the caller ({})", o.name()),
+            Self::Follows(pins) => {
+                let verb = if plural { "follow" } else { "follows" };
+                let pins: Vec<String> = pins
+                    .iter()
+                    .map(|(e, o)| format!("the {e} pin ({})", o.name()))
+                    .collect();
+                format!("{verb} from {}", pins.join(" and "))
+            }
+        }
+    }
+}
+
+/// The `IMFERNO:Package/EditionPinned` message for `applied` (one or more
+/// specs' editions, e.g. `ST 2067-3:2016`) set by `source` on `subject`:
+/// `declared` is what the document itself declares, `own` the editions it
+/// gives on its own (without any pin).
+pub fn pinned_message(
+    applied: &[String],
+    source: &PinSource,
+    subject: &str,
+    declared: &str,
+    own: &[String],
+) -> String {
+    let and = |v: &[String]| match v {
+        [] => String::new(),
+        [one] => one.clone(),
+        [init @ .., last] => format!("{} and {last}", init.join(", ")),
+    };
+    let on_its_own = if own == applied {
+        "it gives the same on its own".to_string()
+    } else {
+        format!("on its own it gives {}", and(own))
+    };
+    format!(
+        "{} applied: {}. {subject}: {declared}; {on_its_own}.",
+        and(applied),
+        source.describe(applied.len() > 1),
+    )
+}
+
+/// `ST 2067-3:2016`.
+fn label_of<E: Edition>(e: E) -> String {
+    format!("{}:{}", spec_name::<E>(), e.label())
+}
+
+/// `edition` set by `source` on a CPL: the EditionPinned choice, with what
+/// the CPL declares and the edition it gives without pins (`own`).
+fn pinned_on_cpl<E: Edition>(
+    cpl: &CompositionPlaylist,
+    edition: E,
+    source: &PinSource,
+    declared: &[String],
+    own: E,
+) -> EditionChoice<E> {
+    EditionChoice::pinned(
+        edition,
+        pinned_message(
+            &[label_of(edition)],
+            source,
+            &format!("CPL {}", cpl.id),
+            &declared.join("; "),
+            &[label_of(own)],
+        ),
+    )
+}
+
+/// The ST 2067-3 edition pinned by the caller (`cplSpec`) for a CPL.
+pub fn cpl_edition_pinned(
+    cpl: &CompositionPlaylist,
+    edition: St2067_3Edition,
+) -> EditionChoice<St2067_3Edition> {
+    let own = cpl_edition(cpl, None, None).edition;
+    pinned_on_cpl(
+        cpl,
+        edition,
+        &PinSource::Direct(PinOption::Cpl),
+        &[cpl_namespace_declared(cpl)],
+        own,
+    )
+}
+
+/// `its namespace …`, for an EditionPinned message.
+fn cpl_namespace_declared(cpl: &CompositionPlaylist) -> String {
+    match &cpl.namespace {
+        CplNamespace::Unknown(ns) if ns.is_empty() => "it has no namespace".into(),
+        ns => format!("its namespace {ns}"),
+    }
+}
+
+/// The ST 2067-2 edition pinned by the caller (`coreSpec`) for a CPL.
+pub fn cpl_core_edition_pinned(
+    cpl: &CompositionPlaylist,
+    edition: St2067_2Edition,
+) -> EditionChoice<St2067_2Edition> {
+    let declared: Vec<String> = std::iter::once(cpl_namespace_declared(cpl))
+        .chain(cpl_core_evidence(cpl).into_iter().map(|ev| ev.what))
+        .collect();
+    let own = cpl_core_edition(cpl)
+        .map(|c| c.edition)
+        .unwrap_or(St2067_2Edition::V2020);
+    pinned_on_cpl(
+        cpl,
+        edition,
+        &PinSource::Direct(PinOption::Core),
+        &declared,
+        own,
+    )
 }
 
 /// Something in a document that only some editions' text defines.
@@ -114,6 +287,7 @@ pub fn resolve<E: Edition + Ord>(
             edition: *only,
             determined: true,
             assumed: None,
+            pinned: None,
             conflict: (!against.is_empty()).then(|| {
                 format!(
                     "{spec} edition of {subject}: {namespace} allows only {spec}:{ed}, but other \
@@ -136,6 +310,7 @@ pub fn resolve<E: Edition + Ord>(
             determined: true,
             conflict: None,
             assumed: None,
+            pinned: None,
         };
     }
     let ns = if namespace.is_empty() {
@@ -177,6 +352,7 @@ pub fn resolve<E: Edition + Ord>(
         edition,
         determined: false,
         conflict: None,
+        pinned: None,
         assumed: Some(format!(
             "{spec} edition of {subject} could not be determined: {why}; {spec} rules were \
              checked against {spec}:{} (the newest)",
@@ -266,12 +442,14 @@ pub fn cpl_edition(
 ) -> EditionChoice<St2067_3Edition> {
     use St2067_3Edition::{V2013, V2016, V2020};
     if let Some(core) = core_pin {
-        return EditionChoice {
-            edition: st2067_3_of_core(core),
-            assumed: None,
-            conflict: None,
-            determined: true,
-        };
+        let own = cpl_edition(cpl, None, None).edition;
+        return pinned_on_cpl(
+            cpl,
+            st2067_3_of_core(core),
+            &PinSource::core(core),
+            &[cpl_namespace_declared(cpl)],
+            own,
+        );
     }
     let candidates: &[St2067_3Edition] = match &cpl.namespace {
         CplNamespace::Smpte2067_3_2013 => &[V2013],
@@ -408,13 +586,21 @@ pub fn cpl_iab_edition(
     pin: Option<St2067_201Edition>,
 ) -> EditionChoice<St2067_201Edition> {
     use St2067_201Edition::{V2019, V2021, V2026};
+    let iab_declared = || {
+        [format!(
+            "its IAB namespace {}, which every ST 2067-201 edition uses",
+            super::iab::URI_2019
+        )]
+    };
     if let Some(edition) = pin {
-        return EditionChoice {
+        let own = cpl_iab_edition(cpl, None, None).edition;
+        return pinned_on_cpl(
+            cpl,
             edition,
-            assumed: None,
-            determined: true,
-            conflict: None,
-        };
+            &PinSource::Direct(PinOption::Iab),
+            &iab_declared(),
+            own,
+        );
     }
     // The editions that cite a pinned ST 2067-2 edition are the only
     // candidates (one pin for everything); no edition cites ST 2067-2:2013.
@@ -423,13 +609,9 @@ pub fn cpl_iab_edition(
         Some(St2067_2Edition::V2020) => Some(&[V2021, V2026]),
         Some(St2067_2Edition::V2013) | None => None,
     };
-    if let Some([only]) = pinned_candidates {
-        return EditionChoice {
-            edition: *only,
-            assumed: None,
-            determined: true,
-            conflict: None,
-        };
+    if let (Some([only]), Some(core)) = (pinned_candidates, core_pin) {
+        let own = cpl_iab_edition(cpl, None, None).edition;
+        return pinned_on_cpl(cpl, *only, &PinSource::core(core), &iab_declared(), own);
     }
     let mut evidence = Vec::new();
     if core_pin.is_none() {

@@ -234,10 +234,23 @@ pub static DeliveryNotChecked: Rule<E> = Rule {
     editions: &[row(E::Current, "Package", Severity::Info)],
 };
 
+/// The edition of a spec applied to a document was set by the caller: pinned
+/// directly by an option, or following from a pinned ST 2067-2 edition
+/// through its dated references. Reported whenever a pin was applied, also
+/// when it agrees with the document, so a report always shows manual choices.
+pub static EditionPinned: Rule<E> = Rule {
+    name: "EditionPinned",
+    category: Category::Structure,
+    description: "The edition of a spec applied to a document (the package, a CPL, an MXF track file) was set by the caller: pinned by an option (coreSpec / --core-spec, cplSpec / --cpl-spec, iabSpec / --iab-spec), or following from a pinned ST 2067-2 edition through its dated references. The message names the edition applied, the pin it comes from, and what the document itself declares and would give on its own. Reported whenever a pin was applied, also when it agrees with the document.",
+    example: Some("ST 2067-3:2016 applied: follows from the ST 2067-2:2016 pin (coreSpec / --core-spec). CPL …: its namespace http://www.smpte-ra.org/schemas/2067-3/2013; on its own it gives ST 2067-3:2013."),
+    editions: &[row(E::Current, "Package", Severity::Info)],
+};
+
 /// Every rule of this spec.
 pub static ALL: &[&dyn AnyRule] = &[
     &EditionAssumed,
     &EditionConflict,
+    &EditionPinned,
     &DeliveryNotChecked,
     &OpenFailed,
     &PartitionPackParseFailed,

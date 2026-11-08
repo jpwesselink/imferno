@@ -13,7 +13,8 @@ use crate::catalogue::imferno::{self, ImfernoEdition};
 use crate::catalogue::st2067_2::{self, St2067_2Edition};
 use crate::catalogue::st2067_3;
 use crate::catalogue::st2067_9::{self, St2067_9Edition};
-use crate::catalogue::st377_1;
+use crate::catalogue::st377_1::{self, St377_1Edition};
+use crate::catalogue::st377_4::St377_4Edition;
 use crate::catalogue::st429_8::{self, St429_8Edition};
 use crate::catalogue::st429_9::{self, St429_9Edition};
 use crate::cpl::EditRate;
@@ -1220,22 +1221,46 @@ impl Imferno {
         use crate::validation::{resolve_edition, Evidence};
         use St2067_2Edition::{V2013, V2016, V2020};
 
+        let mut namespaces: Vec<String> = self
+            .packing_lists
+            .values()
+            .map(|pkl| pkl.namespace.to_string())
+            .collect();
+        namespaces.sort();
+        namespaces.dedup();
+        let namespace = match namespaces.as_slice() {
+            [] => "it has no Packing List, so its namespace".to_string(),
+            [one] => format!("its Packing List namespace {one}"),
+            many => format!("its Packing List namespaces {}", many.join(", ")),
+        };
+
         if let Some(target) = core_spec {
-            return PackageEdition {
-                edition: target.edition(),
-                assumed: None,
-                determined: true,
-                conflict: None,
+            use crate::validation::{pinned_message, PinOption, PinSource};
+            let edition = target.edition();
+            let own = self.package_edition(None).edition;
+            let declared = if namespaces.is_empty() {
+                "it has no Packing List".to_string()
+            } else {
+                namespace
             };
+            let label = |e: St2067_2Edition| format!("ST 2067-2:{}", e.label());
+            return PackageEdition::pinned(
+                edition,
+                pinned_message(
+                    &[label(edition)],
+                    &PinSource::Direct(PinOption::Core),
+                    "The package",
+                    &declared,
+                    &[label(own)],
+                ),
+            );
         }
 
         // Only Packing List namespaces name editions: ST 429-8 (2013 §7.1)
         // and `.../2067-2/2016/PKL` (2016 Annex K, 2020 Annex J). A Core
         // Constraints or unknown namespace on a PKL root names none.
         let mut candidates: Option<Vec<St2067_2Edition>> = None;
-        let mut namespaces: Vec<String> = Vec::new();
         for pkl in self.packing_lists.values() {
-            namespaces.push(pkl.namespace.to_string());
             let allowed: &[St2067_2Edition] = match pkl.namespace {
                 PklNamespace::Dci429_8 => &[V2013],
                 PklNamespace::Smpte2067_2_2016Pkl => &[V2016, V2020],
@@ -1247,8 +1272,6 @@ impl Imferno {
             let c = candidates.get_or_insert_with(|| allowed.to_vec());
             c.retain(|e| allowed.contains(e));
         }
-        namespaces.sort();
-        namespaces.dedup();
         let candidates = match candidates {
             // No Packing List namespace: it names no edition.
             None => Vec::new(),
@@ -1274,11 +1297,6 @@ impl Imferno {
             })
             .collect();
 
-        let namespace = match namespaces.as_slice() {
-            [] => "it has no Packing List, so its namespace".to_string(),
-            [one] => format!("its Packing List namespace {one}"),
-            many => format!("its Packing List namespaces {}", many.join(", ")),
-        };
         resolve_edition("the package", &namespace, &candidates, &evidence)
     }
 
@@ -1307,6 +1325,13 @@ impl Imferno {
     /// The edition-dependent notices of a package: the assumed edition, and
     /// for an ST 2067-2:2013 package the delivery rules not checked.
     fn edition_notices(&self, edition: &PackageEdition, report: &mut ValidationReport) {
+        if let Some(why) = &edition.pinned {
+            report.add(ValidationIssue::from_rule(
+                &imferno::EditionPinned,
+                ImfernoEdition::Current,
+                why.clone(),
+            ));
+        }
         if let Some(why) = &edition.assumed {
             report.add(ValidationIssue::from_rule(
                 &imferno::EditionAssumed,
@@ -2397,41 +2422,67 @@ impl Imferno {
                 // The IAB edition of a referenced file is its CPL's (the CPL
                 // announces it when assumed); only a determined (pinned) edition
                 // is evidence for the ST 377 editions.
+                let core_pin = selection.core_spec.map(|t| t.edition());
                 let iab_pin = selection.iab_spec.map(|t| t.edition());
-                let iab_choice = self.iab_referencing_cpls(&asset.id).first().map(|cpl| {
-                    crate::validation::cpl_iab_edition(
-                        cpl,
-                        selection.core_spec.map(|t| t.edition()),
-                        iab_pin,
-                    )
-                });
+                let iab_choice = self
+                    .iab_referencing_cpls(&asset.id)
+                    .first()
+                    .map(|cpl| crate::validation::cpl_iab_edition(cpl, core_pin, iab_pin));
                 let iab_ref = iab_choice
                     .as_ref()
                     .filter(|c| c.determined)
                     .map(|c| c.edition);
-                // The pinned or determined ST 2067-2 editions of the CPLs that
-                // reference the file, else the package's when determined. An
-                // assumed edition is not evidence (mxf_editions then uses what
-                // every ST 2067-2 edition cites).
-                let mut cores: Vec<St2067_2Edition> = self
-                    .referencing_cpls(&asset.id)
-                    .into_iter()
-                    .filter_map(|cpl| {
-                        selection.core_spec.map(|t| t.edition()).or_else(|| {
-                            crate::validation::cpl_core_edition(cpl)
-                                .filter(|c| c.determined)
-                                .map(|c| c.edition)
-                        })
-                    })
-                    .collect();
-                if cores.is_empty() && package_determined {
-                    cores.push(spec_ed);
-                }
-                let (c1, c4) = crate::validation::mxf_editions(
-                    &format!("MXF track file '{file_name}'"),
-                    &cores,
+                let subject = format!("MXF track file '{file_name}'");
+                let (c1, c4) = self.mxf_editions_of(
+                    &asset.id,
+                    &subject,
+                    core_pin,
                     iab_ref,
+                    (spec_ed, package_determined),
                 );
+                // A pinned ST 2067-2 edition (or a pinned ST 2067-201 edition
+                // for a file a CPL IAB Virtual Track references) sets them:
+                // announced, with what the file gives on its own.
+                let iab_pinned = iab_ref.is_some() && iab_pin.is_some();
+                let pinned_notice = (core_pin.is_some() || iab_pinned).then(|| {
+                    use crate::diagnostics::Edition;
+                    use crate::validation::{pinned_message, PinOption, PinSource};
+                    let mut pins = Vec::new();
+                    if let Some(core) = core_pin {
+                        pins.push((format!("ST 2067-2:{}", core.label()), PinOption::Core));
+                    }
+                    if let (true, Some(iab)) = (iab_pinned, iab_pin) {
+                        pins.push((format!("ST 2067-201:{}", iab.label()), PinOption::Iab));
+                    }
+                    let own_pkg = self.package_edition(None);
+                    let own_iab = self
+                        .iab_referencing_cpls(&asset.id)
+                        .first()
+                        .map(|cpl| crate::validation::cpl_iab_edition(cpl, None, None))
+                        .filter(|c| c.determined)
+                        .map(|c| c.edition);
+                    let (o1, o4) = self.mxf_editions_of(
+                        &asset.id,
+                        &subject,
+                        None,
+                        own_iab,
+                        (own_pkg.edition, own_pkg.determined),
+                    );
+                    let labels = |one: St377_1Edition, four: St377_4Edition| {
+                        vec![
+                            format!("ST 377-1:{}", one.label()),
+                            format!("ST 377-4:{}", four.label()),
+                        ]
+                    };
+                    pinned_message(
+                        &labels(c1.edition, c4.edition),
+                        &PinSource::Follows(pins),
+                        &subject,
+                        "it carries no namespace (MXF has none); the dated references of the \
+                         specs that apply to it decide",
+                        &labels(o1.edition, o4.edition),
+                    )
+                });
                 #[allow(unused_mut)]
                 let mut carries_iab = false;
                 let iab_ed = iab_choice
@@ -2577,6 +2628,7 @@ impl Imferno {
                         )
                     });
                 let notices = [
+                    (&imferno::EditionPinned, pinned_notice),
                     (&imferno::EditionAssumed, c1.assumed),
                     (&imferno::EditionAssumed, c4.assumed),
                     (&imferno::EditionAssumed, iab_assumed),
@@ -2592,6 +2644,41 @@ impl Imferno {
                 }
             }
         }
+    }
+
+    /// The ST 377-1 / ST 377-4 editions of track file `id`: from the pinned
+    /// ST 2067-2 edition (`core_pin`), else the determined ST 2067-2 editions
+    /// of the CPLs that reference it, else the package's (`package`: edition,
+    /// determined) when determined; plus the ST 2067-201 edition `iab` of the
+    /// CPL IAB Virtual Tracks that reference it. An assumed edition is not
+    /// evidence ([`crate::validation::mxf_editions`] then uses what every
+    /// ST 2067-2 edition cites).
+    fn mxf_editions_of(
+        &self,
+        id: &ImfUuid,
+        subject: &str,
+        core_pin: Option<St2067_2Edition>,
+        iab: Option<crate::catalogue::st2067_201::St2067_201Edition>,
+        package: (St2067_2Edition, bool),
+    ) -> (
+        crate::validation::EditionChoice<St377_1Edition>,
+        crate::validation::EditionChoice<St377_4Edition>,
+    ) {
+        let mut cores: Vec<St2067_2Edition> = self
+            .referencing_cpls(id)
+            .into_iter()
+            .filter_map(|cpl| {
+                core_pin.or_else(|| {
+                    crate::validation::cpl_core_edition(cpl)
+                        .filter(|c| c.determined)
+                        .map(|c| c.edition)
+                })
+            })
+            .collect();
+        if cores.is_empty() && package.1 {
+            cores.push(package.0);
+        }
+        crate::validation::mxf_editions(subject, &cores, iab)
     }
 
     /// The CPLs any of whose Virtual Tracks reference track file `id`.

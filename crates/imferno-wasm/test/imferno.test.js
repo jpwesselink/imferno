@@ -153,6 +153,17 @@ describe('buildReport', () => {
             expect(i.edition, i.code).toBe('2013');
         }
     });
+
+    it('announces every pinned edition (EditionPinned)', () => {
+        const pinned = (opts) =>
+            findings(wasm.buildReport(meridianFiles, opts)).filter(
+                (i) => i.rule === 'IMFERNO/EditionPinned',
+            );
+        expect(pinned({})).toHaveLength(0);
+        const notices = pinned({ coreSpec: 'v2016' });
+        expect(notices).toHaveLength(3);
+        for (const n of notices) expect(n.message).toContain('coreSpec / --core-spec');
+    });
 });
 
 // ─── formatReport ────────────────────────────────────────────────────────────

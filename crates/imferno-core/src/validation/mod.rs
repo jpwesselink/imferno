@@ -36,9 +36,10 @@ pub mod isxd;
 
 pub use app2e::{App2E, App2E2014, App2E2016, App2E2020, App2E2023, App2E2026, App2EEdition};
 pub use edition::{
-    application_identification_core_edition, cpl_core_edition, cpl_core_evidence, cpl_edition,
-    cpl_evidence, cpl_iab_edition, declared_core_constraints_editions, mxf_editions,
-    resolve as resolve_edition, EditionChoice, Evidence,
+    application_identification_core_edition, cpl_core_edition, cpl_core_edition_pinned,
+    cpl_core_evidence, cpl_edition, cpl_edition_pinned, cpl_evidence, cpl_iab_edition,
+    declared_core_constraints_editions, mxf_editions, pinned_message, resolve as resolve_edition,
+    EditionChoice, Evidence, PinOption, PinSource,
 };
 pub use iab::{AppIabPlugin2019, AppIabPlugin2021, AppIabPlugin2026, URI_2019, URI_2019_SCHEMAS};
 pub use isxd::{AppIsxdPlugin2023, URI_2022};
@@ -182,12 +183,7 @@ impl ConstraintsValidator for NotImfCpl {
 
     fn validate_cpl(&self, cpl: &CompositionPlaylist) -> Vec<ValidationIssue> {
         let choice = match self.core_pin {
-            Some(edition) => EditionChoice {
-                edition,
-                assumed: None,
-                determined: true,
-                conflict: None,
-            },
+            Some(edition) => cpl_core_edition_pinned(cpl, edition),
             None => resolve_edition(
                 &format!("CPL {}", cpl.id),
                 &format!("its namespace {}", cpl.namespace),
@@ -204,11 +200,10 @@ impl ConstraintsValidator for NotImfCpl {
             ns => format!("the namespace {ns}, which is not an ST 2067-3 namespace"),
         };
         let loc = Location::new().with_cpl(cpl.id);
-        let mut out: Vec<ValidationIssue> = choice
-            .assumed
+        let mut out: Vec<ValidationIssue> = notices_of(&choice)
             .into_iter()
-            .map(|n| {
-                ValidationIssue::from_rule(&imferno::EditionAssumed, ImfernoEdition::Current, n)
+            .map(|(rule, n)| {
+                ValidationIssue::from_rule(rule, ImfernoEdition::Current, n)
                     .with_location(loc.clone())
             })
             .collect();
@@ -228,16 +223,21 @@ impl ConstraintsValidator for NotImfCpl {
     }
 }
 
-/// An edition notice: `IMFERNO:Package/EditionAssumed` or `EditionConflict`,
-/// and its message.
+/// An edition notice: `IMFERNO:Package/EditionPinned`, `EditionAssumed` or
+/// `EditionConflict`, and its message.
 type Notice = (&'static crate::diagnostics::Rule<ImfernoEdition>, String);
 
-/// The notices of an edition choice: assumed (undetermined, newest
-/// applied) and conflict (namespace vs evidence).
+/// The notices of an edition choice: pinned (set by the caller), assumed
+/// (undetermined, newest applied) and conflict (namespace vs evidence).
 fn notices_of<E>(c: &EditionChoice<E>) -> Vec<Notice> {
-    c.assumed
+    c.pinned
         .iter()
-        .map(|m| (&imferno::EditionAssumed, m.clone()))
+        .map(|m| (&imferno::EditionPinned, m.clone()))
+        .chain(
+            c.assumed
+                .iter()
+                .map(|m| (&imferno::EditionAssumed, m.clone())),
+        )
         .chain(
             c.conflict
                 .iter()
@@ -784,14 +784,12 @@ impl ValidatorRegistry for ConfigurableValidatorRegistry {
             return vec![Box::new(NotImfCpl { core_pin })];
         }
         let mut notices = Vec::new();
-        let cpl_ed = match pinned_cpl {
-            Some(e) => e,
-            None => {
-                let choice = cpl_edition(cpl, core_pin, iab_pin);
-                notices.extend(notices_of(&choice));
-                choice.edition
-            }
+        let cpl_choice = match pinned_cpl {
+            Some(e) => cpl_edition_pinned(cpl, e),
+            None => cpl_edition(cpl, core_pin, iab_pin),
         };
+        notices.extend(notices_of(&cpl_choice));
+        let cpl_ed = cpl_choice.edition;
         let core_of = |edition| -> Box<dyn ConstraintsValidator> {
             Box::new(CoreConstraints {
                 edition,
@@ -799,6 +797,7 @@ impl ValidatorRegistry for ConfigurableValidatorRegistry {
             })
         };
         let core = if let Some(edition) = core_pin {
+            notices.splice(0..0, notices_of(&cpl_core_edition_pinned(cpl, edition)));
             Some(core_of(edition))
         } else if let Some(uri) = self.selection.core_namespace_uri.as_deref() {
             self.resolve_namespace(uri)
@@ -3348,7 +3347,8 @@ mod tests {
                     issues
                         .iter()
                         .all(|i| i.is(&st2067_2::NotImfCompositionPlaylist)
-                            || i.is(&imferno::EditionAssumed)),
+                            || i.is(&imferno::EditionAssumed)
+                            || i.is(&imferno::EditionPinned)),
                     "{issues:#?}"
                 );
             }

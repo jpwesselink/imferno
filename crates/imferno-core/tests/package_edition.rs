@@ -311,3 +311,111 @@ fn core_pin_carries_the_editions_that_follow_from_it() {
         assert_eq!(i.edition, "2013", "{}", i.code);
     }
 }
+
+/// Every edition the caller pinned is announced (EditionPinned, Info), one
+/// per document and spec, naming the edition, the pin it comes from, and
+/// what the document itself gives; also when the pin agrees with it.
+#[test]
+fn every_pinned_edition_is_announced() {
+    use imferno_core::validation::CplSpecTarget;
+    let pkg = package("MERIDIAN_Netflix_Photon_161006");
+    let pinned = |options: ValidationOptions| -> Vec<ValidationIssue> {
+        all(&pkg.validate(&options))
+            .into_iter()
+            .filter(|i| i.is(&imferno::EditionPinned))
+            .cloned()
+            .collect()
+    };
+    assert!(pinned(ValidationOptions {
+        skip_disk_checks: true,
+        ..Default::default()
+    })
+    .is_empty());
+
+    let notices = pinned(ValidationOptions {
+        core_spec: Some(CoreSpecTarget::St2067_2_2016),
+        skip_disk_checks: true,
+        ..Default::default()
+    });
+    assert_eq!(notices.len(), 3, "{notices:#?}");
+    for n in &notices {
+        assert_eq!(n.severity, imferno_core::Severity::Info);
+    }
+    let package_notice = notices
+        .iter()
+        .find(|n| n.location.cpl_id.is_none())
+        .expect("package notice");
+    let m = &package_notice.message;
+    assert!(m.starts_with("ST 2067-2:2016 applied"), "{m}");
+    assert!(
+        m.contains("pinned by the caller (coreSpec / --core-spec)"),
+        "{m}"
+    );
+    assert!(m.contains("ST 2067-2:2013"), "what the package gives: {m}");
+    let cpl: Vec<&str> = notices
+        .iter()
+        .filter(|n| n.location.cpl_id.is_some())
+        .map(|n| n.message.as_str())
+        .collect();
+    let core = cpl
+        .iter()
+        .find(|m| m.starts_with("ST 2067-2:2016 applied"))
+        .expect("CPL ST 2067-2 notice");
+    assert!(core.contains("pinned by the caller"), "{core}");
+    assert!(core.contains("ST 2067-21:2016"), "the AppId: {core}");
+    let st3 = cpl
+        .iter()
+        .find(|m| m.starts_with("ST 2067-3:2016 applied"))
+        .expect("CPL ST 2067-3 notice");
+    assert!(
+        st3.contains("follows from the ST 2067-2:2016 pin (coreSpec / --core-spec)"),
+        "{st3}"
+    );
+    assert!(
+        st3.contains("http://www.smpte-ra.org/schemas/2067-3/2013"),
+        "the namespace: {st3}"
+    );
+    assert!(st3.contains("ST 2067-3:2013"), "what the CPL gives: {st3}");
+
+    // A separate ST 2067-3 pin is named as such.
+    let notices = pinned(ValidationOptions {
+        core_spec: Some(CoreSpecTarget::St2067_2_2016),
+        cpl_spec: Some(CplSpecTarget::St2067_3_2013),
+        skip_disk_checks: true,
+        ..Default::default()
+    });
+    assert!(
+        notices.iter().any(|n| n
+            .message
+            .starts_with("ST 2067-3:2013 applied: pinned by the caller (cplSpec / --cpl-spec)")),
+        "{notices:#?}"
+    );
+
+    // A pin that agrees with the documents is announced too.
+    let notices = pinned(ValidationOptions {
+        core_spec: Some(CoreSpecTarget::St2067_2_2013),
+        skip_disk_checks: true,
+        ..Default::default()
+    });
+    assert_eq!(notices.len(), 3, "{notices:#?}");
+
+    // MXF track files: their ST 377-1 / ST 377-4 editions follow the pin.
+    let notices = pinned(ValidationOptions {
+        core_spec: Some(CoreSpecTarget::St2067_2_2016),
+        ..Default::default()
+    });
+    let mxf: Vec<_> = notices
+        .iter()
+        .filter(|n| n.location.file.is_some())
+        .collect();
+    assert!(!mxf.is_empty(), "{notices:#?}");
+    for n in mxf {
+        assert!(
+            n.message.starts_with(
+                "ST 377-1:2011 and ST 377-4:2012 applied: follow from the ST 2067-2:2016 pin"
+            ),
+            "{}",
+            n.message
+        );
+    }
+}

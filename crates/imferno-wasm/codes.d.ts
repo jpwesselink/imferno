@@ -235,6 +235,7 @@ export declare const codes: {
   readonly IMFERNO: {
     readonly EditionAssumed: "IMFERNO/EditionAssumed";
     readonly EditionConflict: "IMFERNO/EditionConflict";
+    readonly EditionPinned: "IMFERNO/EditionPinned";
     readonly DeliveryNotChecked: "IMFERNO/DeliveryNotChecked";
     readonly OpenFailed: "IMFERNO/OpenFailed";
     readonly PartitionPackParseFailed: "IMFERNO/PartitionPackParseFailed";

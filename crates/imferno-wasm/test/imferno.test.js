@@ -125,6 +125,45 @@ describe('buildReport', () => {
     it('rejects invalid coreSpec', () => {
         expect(() => wasm.buildReport(packageFiles, { coreSpec: 'v9999' })).toThrow();
     });
+
+    // MERIDIAN: 2013 namespaces, App #2E 2016 ApplicationIdentification.
+    const meridian = 'MERIDIAN_Netflix_Photon_161006';
+    const meridianFiles = Object.fromEntries(
+        [
+            'ASSETMAP.xml',
+            'VOLINDEX.xml',
+            'PKL_f5e93462-aed2-44ad-a4ba-2adb65823e7c.xml',
+            'CPL_0eb3d1b9-b77b-4d3f-bbe5-7c69b15dca85.xml',
+            'OPL_8cf83c32-4949-4f00-b081-01e12b18932f.xml',
+        ].map((f) => [f, fixture(`${meridian}/${f}`)]),
+    );
+    const findings = (r) =>
+        ['critical', 'errors', 'warnings', 'info'].flatMap((k) => r.validation[k] ?? []);
+
+    it('coreSpec pins the ST 2067-3 edition it cites unless cplSpec pins it', () => {
+        const pinned = findings(wasm.buildReport(meridianFiles, { coreSpec: 'v2016' }));
+        expect(pinned.some((i) => i.rule === 'IMFERNO/EditionConflict')).toBe(false);
+        const cpl = pinned.filter((i) => i.spec === 'ST2067-3');
+        expect(cpl.length).toBeGreaterThan(0);
+        for (const i of cpl) expect(i.edition, i.code).toBe('2016');
+        const both = findings(
+            wasm.buildReport(meridianFiles, { coreSpec: 'v2016', cplSpec: 'v2013' }),
+        );
+        for (const i of both.filter((i) => i.spec === 'ST2067-3')) {
+            expect(i.edition, i.code).toBe('2013');
+        }
+    });
+
+    it('announces every pinned edition (EditionPinned)', () => {
+        const pinned = (opts) =>
+            findings(wasm.buildReport(meridianFiles, opts)).filter(
+                (i) => i.rule === 'IMFERNO/EditionPinned',
+            );
+        expect(pinned({})).toHaveLength(0);
+        const notices = pinned({ coreSpec: 'v2016' });
+        expect(notices).toHaveLength(3);
+        for (const n of notices) expect(n.message).toContain('coreSpec / --core-spec');
+    });
 });
 
 // ─── formatReport ────────────────────────────────────────────────────────────

@@ -207,14 +207,29 @@ with a suppression, at their original level.
 ## Which edition is applied
 
 Every edition choice follows one rule: an edition pinned by an option wins;
-otherwise the document's namespace gives the candidate editions, and evidence
+a pinned ST 2067-2 edition (`--core-spec` / `coreSpec`) also pins the editions
+it cites (ST 2067-3, ST 2067-201 for IAB, ST 377-1/377-4 for MXF), over the
+documents' namespaces, unless `--cpl-spec` / `--iab-spec` pin those separately
+(`--core-spec v2016` alone checks a 2013-namespace CPL against ST 2067-2:2016
+and ST 2067-3:2016); otherwise the document's namespace gives the candidate editions, and evidence
 in the document that only some editions' text defines narrows them. When one
 edition is left it is applied; otherwise the newest is applied and an
 `IMFERNO:Package/EditionAssumed` (Info) notice names the namespace seen and the
 edition used, one per document (package, CPL, MXF file). When the namespace
 allows only one edition but other evidence names another, the namespace's
 edition is applied and `IMFERNO:Package/EditionConflict` (Warning) names both
-editions and the evidence.
+editions and the evidence. Every edition a pin sets, directly or through a
+pinned ST 2067-2 edition, is announced by `IMFERNO:Package/EditionPinned`
+(Info), one per document and spec: the edition applied, the pin it comes
+from, what the document declares and gives on its own (and whether that would
+have been an `EditionConflict` or `EditionAssumed`), and any evidence in the
+document that points elsewhere (the pin wins; no `EditionConflict`). For the
+package and CPLs it is reported also when the pin agrees with the document,
+so a report always shows the manual choices. For an MXF track file (one
+notice for ST 377-1, ST 377-4 and ST 2067-201) it is reported only when the
+pins change its editions: every ST 2067-2 edition cites the same ST 377
+editions. A Core Constraints validator chosen by an ApplicationIdentification
+URI is not a pin: its edition is evidence, and the CPL namespace decides.
 
 - **ST 2067-2, package** (Packing List, Asset Map, ingest; `--core-spec` /
   `coreSpec`): an ST 429-8 Packing List means 2013; the `.../2067-2/2016/PKL`

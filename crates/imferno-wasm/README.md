@@ -123,7 +123,9 @@ All exports are **async** (WASM must be initialized before use).
 
 | Field | Values | Default |
 |-------|--------|---------|
-| `coreSpec` | `"auto"`, `"v2013"`, `"v2016"`, `"v2020"` | auto-detect |
+| `coreSpec` | `"auto"`, `"v2013"`, `"v2016"`, `"v2020"` (ST 2067-2; a pin also pins the editions it cites: ST 2067-3, ST 2067-201, ST 377-1/-4) | auto-detect |
+| `cplSpec` | `"auto"`, `"v2013"`, `"v2016"`, `"v2020"` (ST 2067-3; wins over the one `coreSpec` implies) | auto-detect |
+| `iabSpec` | `"auto"`, `"v2019"`, `"v2021"`, `"v2026"` (ST 2067-201; wins over the one `coreSpec` implies) | auto-detect |
 | `app2eSpec` | `"auto"`, `"none"`, `"v2014"`, `"v2016"`, `"v2020"`, `"v2023"`, `"v2026"` | auto-detect |
 | `rules` | ESLint-style rules object (`{ [code]: severity }`) | all enabled |
 

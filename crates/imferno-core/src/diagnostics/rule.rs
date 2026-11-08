@@ -12,6 +12,26 @@
 //! edition is a table edit — the rule id does not change.
 //!
 //! Every spec has one table module under [`crate::catalogue`].
+//!
+//! # Message style
+//!
+//! A finding's message is read by people first, tools second:
+//!
+//! 1. **One short plain-English sentence first**, self-contained and at
+//!    most ~120 characters: what is wrong or what was done, in words an
+//!    operator understands without the spec at hand. The location
+//!    (CPL, file) is carried by [`crate::diagnostics::Location`]; do not
+//!    repeat long ids in this sentence.
+//! 2. **Then the edition and clause** applied, e.g. `(ST 2067-3:2013 §6.1.8)`,
+//!    when the rule has one.
+//! 3. **Then the details**: the values seen, the table or list expected, the
+//!    evidence, what the option to change it is. A how-to-fix hint may go in
+//!    the issue's `suggestion`.
+//!
+//! Namespace and scope URIs are identifiers, not links: write them as code
+//! (`` `http://…#content-kind` ``). Name caller options neutrally, as the
+//! API option and the CLI flag (`coreSpec / --core-spec`), since the core is
+//! used from the CLI and from JavaScript.
 
 use std::fmt;
 

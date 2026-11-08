@@ -95,18 +95,23 @@ enum Commands {
         #[arg(short, long, value_enum, default_value = "summary")]
         format: OutputFormat,
 
-        /// Core constraints spec version selection
+        /// Core constraints (ST 2067-2) edition selection. A pinned edition
+        /// also pins the editions it cites (ST 2067-3, ST 2067-201 for IAB,
+        /// ST 377-1/377-4 for MXF), over the documents' namespaces, unless
+        /// --cpl-spec / --iab-spec pin those separately
         #[arg(long, value_enum, default_value = "auto")]
         core_spec: CoreSpecVersion,
 
-        /// Composition Playlist (ST 2067-3) edition selection. ST 2067-3:2016 and
-        /// :2020 share one namespace; `auto` applies the newest unless the CPL
-        /// uses something only one edition defines, and reports the choice
+        /// Composition Playlist (ST 2067-3) edition selection; wins over the
+        /// edition --core-spec implies. ST 2067-3:2016 and :2020 share one
+        /// namespace; `auto` applies the newest unless the CPL uses something
+        /// only one edition defines, and reports the choice
         #[arg(long, value_enum, default_value = "auto")]
         cpl_spec: CoreSpecVersion,
 
-        /// IAB plug-in (ST 2067-201) edition selection. Every edition shares one
-        /// namespace; `auto` applies the newest and reports the choice
+        /// IAB plug-in (ST 2067-201) edition selection; wins over the edition
+        /// --core-spec implies. Every edition shares one namespace; `auto`
+        /// applies the newest and reports the choice
         #[arg(long, value_enum, default_value = "auto")]
         iab_spec: IabSpecVersion,
 

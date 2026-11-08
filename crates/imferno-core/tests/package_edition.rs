@@ -183,7 +183,9 @@ fn package_and_cpl_core_editions_agree() {
     assert_eq!(
         notices
             .iter()
-            .filter(|n| n.message.starts_with("ST 2067-2 edition of"))
+            .filter(|n| n
+                .message
+                .starts_with("Could not tell which ST 2067-2 edition"))
             .count(),
         2
     );
@@ -255,4 +257,374 @@ fn unknown_rules_keys_are_reported_with_the_result() {
     );
     assert_eq!(result.rule_warnings.len(), 1);
     assert_eq!(result.rule_warnings[0].key, "BogusKey");
+}
+
+/// One pin for everything: pinning the ST 2067-2 edition pins the editions
+/// that follow from it through its dated references (ST 2067-3 here), over
+/// the CPL's namespace, unless they are pinned separately. MERIDIAN has
+/// 2013 namespaces and lists App #2E 2016.
+#[test]
+fn core_pin_carries_the_editions_that_follow_from_it() {
+    use imferno_core::validation::CplSpecTarget;
+    let pkg = package("MERIDIAN_Netflix_Photon_161006");
+    let report = pkg.validate(&ValidationOptions {
+        core_spec: Some(CoreSpecTarget::St2067_2_2016),
+        skip_disk_checks: true,
+        ..Default::default()
+    });
+    let issues = all(&report);
+    assert!(
+        !issues.iter().any(|i| i.is(&imferno::EditionConflict)),
+        "{issues:#?}"
+    );
+    let st2067_3: Vec<_> = issues
+        .iter()
+        .filter(|i| i.spec == imferno_core::diagnostics::Spec::St2067_3)
+        .collect();
+    assert!(
+        !st2067_3.is_empty(),
+        "ContentKindUnknown is an ST 2067-3 rule"
+    );
+    for i in &st2067_3 {
+        assert_eq!(i.edition, "2016", "{}", i.code);
+    }
+    for i in issues
+        .iter()
+        .filter(|i| i.spec == imferno_core::diagnostics::Spec::St2067_2)
+    {
+        assert_eq!(i.edition, "2016", "{}", i.code);
+    }
+
+    // A separate ST 2067-3 pin wins over the one that follows from the core.
+    let report = pkg.validate(&ValidationOptions {
+        core_spec: Some(CoreSpecTarget::St2067_2_2016),
+        cpl_spec: Some(CplSpecTarget::St2067_3_2013),
+        skip_disk_checks: true,
+        ..Default::default()
+    });
+    let issues = all(&report);
+    assert!(!issues.iter().any(|i| i.is(&imferno::EditionConflict)));
+    let st2067_3: Vec<_> = issues
+        .iter()
+        .filter(|i| i.spec == imferno_core::diagnostics::Spec::St2067_3)
+        .collect();
+    assert!(!st2067_3.is_empty());
+    for i in st2067_3 {
+        assert_eq!(i.edition, "2013", "{}", i.code);
+    }
+}
+
+/// Every edition the caller pinned is announced (EditionPinned, Info), one
+/// per document and spec, naming the edition, the pin it comes from, and
+/// what the document itself gives; also when the pin agrees with it.
+#[test]
+fn every_pinned_edition_is_announced() {
+    use imferno_core::validation::CplSpecTarget;
+    let pkg = package("MERIDIAN_Netflix_Photon_161006");
+    let pinned = |options: ValidationOptions| -> Vec<ValidationIssue> {
+        all(&pkg.validate(&options))
+            .into_iter()
+            .filter(|i| i.is(&imferno::EditionPinned))
+            .cloned()
+            .collect()
+    };
+    assert!(pinned(ValidationOptions {
+        skip_disk_checks: true,
+        ..Default::default()
+    })
+    .is_empty());
+
+    let notices = pinned(ValidationOptions {
+        core_spec: Some(CoreSpecTarget::St2067_2_2016),
+        skip_disk_checks: true,
+        ..Default::default()
+    });
+    assert_eq!(notices.len(), 3, "{notices:#?}");
+    for n in &notices {
+        assert_eq!(n.severity, imferno_core::Severity::Info);
+    }
+    let package_notice = notices
+        .iter()
+        .find(|n| n.location.cpl_id.is_none())
+        .expect("package notice");
+    let m = &package_notice.message;
+    assert!(m.starts_with("ST 2067-2:2016 applied"), "{m}");
+    assert!(
+        m.contains("pinned by the caller (coreSpec / --core-spec)"),
+        "{m}"
+    );
+    assert!(m.contains("ST 2067-2:2013"), "what the package gives: {m}");
+    let cpl: Vec<&str> = notices
+        .iter()
+        .filter(|n| n.location.cpl_id.is_some())
+        .map(|n| n.message.as_str())
+        .collect();
+    let core = cpl
+        .iter()
+        .find(|m| m.starts_with("ST 2067-2:2016 applied"))
+        .expect("CPL ST 2067-2 notice");
+    assert!(core.contains("pinned by the caller"), "{core}");
+    assert!(core.contains("ST 2067-21:2016"), "the AppId: {core}");
+    let st3 = cpl
+        .iter()
+        .find(|m| m.starts_with("ST 2067-3:2016 applied"))
+        .expect("CPL ST 2067-3 notice");
+    assert!(
+        st3.contains("follows from the ST 2067-2:2016 pin (coreSpec / --core-spec)"),
+        "{st3}"
+    );
+    assert!(
+        st3.contains("http://www.smpte-ra.org/schemas/2067-3/2013"),
+        "the namespace: {st3}"
+    );
+    assert!(st3.contains("ST 2067-3:2013"), "what the CPL gives: {st3}");
+
+    // A separate ST 2067-3 pin is named as such.
+    let notices = pinned(ValidationOptions {
+        core_spec: Some(CoreSpecTarget::St2067_2_2016),
+        cpl_spec: Some(CplSpecTarget::St2067_3_2013),
+        skip_disk_checks: true,
+        ..Default::default()
+    });
+    assert!(
+        notices.iter().any(|n| n
+            .message
+            .starts_with("ST 2067-3:2013 applied: pinned by the caller (cplSpec / --cpl-spec)")),
+        "{notices:#?}"
+    );
+
+    // A pin that agrees with the documents is announced too.
+    let notices = pinned(ValidationOptions {
+        core_spec: Some(CoreSpecTarget::St2067_2_2013),
+        skip_disk_checks: true,
+        ..Default::default()
+    });
+    assert_eq!(notices.len(), 3, "{notices:#?}");
+
+    // MXF track files: announced only when the pins change their editions
+    // (JP). Every ST 2067-2 edition cites ST 377-1:2011 / ST 377-4:2012, so
+    // MERIDIAN's files stay as they are under a core pin.
+    let notices = pinned(ValidationOptions {
+        core_spec: Some(CoreSpecTarget::St2067_2_2016),
+        ..Default::default()
+    });
+    assert!(
+        !notices.iter().any(|n| n.location.file.is_some()),
+        "{notices:#?}"
+    );
+    // The IAB file of IAB/CompleteIMP is ST 2067-201:2019 on its own
+    // (ST 377-1:2011); pinning ST 2067-201:2021 makes it ST 377-1:2019.
+    use imferno_core::validation::IabSpecTarget;
+    let iab = package("IAB/CompleteIMP");
+    let notices: Vec<ValidationIssue> = all(&iab.validate(&ValidationOptions {
+        iab_spec: Some(IabSpecTarget::St2067_201_2021),
+        ..Default::default()
+    }))
+    .into_iter()
+    .filter(|i| i.is(&imferno::EditionPinned) && i.location.file.is_some())
+    .cloned()
+    .collect();
+    assert_eq!(notices.len(), 1, "{notices:#?}");
+    let m = &notices[0].message;
+    assert!(
+        m.starts_with(
+            "ST 377-1:2019, ST 377-4:2012 and ST 2067-201:2021 applied: follow from the \
+             ST 2067-201:2021 pin (iabSpec / --iab-spec)"
+        ),
+        "{m}"
+    );
+    assert!(m.contains("gives ST 377-1:2011"), "{m}");
+}
+
+/// What the unpinned resolution would have reported, and document evidence
+/// against the pin, are in the EditionPinned message (no EditionConflict).
+#[test]
+fn pinned_notices_name_the_conflict_and_the_evidence_they_override() {
+    let pkg = package("MERIDIAN_Netflix_Photon_161006");
+    let report = pkg.validate(&ValidationOptions {
+        core_spec: Some(CoreSpecTarget::St2067_2_2016),
+        skip_disk_checks: true,
+        ..Default::default()
+    });
+    let core = all(&report)
+        .into_iter()
+        .find(|i| {
+            i.is(&imferno::EditionPinned)
+                && i.location.cpl_id.is_some()
+                && i.message.starts_with("ST 2067-2:2016 applied")
+        })
+        .expect("CPL ST 2067-2 notice")
+        .message
+        .clone();
+    assert!(
+        core.contains(
+            "Without pins this would be an EditionConflict: the namespace of this CPL means \
+             ST 2067-2:2013, but its contents point to ST 2067-2:2016"
+        ),
+        "{core}"
+    );
+    assert!(
+        core.contains(
+            "Against the pin, this CPL points to ST 2067-2:2013: its ApplicationIdentification \
+             element is in the ST 2067-2:2013 Core Constraints namespace"
+        ),
+        "{core}"
+    );
+    // The App #2E 2016 listing supports the pin: listed with the namespace.
+    assert!(core.contains("ST 2067-21:2016"), "{core}");
+}
+
+/// `core_namespace_uri` is the same full pin as `core_spec`: package, CPL
+/// and the editions that follow from it.
+#[test]
+fn core_namespace_uri_is_a_full_pin() {
+    use imferno_core::validation::{
+        validate_cpl_with_registry, ConfigurableValidatorRegistry, ValidatorSelection,
+    };
+    let pkg = package("MERIDIAN_Netflix_Photon_161006");
+    let selection = ValidatorSelection {
+        core_namespace_uri: Some("http://www.smpte-ra.org/schemas/2067-2/2016".into()),
+        ..Default::default()
+    };
+    let registry = ConfigurableValidatorRegistry::new(selection.clone());
+    let report = pkg.validate_package_structure_for(
+        |cpl| validate_cpl_with_registry(cpl, &registry),
+        true,
+        &selection,
+    );
+    let issues = all(&report);
+    assert!(!issues.iter().any(|i| i.is(&imferno::DeliveryNotChecked)));
+    assert!(!issues.iter().any(|i| i.is(&imferno::EditionConflict)));
+    assert!(issues
+        .iter()
+        .any(|i| i.is(&imferno::EditionPinned) && i.location.cpl_id.is_none()));
+    for i in issues
+        .iter()
+        .filter(|i| i.spec == imferno_core::diagnostics::Spec::St2067_3)
+    {
+        assert_eq!(i.edition, "2016", "{}", i.code);
+    }
+}
+
+/// The first sentence of a message (up to the first ". ").
+fn first_sentence(message: &str) -> &str {
+    message.split(". ").next().unwrap_or(message)
+}
+
+/// Edition notices and ContentKindUnknown read as one short plain sentence
+/// first, details after; URIs are written as code, not as links.
+#[test]
+fn notices_lead_with_one_short_plain_sentence() {
+    use imferno_core::validation::CplSpecTarget;
+    let pkg = package("MERIDIAN_Netflix_Photon_161006");
+    let report = pkg.validate(&ValidationOptions {
+        skip_disk_checks: true,
+        ..Default::default()
+    });
+    let issues = all(&report);
+    let message = |rule: &str| -> String {
+        issues
+            .iter()
+            .find(|i| i.rule.0.ends_with(rule))
+            .unwrap_or_else(|| panic!("{rule}: {issues:#?}"))
+            .message
+            .clone()
+    };
+
+    let m = message("/ContentKindUnknown");
+    assert!(
+        m.starts_with(
+            r#"ContentKind "Test" is not a Table 3 value (ST 2067-3:2013 §6.1.8); values are case-sensitive, e.g. "test"."#
+        ),
+        "{m}"
+    );
+    assert!(
+        m.contains("`http://www.smpte-ra.org/schemas/2067-3/2013#content-kind`"),
+        "{m}"
+    );
+
+    let m = message("/DeliveryNotChecked");
+    assert!(
+        m.starts_with(
+            "Package follows ST 2067-2:2013: delivery requirements from 2016+ (Asset Map, \
+             file names, paths, VOLINDEX) were not checked."
+        ),
+        "{m}"
+    );
+    assert!(
+        m.contains("File size and hash were checked (ST 429-8)"),
+        "{m}"
+    );
+
+    let m = message("/EditionConflict");
+    assert!(
+        m.starts_with(
+            "The namespace of this CPL means ST 2067-2:2013, but its contents point to \
+             ST 2067-2:2016; checked against ST 2067-2:2013."
+        ),
+        "{m}"
+    );
+    assert!(m.contains("ST 2067-21:2016"), "{m}");
+    assert!(
+        m.contains("`http://www.smpte-ra.org/schemas/2067-3/2013`"),
+        "{m}"
+    );
+
+    // Every notice, in every pin combination and on an ambiguous package.
+    let mut ambiguous = package("MissingFilesAndAssetMapEntries");
+    for cpl in ambiguous.composition_playlists.values_mut() {
+        cpl.source_xml = None;
+    }
+    let reports = [
+        report.clone(),
+        pkg.validate(&ValidationOptions {
+            core_spec: Some(CoreSpecTarget::St2067_2_2016),
+            ..Default::default()
+        }),
+        pkg.validate(&ValidationOptions {
+            core_spec: Some(CoreSpecTarget::St2067_2_2016),
+            cpl_spec: Some(CplSpecTarget::St2067_3_2013),
+            skip_disk_checks: true,
+            ..Default::default()
+        }),
+        ambiguous.validate(&ValidationOptions::default()),
+        package("IAB/CompleteIMP").validate(&ValidationOptions::default()),
+    ];
+    let mut seen = 0;
+    for r in &reports {
+        for i in all(r).into_iter().filter(|i| {
+            [
+                &imferno::EditionAssumed,
+                &imferno::EditionConflict,
+                &imferno::EditionPinned,
+                &imferno::DeliveryNotChecked,
+            ]
+            .iter()
+            .any(|rule| i.is(*rule))
+        }) {
+            seen += 1;
+            let first = first_sentence(&i.message);
+            assert!(first.len() <= 125, "{} chars: {first}", first.len());
+            if let Some(id) = i.location.cpl_id {
+                assert!(!first.contains(&id.to_string()), "{first}");
+            }
+            assert!(
+                !i.message.contains(" http://"),
+                "URIs are code: {}",
+                i.message
+            );
+        }
+        let assumed: Vec<_> = all(r)
+            .into_iter()
+            .filter(|i| i.is(&imferno::EditionAssumed))
+            .collect();
+        for a in assumed {
+            assert!(
+                a.message.starts_with("Could not tell which "),
+                "{}",
+                a.message
+            );
+        }
+    }
+    assert!(seen >= 8, "{seen}");
 }

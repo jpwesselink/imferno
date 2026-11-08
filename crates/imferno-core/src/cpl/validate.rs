@@ -202,19 +202,29 @@ fn validate_content_kind_vocabulary(
     };
 
     if !allowed.contains(&value.as_str()) {
-        issues.push(
-            ValidationIssue::from_rule(
-                &st2067_3::ContentKindUnknown,
-                spec_ed,
-                format!(
-                    "ContentKind {:?} is not a recognized value under scope {scope} \
-                     (expected one of {table}: {})",
-                    value,
-                    allowed.join(", "),
-                ),
-            )
-            .with_location(Location::new().with_cpl(cpl.id)),
+        use crate::diagnostics::Edition;
+        // "Test" for "test": the comparison is case-sensitive.
+        let folded = allowed
+            .iter()
+            .find(|a| a.eq_ignore_ascii_case(value.trim()))
+            .map(|a| format!("; values are case-sensitive, e.g. {a:?}"))
+            .unwrap_or_default();
+        let default_scope = if scope == CONTENT_KIND_DEFAULT_SCOPE {
+            " (the default)"
+        } else {
+            ""
+        };
+        let mut issue = ValidationIssue::from_rule(&st2067_3::ContentKindUnknown, spec_ed, "")
+            .with_location(Location::new().with_cpl(cpl.id));
+        // The clause of the edition applied, from the rule table.
+        issue.message = format!(
+            "ContentKind {value:?} is not a {table} value (ST 2067-3:{} §{}){folded}. \
+             Scope `{scope}`{default_scope}; {table} values: {}.",
+            spec_ed.label(),
+            issue.clause,
+            allowed.join(", "),
         );
+        issues.push(issue);
     }
 }
 

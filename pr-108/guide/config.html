@@ -6,12 +6,12 @@
 <script src="/imferno/pr-108/version-switcher.js" defer>
   <script>{;const saved = localStorage.getItem('rspress-theme-appearance');const preferDark = window.matchMedia('(prefers-color-scheme: dark)').matches;const defaultTheme = 'auto';const theme = saved === 'light' || saved === 'dark' || saved === 'auto' ? saved : defaultTheme;const isDark = theme === 'auto' ? preferDark : theme === 'dark';document.documentElement.classList.toggle('dark', isDark);document.documentElement.classList.toggle('rp-dark', isDark);document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';}</script>
 <link href="/imferno/pr-108/static/css/styles.b7bd2309ad.css" rel="stylesheet">
-<link rel="preload" href="/imferno/pr-108/static/js/async/route-efdf754be49d.9303e361e3.js" as="script">
+<link rel="preload" href="/imferno/pr-108/static/js/async/route-efdf754be49d.f43c4f9637.js" as="script">
 <script defer src="/imferno/pr-108/static/js/styles.d57284674d.js"></script>
 <script defer src="/imferno/pr-108/static/js/lib-react.49ca540f5b.js"></script>
 <script defer src="/imferno/pr-108/static/js/lib-router.e520f21483.js"></script>
 <script defer src="/imferno/pr-108/static/js/z.c3732eae2a.js"></script>
-<script defer src="/imferno/pr-108/static/js/index.125957bd7c.js"></script>
+<script defer src="/imferno/pr-108/static/js/index.b9845abe30.js"></script>
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="generator" content="Rspress v2.1.1">
 <link rel="alternate" type="text/markdown" href="/imferno/pr-108/guide/config.md">
@@ -166,10 +166,16 @@ allows only one edition but other evidence names another, the namespace&#x27;s
 edition is applied and <code>IMFERNO:Package/EditionConflict</code> (Warning) names both
 editions and the evidence. Every edition a pin sets, directly or through a
 pinned ST 2067-2 edition, is announced by <code>IMFERNO:Package/EditionPinned</code>
-(Info), one per document and spec (one per MXF file for ST 377-1 and
-ST 377-4): the edition applied, the pin it comes from, what the document
-declares, and what it gives on its own. It is reported also when the pin
-agrees with the document, so a report always shows the manual choices.</p>
+(Info), one per document and spec: the edition applied, the pin it comes
+from, what the document declares and gives on its own (and whether that would
+have been an <code>EditionConflict</code> or <code>EditionAssumed</code>), and any evidence in the
+document that points elsewhere (the pin wins; no <code>EditionConflict</code>). For the
+package and CPLs it is reported also when the pin agrees with the document,
+so a report always shows the manual choices. For an MXF track file (one
+notice for ST 377-1, ST 377-4 and ST 2067-201) it is reported only when the
+pins change its editions: every ST 2067-2 edition cites the same ST 377
+editions. A Core Constraints validator chosen by an ApplicationIdentification
+URI is not a pin: its edition is evidence, and the CPL namespace decides.</p>
 <ul>
 <li><strong>ST 2067-2, package</strong> (Packing List, Asset Map, ingest; <code>--core-spec</code> /
 <code>coreSpec</code>): an ST 429-8 Packing List means 2013; the <code>.../2067-2/2016/PKL</code>

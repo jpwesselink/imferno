@@ -7,6 +7,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.0.0](https://github.com/jpwesselink/imferno/compare/imferno-wasm-v3.0.1...imferno-wasm-v4.0.0) - 2026-11-08
+
+### Added
+
+- *(diagnostics)* IMFERNO:Package/EditionConflict for namespace-vs-evidence contradictions
+- *(validation)* [**breaking**] bounce CPLs that are not IMF Composition Playlists
+- *(validation)* [**breaking**] ST 2067-3:2020 as its own edition, chosen and announced per CPL
+- SARIF 2.1.0 output (core, CLI --format sarif, NAPI/WASM toSarif)
+- *(package)* require the Asset Map file to be named ASSETMAP.xml
+- *(package)* report a CPL whose Id differs from its AssetMap asset Id
+- *(bindings)* formatReport accepts the ValidationResult from validate()
+- *(validation)* report CPLs whose application profile was not validated
+- *(assetmap)* check ST 429-9:2014 Annex A.2 path rules on disk
+- *(mxf)* require Duration on Timeline Track structural components
+- *(validation)* check APP2.HT.IRV parameter B limits (ST 2067-21:2026)
+- *(validation)* validate each ST 2067-21 edition against its own text
+- *(validation)* audit P3 batch — IAB §5.10.2/Annex C.2/§6.2 and ISXD §6/§9.3 gap rules, font/otf (AUDIT-18, AUDIT-21, AUDIT-13 partial)
+
+### Fixed
+
+- *(validation)* [**breaking**] resolve the IAB plug-in edition like every other edition
+- *(catalogue)* remove IMFERNO/IntrinsicDurationZero and CompositionTimecodeRateMismatch
+- *(catalogue)* correct three strengths found in review
+- *(validation)* re-emit ResourceList, ContentTitle and required-track rules
+- *(mxf)* check the OP1a qualifier bits per ST 2067-5 §5.2.1
+- *(catalogue)* verify ST 2067-2 clauses and strength per edition
+- *(catalogue)* verify ST 377-1 clauses and strength
+- *(catalogue)* verify ST 2067-3 clauses and strength per edition
+- 2013 Packing List Size/Hash under ST 429-8; announce the ST 429-9 edition
+- package edition, 2013 delivery rules, verified rows, rule warnings, SARIF paths
+- *(validation)* edition-exact CplIdAssetMapMismatch codes
+- *(validation)* one DigitalSignature notice per package, signed CPLs only
+- *(validation)* allow SourceDuration 0 on a Resource
+- *(types)* clean rustdoc artefacts out of the generated JSDoc
+- *(wasm)* declare the functions index.js actually exports, with generated types
+- *(package)* report CPL track files outside the package as info
+- *(validation)* drop non-ST 2067-21 rules from the App #2E 2023 code set
+- *(validation)* accept the 8K JPEG 2000 IMF profiles under ST 2067-21:2026
+- *(validation)* audit P2 batch — 9 spec-conformance findings across audio MCA, IAB, ISXD
+- *(validation)* audit P1 batch — invented IAB rule, timed-text UL byte, ADM-gated Mode A
+
+### Other
+
+- *(wasm)* restore pnpm-lock.yaml
+- regenerate catalogue artefacts and docs
+- regenerate catalogue artefacts from the rule tables
+- *(types)* regenerate types.d.ts for Location.segment_id
+- Merge remote-tracking branch 'origin/main' into fix/real-world-findings
+- *(types)* regenerate types.d.ts after merging main
+- Merge remote-tracking branch 'origin/main' into fix/napi-typescript-types
+- *(wasm)* delete stale demo/scratch files and unused docs WASM artifacts
+- contract for the WASM declarations; reachable-any and export checks
+- *(wasm)* drop the raw wasm export and the Tsify declarations
+- guard that binding outputs match their declared TypeScript types
+- regenerate validation code reference and JS code maps
+
 ## [3.0.1](https://github.com/jpwesselink/imferno/compare/imferno-wasm-v3.0.0...imferno-wasm-v3.0.1) - 2026-06-19
 
 ### Added

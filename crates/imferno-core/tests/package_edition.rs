@@ -141,6 +141,101 @@ fn ambiguous_edition_uses_the_newest_and_says_so() {
     assert_eq!(notices.len(), 1);
 }
 
+/// The package edition and the CPL Core Constraints edition come from one
+/// resolution: an App #2E 2020 ApplicationIdentification (which references
+/// ST 2067-2:2020) in a CPL declaring the 2016 Core Constraints namespace
+/// leaves both at the newest edition, each announced, instead of the CPL
+/// at 2020 and the package at 2016.
+#[test]
+fn package_and_cpl_core_editions_agree() {
+    let mut pkg = package("IAB/CompleteIMP");
+    for cpl in pkg.composition_playlists.values_mut() {
+        cpl.extension_properties
+            .as_mut()
+            .expect("ExtensionProperties")
+            .application_identification = Some("http://www.smpte-ra.org/ns/2067-21/2020".into());
+    }
+    let e = pkg.package_edition(None);
+    assert_eq!(e.edition, St2067_2Edition::V2020);
+    assert!(e.assumed.is_some());
+    for cpl in pkg.composition_playlists.values() {
+        let c = imferno_core::validation::cpl_core_edition(cpl).expect("SMPTE CPL");
+        assert_eq!(c.edition, e.edition);
+        let why = c.assumed.expect("conflicting evidence is announced");
+        assert!(why.contains("ST 2067-21:2020"), "{why}");
+        assert!(
+            why.contains("ST 2067-2:2016 Core Constraints namespace"),
+            "{why}"
+        );
+    }
+    let report = pkg.validate(&ValidationOptions {
+        skip_disk_checks: true,
+        ..Default::default()
+    });
+    let notices: Vec<_> = all(&report)
+        .into_iter()
+        .filter(|i| i.is(&imferno::EditionAssumed))
+        .collect();
+    // ST 2067-2: one for the package, one for its CPL; ST 2067-3: one for
+    // the CPL (2016 and 2020 share its namespace); ST 2067-201: one for the
+    // CPL (every edition shares its namespace).
+    assert_eq!(notices.len(), 4, "{notices:#?}");
+    assert_eq!(
+        notices
+            .iter()
+            .filter(|n| n.message.starts_with("ST 2067-2 edition of"))
+            .count(),
+        2
+    );
+    assert!(notices.iter().any(|n| n.location.cpl_id.is_some()));
+}
+
+/// Only real Packing List namespaces (ST 429-8 → 2013; `.../2067-2/2016/PKL`
+/// → 2016 or 2020, Annex K / Annex J) say anything about the edition. A
+/// Core Constraints namespace on a PKL root is not a PKL namespace and
+/// names no edition; the CPLs decide.
+#[test]
+fn core_constraints_namespace_on_a_pkl_names_no_edition() {
+    use imferno_core::assetmap::PklNamespace;
+    let mut pkg = package("IAB/CompleteIMP");
+    for pkl in pkg.packing_lists.values_mut() {
+        pkl.namespace = PklNamespace::Smpte2067_2_2013;
+    }
+    let e = pkg.package_edition(None);
+    assert_eq!(e.edition, St2067_2Edition::V2016, "{:?}", e.assumed);
+    assert_eq!(e.assumed, None);
+    for pkl in pkg.packing_lists.values_mut() {
+        pkl.namespace = PklNamespace::Smpte2067_2_2020;
+    }
+    let e = pkg.package_edition(None);
+    assert_eq!((e.edition, e.assumed), (St2067_2Edition::V2016, None));
+}
+
+/// A 2013-namespace CPL listing App #2E 2016 (which cites ST 2067-2:2016):
+/// the namespace decides, and the contradiction is EditionConflict (Warning),
+/// naming both editions and the evidence; EditionAssumed is not used for it.
+#[test]
+fn namespace_vs_evidence_is_an_edition_conflict_warning() {
+    let pkg = package("MERIDIAN_Netflix_Photon_161006");
+    let report = pkg.validate(&ValidationOptions {
+        skip_disk_checks: true,
+        ..Default::default()
+    });
+    let conflicts: Vec<_> = all(&report)
+        .into_iter()
+        .filter(|i| i.is(&imferno::EditionConflict))
+        .collect();
+    assert_eq!(conflicts.len(), 1, "{conflicts:#?}");
+    let c = conflicts[0];
+    assert_eq!(c.severity, imferno_core::Severity::Warning);
+    assert!(c.message.contains("ST 2067-2:2013"), "{}", c.message);
+    assert!(c.message.contains("ST 2067-2:2016"), "{}", c.message);
+    assert!(c.message.contains("ST 2067-21:2016"), "{}", c.message);
+    assert!(!all(&report)
+        .iter()
+        .any(|i| i.is(&imferno::EditionAssumed) && i.message.contains("contradicts")));
+}
+
 /// Rules-config keys that select nothing come back with the result.
 #[test]
 fn unknown_rules_keys_are_reported_with_the_result() {

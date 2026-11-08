@@ -123,8 +123,16 @@ describe("hand-written option types match what parse_options reads", () => {
   };
   const meridian = join(testData, "MERIDIAN_Netflix_Photon_161006");
 
-  it("every declared coreSpec / app2eSpec literal is accepted by the engine", () => {
+  it("every declared coreSpec / cplSpec / app2eSpec literal is accepted by the engine", () => {
     const core = literals("ValidateOptions", "coreSpec");
+    const cpl = literals("ValidateOptions", "cplSpec");
+    expect(cpl).toContain("auto");
+    for (const cplSpec of cpl) expect(() => api.validatePath(meridian, { cplSpec }), cplSpec).not.toThrow();
+    expect(() => api.validatePath(meridian, { cplSpec: "v2019" })).toThrow(/cplSpec/);
+    const iab = literals("ValidateOptions", "iabSpec");
+    expect(iab).toContain("auto");
+    for (const iabSpec of iab) expect(() => api.validatePath(meridian, { iabSpec }), iabSpec).not.toThrow();
+    expect(() => api.validatePath(meridian, { iabSpec: "v2020" })).toThrow(/iabSpec/);
     const app = literals("ValidateOptions", "app2eSpec");
     expect(core).toContain("auto");
     expect(app).toContain("none");

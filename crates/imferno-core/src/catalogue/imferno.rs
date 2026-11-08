@@ -202,15 +202,26 @@ pub static RuleNotInEdition: Rule<E> = Rule {
     ],
 };
 
-/// The ST 2067-2 edition of a package could not be determined from its
-/// Packing Lists and CPLs; package-level rules were checked against the
-/// edition named in the message.
+/// The edition of a spec applied to a document (package, CPL, Asset Map)
+/// could not be determined from its namespace and contents; the newest
+/// candidate was applied. The message names the namespace seen and the
+/// edition used.
 pub static EditionAssumed: Rule<E> = Rule {
     name: "EditionAssumed",
     category: Category::Structure,
-    description: "The package's ST 2067-2 edition could not be determined from its Packing List and CPL namespaces; package-level rules were checked against the edition named in the message (the newest candidate).",
-    example: Some("Packing List in the ST 2067-2:2016 PKL namespace (used by 2016 and 2020) and no CPL declaring a Core Constraints namespace"),
+    description: "The edition of a spec applied to a document (the package, a CPL, the Asset Map) could not be determined: its namespace is shared by several editions and nothing in it tells them apart, or the evidence names no single one of them. The newest candidate was applied; the message names the namespace seen and the edition used.",
+    example: Some("CPL in the ST 2067-3:2016 namespace (used by ST 2067-2:2016 and :2020) with no Core Constraints namespace and no App #2E ApplicationIdentification: Core Constraints checked against ST 2067-2:2020"),
     editions: &[row(E::Current, "Package", Severity::Info)],
+};
+
+/// The namespace of a document allows one edition of a spec, but other
+/// evidence in it names another; the namespace's edition was applied.
+pub static EditionConflict: Rule<E> = Rule {
+    name: "EditionConflict",
+    category: Category::Structure,
+    description: "The namespace of a document allows only one edition of a spec, but other evidence in it (e.g. the ApplicationIdentification) names another edition. The namespace's edition was applied; the message names both editions and the evidence.",
+    example: Some("CPL in the ST 2067-3:2013 namespace (ST 2067-2:2013) whose ApplicationIdentification lists ST 2067-21:2016, which cites ST 2067-2:2016"),
+    editions: &[row(E::Current, "Package", Severity::Warning)],
 };
 
 /// The package is an ST 2067-2:2013 IMP: that edition defines no delivery
@@ -226,6 +237,7 @@ pub static DeliveryNotChecked: Rule<E> = Rule {
 /// Every rule of this spec.
 pub static ALL: &[&dyn AnyRule] = &[
     &EditionAssumed,
+    &EditionConflict,
     &DeliveryNotChecked,
     &OpenFailed,
     &PartitionPackParseFailed,

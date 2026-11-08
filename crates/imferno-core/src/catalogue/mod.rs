@@ -77,6 +77,7 @@ pub fn find(id: &str) -> Option<&'static dyn AnyRule> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::diagnostics::IssueSource;
     use std::collections::HashSet;
 
     #[test]
@@ -144,6 +145,81 @@ mod tests {
                     );
                 }
             }
+        }
+    }
+
+    /// ST 2067-2:2016 §8.3 has Notes 1-5; Note 6 (an asset in the Packing
+    /// List but not the Asset Map is not ingested) exists only in 2020.
+    #[test]
+    fn unresolved_uuid_2016_cites_only_2016_text() {
+        use st2067_2::St2067_2Edition;
+        let row = st2067_2::UnresolvedUuid
+            .entry(St2067_2Edition::V2016)
+            .unwrap();
+        let text = row.interpretation.unwrap().text;
+        assert!(!text.contains("Note 6"), "{text}");
+        let row = st2067_2::UnresolvedUuid
+            .entry(St2067_2Edition::V2020)
+            .unwrap();
+        assert!(row.interpretation.unwrap().text.contains("Note 6"));
+    }
+
+    /// A clause a description cites (`§6.8`) is a clause of one of the
+    /// rule's own edition rows, unless the citation names another document
+    /// (`ST 382 §10`).
+    #[test]
+    fn description_clauses_are_clauses_of_the_rule() {
+        for r in all().filter(|r| r.spec().source() == IssueSource::ProseRule) {
+            let desc = r.description();
+            let own = r.spec().id().replace("ST", "ST ");
+            for (i, _) in desc.match_indices('§') {
+                let before = desc[..i].trim_end();
+                if before.ends_with(char::is_numeric) && !before.ends_with(&own) {
+                    continue; // cites another document
+                }
+                let clause: String = desc[i + '§'.len_utf8()..]
+                    .chars()
+                    .take_while(|c| c.is_ascii_alphanumeric() || *c == '.')
+                    .collect();
+                let clause = clause.trim_end_matches('.');
+                assert!(
+                    r.edition_rows()
+                        .iter()
+                        .filter_map(|e| e.clause.as_deref())
+                        .any(|c| c == clause
+                            || c.starts_with(&format!("{clause}."))
+                            || clause.starts_with(&format!("{c}."))),
+                    "{}: description cites §{clause}, which no edition row has",
+                    r.id()
+                );
+            }
+        }
+    }
+
+    /// "The scope attribute ... shall determine the permissible values"
+    /// (2016/2020 §6.14.1.2; 2013 §6.14.2 shall match Table 19): a label
+    /// outside the table of its standard-marker scope is an Error in every
+    /// edition (JP, strictest reading).
+    #[test]
+    fn marker_label_unknown_is_shall_error_in_every_edition() {
+        for e in st2067_3::MarkerLabelUnknown.editions {
+            assert_eq!(e.strength, crate::diagnostics::rule::Strength::Shall);
+            assert_eq!(e.default_severity, crate::diagnostics::Severity::Error);
+        }
+    }
+
+    /// NotImfCompositionPlaylist rests on shall sentences: ST 2067-2 §6.1
+    /// (ApplicationIdentification) and ST 2067-3 §5.1 (schema conformance).
+    #[test]
+    fn not_imf_cpl_cites_its_shall_anchors() {
+        for e in st2067_2::NotImfCompositionPlaylist.editions {
+            assert_eq!(e.clause, Some("6.1"));
+            let text = e.interpretation.unwrap().text;
+            assert!(
+                text.contains("ST 2067-3") && text.contains("§5.1"),
+                "{text}"
+            );
+            assert!(!text.contains("JP"), "{text}");
         }
     }
 

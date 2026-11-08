@@ -54,8 +54,13 @@ const OP_QUALIFIER_IMF: u8 = 0x01;
 /// `ValidationIssue`s; the caller folds them into the usual
 /// `ValidationReport`.
 ///
-/// `spec_ed` is the ST 2067-2 edition applied to the track file.
-pub fn validate_mxf_essence(path: &Path, spec_ed: St2067_2Edition) -> Vec<ValidationIssue> {
+/// `spec_ed` is the ST 2067-2 edition applied to the track file and `st377_1`
+/// its ST 377-1 edition (see [`crate::validation::mxf_editions`]).
+pub fn validate_mxf_essence(
+    path: &Path,
+    spec_ed: St2067_2Edition,
+    st377_1: St377_1Edition,
+) -> Vec<ValidationIssue> {
     let mut issues = Vec::new();
     let file = match std::fs::File::open(path) {
         Ok(f) => f,
@@ -80,7 +85,13 @@ pub fn validate_mxf_essence(path: &Path, spec_ed: St2067_2Edition) -> Vec<Valida
                     FooterSearch::Absent => true,
                     FooterSearch::Unknown => false,
                 };
-            issues.extend(check_partition_pack(path, &pack, file_is_open, spec_ed));
+            issues.extend(check_partition_pack(
+                path,
+                &pack,
+                file_is_open,
+                spec_ed,
+                st377_1,
+            ));
         }
         Err(e) => {
             issues.push(parse_failure_issue(path, &e));
@@ -323,6 +334,7 @@ fn check_partition_pack(
     pack: &PartitionPack,
     file_is_open: bool,
     spec_ed: St2067_2Edition,
+    st377_1: St377_1Edition,
 ) -> Vec<ValidationIssue> {
     let mut issues = Vec::new();
 
@@ -330,7 +342,7 @@ fn check_partition_pack(
     // be the first partition in the file.
     if !matches!(pack.kind, PartitionKind::Header) {
         issues.push(
-            ValidationIssue::from_rule(&st377_1::NonHeaderFirstPartition, St377_1Edition::V2011,
+            ValidationIssue::from_rule(&st377_1::NonHeaderFirstPartition, st377_1,
                 format!(
                     "First partition in MXF file at {} is {:?}, not the Header partition required by ST 377-1 §6.2.5",
                     path.display(),
@@ -387,7 +399,7 @@ fn check_partition_pack(
         issues.push(
             ValidationIssue::from_rule(
                 &st377_1::HeaderPartitionOpen,
-                St377_1Edition::V2011,
+                st377_1,
                 format!(
                     "Header partition in MXF file at {} is {:?} and no Closed footer partition \
                      with header metadata was found, so the file is Open (ST 377-1 §6.2.4)",
@@ -403,7 +415,7 @@ fn check_partition_pack(
     // metadata in its header partition (header_byte_count > 0).
     if pack.header_byte_count == 0 {
         issues.push(
-            ValidationIssue::from_rule(&st377_1::MissingHeaderMetadata, St377_1Edition::V2011,
+            ValidationIssue::from_rule(&st377_1::MissingHeaderMetadata, st377_1,
                 format!(
                     "Header partition in MXF file at {} has no header metadata (HeaderByteCount = 0) — \
                      IMF requires header metadata in the header partition",
@@ -466,6 +478,11 @@ fn format_ul(bytes: &[u8; 16]) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The checks under ST 377-1:2011, the edition every ST 2067-2 cites.
+    fn validate_mxf_essence(path: &Path, spec_ed: St2067_2Edition) -> Vec<ValidationIssue> {
+        super::validate_mxf_essence(path, spec_ed, St377_1Edition::V2011)
+    }
     use crate::diagnostics::Severity;
 
     fn write_partition_key(buf: &mut Vec<u8>, kind_byte: u8, status_byte: u8) {

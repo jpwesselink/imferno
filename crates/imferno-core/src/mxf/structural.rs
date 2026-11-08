@@ -31,7 +31,12 @@ struct Open {
 
 /// Report Structural Components on Timeline Tracks that have no
 /// Duration (ST 377-1:2011 Annex B.8).
-pub fn check_structural_components(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
+/// `st377_1` is the ST 377-1 edition of the track file.
+pub fn check_structural_components(
+    regxml: &str,
+    path: &Path,
+    st377_1: St377_1Edition,
+) -> Vec<ValidationIssue> {
     let mut missing: Vec<String> = Vec::new();
     let mut stack: Vec<Open> = Vec::new();
     let mut reader = quick_xml::Reader::from_str(regxml);
@@ -87,7 +92,7 @@ pub fn check_structural_components(regxml: &str, path: &Path) -> Vec<ValidationI
         .map(|component| {
             ValidationIssue::from_rule(
                 &st377_1::StructuralComponentDurationMissing,
-                St377_1Edition::V2011,
+                st377_1,
                 format!(
                     "{component} on a Timeline Track in MXF file at {} has no Duration; \
                      ST 377-1 Annex B.8 makes it a Best Effort property that shall be \
@@ -103,6 +108,11 @@ pub fn check_structural_components(regxml: &str, path: &Path) -> Vec<ValidationI
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The check under ST 377-1:2011.
+    fn check_structural_components(regxml: &str, path: &Path) -> Vec<ValidationIssue> {
+        super::check_structural_components(regxml, path, St377_1Edition::V2011)
+    }
 
     fn track(kind: &str, clip: &str) -> String {
         format!(

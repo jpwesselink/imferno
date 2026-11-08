@@ -535,7 +535,7 @@ mod tests {
             ("source:NotAVariant", RuleSeverity::Off),
             ("Doesnotexist", RuleSeverity::Warn),
             // An edition the rule does not have.
-            ("ST2067-3:2020/SegmentDuration", RuleSeverity::Warn),
+            ("ST2067-3:2026/SegmentDuration", RuleSeverity::Warn),
             ("XSD/*", RuleSeverity::Off),
         ]);
         let w = r.validate();

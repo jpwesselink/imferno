@@ -6,7 +6,7 @@ use imferno_core::package::{
     format_validation_result, validate, FormatOptions, Imferno, ReportFormat, RulesConfig,
     ValidationOptions, ValidationResult,
 };
-use imferno_core::validation::{AppSpecTarget, CoreSpecTarget};
+use imferno_core::validation::{AppSpecTarget, CoreSpecTarget, CplSpecTarget, IabSpecTarget};
 use imferno_core::{ValidationIssue, ValidationProfile, ValidationReport};
 use std::io::IsTerminal;
 use std::path::PathBuf;
@@ -99,6 +99,17 @@ enum Commands {
         #[arg(long, value_enum, default_value = "auto")]
         core_spec: CoreSpecVersion,
 
+        /// Composition Playlist (ST 2067-3) edition selection. ST 2067-3:2016 and
+        /// :2020 share one namespace; `auto` applies the newest unless the CPL
+        /// uses something only one edition defines, and reports the choice
+        #[arg(long, value_enum, default_value = "auto")]
+        cpl_spec: CoreSpecVersion,
+
+        /// IAB plug-in (ST 2067-201) edition selection. Every edition shares one
+        /// namespace; `auto` applies the newest and reports the choice
+        #[arg(long, value_enum, default_value = "auto")]
+        iab_spec: IabSpecVersion,
+
         /// Application profile selection (App2E + ST 2067-201 IAB plug-ins)
         #[arg(long, value_enum, default_value = "auto")]
         app2e_spec: App2eSpecVersion,
@@ -158,6 +169,14 @@ enum CoreSpecVersion {
 }
 
 #[derive(Clone, Copy, Debug, clap::ValueEnum)]
+enum IabSpecVersion {
+    Auto,
+    V2019,
+    V2021,
+    V2026,
+}
+
+#[derive(Clone, Copy, Debug, clap::ValueEnum)]
 enum App2eSpecVersion {
     Auto,
     None,
@@ -179,6 +198,8 @@ async fn main() -> Result<()> {
             hash_concurrency,
             format,
             core_spec,
+            cpl_spec,
+            iab_spec,
             app2e_spec,
             skip_disk_checks,
             exit_zero,
@@ -191,6 +212,8 @@ async fn main() -> Result<()> {
                 hash_concurrency,
                 format,
                 core_spec,
+                cpl_spec,
+                iab_spec,
                 app2e_spec,
                 skip_disk_checks,
                 exit_zero,
@@ -258,6 +281,8 @@ fn parse_rules(path: Option<&std::path::Path>, inline: &[String]) -> Result<Rule
 
 fn make_options(
     core_spec: CoreSpecVersion,
+    cpl_spec: CoreSpecVersion,
+    iab_spec: IabSpecVersion,
     app2e_spec: App2eSpecVersion,
     skip_disk_checks: bool,
     rules: RulesConfig,
@@ -267,6 +292,20 @@ fn make_options(
         CoreSpecVersion::V2013 => Some(CoreSpecTarget::St2067_2_2013),
         CoreSpecVersion::V2016 => Some(CoreSpecTarget::St2067_2_2016),
         CoreSpecVersion::V2020 => Some(CoreSpecTarget::St2067_2_2020),
+    };
+
+    let cpl_spec_target = match cpl_spec {
+        CoreSpecVersion::Auto => None,
+        CoreSpecVersion::V2013 => Some(CplSpecTarget::St2067_3_2013),
+        CoreSpecVersion::V2016 => Some(CplSpecTarget::St2067_3_2016),
+        CoreSpecVersion::V2020 => Some(CplSpecTarget::St2067_3_2020),
+    };
+
+    let iab_spec_target = match iab_spec {
+        IabSpecVersion::Auto => None,
+        IabSpecVersion::V2019 => Some(IabSpecTarget::St2067_201_2019),
+        IabSpecVersion::V2021 => Some(IabSpecTarget::St2067_201_2021),
+        IabSpecVersion::V2026 => Some(IabSpecTarget::St2067_201_2026),
     };
 
     let app_spec_targets = match app2e_spec {
@@ -282,6 +321,8 @@ fn make_options(
     ValidationOptions {
         rules,
         core_spec: core_spec_target,
+        cpl_spec: cpl_spec_target,
+        iab_spec: iab_spec_target,
         app_specs: app_spec_targets,
         skip_disk_checks,
         ..Default::default()
@@ -297,6 +338,8 @@ async fn cmd_validate(
     hash_concurrency: usize,
     format: OutputFormat,
     core_spec: CoreSpecVersion,
+    cpl_spec: CoreSpecVersion,
+    iab_spec: IabSpecVersion,
     app2e_spec: App2eSpecVersion,
     skip_disk_checks: bool,
     exit_zero: bool,
@@ -315,7 +358,14 @@ async fn cmd_validate(
             describe_rule_warning(&w.reason)
         );
     }
-    let options = make_options(core_spec, app2e_spec, skip_disk_checks, rules);
+    let options = make_options(
+        core_spec,
+        cpl_spec,
+        iab_spec,
+        app2e_spec,
+        skip_disk_checks,
+        rules,
+    );
     let color = use_color() && !matches!(format, OutputFormat::Json | OutputFormat::Sarif);
 
     // Read files

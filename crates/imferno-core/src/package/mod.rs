@@ -13,7 +13,7 @@ use crate::catalogue::imferno::{self, ImfernoEdition};
 use crate::catalogue::st2067_2::{self, St2067_2Edition};
 use crate::catalogue::st2067_3;
 use crate::catalogue::st2067_9::{self, St2067_9Edition};
-use crate::catalogue::st377_1::{self, St377_1Edition};
+use crate::catalogue::st377_1;
 use crate::catalogue::st429_8::{self, St429_8Edition};
 use crate::catalogue::st429_9::{self, St429_9Edition};
 use crate::cpl::EditRate;
@@ -328,14 +328,7 @@ fn pkg_or_pkl_issue(
 
 /// The ST 2067-2 edition applied to a package's package-level rules (see
 /// [`Imferno::package_edition`]).
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct PackageEdition {
-    /// The edition applied.
-    pub edition: St2067_2Edition,
-    /// Why the edition was assumed rather than determined; reported as
-    /// `IMFERNO:Package/EditionAssumed`.
-    pub assumed: Option<String>,
-}
+pub type PackageEdition = crate::validation::EditionChoice<St2067_2Edition>;
 
 /// The ST 2067-2 delivery rules of ST 429-9 (Annex A Basic Map Profile v2,
 /// the VOLINDEX of the deprecated profile): ST 2067-2:2016/2020 §8 apply
@@ -776,10 +769,12 @@ impl Imferno {
 
         let selection = ValidatorSelection {
             core_spec: options.core_spec,
+            cpl_spec: options.cpl_spec,
+            iab_spec: options.iab_spec,
             app_specs: options.app_specs.clone(),
             ..Default::default()
         };
-        let registry = ConfigurableValidatorRegistry::new(selection);
+        let registry = ConfigurableValidatorRegistry::new(selection.clone());
         #[cfg(not(target_arch = "wasm32"))]
         let skip_disk = options.skip_disk_checks;
         #[cfg(target_arch = "wasm32")]
@@ -787,7 +782,7 @@ impl Imferno {
         let report = self.validate_package_structure_for(
             |cpl| validate_cpl_with_registry(cpl, &registry),
             skip_disk,
-            options.core_spec,
+            &selection,
         );
         let report = self.enrich_cpl_locations(report);
         let report = report.apply_rules(&options.rules);
@@ -809,13 +804,15 @@ impl Imferno {
 
         let selection = ValidatorSelection {
             core_spec: options.core_spec,
+            cpl_spec: options.cpl_spec,
+            iab_spec: options.iab_spec,
             app_specs: options.app_specs.clone(),
             ..Default::default()
         };
-        let registry = ConfigurableValidatorRegistry::new(selection);
+        let registry = ConfigurableValidatorRegistry::new(selection.clone());
         let report = self.validate_package_with_hashes_for(
             |cpl| validate_cpl_with_registry(cpl, &registry),
-            options.core_spec,
+            &selection,
         );
         let report = self.enrich_cpl_locations(report);
         let report = report.apply_rules(&options.rules);
@@ -1208,86 +1205,81 @@ impl Imferno {
     /// 2. The Packing Lists: an ST 429-8 PKL is ST 2067-2:2013 (2013 §7.1);
     ///    the `.../2067-2/2016/PKL` namespace is used by both 2016 (Annex K)
     ///    and 2020 (Annex J).
-    /// 3. Between 2016 and 2020: the Core Constraints namespace the CPLs
-    ///    declare.
+    /// 3. The CPLs whose Core Constraints edition is determined
+    ///    ([`crate::validation::cpl_core_edition`], the resolution the CPL
+    ///    validators use) name the edition.
     ///
     /// When that leaves more than one edition, the newest is used and
-    /// [`PackageEdition::assumed`] says so.
+    /// `assumed` says so ([`crate::validation::resolve_edition`]).
     pub fn package_edition(
         &self,
         core_spec: Option<crate::validation::CoreSpecTarget>,
     ) -> PackageEdition {
         use crate::assetmap::PklNamespace;
         use crate::diagnostics::Edition;
-        use crate::validation::CoreSpecTarget;
+        use crate::validation::{resolve_edition, Evidence};
         use St2067_2Edition::{V2013, V2016, V2020};
 
         if let Some(target) = core_spec {
-            let edition = match target {
-                CoreSpecTarget::St2067_2_2013 => V2013,
-                CoreSpecTarget::St2067_2_2016 => V2016,
-                CoreSpecTarget::St2067_2_2020 => V2020,
-            };
             return PackageEdition {
-                edition,
+                edition: target.edition(),
                 assumed: None,
+                determined: true,
+                conflict: None,
             };
         }
 
-        let mut candidates: Vec<St2067_2Edition> = vec![V2013, V2016, V2020];
+        // Only Packing List namespaces name editions: ST 429-8 (2013 §7.1)
+        // and `.../2067-2/2016/PKL` (2016 Annex K, 2020 Annex J). A Core
+        // Constraints or unknown namespace on a PKL root names none.
+        let mut candidates: Option<Vec<St2067_2Edition>> = None;
+        let mut namespaces: Vec<String> = Vec::new();
         for pkl in self.packing_lists.values() {
+            namespaces.push(pkl.namespace.to_string());
             let allowed: &[St2067_2Edition] = match pkl.namespace {
-                PklNamespace::Dci429_8 | PklNamespace::Smpte2067_2_2013 => &[V2013],
-                PklNamespace::Smpte2067_2_2016
-                | PklNamespace::Smpte2067_2_2016Pkl
-                | PklNamespace::Smpte2067_2_2020 => &[V2016, V2020],
-                PklNamespace::Unknown(_) => &[V2013, V2016, V2020],
+                PklNamespace::Dci429_8 => &[V2013],
+                PklNamespace::Smpte2067_2_2016Pkl => &[V2016, V2020],
+                PklNamespace::Smpte2067_2_2013
+                | PklNamespace::Smpte2067_2_2016
+                | PklNamespace::Smpte2067_2_2020
+                | PklNamespace::Unknown(_) => continue,
             };
-            candidates.retain(|e| allowed.contains(e));
+            let c = candidates.get_or_insert_with(|| allowed.to_vec());
+            c.retain(|e| allowed.contains(e));
         }
+        namespaces.sort();
+        namespaces.dedup();
+        let candidates = match candidates {
+            // No Packing List namespace: it names no edition.
+            None => Vec::new(),
+            // Packing Lists of different editions: every edition remains.
+            Some(c) if c.is_empty() => vec![V2013, V2016, V2020],
+            Some(c) => c,
+        };
 
-        let mut declared: Vec<St2067_2Edition> = self
-            .composition_playlists
-            .values()
-            .filter_map(crate::validation::declared_core_constraints_edition)
-            .collect();
-        declared.sort();
-        declared.dedup();
-
-        match (candidates.as_slice(), declared.as_slice()) {
-            ([only], _) => PackageEdition {
-                edition: *only,
-                assumed: None,
-            },
-            (_, [cpl]) if candidates.contains(cpl) => PackageEdition {
-                edition: *cpl,
-                assumed: None,
-            },
-            _ => {
-                let newest = candidates.last().copied().unwrap_or(V2020);
-                let why = if candidates.is_empty() {
-                    "the Packing Lists are of different ST 2067-2 editions".to_string()
-                } else if declared.is_empty() {
-                    "the Packing List namespace is shared by several editions and no CPL \
-                     declares a Core Constraints namespace"
-                        .to_string()
-                } else {
-                    let list: Vec<_> = declared.iter().map(|e| e.label()).collect();
-                    format!(
-                        "the CPLs declare Core Constraints namespaces of {}",
-                        list.join(", ")
+        // The CPLs whose own Core Constraints edition is determined (the
+        // same resolution the CPL validators use) are the evidence.
+        let mut cpls: Vec<&CompositionPlaylist> = self.composition_playlists.values().collect();
+        cpls.sort_by_key(|c| c.id.to_string());
+        let evidence: Vec<Evidence<St2067_2Edition>> = cpls
+            .into_iter()
+            .filter_map(|cpl| {
+                let choice = crate::validation::cpl_core_edition(cpl)?;
+                choice.determined.then(|| {
+                    Evidence::one(
+                        choice.edition,
+                        format!("CPL {} is ST 2067-2:{}", cpl.id, choice.edition.label()),
                     )
-                };
-                PackageEdition {
-                    edition: newest,
-                    assumed: Some(format!(
-                        "ST 2067-2 edition of the package could not be determined ({why}); \
-                         package-level rules were checked against ST 2067-2:{}",
-                        newest.label()
-                    )),
-                }
-            }
-        }
+                })
+            })
+            .collect();
+
+        let namespace = match namespaces.as_slice() {
+            [] => "it has no Packing List, so its namespace".to_string(),
+            [one] => format!("its Packing List namespace {one}"),
+            many => format!("its Packing List namespaces {}", many.join(", ")),
+        };
+        resolve_edition("the package", &namespace, &candidates, &evidence)
     }
 
     /// One notice naming the ST 429-9 edition assumed when the report holds
@@ -1318,6 +1310,13 @@ impl Imferno {
         if let Some(why) = &edition.assumed {
             report.add(ValidationIssue::from_rule(
                 &imferno::EditionAssumed,
+                ImfernoEdition::Current,
+                why.clone(),
+            ));
+        }
+        if let Some(why) = &edition.conflict {
+            report.add(ValidationIssue::from_rule(
+                &imferno::EditionConflict,
                 ImfernoEdition::Current,
                 why.clone(),
             ));
@@ -1917,7 +1916,7 @@ impl Imferno {
     where
         F: Fn(&CompositionPlaylist) -> Vec<ValidationIssue>,
     {
-        self.validate_package_structure_for(cpl_validator, skip_disk_checks, None)
+        self.validate_package_structure_for(cpl_validator, skip_disk_checks, &Default::default())
     }
 
     /// [`Self::validate_package_structure_with_cpl_validator`] with the
@@ -1926,12 +1925,12 @@ impl Imferno {
         &self,
         cpl_validator: F,
         skip_disk_checks: bool,
-        core_spec: Option<crate::validation::CoreSpecTarget>,
+        selection: &crate::validation::ValidatorSelection,
     ) -> ValidationReport
     where
         F: Fn(&CompositionPlaylist) -> Vec<ValidationIssue>,
     {
-        let edition = self.package_edition(core_spec);
+        let edition = self.package_edition(selection.core_spec);
         let spec_ed = edition.edition;
         let delivery = spec_ed != St2067_2Edition::V2013;
         let mut report = ValidationReport::new(ValidationProfile::SMPTE);
@@ -2037,7 +2036,7 @@ impl Imferno {
         // and when skip_disk_checks is true
         #[cfg(not(target_arch = "wasm32"))]
         if !skip_disk_checks && !self.root_path.as_os_str().is_empty() {
-            self.validate_mxf_headers(&mut report, spec_ed);
+            self.validate_mxf_headers(&mut report, spec_ed, edition.determined, selection);
         }
 
         // Files the AssetMap does not list. A directory listing reads no
@@ -2065,7 +2064,7 @@ impl Imferno {
     where
         F: Fn(&CompositionPlaylist) -> Vec<ValidationIssue>,
     {
-        self.validate_package_with_hashes_for(cpl_validator, None)
+        self.validate_package_with_hashes_for(cpl_validator, &Default::default())
     }
 
     /// [`Self::validate_package_with_hashes_with_cpl_validator`] with the
@@ -2073,12 +2072,12 @@ impl Imferno {
     pub fn validate_package_with_hashes_for<F>(
         &self,
         cpl_validator: F,
-        core_spec: Option<crate::validation::CoreSpecTarget>,
+        selection: &crate::validation::ValidatorSelection,
     ) -> ValidationReport
     where
         F: Fn(&CompositionPlaylist) -> Vec<ValidationIssue>,
     {
-        let edition = self.package_edition(core_spec);
+        let edition = self.package_edition(selection.core_spec);
         let spec_ed = edition.edition;
         let delivery = spec_ed != St2067_2Edition::V2013;
         let mut report = ValidationReport::new(ValidationProfile::SMPTE);
@@ -2136,7 +2135,7 @@ impl Imferno {
         self.validate_multi_pkl_consistency(&mut report, spec_ed);
 
         // MXF header cross-validation (ST 377-1)
-        self.validate_mxf_headers(&mut report, spec_ed);
+        self.validate_mxf_headers(&mut report, spec_ed, edition.determined, selection);
 
         Self::st429_9_edition_notice(&mut report);
         report
@@ -2367,7 +2366,13 @@ impl Imferno {
     ///
     /// The Operational Pattern is checked by `mxf::essence::validate_mxf_essence`.
     #[cfg_attr(target_arch = "wasm32", allow(unused_variables))]
-    fn validate_mxf_headers(&self, report: &mut ValidationReport, spec_ed: St2067_2Edition) {
+    fn validate_mxf_headers(
+        &self,
+        report: &mut ValidationReport,
+        spec_ed: St2067_2Edition,
+        package_determined: bool,
+        selection: &crate::validation::ValidatorSelection,
+    ) {
         // Collect MXF asset UUIDs from PKLs
         for pkl in self.packing_lists.values() {
             for asset in &pkl.asset_list.assets {
@@ -2382,6 +2387,59 @@ impl Imferno {
                     continue; // Missing file already reported by validate_file_manifest
                 }
 
+                // The ST 377-1 / ST 377-4 editions of this track file, from the
+                // dated references of the specs that apply to it; the ST 2067-201
+                // edition from the CPLs whose IAB Virtual Tracks reference it.
+                let file_name = path
+                    .file_name()
+                    .map(|n| n.to_string_lossy().into_owned())
+                    .unwrap_or_default();
+                // The IAB edition of a referenced file is its CPL's (the CPL
+                // announces it when assumed); only a determined (pinned) edition
+                // is evidence for the ST 377 editions.
+                let iab_pin = selection.iab_spec.map(|t| t.edition());
+                let iab_choice = self.iab_referencing_cpls(&asset.id).first().map(|cpl| {
+                    crate::validation::cpl_iab_edition(
+                        cpl,
+                        selection.core_spec.map(|t| t.edition()),
+                        iab_pin,
+                    )
+                });
+                let iab_ref = iab_choice
+                    .as_ref()
+                    .filter(|c| c.determined)
+                    .map(|c| c.edition);
+                // The pinned or determined ST 2067-2 editions of the CPLs that
+                // reference the file, else the package's when determined. An
+                // assumed edition is not evidence (mxf_editions then uses what
+                // every ST 2067-2 edition cites).
+                let mut cores: Vec<St2067_2Edition> = self
+                    .referencing_cpls(&asset.id)
+                    .into_iter()
+                    .filter_map(|cpl| {
+                        selection.core_spec.map(|t| t.edition()).or_else(|| {
+                            crate::validation::cpl_core_edition(cpl)
+                                .filter(|c| c.determined)
+                                .map(|c| c.edition)
+                        })
+                    })
+                    .collect();
+                if cores.is_empty() && package_determined {
+                    cores.push(spec_ed);
+                }
+                let (c1, c4) = crate::validation::mxf_editions(
+                    &format!("MXF track file '{file_name}'"),
+                    &cores,
+                    iab_ref,
+                );
+                #[allow(unused_mut)]
+                let mut carries_iab = false;
+                let iab_ed = iab_choice
+                    .as_ref()
+                    .map(|c| c.edition)
+                    .or(iab_pin)
+                    .unwrap_or(crate::catalogue::st2067_201::St2067_201Edition::V2026);
+
                 // MXF essence checks via the `regxmllib-rs` family
                 // (smpte-mxf). Emits ST 2067-2 §5.1.1 / ST 377-1 §6.1.1, §6.2.4
                 // and §6.2.5 diagnostics that the hand-rolled parser
@@ -2389,7 +2447,7 @@ impl Imferno {
                 // doesn't link smpte-mxf, and browser callers don't
                 // see MXF binaries anyway (they upload XML only).
                 #[cfg(not(target_arch = "wasm32"))]
-                for issue in crate::mxf::essence::validate_mxf_essence(path, spec_ed) {
+                for issue in crate::mxf::essence::validate_mxf_essence(path, spec_ed, c1.edition) {
                     let issue = issue.with_context("asset_uuid", asset.id.to_string());
                     report.add(issue);
                 }
@@ -2413,9 +2471,9 @@ impl Imferno {
                         regxml::RootMode::Preface,
                     ) {
                         Ok(regxml) => {
-                            for issue in
-                                crate::mxf::audio_mca::check_audio_mca(&regxml, path, spec_ed)
-                            {
+                            for issue in crate::mxf::audio_mca::check_audio_mca(
+                                &regxml, path, spec_ed, c4.edition,
+                            ) {
                                 let issue = issue.with_context("asset_uuid", asset.id.to_string());
                                 report.add(issue);
                             }
@@ -2427,22 +2485,19 @@ impl Imferno {
                             }
                             // ST 377-1 Annex B.8: Duration on Timeline
                             // Track components (ST377-1 issue 18).
-                            for issue in
-                                crate::mxf::structural::check_structural_components(&regxml, path)
-                            {
+                            for issue in crate::mxf::structural::check_structural_components(
+                                &regxml, path, c1.edition,
+                            ) {
                                 let issue = issue.with_context("asset_uuid", asset.id.to_string());
                                 report.add(issue);
                             }
+                            carries_iab = regxml.contains("IABEssenceDescriptor");
                             // ST 2067-201 §5.10.2 / Annex C.2 IAB labeling
                             // rules (AUDIT-18) — no-op unless the file
                             // carries an IABEssenceDescriptor.
-                            for issue in crate::mxf::iab_labeling::check_iab_labeling(
-                                &regxml,
-                                path,
-                                // The IAB edition applied when a CPL does
-                                // not select one (see validation::push_sequence_presence_plugins).
-                                crate::catalogue::st2067_201::St2067_201Edition::V2021,
-                            ) {
+                            for issue in
+                                crate::mxf::iab_labeling::check_iab_labeling(&regxml, path, iab_ed)
+                            {
                                 let issue = issue.with_context("asset_uuid", asset.id.to_string());
                                 report.add(issue);
                             }
@@ -2464,7 +2519,7 @@ impl Imferno {
                         // ST 377-1 §7.1: the header partition pack lists the essence containers
                         if info.essence_containers.is_empty() {
                             report.add(
-                                ValidationIssue::from_rule(&st377_1::NoEssenceContainers, St377_1Edition::V2011,
+                                ValidationIssue::from_rule(&st377_1::NoEssenceContainers, c1.edition,
                                     format!(
                                         "MXF track file '{}' has no essence containers in its header partition",
                                         path.file_name().map(|n| n.to_string_lossy()).unwrap_or_default(),
@@ -2479,7 +2534,7 @@ impl Imferno {
                         report.add(
                             ValidationIssue::from_rule(
                                 &st377_1::NotMxf,
-                                St377_1Edition::V2011,
+                                c1.edition,
                                 format!(
                                     "File '{}' has MXF MIME type but is not a valid MXF file",
                                     path.file_name()
@@ -2509,8 +2564,68 @@ impl Imferno {
                         );
                     }
                 }
+
+                // Announce every assumed edition of the file, as for CPLs (the
+                // ST 2067-201 one only for a file that carries IAB).
+                let iab_assumed =
+                    (carries_iab && iab_choice.is_none() && iab_pin.is_none()).then(|| {
+                        format!(
+                            "ST 2067-201 edition of MXF track file '{file_name}' could not be \
+                         determined: no CPL IAB Virtual Track references it, and every \
+                         ST 2067-201 edition shares one namespace; ST 2067-201 rules were \
+                         checked against ST 2067-201:2026 (the newest)"
+                        )
+                    });
+                let notices = [
+                    (&imferno::EditionAssumed, c1.assumed),
+                    (&imferno::EditionAssumed, c4.assumed),
+                    (&imferno::EditionAssumed, iab_assumed),
+                    (&imferno::EditionConflict, c1.conflict),
+                    (&imferno::EditionConflict, c4.conflict),
+                ];
+                for (rule, why) in notices.into_iter().filter_map(|(r, w)| w.map(|w| (r, w))) {
+                    report.add(
+                        ValidationIssue::from_rule(rule, ImfernoEdition::Current, why)
+                            .with_location(Location::new().with_file(path.clone()))
+                            .with_context("asset_uuid", asset.id.to_string()),
+                    );
+                }
             }
         }
+    }
+
+    /// The CPLs any of whose Virtual Tracks reference track file `id`.
+    fn referencing_cpls(&self, id: &ImfUuid) -> Vec<&CompositionPlaylist> {
+        self.composition_playlists
+            .values()
+            .filter(|cpl| {
+                cpl.segment_list.segments.iter().any(|s| {
+                    s.sequence_list.all_sequences().into_iter().any(|seq| {
+                        seq.resource_list()
+                            .resources
+                            .iter()
+                            .any(|r| r.track_file_id.as_ref() == Some(id))
+                    })
+                })
+            })
+            .collect()
+    }
+
+    /// The CPLs whose IAB Virtual Tracks reference track file `id`.
+    fn iab_referencing_cpls(&self, id: &ImfUuid) -> Vec<&CompositionPlaylist> {
+        self.composition_playlists
+            .values()
+            .filter(|cpl| {
+                cpl.segment_list.segments.iter().any(|s| {
+                    s.sequence_list.iab_sequences.iter().any(|seq| {
+                        seq.resource_list
+                            .resources
+                            .iter()
+                            .any(|r| r.track_file_id.as_ref() == Some(id))
+                    })
+                })
+            })
+            .collect()
     }
 
     /// ST 2067-3 §7.2: Within each segment, all virtual tracks must span the
@@ -2569,7 +2684,7 @@ impl Imferno {
                         report.add(
                             ValidationIssue::from_rule(
                                 &st2067_3::SegmentDuration,
-                                crate::cpl::validate::st2067_3_edition(&cpl.namespace),
+                                crate::validation::cpl_edition(cpl, None, None).edition,
                                 format!(
                                     "Segment {} has mismatched virtual track durations: \
                                      track {} = {:.6}s but track {} = {:.6}s",
@@ -2900,6 +3015,12 @@ pub struct ValidationOptions {
     pub rules: RulesConfig,
     /// Core constraints spec version. `None` = auto-detect from CPL namespace.
     pub core_spec: Option<crate::validation::CoreSpecTarget>,
+    /// ST 2067-3 edition for the CPL rules. `None` = resolve it per CPL from
+    /// its namespace and contents (newest when they do not tell, announced).
+    pub cpl_spec: Option<crate::validation::CplSpecTarget>,
+    /// ST 2067-201 (IAB) edition. `None` = resolve it per CPL (newest,
+    /// announced: the editions share one namespace).
+    pub iab_spec: Option<crate::validation::IabSpecTarget>,
     /// Application profile spec versions. `None` = auto-detect from CPL.
     pub app_specs: Option<Vec<crate::validation::AppSpecTarget>>,
     /// When `true`, collapse repeat-offender issues (same code in the
@@ -4117,7 +4238,10 @@ mod tests {
         let full = package.validate_package_structure_for(
             |_| Vec::new(),
             true,
-            Some(crate::validation::CoreSpecTarget::St2067_2_2020),
+            &crate::validation::ValidatorSelection {
+                core_spec: Some(crate::validation::CoreSpecTarget::St2067_2_2020),
+                ..Default::default()
+            },
         );
         let unresolved = st2067_2::UnresolvedUuid
             .code(St2067_2Edition::V2020)

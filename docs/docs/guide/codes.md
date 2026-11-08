@@ -31,21 +31,21 @@ Unmarked rows are carried over from earlier catalogues and not yet checked.
 
 ## SMPTE ST 377-1 — MXF File Format
 
-| Rule | Description | Category | 2011 |
-|------|-------------|----------|------|
-| `ST377-1/NotMxf` | File is not a valid MXF container. | Asset | 6.1.1✓ error |
-| `ST377-1/NoEssenceContainers` | MXF file contains no essence containers. | Encoding | 7.1✓ warning |
-| `ST377-1/NonHeaderFirstPartition` | The first partition in an MXF file must be the Header partition. | Container | 6.2.5✓ error |
-| `ST377-1/HeaderPartitionOpen` | The header partition is Open and no Closed footer partition carries header metadata, so the MXF file is Open. | Container | 6.2.4✓ warning |
-| `ST377-1/MissingHeaderMetadata` | The header partition must carry header metadata (HeaderByteCount > 0). | Container | 6.1.1✓ error |
-| `ST377-1/StructuralComponentDurationMissing` | A Structural Component on a Timeline Track has no Duration; it is a Best Effort property there and shall be encoded (-1 when unknown). | Container | B.8✓ error |
+| Rule | Description | Category | 2011 | 2019 |
+|------|-------------|----------|------|------|
+| `ST377-1/NotMxf` | File is not a valid MXF container. | Asset | 6.1.1✓ error | 6.1.1✓ error |
+| `ST377-1/NoEssenceContainers` | MXF file contains no essence containers. | Encoding | 7.1✓ warning | 7.1✓ warning |
+| `ST377-1/NonHeaderFirstPartition` | The first partition in an MXF file must be the Header partition. | Container | 6.2.5✓ error | 6.2.5✓ error |
+| `ST377-1/HeaderPartitionOpen` | The header partition is Open and no Closed footer partition carries header metadata, so the MXF file is Open. | Container | 6.2.4✓ warning | 6.2.4✓ warning |
+| `ST377-1/MissingHeaderMetadata` | The header partition must carry header metadata (HeaderByteCount > 0). | Container | 6.1.1✓ error | 6.1.1✓ error |
+| `ST377-1/StructuralComponentDurationMissing` | A Structural Component on a Timeline Track has no Duration; it is a Best Effort property there and shall be encoded (-1 when unknown). | Container | B.8✓ error | B.8✓ error |
 
 ## SMPTE ST 377-4 — MXF Multichannel Audio Labeling
 
-| Rule | Description | Category | 2012 |
-|------|-------------|----------|------|
-| `ST377-4/MCALinkIDMissing` | Every MCA sub-descriptor shall carry an MCALinkID (§6.3 Table 3, Req). | Audio | 6.3✓ error |
-| `ST377-4/SoundfieldGroupLinkIDMismatch` | AudioChannelLabelSubDescriptor SoundfieldGroupLinkID shall equal the SoundfieldGroup's MCALinkID (§6.4.1). | Audio | 6.4.1✓ error |
+| Rule | Description | Category | 2012 | 2021 |
+|------|-------------|----------|------|------|
+| `ST377-4/MCALinkIDMissing` | Every MCA sub-descriptor shall carry an MCALinkID (§6.3 Table 3, Req). | Audio | 6.3✓ error | 6.3✓ error |
+| `ST377-4/SoundfieldGroupLinkIDMismatch` | AudioChannelLabelSubDescriptor SoundfieldGroupLinkID shall equal the SoundfieldGroup's MCALinkID (§6.4.1). | Audio | 6.4.1✓ error | 6.4.1✓ error |
 
 ## SMPTE ST 429-8 — Packing List
 
@@ -75,6 +75,7 @@ Unmarked rows are carried over from earlier catalogues and not yet checked.
 
 | Rule | Description | Category | 2013 | 2016 | 2020 |
 |------|-------------|----------|------|------|------|
+| `ST2067-2/NotImfCompositionPlaylist` | The CPL is not an IMF Composition Playlist: its namespace is not an ST 2067-3 namespace (e.g. a D-Cinema ST 429-7 CPL). No ST 2067-3, Core Constraints or application rules are applied to it. | Structure | 6.1✓ error | 6.1✓ error | 6.1✓ error |
 | `ST2067-2/PklMalformedXml` | A Packing List document is not well-formed XML. | Structure | 7.1✓ error | K✓ error | J✓ error |
 | `ST2067-2/NoCpls` | No CPL assets found in the AssetMap. | Structure | —✓ | 7.2.1✓ info | 7.2✓ info |
 | `ST2067-2/SizeMismatch` | Declared file size does not match the on-disk size. | Asset | —✓ | K✓ error | J✓ error |
@@ -96,7 +97,7 @@ Unmarked rows are carried over from earlier catalogues and not yet checked.
 | `ST2067-2/MCATagSymbol` | SoundfieldGroupLabelSubDescriptor is missing MCATagSymbol. | Audio | 5.3.6.1✓ error | 5.3.6.1✓ error | 5.3.6.1✓ error |
 | `ST2067-2/SoundfieldChannelCount` | WAVEPCMDescriptor.ChannelCount exceeds the number of channels of its soundfield group (a subset is allowed). | Audio | 5.3.6.6✓ error | 5.3.6.6✓ error | 5.3.6.6✓ error |
 | `ST2067-2/DigitalSignature` | The CPL carries a Signature (ST 2067-2 §6.9); signature verification is not performed. | Security | 6.9✓ info | 6.9✓ info | 6.9✓ info |
-| `ST2067-2/EssenceDescriptorList` | EssenceDescriptorList is required per ST 2067-2 §6.4.2. | Structure | 6.8✓ error | 6.8✓ error | 6.8✓ error |
+| `ST2067-2/EssenceDescriptorList` | EssenceDescriptorList is absent: the File Descriptor of every Track File the CPL references shall be mapped to an EssenceDescriptor (§6.8). | Structure | 6.8✓ error | 6.8✓ error | 6.8✓ error |
 | `ST2067-2/CplIdAssetMapMismatch` | An AssetMap asset points at a CPL file whose Id differs from the asset Id. | Reference | 7.2✓ error | 7.3.1✓ error | 7.3.1✓ error |
 | `ST2067-2/OperationalPatternNotOP1A` | MXF essence Operational Pattern UL is not OP1a (ST 378:2004). | Container | 5.1.1✓ error | 5.1.1✓ error | 5.1.1✓ error |
 | `ST2067-2/SoundDescriptorNotWAVEPCM` | Audio essence descriptor must be WAVEPCMDescriptor. | Audio | 5.3.4.1✓ error | 5.3.4.1✓ error | 5.3.4.1✓ error |
@@ -123,33 +124,33 @@ Unmarked rows are carried over from earlier catalogues and not yet checked.
 
 ## SMPTE ST 2067-3 — Composition Playlist
 
-| Rule | Description | Category | 2013 | 2016 |
-|------|-------------|----------|------|------|
-| `ST2067-3/ContentTitleEmpty` | ContentTitle is empty; it shall contain a human-readable title. | Metadata | 6.1.7✓ error | 6.1.7✓ error |
-| `ST2067-3/ResourceListEmpty` | A Sequence has an empty ResourceList; the SequenceType schema requires one or more Resource elements. | Structure | 6.10✓ error | 6.10✓ error |
-| `ST2067-3/ContentKindUnknown` | ContentKind uses an unrecognized value under the SMPTE scope. | Metadata | 6.1.8✓ error | 6.1.8✓ error |
-| `ST2067-3/SourceEncodingNoEssenceDescriptorList` | SourceEncoding present but EssenceDescriptorList absent. | Reference | 6.12.1✓ error | 6.12.1✓ error |
-| `ST2067-3/SourceEncodingUnresolved` | SourceEncoding does not match any EssenceDescriptor Id. | Reference | 6.12.1✓ error | 6.12.1✓ error |
-| `ST2067-3/EssenceDescriptorListEmpty` | EssenceDescriptorList present but contains no descriptors. | Structure | 6.1✓ error | 6.1✓ error |
-| `ST2067-3/ContentVersionListEmpty` | ContentVersionList present but empty. | Structure | 6.1✓ error | 6.1✓ error |
-| `ST2067-3/ContentVersionIdInvalid` | ContentVersion/Id is empty (shall be a URI). | Metadata | 6.8.1✓ error | 6.8.1✓ error |
-| `ST2067-3/ContentVersionLabelTextMissing` | ContentVersion/LabelText is absent. | Metadata | 6.8✓ error | 6.8✓ error |
-| `ST2067-3/LocaleLanguageTagInvalid` | Locale language tag does not conform to RFC 5646. | Metadata | 6.5.2✓ error | 6.5.2✓ error |
-| `ST2067-3/TrackIdNotUnique` | TrackId is not unique within a segment. | Structure | 6.9.3✓ error | 6.9.3✓ error |
-| `ST2067-3/MarkerOffsetOutOfRange` | Marker offset exceeds the resource IntrinsicDuration. | Timing | 6.13✓ error | 6.13✓ error |
-| `ST2067-3/MarkerLabelUnknown` | Marker label is not a recognized SMPTE standard value. | Metadata | 6.14.2✓ error | 6.14.1.2✓ info |
-| `ST2067-3/SegmentDuration` | All virtual tracks in a segment must span the same number of edit units. | Timing | 7.2✓ error | 7.2✓ error |
-| `ST2067-3/ContentVersionIdDuplicate` | No two ContentVersion elements shall have identical Id values. | Structure | 6.1.9✓ error | 6.1.9✓ error |
-| `ST2067-3/SegmentDurationIntegerEditUnits` | Sequence duration shall be an integer number of Composition Edit Units. | Timing | 7.3✓ error | 7.3✓ error |
-| `ST2067-3/UniqueSegmentId` | Duplicate Segment Id within the CPL. | Structure | 6.9.1✓ error | 6.9.1✓ error |
-| `ST2067-3/UniqueEssenceDescriptorId` | Duplicate EssenceDescriptor Id within the CPL. | Structure | 6.7.1✓ error | 6.7.1✓ error |
-| `ST2067-3/UniqueResourceId` | Duplicate Resource Id within the CPL. | Structure | 6.11.1✓ error | 6.11.1✓ error |
-| `ST2067-3/EntryPoint` | EntryPoint exceeds IntrinsicDuration, leaving no valid SourceDuration. | Timing | 6.11.6✓ error | 6.11.6✓ error |
-| `ST2067-3/ResourceDuration` | EntryPoint + SourceDuration exceeds IntrinsicDuration. | Timing | 6.11.6✓ error | 6.11.6✓ error |
-| `ST2067-3/RepeatCount` | RepeatCount shall be a positive integer. | Timing | 6.11✓ error | 6.11✓ error |
-| `ST2067-3/TrackFileId` | A non-marker resource is missing a TrackFileId. | Reference | 6.12✓ error | 6.12✓ error |
-| `ST2067-3/VirtualTrackContinuity` | A virtual track is missing from one or more segments. | Structure | 6.9.3✓ error | 6.9.3✓ error |
-| `ST2067-3/DanglingEssenceDescriptor` | EssenceDescriptor present in EssenceDescriptorList but not referenced by any Resource. | Reference | 6.1.10.1✓ error | 6.1.10.1✓ error |
+| Rule | Description | Category | 2013 | 2016 | 2020 |
+|------|-------------|----------|------|------|------|
+| `ST2067-3/ContentTitleEmpty` | ContentTitle is empty; it shall contain a human-readable title. | Metadata | 6.1.7✓ error | 6.1.7✓ error | 6.1.7✓ error |
+| `ST2067-3/ResourceListEmpty` | A Sequence has an empty ResourceList; the SequenceType schema requires one or more Resource elements. | Structure | 6.10✓ error | 6.10✓ error | 6.10✓ error |
+| `ST2067-3/ContentKindUnknown` | ContentKind uses an unrecognized value under the SMPTE scope. | Metadata | 6.1.8✓ error | 6.1.8✓ error | 6.1.8✓ error |
+| `ST2067-3/SourceEncodingNoEssenceDescriptorList` | SourceEncoding present but EssenceDescriptorList absent. | Reference | 6.12.1✓ error | 6.12.1✓ error | 6.12.1✓ error |
+| `ST2067-3/SourceEncodingUnresolved` | SourceEncoding does not match any EssenceDescriptor Id. | Reference | 6.12.1✓ error | 6.12.1✓ error | 6.12.1✓ error |
+| `ST2067-3/EssenceDescriptorListEmpty` | EssenceDescriptorList present but contains no descriptors. | Structure | 6.1✓ error | 6.1✓ error | 6.1✓ error |
+| `ST2067-3/ContentVersionListEmpty` | ContentVersionList present but empty. | Structure | 6.1✓ error | 6.1✓ error | 6.1✓ error |
+| `ST2067-3/ContentVersionIdInvalid` | ContentVersion/Id is empty (shall be a URI). | Metadata | 6.8.1✓ error | 6.8.1✓ error | 6.8.1✓ error |
+| `ST2067-3/ContentVersionLabelTextMissing` | ContentVersion/LabelText is absent. | Metadata | 6.8✓ error | 6.8✓ error | 6.8✓ error |
+| `ST2067-3/LocaleLanguageTagInvalid` | Locale language tag does not conform to RFC 5646. | Metadata | 6.5.2✓ error | 6.5.2✓ error | 6.5.2✓ error |
+| `ST2067-3/TrackIdNotUnique` | TrackId is not unique within a segment. | Structure | 6.9.3✓ error | 6.9.3✓ error | 6.9.3✓ error |
+| `ST2067-3/MarkerOffsetOutOfRange` | Marker offset exceeds the resource IntrinsicDuration. | Timing | 6.13✓ error | 6.13✓ error | 6.13✓ error |
+| `ST2067-3/MarkerLabelUnknown` | Marker label is not a recognized SMPTE standard value. | Metadata | 6.14.2✓ error | 6.14.1.2✓ error | 6.14.1.2✓ error |
+| `ST2067-3/SegmentDuration` | All virtual tracks in a segment must span the same number of edit units. | Timing | 7.2✓ error | 7.2✓ error | 7.2✓ error |
+| `ST2067-3/ContentVersionIdDuplicate` | No two ContentVersion elements shall have identical Id values. | Structure | 6.1.9✓ error | 6.1.9✓ error | 6.1.9✓ error |
+| `ST2067-3/SegmentDurationIntegerEditUnits` | Sequence duration shall be an integer number of Composition Edit Units. | Timing | 7.3✓ error | 7.3✓ error | 7.3✓ error |
+| `ST2067-3/UniqueSegmentId` | Duplicate Segment Id within the CPL. | Structure | 6.9.1✓ error | 6.9.1✓ error | 6.9.1✓ error |
+| `ST2067-3/UniqueEssenceDescriptorId` | Duplicate EssenceDescriptor Id within the CPL. | Structure | 6.7.1✓ error | 6.7.1✓ error | 6.7.1✓ error |
+| `ST2067-3/UniqueResourceId` | Duplicate Resource Id within the CPL. | Structure | 6.11.1✓ error | 6.11.1✓ error | 6.11.1✓ error |
+| `ST2067-3/EntryPoint` | EntryPoint exceeds IntrinsicDuration, leaving no valid SourceDuration. | Timing | 6.11.6✓ error | 6.11.6✓ error | 6.11.6✓ error |
+| `ST2067-3/ResourceDuration` | EntryPoint + SourceDuration exceeds IntrinsicDuration. | Timing | 6.11.6✓ error | 6.11.6✓ error | 6.11.6✓ error |
+| `ST2067-3/RepeatCount` | RepeatCount shall be a positive integer. | Timing | 6.11✓ error | 6.11✓ error | 6.11✓ error |
+| `ST2067-3/TrackFileId` | A non-marker resource is missing a TrackFileId. | Reference | 6.12✓ error | 6.12✓ error | 6.12✓ error |
+| `ST2067-3/VirtualTrackContinuity` | A virtual track is missing from one or more segments. | Structure | 6.9.3✓ error | 6.9.3✓ error | 6.9.3✓ error |
+| `ST2067-3/DanglingEssenceDescriptor` | EssenceDescriptor present in EssenceDescriptorList but not referenced by any Resource. | Reference | 6.1.10.1✓ error | 6.1.10.1✓ error | 6.1.10.1✓ error |
 
 ## SMPTE ST 2067-5 — Essence Component
 
@@ -299,7 +300,8 @@ Unmarked rows are carried over from earlier catalogues and not yet checked.
 
 | Rule | Description | Category | Clause |
 |------|-------------|----------|------|
-| `IMFERNO/EditionAssumed` | The package's ST 2067-2 edition could not be determined from its Packing List and CPL namespaces; package-level rules were checked against the edition named in the message (the newest candidate). | Structure | Package info |
+| `IMFERNO/EditionAssumed` | The edition of a spec applied to a document (the package, a CPL, the Asset Map) could not be determined: its namespace is shared by several editions and nothing in it tells them apart, or the evidence names no single one of them. The newest candidate was applied; the message names the namespace seen and the edition used. | Structure | Package info |
+| `IMFERNO/EditionConflict` | The namespace of a document allows only one edition of a spec, but other evidence in it (e.g. the ApplicationIdentification) names another edition. The namespace's edition was applied; the message names both editions and the evidence. | Structure | Package warning |
 | `IMFERNO/DeliveryNotChecked` | ST 2067-2:2013 defines no delivery requirements (an IMP is a Packing List and its assets, §7); the delivery rules of later editions (Asset Map ingest, ASSETMAP.xml name, Annex A paths, VOLINDEX) were not checked; Packing List Size and Hash are checked under ST 429-8. | Structure | Package info |
 | `IMFERNO/OpenFailed` | MXF file could not be opened for reading. | Container | Mxf critical |
 | `IMFERNO/PartitionPackParseFailed` | MXF header partition pack failed to parse. | Container | Mxf critical |

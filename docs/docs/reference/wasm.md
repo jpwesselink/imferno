@@ -59,6 +59,8 @@ const result = await validate(files, {
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `coreSpec` | `"auto" \| "v2013" \| "v2016" \| "v2020"` | `"auto"` | Core constraints spec version |
+| `cplSpec` | `"auto" \| "v2013" \| "v2016" \| "v2020"` | `"auto"` | Composition Playlist (ST 2067-3) edition |
+| `iabSpec` | `"auto" \| "v2019" \| "v2021" \| "v2026"` | `"auto"` | IAB plug-in (ST 2067-201) edition |
 | `app2eSpec` | `"auto" \| "none" \| "v2014" \| "v2016" \| "v2020" \| "v2023" \| "v2026"` | `"auto"` | Application profile version |
 | `rules` | `Record<string, string>` | `{}` | ESLint-style severity overrides |
 

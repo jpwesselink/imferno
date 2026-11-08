@@ -30,10 +30,16 @@
 //! - **ST 2067-202:2023** ISXD Plug-in (`AppIsxdPlugin2023`)
 
 mod app2e;
+pub(crate) mod edition;
 pub mod iab;
 pub mod isxd;
 
 pub use app2e::{App2E, App2E2014, App2E2016, App2E2020, App2E2023, App2E2026, App2EEdition};
+pub use edition::{
+    application_identification_core_edition, cpl_core_edition, cpl_core_evidence, cpl_edition,
+    cpl_evidence, cpl_iab_edition, declared_core_constraints_editions, mxf_editions,
+    resolve as resolve_edition, EditionChoice, Evidence,
+};
 pub use iab::{AppIabPlugin2019, AppIabPlugin2021, AppIabPlugin2026, URI_2019, URI_2019_SCHEMAS};
 pub use isxd::{AppIsxdPlugin2023, URI_2022};
 
@@ -41,9 +47,10 @@ use std::collections::{HashMap, HashSet};
 
 use crate::catalogue::imferno::{self, ImfernoEdition};
 use crate::catalogue::st2067_2::{self, St2067_2Edition};
+use crate::catalogue::st2067_201::St2067_201Edition;
 use crate::catalogue::st2067_3::{self, St2067_3Edition};
 use crate::cpl::CompositionPlaylist;
-use crate::cpl::{CodingEquations, ColorPrimaries, CplNamespace, EditRate, TransferCharacteristic};
+use crate::cpl::{CodingEquations, ColorPrimaries, EditRate, TransferCharacteristic};
 use crate::diagnostics::{Location, ValidationIssue};
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -75,18 +82,33 @@ pub trait ValidatorRegistry {
 
     /// Resolve all applicable validators for a CPL.
     fn resolve_for_cpl(&self, cpl: &CompositionPlaylist) -> Vec<Box<dyn ConstraintsValidator>> {
+        if is_not_imf_cpl(cpl) {
+            return vec![Box::new(NotImfCpl { core_pin: None })];
+        }
         let mut validators: Vec<Box<dyn ConstraintsValidator>> = Vec::new();
 
-        let core_ns = auto_core_namespace(cpl);
-        if let Some(ns) = core_ns {
-            if let Some(v) = self.resolve_namespace(ns) {
-                validators.push(v);
-            }
+        if let Some(core) = cpl_core_edition(cpl) {
+            // The ST 2067-3 rules run inside the Core Constraints validator.
+            let cpl_choice = cpl_edition(cpl, None, None);
+            let v: Box<dyn ConstraintsValidator> = Box::new(CoreConstraints {
+                edition: core.edition,
+                cpl: Some(cpl_choice.edition),
+            });
+            let notices: Vec<Notice> = notices_of(&core)
+                .into_iter()
+                .chain(notices_of(&cpl_choice))
+                .collect();
+            validators.push(EditionNotices::wrap(v, notices));
         }
 
-        push_application_validators(cpl, |uri| self.resolve_namespace(uri), &mut validators);
+        let pins = Pins::default();
+        push_application_validators(
+            cpl,
+            |uri| resolve_in_cpl(cpl, uri, pins, |u| self.resolve_namespace(u)),
+            &mut validators,
+        );
 
-        push_sequence_presence_plugins(cpl, &mut validators);
+        push_sequence_presence_plugins(cpl, pins, &mut validators);
 
         validators
     }
@@ -134,6 +156,135 @@ fn push_application_validators(
             unrecognised,
             not_app_profile,
         }));
+    }
+}
+
+/// Whether a CPL is outside IMF: its namespace is not an ST 2067-3
+/// namespace (a D-Cinema ST 429-7 CPL, or an unknown namespace).
+fn is_not_imf_cpl(cpl: &CompositionPlaylist) -> bool {
+    matches!(
+        cpl.namespace,
+        crate::cpl::CplNamespace::Dci429_7 | crate::cpl::CplNamespace::Unknown(_)
+    )
+}
+
+/// Reports `ST2067-2/NotImfCompositionPlaylist` for a CPL outside IMF (the
+/// only validator such a CPL gets), against the pinned ST 2067-2 edition,
+/// else the newest, announced.
+struct NotImfCpl {
+    core_pin: Option<St2067_2Edition>,
+}
+
+impl ConstraintsValidator for NotImfCpl {
+    fn spec_id(&self) -> &str {
+        "imferno IMF CPL check"
+    }
+
+    fn validate_cpl(&self, cpl: &CompositionPlaylist) -> Vec<ValidationIssue> {
+        let choice = match self.core_pin {
+            Some(edition) => EditionChoice {
+                edition,
+                assumed: None,
+                determined: true,
+                conflict: None,
+            },
+            None => resolve_edition(
+                &format!("CPL {}", cpl.id),
+                &format!("its namespace {}", cpl.namespace),
+                &[],
+                &[],
+            ),
+        };
+        let seen = match &cpl.namespace {
+            crate::cpl::CplNamespace::Dci429_7 => format!(
+                "the D-Cinema ST 429-7 Composition Playlist namespace {}",
+                cpl.namespace
+            ),
+            crate::cpl::CplNamespace::Unknown(ns) if ns.is_empty() => "no namespace".into(),
+            ns => format!("the namespace {ns}, which is not an ST 2067-3 namespace"),
+        };
+        let loc = Location::new().with_cpl(cpl.id);
+        let mut out: Vec<ValidationIssue> = choice
+            .assumed
+            .into_iter()
+            .map(|n| {
+                ValidationIssue::from_rule(&imferno::EditionAssumed, ImfernoEdition::Current, n)
+                    .with_location(loc.clone())
+            })
+            .collect();
+        out.push(
+            ValidationIssue::from_rule(
+                &st2067_2::NotImfCompositionPlaylist,
+                choice.edition,
+                format!(
+                    "CPL {} is not an IMF Composition Playlist: it has {seen}. No ST 2067-3, \
+                     Core Constraints or application rules were applied to it",
+                    cpl.id
+                ),
+            )
+            .with_location(loc),
+        );
+        out
+    }
+}
+
+/// An edition notice: `IMFERNO:Package/EditionAssumed` or `EditionConflict`,
+/// and its message.
+type Notice = (&'static crate::diagnostics::Rule<ImfernoEdition>, String);
+
+/// The notices of an edition choice: assumed (undetermined, newest
+/// applied) and conflict (namespace vs evidence).
+fn notices_of<E>(c: &EditionChoice<E>) -> Vec<Notice> {
+    c.assumed
+        .iter()
+        .map(|m| (&imferno::EditionAssumed, m.clone()))
+        .chain(
+            c.conflict
+                .iter()
+                .map(|m| (&imferno::EditionConflict, m.clone())),
+        )
+        .collect()
+}
+
+/// Emits the edition notices of a CPL (see [`edition::resolve`]) before
+/// the findings of the validator whose editions they concern.
+struct EditionNotices {
+    /// The validator the notices concern.
+    inner: Box<dyn ConstraintsValidator>,
+    notices: Vec<Notice>,
+}
+
+impl EditionNotices {
+    /// `inner`, reporting `notices` before its findings (`inner` itself
+    /// when there are none).
+    fn wrap(
+        inner: Box<dyn ConstraintsValidator>,
+        notices: Vec<Notice>,
+    ) -> Box<dyn ConstraintsValidator> {
+        if notices.is_empty() {
+            inner
+        } else {
+            Box::new(Self { inner, notices })
+        }
+    }
+}
+
+impl ConstraintsValidator for EditionNotices {
+    fn spec_id(&self) -> &str {
+        self.inner.spec_id()
+    }
+
+    fn validate_cpl(&self, cpl: &CompositionPlaylist) -> Vec<ValidationIssue> {
+        let mut issues: Vec<ValidationIssue> = self
+            .notices
+            .iter()
+            .map(|(rule, n)| {
+                ValidationIssue::from_rule(*rule, ImfernoEdition::Current, n)
+                    .with_location(Location::new().with_cpl(cpl.id))
+            })
+            .collect();
+        issues.extend(self.inner.validate_cpl(cpl));
+        issues
     }
 }
 
@@ -212,6 +363,7 @@ impl ConstraintsValidator for ApplicationProfileNotValidated {
 /// sequences doesn't get validated twice.
 fn push_sequence_presence_plugins(
     cpl: &CompositionPlaylist,
+    pins: Pins,
     validators: &mut Vec<Box<dyn ConstraintsValidator>>,
 ) {
     let has_iab = cpl
@@ -238,10 +390,62 @@ fn push_sequence_presence_plugins(
     // shouldn't be warned about by default. Pin a different edition via
     // `ValidatorSelection::app_specs`.
     if has_iab && !already("2067-201", validators) {
-        validators.push(Box::new(AppIabPlugin2021));
+        validators.push(iab_for_cpl(cpl, pins));
     }
     if has_isxd && !already("2067-202", validators) {
         validators.push(Box::new(AppIsxdPlugin2023));
+    }
+}
+
+/// The IAB plug-in validator of `edition`.
+pub fn iab_validator(edition: St2067_201Edition) -> Box<dyn ConstraintsValidator> {
+    match edition {
+        St2067_201Edition::V2019 => Box::new(AppIabPlugin2019),
+        St2067_201Edition::V2021 => Box::new(AppIabPlugin2021),
+        St2067_201Edition::V2026 => Box::new(AppIabPlugin2026),
+    }
+}
+
+/// The IAB plug-in validator for `cpl`, in the edition
+/// [`cpl_iab_edition`] chooses, announcing it when assumed.
+/// The IAB plug-in for a URI resolved without a CPL: it chooses the
+/// ST 2067-201 edition per CPL when it validates (no pins).
+struct IabPerCpl;
+
+impl ConstraintsValidator for IabPerCpl {
+    fn spec_id(&self) -> &str {
+        "ST 2067-201 (IAB Level 0 Plug-in, edition per CPL)"
+    }
+
+    fn validate_cpl(&self, cpl: &CompositionPlaylist) -> Vec<ValidationIssue> {
+        iab_for_cpl(cpl, Pins::default()).validate_cpl(cpl)
+    }
+}
+
+/// The editions a caller pinned that bear on the IAB edition of a CPL.
+#[derive(Debug, Clone, Copy, Default)]
+struct Pins {
+    core: Option<St2067_2Edition>,
+    iab: Option<St2067_201Edition>,
+}
+
+fn iab_for_cpl(cpl: &CompositionPlaylist, pins: Pins) -> Box<dyn ConstraintsValidator> {
+    let choice = cpl_iab_edition(cpl, pins.core, pins.iab);
+    EditionNotices::wrap(iab_validator(choice.edition), notices_of(&choice))
+}
+
+/// Resolve an ApplicationIdentification URI of `cpl`: an IAB namespace URI
+/// gets the CPL's IAB edition ([`iab_for_cpl`]), anything else `resolve`.
+fn resolve_in_cpl(
+    cpl: &CompositionPlaylist,
+    uri: &str,
+    pins: Pins,
+    resolve: impl Fn(&str) -> Option<Box<dyn ConstraintsValidator>>,
+) -> Option<Box<dyn ConstraintsValidator>> {
+    if uri == iab::URI_2019 || uri == iab::URI_2019_SCHEMAS {
+        Some(iab_for_cpl(cpl, pins))
+    } else {
+        resolve(uri)
     }
 }
 
@@ -263,11 +467,10 @@ impl ValidatorRegistry for BuiltinValidatorRegistry {
             "http://www.smpte-ra.org/schemas/2067-2/2016" => Some(Box::new(CoreConstraints2016)),
             "http://www.smpte-ra.org/ns/2067-2/2020" => Some(Box::new(CoreConstraints2020)),
             // ST 2067-201 IAB Level 0 plug-in. Every published edition
-            // (2019/2021/2026) reuses the 2019 namespace URI — see the
-            // note above `iab::URI_2019` — so the URI resolves to the
-            // 2021 rules (the current unconditional edition; 2026 adds
-            // only an opt-in Annex E recommendation).
-            iab::URI_2019 | iab::URI_2019_SCHEMAS => Some(Box::new(AppIabPlugin2021)),
+            // (2019/2021/2026) reuses the 2019 namespace URI, so the URI
+            // alone names no edition: the validator chooses it per CPL
+            // ([`cpl_iab_edition`]) and announces an assumed one.
+            iab::URI_2019 | iab::URI_2019_SCHEMAS => Some(Box::new(IabPerCpl)),
             // ST 2067-202 ISXD plug-in.
             isxd::URI_2022 => Some(Box::new(AppIsxdPlugin2023)),
             _ => None,
@@ -298,6 +501,35 @@ pub enum CoreSpecTarget {
 }
 
 impl CoreSpecTarget {
+    /// The edition this target selects.
+    pub fn edition(&self) -> St2067_2Edition {
+        match self {
+            Self::St2067_2_2013 => St2067_2Edition::V2013,
+            Self::St2067_2_2016 => St2067_2Edition::V2016,
+            Self::St2067_2_2020 => St2067_2Edition::V2020,
+        }
+    }
+
+    /// The target of `edition`.
+    pub fn of(edition: St2067_2Edition) -> Self {
+        match edition {
+            St2067_2Edition::V2013 => Self::St2067_2_2013,
+            St2067_2Edition::V2016 => Self::St2067_2_2016,
+            St2067_2Edition::V2020 => Self::St2067_2_2020,
+        }
+    }
+
+    /// The target whose Core Constraints namespace is `uri`.
+    pub fn from_namespace_uri(uri: &str) -> Option<Self> {
+        [
+            Self::St2067_2_2013,
+            Self::St2067_2_2016,
+            Self::St2067_2_2020,
+        ]
+        .into_iter()
+        .find(|t| t.namespace_uri() == uri)
+    }
+
     pub fn namespace_uri(&self) -> &'static str {
         match self {
             Self::St2067_2_2013 => "http://www.smpte-ra.org/schemas/2067-2/2013",
@@ -320,6 +552,96 @@ impl std::str::FromStr for CoreSpecTarget {
                 other
             )),
         }
+    }
+}
+
+/// An ST 2067-3 (Composition Playlist) edition to validate CPLs against.
+/// ST 2067-3:2016 and :2020 share one namespace, so a CPL does not always
+/// tell them apart (see [`cpl_edition`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CplSpecTarget {
+    St2067_3_2013,
+    St2067_3_2016,
+    St2067_3_2020,
+}
+
+impl CplSpecTarget {
+    /// The edition this target selects.
+    pub fn edition(&self) -> St2067_3Edition {
+        match self {
+            Self::St2067_3_2013 => St2067_3Edition::V2013,
+            Self::St2067_3_2016 => St2067_3Edition::V2016,
+            Self::St2067_3_2020 => St2067_3Edition::V2020,
+        }
+    }
+}
+
+impl std::str::FromStr for CplSpecTarget {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "v2013" => Ok(Self::St2067_3_2013),
+            "v2016" => Ok(Self::St2067_3_2016),
+            "v2020" => Ok(Self::St2067_3_2020),
+            other => Err(format!(
+                "Unsupported cplSpec '{}'. Use auto|v2013|v2016|v2020",
+                other
+            )),
+        }
+    }
+}
+
+/// Parse a CPL spec string, handling `"auto"` as `None` (resolve per CPL).
+pub fn parse_cpl_spec_target(s: &str) -> Result<Option<CplSpecTarget>, String> {
+    match s {
+        "auto" => Ok(None),
+        other => Ok(Some(other.parse()?)),
+    }
+}
+
+/// An ST 2067-201 (IAB Level 0 plug-in) edition to validate against. Every
+/// edition uses the 2019 namespace, so a CPL does not tell them apart (see
+/// [`cpl_iab_edition`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum IabSpecTarget {
+    St2067_201_2019,
+    St2067_201_2021,
+    St2067_201_2026,
+}
+
+impl IabSpecTarget {
+    /// The edition this target selects.
+    pub fn edition(&self) -> St2067_201Edition {
+        match self {
+            Self::St2067_201_2019 => St2067_201Edition::V2019,
+            Self::St2067_201_2021 => St2067_201Edition::V2021,
+            Self::St2067_201_2026 => St2067_201Edition::V2026,
+        }
+    }
+}
+
+impl std::str::FromStr for IabSpecTarget {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "v2019" => Ok(Self::St2067_201_2019),
+            "v2021" => Ok(Self::St2067_201_2021),
+            "v2026" => Ok(Self::St2067_201_2026),
+            other => Err(format!(
+                "Unsupported iabSpec '{}'. Use auto|v2019|v2021|v2026",
+                other
+            )),
+        }
+    }
+}
+
+/// Parse an IAB spec string, handling `"auto"` as `None` (resolve per CPL).
+pub fn parse_iab_spec_target(s: &str) -> Result<Option<IabSpecTarget>, String> {
+    match s {
+        "auto" => Ok(None),
+        other => Ok(Some(other.parse()?)),
     }
 }
 
@@ -370,124 +692,6 @@ impl std::str::FromStr for AppSpecTarget {
     }
 }
 
-/// The ST 2067-2 edition whose Core Constraints namespace a CPL declares
-/// (e.g. `xmlns:cc="http://www.smpte-ra.org/ns/2067-2/2020"`), or `None`
-/// when it declares none, several, or its source XML was not kept.
-pub fn declared_core_constraints_edition(
-    cpl: &CompositionPlaylist,
-) -> Option<crate::catalogue::st2067_2::St2067_2Edition> {
-    use crate::catalogue::st2067_2::St2067_2Edition;
-    let xml = cpl.source_xml.as_deref()?;
-    let declared: Vec<St2067_2Edition> = [
-        (CoreSpecTarget::St2067_2_2013, St2067_2Edition::V2013),
-        (CoreSpecTarget::St2067_2_2016, St2067_2Edition::V2016),
-        (CoreSpecTarget::St2067_2_2020, St2067_2Edition::V2020),
-    ]
-    .into_iter()
-    .filter(|(target, _)| xml.contains(&format!("\"{}\"", target.namespace_uri())))
-    .map(|(_, e)| e)
-    .collect();
-    match declared.as_slice() {
-        [one] => Some(*one),
-        _ => None,
-    }
-}
-
-/// The ST 2067-2 edition a CPL is checked against when the caller pins none.
-///
-/// ST 2067-2:2020 reuses the ST 2067-3:2016 CPL namespace, so a 2016-namespace
-/// CPL is checked against 2067-2:2020 when its ApplicationIdentification names
-/// an App #2E edition that normatively references 2067-2:2020 (2020, 2023,
-/// 2026), or when the element is in (or the CPL declares only) the 2020 Core
-/// Constraints namespace (working-group finding #12).
-pub fn cpl_core_edition(
-    cpl: &CompositionPlaylist,
-) -> Option<crate::catalogue::st2067_2::St2067_2Edition> {
-    use crate::catalogue::st2067_2::St2067_2Edition;
-    match &cpl.namespace {
-        CplNamespace::Smpte2067_3_2013 => Some(St2067_2Edition::V2013),
-        CplNamespace::Smpte2067_3_2016 => {
-            let core_2020 = app2e_references_core_2020(cpl)
-                || application_identification_core_edition(cpl)
-                    .or_else(|| declared_core_constraints_edition(cpl))
-                    == Some(St2067_2Edition::V2020);
-            Some(if core_2020 {
-                St2067_2Edition::V2020
-            } else {
-                St2067_2Edition::V2016
-            })
-        }
-        _ => None,
-    }
-}
-
-/// The Core Constraints namespace of [`cpl_core_edition`].
-fn auto_core_namespace(cpl: &CompositionPlaylist) -> Option<&'static str> {
-    use crate::catalogue::st2067_2::St2067_2Edition;
-    cpl_core_edition(cpl).map(|e| match e {
-        St2067_2Edition::V2013 => CoreSpecTarget::St2067_2_2013.namespace_uri(),
-        St2067_2Edition::V2016 => CoreSpecTarget::St2067_2_2016.namespace_uri(),
-        St2067_2Edition::V2020 => CoreSpecTarget::St2067_2_2020.namespace_uri(),
-    })
-}
-
-/// Whether the CPL's ApplicationIdentification names an App #2E edition
-/// whose normative reference is ST 2067-2:2020 (ST 2067-21:2020, 2023, 2026).
-fn app2e_references_core_2020(cpl: &CompositionPlaylist) -> bool {
-    let Some(app_id) = cpl
-        .extension_properties
-        .as_ref()
-        .and_then(|e| e.application_identification.as_deref())
-    else {
-        return false;
-    };
-    [
-        App2EEdition::V2020,
-        App2EEdition::V2023,
-        App2EEdition::V2026,
-    ]
-    .iter()
-    .any(|ed| {
-        app2e::application_identification_includes(app_id, ed.application_identification_uri())
-    })
-}
-
-/// The ST 2067-2 edition of the namespace of the CPL's
-/// `ApplicationIdentification` element (ST 2067-2 §6.1 defines the element in
-/// the Core Constraints namespace of its edition), or `None` when the element
-/// is absent, its namespace cannot be resolved, or it is not a Core
-/// Constraints namespace.
-pub fn application_identification_core_edition(
-    cpl: &CompositionPlaylist,
-) -> Option<crate::catalogue::st2067_2::St2067_2Edition> {
-    use crate::catalogue::st2067_2::St2067_2Edition;
-    let xml = cpl.source_xml.as_deref()?;
-    let re =
-        regex::Regex::new(r"<(?:([A-Za-z_][\w.-]*):)?ApplicationIdentification\b([^>]*)>").ok()?;
-    let caps = re.captures(xml)?;
-    let prefix = caps.get(1).map(|m| m.as_str());
-    let attr = match prefix {
-        Some(p) => format!("xmlns:{p}=\""),
-        None => "xmlns=\"".to_string(),
-    };
-    let uri_from = |text: &str| -> Option<String> {
-        let i = text.find(&attr)? + attr.len();
-        let j = text[i..].find('"')?;
-        Some(text[i..i + j].to_string())
-    };
-    // Declared on the element itself, else (prefixed) anywhere in the document.
-    let uri = uri_from(caps.get(2).map_or("", |m| m.as_str()))
-        .or_else(|| prefix.and_then(|_| uri_from(xml)))?;
-    [
-        (CoreSpecTarget::St2067_2_2013, St2067_2Edition::V2013),
-        (CoreSpecTarget::St2067_2_2016, St2067_2Edition::V2016),
-        (CoreSpecTarget::St2067_2_2020, St2067_2Edition::V2020),
-    ]
-    .into_iter()
-    .find(|(t, _)| t.namespace_uri() == uri)
-    .map(|(_, e)| e)
-}
-
 /// Parse a core spec string, handling `"auto"` as `None` (auto-detect).
 pub fn parse_core_spec_target(s: &str) -> Result<Option<CoreSpecTarget>, String> {
     match s {
@@ -510,6 +714,14 @@ pub fn parse_app_spec_targets(s: &str) -> Result<Option<Vec<AppSpecTarget>>, Str
 pub struct ValidatorSelection {
     /// Preferred typed core constraints selection.
     pub core_spec: Option<CoreSpecTarget>,
+
+    /// ST 2067-3 edition for the CPL rules; `None` resolves it per CPL
+    /// ([`cpl_edition`]).
+    pub cpl_spec: Option<CplSpecTarget>,
+
+    /// ST 2067-201 edition for the IAB plug-in rules; `None` resolves it per
+    /// CPL ([`cpl_iab_edition`]).
+    pub iab_spec: Option<IabSpecTarget>,
 
     /// Preferred typed app profile selection.
     ///
@@ -550,18 +762,54 @@ impl ValidatorRegistry for ConfigurableValidatorRegistry {
     fn resolve_for_cpl(&self, cpl: &CompositionPlaylist) -> Vec<Box<dyn ConstraintsValidator>> {
         let mut validators: Vec<Box<dyn ConstraintsValidator>> = Vec::new();
 
-        let core_ns = if let Some(core_spec) = self.selection.core_spec {
-            Some(core_spec.namespace_uri())
+        let pinned_cpl = self.selection.cpl_spec.map(|t| t.edition());
+        let iab_pin = self.selection.iab_spec.map(|t| t.edition());
+        // A core edition pinned by the caller is evidence for the ST 2067-3
+        // edition (its dated reference); a resolved one counts only when
+        // determined (cpl_evidence).
+        let core_pin = self.selection.core_spec.map(|t| t.edition()).or_else(|| {
+            self.selection
+                .core_namespace_uri
+                .as_deref()
+                .and_then(CoreSpecTarget::from_namespace_uri)
+                .map(|t| t.edition())
+        });
+        let pins = Pins {
+            core: core_pin,
+            iab: iab_pin,
+        };
+        if is_not_imf_cpl(cpl) {
+            return vec![Box::new(NotImfCpl { core_pin })];
+        }
+        let mut notices = Vec::new();
+        let cpl_ed = match pinned_cpl {
+            Some(e) => e,
+            None => {
+                let choice = cpl_edition(cpl, core_pin, iab_pin);
+                notices.extend(notices_of(&choice));
+                choice.edition
+            }
+        };
+        let core_of = |edition| -> Box<dyn ConstraintsValidator> {
+            Box::new(CoreConstraints {
+                edition,
+                cpl: Some(cpl_ed),
+            })
+        };
+        let core = if let Some(edition) = core_pin {
+            Some(core_of(edition))
         } else if let Some(uri) = self.selection.core_namespace_uri.as_deref() {
-            Some(uri)
+            self.resolve_namespace(uri)
         } else {
-            auto_core_namespace(cpl)
+            cpl_core_edition(cpl).map(|core| {
+                notices.splice(0..0, notices_of(&core));
+                core_of(core.edition)
+            })
         };
 
-        if let Some(ns) = core_ns {
-            if let Some(v) = self.resolve_namespace(ns) {
-                validators.push(v);
-            }
+        if let Some(v) = core {
+            // The ST 2067-3 rules run inside the Core Constraints validator.
+            validators.push(EditionNotices::wrap(v, notices));
         }
 
         if let Some(ref app_specs) = self.selection.app_specs {
@@ -572,8 +820,24 @@ impl ValidatorRegistry for ConfigurableValidatorRegistry {
             }
         } else if let Some(ref app_uris) = self.selection.application_identification_uris {
             for uri in app_uris {
-                if let Some(v) = self.resolve_namespace(uri) {
+                if let Some(v) = resolve_in_cpl(cpl, uri, pins, |u| self.resolve_namespace(u)) {
                     validators.push(v);
+                }
+            }
+        }
+        if self.selection.app_specs.is_some()
+            || self.selection.application_identification_uris.is_some()
+        {
+            // A pinned app selection adds no plug-in by itself; a pinned IAB
+            // edition still applies to a CPL with IAB Virtual Tracks.
+            let has_iab = cpl
+                .segment_list
+                .segments
+                .iter()
+                .any(|s| !s.sequence_list.iab_sequences.is_empty());
+            if let Some(e) = iab_pin {
+                if has_iab && !validators.iter().any(|v| v.spec_id().contains("2067-201")) {
+                    validators.push(iab_validator(e));
                 }
             }
         } else {
@@ -582,8 +846,12 @@ impl ValidatorRegistry for ConfigurableValidatorRegistry {
             // signaled by sequence presence (IAB/ISXD). When the caller
             // pinned app_specs/app_uris above, we respect that pin and do
             // NOT auto-add plug-ins.
-            push_application_validators(cpl, |uri| self.resolve_namespace(uri), &mut validators);
-            push_sequence_presence_plugins(cpl, &mut validators);
+            push_application_validators(
+                cpl,
+                |uri| resolve_in_cpl(cpl, uri, pins, |u| self.resolve_namespace(u)),
+                &mut validators,
+            );
+            push_sequence_presence_plugins(cpl, pins, &mut validators);
         }
 
         validators
@@ -834,6 +1102,7 @@ fn validate_required_virtual_tracks(
 fn validate_core_structure(
     cpl: &CompositionPlaylist,
     spec_ed: St2067_2Edition,
+    cpl_ed: St2067_3Edition,
     issues: &mut Vec<ValidationIssue>,
 ) {
     // Runtime XSD pre-pass: run the schema-level validator before the
@@ -842,9 +1111,6 @@ fn validate_core_structure(
     // source_xml is None (e.g., the CPL was constructed manually in
     // tests rather than parsed from XML).
     issues.extend(crate::xsd::validate_parsed_cpl(cpl));
-
-    // CPL-structure rules belong to ST 2067-3, in the edition of the CPL's namespace.
-    let cpl_ed = crate::cpl::validate::st2067_3_edition(&cpl.namespace);
 
     // ───────────────────────────────────────────────────────────────────────────
     // XSD-overlap structural checks (ContentTitle, TotalRunningTime,
@@ -858,7 +1124,7 @@ fn validate_core_structure(
     // differ from the Composition EditRate (§8), so it is not compared.
 
     // ST 2067-3 constraints (see cpl::validate for the clauses)
-    issues.extend(crate::cpl::validate_cpl_constraints(cpl));
+    issues.extend(crate::cpl::validate::validate_cpl_for(cpl, cpl_ed));
 
     // Main Image / Audio Virtual Track presence (ST 2067-2 §6.3)
     validate_required_virtual_tracks(cpl, spec_ed, issues);
@@ -882,7 +1148,7 @@ fn validate_core_structure(
     validate_timed_text_extended(cpl, spec_ed, issues);
 
     // Segment track duration consistency
-    validate_segment_track_durations(cpl, issues);
+    validate_segment_track_durations(cpl, cpl_ed, issues);
 
     // Digital Signatures (ST 2067-2 §6.9)
     validate_digital_signature_notice(cpl, spec_ed, issues);
@@ -930,12 +1196,156 @@ fn validate_cpl_id_matches_assetmap(
 // UUID uniqueness validation
 // ─────────────────────────────────────────────────────────────────────────────
 
+/// `urn:uuid:ABC…` (any case) → `abc…`.
+fn normalise_uuid(s: &str) -> String {
+    s.trim()
+        .to_ascii_lowercase()
+        .trim_start_matches("urn:uuid:")
+        .to_string()
+}
+
+/// The distinct canonical forms of the `Resource` elements of a CPL's
+/// source XML, by Resource Id. The canonical form names elements and
+/// attributes by namespace URI and local name, drops namespace
+/// declarations, sorts attributes, and keeps the text (character data,
+/// CDATA, character and predefined entity references, resolved) trimmed per
+/// run, so whitespace, prefixes and escaping do not matter. Values are
+/// compared lexically (`01` is not `1`) and QName-valued attributes such as
+/// `xsi:type` are not resolved. `None` when the XML cannot be read.
+fn raw_resource_forms(xml: &str) -> Option<HashMap<String, HashSet<String>>> {
+    use quick_xml::events::Event;
+    use quick_xml::name::ResolveResult;
+
+    fn uri(r: &ResolveResult<'_>) -> String {
+        match r {
+            ResolveResult::Bound(n) => n.as_ref().to_string(),
+            _ => String::new(),
+        }
+    }
+
+    struct Open {
+        depth: usize,
+        form: String,
+        id: String,
+        in_id: bool,
+        text: String,
+    }
+    impl Open {
+        fn flush(&mut self) {
+            let t = self.text.trim();
+            if !t.is_empty() {
+                if self.in_id {
+                    // A UUID (RFC 4122 compares hex digits case-insensitively).
+                    self.id.push_str(t);
+                    self.form.push_str(&normalise_uuid(t));
+                } else {
+                    self.form.push_str(t);
+                }
+            }
+            self.text.clear();
+        }
+    }
+
+    let mut reader = quick_xml::NsReader::from_str(xml);
+    let mut out: HashMap<String, HashSet<String>> = HashMap::new();
+    let mut cur: Option<Open> = None;
+    let mut depth = 0usize;
+    loop {
+        let (ns, event) = reader.read_resolved_event().ok()?;
+        let ns = uri(&ns);
+        let is_empty = matches!(event, Event::Empty(_));
+        match event {
+            Event::Start(e) | Event::Empty(e) => {
+                let local = e.local_name().as_ref().to_string();
+                let mut attrs: Vec<String> = e
+                    .attributes()
+                    .flatten()
+                    .filter(|a| {
+                        let k = a.key.as_ref();
+                        k != "xmlns" && !k.starts_with("xmlns:")
+                    })
+                    .map(|a| {
+                        let (ans, alocal) = reader.resolver().resolve_attribute(a.key);
+                        let v = a
+                            .normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                            .map(|v| v.into_owned())
+                            .unwrap_or_default();
+                        format!("{{{}}}{}={v}", uri(&ans), alocal.as_ref())
+                    })
+                    .collect();
+                attrs.sort();
+                let tag = format!("<{{{ns}}}{local} {}>", attrs.join(" "));
+                depth += 1;
+                match &mut cur {
+                    None if local == "Resource" => {
+                        cur = Some(Open {
+                            depth,
+                            form: tag,
+                            id: String::new(),
+                            in_id: false,
+                            text: String::new(),
+                        });
+                    }
+                    Some(o) => {
+                        o.flush();
+                        o.in_id = local == "Id" && depth == o.depth + 1;
+                        o.form.push_str(&tag);
+                    }
+                    None => {}
+                }
+                if is_empty {
+                    // An empty element opens and closes here.
+                    if let Some(o) = &mut cur {
+                        o.in_id = false;
+                        o.form.push_str("</>");
+                        if depth == o.depth {
+                            let o = cur.take().expect("open Resource");
+                            out.entry(normalise_uuid(&o.id)).or_default().insert(o.form);
+                        }
+                    }
+                    depth -= 1;
+                }
+            }
+            Event::Text(t) => {
+                if let Some(o) = &mut cur {
+                    o.text.push_str(&quick_xml::escape::unescape(&t).ok()?);
+                }
+            }
+            Event::CData(c) => {
+                if let Some(o) = &mut cur {
+                    o.text.push_str(&c);
+                }
+            }
+            Event::GeneralRef(r) => {
+                if let Some(o) = &mut cur {
+                    let entity = format!("&{};", r.into_inner());
+                    o.text.push_str(&quick_xml::escape::unescape(&entity).ok()?);
+                }
+            }
+            Event::End(_) => {
+                if let Some(o) = &mut cur {
+                    o.flush();
+                    o.in_id = false;
+                    o.form.push_str("</>");
+                    if depth == o.depth {
+                        let o = cur.take().expect("open Resource");
+                        out.entry(normalise_uuid(&o.id)).or_default().insert(o.form);
+                    }
+                }
+                depth = depth.saturating_sub(1);
+            }
+            Event::Eof => return Some(out),
+            _ => {}
+        }
+    }
+}
+
 /// All Segment Ids, EssenceDescriptor Ids, and Resource Ids shall be unique within a CPL.
 ///
 /// ST 2067-3 §6.9.1 (Segment), §6.7.1 (EssenceDescriptor), §6.11.1 (Resource):
 /// each Id element "shall uniquely identify" its element.
-fn validate_uuid_uniqueness(
-    cpl: &CompositionPlaylist,
+fn validate_uuid_uniqueness<'c>(
+    cpl: &'c CompositionPlaylist,
     cpl_ed: St2067_3Edition,
     issues: &mut Vec<ValidationIssue>,
 ) {
@@ -976,13 +1386,33 @@ fn validate_uuid_uniqueness(
         }
     }
 
-    // Resource ID uniqueness (across all segments and sequences)
-    let mut resource_ids = HashSet::new();
+    // Resource ID uniqueness (across all segments and sequences). 2020
+    // §6.11.1 allows the same Id on Resources that are identical.
+    let identical_allowed = cpl_ed == St2067_3Edition::V2020;
+    // "Identical" is judged on the raw Resource elements when the source XML
+    // was kept (parsed Resources omit content imferno does not parse).
+    let raw = if identical_allowed {
+        cpl.source_xml.as_deref().and_then(raw_resource_forms)
+    } else {
+        None
+    };
+    let identical = |id: &str, a: &crate::cpl::Resource, b: &crate::cpl::Resource| match &raw {
+        Some(forms) => forms.get(&normalise_uuid(id)).is_some_and(|f| f.len() == 1),
+        None => a == b,
+    };
+    let mut resource_ids: HashMap<String, &crate::cpl::Resource> = HashMap::new();
     for (seg_idx, segment) in cpl.segment_list.segments.iter().enumerate() {
-        let mut check_resources = |resources: &[crate::cpl::Resource], track_type: &str| {
+        let mut check_resources = |resources: &'c [crate::cpl::Resource], track_type: &str| {
             for resource in resources {
                 let id_str = resource.id.to_string();
-                if !resource_ids.insert(id_str.clone()) {
+                let duplicate = match resource_ids.get(&id_str) {
+                    None => {
+                        resource_ids.insert(id_str.clone(), resource);
+                        false
+                    }
+                    Some(first) => !(identical_allowed && identical(&id_str, first, resource)),
+                };
+                if duplicate {
                     issues.push(
                         ValidationIssue::from_rule(
                             &st2067_3::UniqueResourceId,
@@ -1585,7 +2015,11 @@ fn validate_audio_mca_labels(
 /// Per ST 2067-2, within a single segment all virtual tracks (essence sequences)
 /// must span the same total duration. The effective duration of a resource is:
 ///   effective = (SourceDuration or (IntrinsicDuration - EntryPoint)) × RepeatCount
-fn validate_segment_track_durations(cpl: &CompositionPlaylist, issues: &mut Vec<ValidationIssue>) {
+fn validate_segment_track_durations(
+    cpl: &CompositionPlaylist,
+    seg_dur_ed: St2067_3Edition,
+    issues: &mut Vec<ValidationIssue>,
+) {
     use crate::cpl::SequenceAccess;
 
     /// Exact sequence duration in Composition Edit Units, as a reduced
@@ -1680,8 +2114,6 @@ fn validate_segment_track_durations(cpl: &CompositionPlaylist, issues: &mut Vec<
     // This tolerates minor rounding in edit-rate arithmetic while still catching
     // genuine mismatches (which are always off by at least one full frame).
     const TOLERANCE_SECONDS: f64 = 0.001;
-
-    let seg_dur_ed = crate::cpl::validate::st2067_3_edition(&cpl.namespace);
 
     for (seg_idx, segment) in cpl.segment_list.segments.iter().enumerate() {
         let sl = &segment.sequence_list;
@@ -1897,13 +2329,63 @@ fn validate_dangling_essence_descriptors(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ST 2067-2:2020 Core Constraints
+// ST 2067-2 Core Constraints
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// ST 2067-2:2020 Core Constraints validator.
-///
-/// Strictest version: EssenceDescriptorList required, SourceEncoding references
-/// must resolve, ApplicationIdentification required for application profiles.
+/// The Core Constraints of one ST 2067-2 edition, with the ST 2067-3 rules
+/// of edition `cpl` when pinned, else of the edition
+/// [`cpl_edition`] resolves for the CPL.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CoreConstraints {
+    /// ST 2067-2 edition.
+    pub edition: St2067_2Edition,
+    /// ST 2067-3 edition pinned by the caller.
+    pub cpl: Option<St2067_3Edition>,
+}
+
+impl ConstraintsValidator for CoreConstraints {
+    fn spec_id(&self) -> &str {
+        match self.edition {
+            St2067_2Edition::V2013 => "ST 2067-2:2013",
+            St2067_2Edition::V2016 => "ST 2067-2:2016",
+            St2067_2Edition::V2020 => "ST 2067-2:2020",
+        }
+    }
+
+    fn validate_cpl(&self, cpl: &CompositionPlaylist) -> Vec<ValidationIssue> {
+        use crate::diagnostics::Edition;
+        let mut issues = Vec::new();
+        // Used directly, the validator's own edition is the caller's choice.
+        let cpl_ed = self
+            .cpl
+            .unwrap_or_else(|| cpl_edition(cpl, Some(self.edition), None).edition);
+
+        validate_core_structure(cpl, self.edition, cpl_ed, &mut issues);
+
+        // §6.8 (every edition): each Track File's File Descriptor shall be
+        // mapped to an EssenceDescriptor, so the EssenceDescriptorList is
+        // required. SourceEncoding references are checked by the ST 2067-3
+        // rules (cpl::validate).
+        if cpl.essence_descriptor_list.is_none() {
+            issues.push(
+                ValidationIssue::from_rule(
+                    &st2067_2::EssenceDescriptorList,
+                    self.edition,
+                    format!(
+                        "EssenceDescriptorList is required per ST 2067-2:{}",
+                        self.edition.label()
+                    ),
+                )
+                .with_location(Location::new().with_cpl(cpl.id)),
+            );
+        }
+
+        issues
+    }
+}
+
+/// ST 2067-2:2020 Core Constraints ([`CoreConstraints`] with the CPL's own
+/// ST 2067-3 edition).
 pub struct CoreConstraints2020;
 
 impl ConstraintsValidator for CoreConstraints2020 {
@@ -1912,37 +2394,16 @@ impl ConstraintsValidator for CoreConstraints2020 {
     }
 
     fn validate_cpl(&self, cpl: &CompositionPlaylist) -> Vec<ValidationIssue> {
-        let mut issues = Vec::new();
-        let loc = Location::new().with_cpl(cpl.id);
-
-        validate_core_structure(cpl, St2067_2Edition::V2020, &mut issues);
-
-        // 2020-specific: EssenceDescriptorList is required
-        if cpl.essence_descriptor_list.is_none() {
-            issues.push(
-                ValidationIssue::from_rule(
-                    &st2067_2::EssenceDescriptorList,
-                    St2067_2Edition::V2020,
-                    "EssenceDescriptorList is required per ST 2067-2:2020",
-                )
-                .with_location(loc),
-            );
+        CoreConstraints {
+            edition: St2067_2Edition::V2020,
+            cpl: None,
         }
-
-        // SourceEncoding references are validated by st2067-3::validate_cpl_constraints
-        // (called from validate_core_structure) for all sequence types.
-
-        issues
+        .validate_cpl(cpl)
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ST 2067-2:2016 Core Constraints
-// ─────────────────────────────────────────────────────────────────────────────
-
-/// ST 2067-2:2016 Core Constraints validator.
-///
-/// EssenceDescriptorList is required.
+/// ST 2067-2:2016 Core Constraints ([`CoreConstraints`] with the CPL's own
+/// ST 2067-3 edition).
 pub struct CoreConstraints2016;
 
 impl ConstraintsValidator for CoreConstraints2016 {
@@ -1951,36 +2412,16 @@ impl ConstraintsValidator for CoreConstraints2016 {
     }
 
     fn validate_cpl(&self, cpl: &CompositionPlaylist) -> Vec<ValidationIssue> {
-        let mut issues = Vec::new();
-
-        validate_core_structure(cpl, St2067_2Edition::V2016, &mut issues);
-
-        // 2016: EssenceDescriptorList is required (same as 2020)
-        if cpl.essence_descriptor_list.is_none() {
-            issues.push(
-                ValidationIssue::from_rule(
-                    &st2067_2::EssenceDescriptorList,
-                    St2067_2Edition::V2016,
-                    "EssenceDescriptorList is required per ST 2067-2:2016",
-                )
-                .with_location(Location::new().with_cpl(cpl.id)),
-            );
+        CoreConstraints {
+            edition: St2067_2Edition::V2016,
+            cpl: None,
         }
-
-        // SourceEncoding references validated by st2067-3::validate_cpl_constraints.
-
-        issues
+        .validate_cpl(cpl)
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ST 2067-2:2013 Core Constraints
-// ─────────────────────────────────────────────────────────────────────────────
-
-/// ST 2067-2:2013 Core Constraints validator.
-///
-/// Most permissive version: EssenceDescriptorList is optional,
-/// ApplicationIdentification does not exist.
+/// ST 2067-2:2013 Core Constraints ([`CoreConstraints`] with the CPL's own
+/// ST 2067-3 edition).
 pub struct CoreConstraints2013;
 
 impl ConstraintsValidator for CoreConstraints2013 {
@@ -1989,27 +2430,11 @@ impl ConstraintsValidator for CoreConstraints2013 {
     }
 
     fn validate_cpl(&self, cpl: &CompositionPlaylist) -> Vec<ValidationIssue> {
-        let mut issues = Vec::new();
-
-        validate_core_structure(cpl, St2067_2Edition::V2013, &mut issues);
-
-        // 2013 §6.8: each Track File's File Descriptor shall be mapped to an
-        // EssenceDescriptor, so the EssenceDescriptorList is required (as in
-        // 2016 and 2020).
-        if cpl.essence_descriptor_list.is_none() {
-            issues.push(
-                ValidationIssue::from_rule(
-                    &st2067_2::EssenceDescriptorList,
-                    St2067_2Edition::V2013,
-                    "EssenceDescriptorList is required per ST 2067-2:2013",
-                )
-                .with_location(Location::new().with_cpl(cpl.id)),
-            );
+        CoreConstraints {
+            edition: St2067_2Edition::V2013,
+            cpl: None,
         }
-
-        // SourceEncoding references validated by st2067-3::validate_cpl_constraints.
-
-        issues
+        .validate_cpl(cpl)
     }
 }
 
@@ -2192,6 +2617,7 @@ mod tests {
     use super::*;
     use crate::assetmap::ImfUuid;
     use crate::catalogue::st2067_21::{self, App2EEdition};
+    use crate::cpl::CplNamespace;
     use crate::cpl::{
         CDCIDescriptor, CompositionTimecode, ContentKindElement, ContentMaturityRating,
         ContentMaturityRatingList, ContentVersion, ContentVersionList, DCTimedTextDescriptor,
@@ -2729,10 +3155,10 @@ mod tests {
         });
 
         let validators = registry.resolve_for_cpl(&cpl);
-        assert_eq!(validators.len(), 2);
-        // The core edition comes from the CPL (no ApplicationIdentification).
-        assert_eq!(validators[0].spec_id(), "ST 2067-2:2016");
-        assert_eq!(validators[1].spec_id(), "ST 2067-21:2023 (App2E)");
+        // The core edition comes from the CPL: nothing in it names one, so
+        // the newest the 2016 namespace allows, announced.
+        let ids: Vec<&str> = validators.iter().map(|v| v.spec_id()).collect();
+        assert_eq!(ids, ["ST 2067-2:2020", "ST 2067-21:2023 (App2E)"]);
     }
 
     #[test]
@@ -2758,17 +3184,122 @@ mod tests {
 
     // ── Registry auto-detection — older namespaces ───────────────────────────
 
+    /// The 2016 CPL namespace is used by ST 2067-2:2016 and :2020; with
+    /// nothing in the CPL naming one, the newest is applied and announced.
     #[test]
-    fn get_validators_for_cpl_returns_core_2016_for_2016_namespace() {
+    fn get_validators_for_cpl_assumes_core_2020_for_a_bare_2016_namespace() {
         let mut cpl = minimal_cpl();
         cpl.namespace = CplNamespace::Smpte2067_3_2016;
         let validators = get_validators_for_cpl(&cpl);
-        assert_eq!(validators.len(), 2); // + no-AppId notice (photon#407)
+        let ids: Vec<&str> = validators.iter().map(|v| v.spec_id()).collect();
         assert_eq!(
-            validators[1].spec_id(),
-            "imferno application-profile dispatch"
+            ids,
+            [
+                "ST 2067-2:2020",
+                "imferno application-profile dispatch" // photon#407
+            ]
         );
+        let notices = edition_notices(&validators[0].validate_cpl(&cpl));
+        // ST 2067-2 and ST 2067-3 both share the 2016 namespace with 2020.
+        assert_eq!(notices.len(), 2, "{notices:?}");
+        for n in &notices {
+            assert!(
+                n.contains("http://www.smpte-ra.org/schemas/2067-3/2016"),
+                "{n}"
+            );
+        }
+        assert!(notices[0].contains("checked against ST 2067-2:2020"));
+        assert!(notices[1].contains("checked against ST 2067-3:2020"));
+    }
+
+    fn edition_notices(issues: &[ValidationIssue]) -> Vec<String> {
+        issues
+            .iter()
+            .filter(|i| i.is(&imferno::EditionAssumed))
+            .map(|i| i.message.clone())
+            .collect()
+    }
+
+    /// App #2E 2016 references ST 2067-20:2016, which references
+    /// ST 2067-2:2016: that names the edition.
+    #[test]
+    fn get_validators_for_cpl_returns_core_2016_for_app2e_2016() {
+        let mut cpl = minimal_cpl();
+        cpl.namespace = CplNamespace::Smpte2067_3_2016;
+        cpl.extension_properties = Some(ExtensionProperties {
+            application_identification: Some(
+                "http://www.smpte-ra.org/schemas/2067-21/2016".to_string(),
+            ),
+            max_cll: None,
+            max_fall: None,
+        });
+        let validators = get_validators_for_cpl(&cpl);
         assert_eq!(validators[0].spec_id(), "ST 2067-2:2016");
+        // ST 2067-2:2016 cites ST 2067-3:2016: nothing is assumed.
+        let notices = edition_notices(&validators[0].validate_cpl(&cpl));
+        assert!(notices.is_empty(), "{notices:?}");
+    }
+
+    /// A pinned ST 2067-3 edition applies to the CPL rules, without a notice.
+    #[test]
+    fn configurable_registry_pins_the_cpl_edition() {
+        let mut cpl = minimal_cpl();
+        cpl.content_title.text = String::new();
+        let registry = ConfigurableValidatorRegistry::new(ValidatorSelection {
+            core_spec: Some(CoreSpecTarget::St2067_2_2020),
+            cpl_spec: Some(CplSpecTarget::St2067_3_2016),
+            ..Default::default()
+        });
+        let issues = validate_cpl_with_registry(&cpl, &registry);
+        assert!(edition_notices(&issues).is_empty(), "{issues:#?}");
+        assert!(issues
+            .iter()
+            .any(|i| i.code == "ST2067-3:2016:6.1.7/ContentTitleEmpty"));
+    }
+
+    /// ST 2067-3:2020 §6.11.1: two Resources may share an Id when they are
+    /// identical; 2013 and 2016 require it to be unique.
+    #[test]
+    fn identical_resources_may_share_an_id_in_2020_only() {
+        let mut cpl = cpl_with_image_and_audio(100, 192_000);
+        // The same Resource as the image resource of the helper.
+        let copy = Resource {
+            id: uuid(50),
+            annotation: None,
+            edit_rate: None,
+            intrinsic_duration: 100,
+            entry_point: None,
+            source_duration: Some(100),
+            source_encoding: None,
+            track_file_id: Some(uuid(60)),
+            repeat_count: None,
+            key_id: None,
+            hash: None,
+            markers: vec![],
+        };
+        let seq = &mut cpl.segment_list.segments[0]
+            .sequence_list
+            .main_image_sequences[0];
+        assert!(seq.resource_list.resources[0] == copy);
+        seq.resource_list.resources.push(copy);
+        let codes = |cpl: &CompositionPlaylist, ed| {
+            let mut issues = Vec::new();
+            validate_uuid_uniqueness(cpl, ed, &mut issues);
+            issues.into_iter().map(|i| i.code).collect::<Vec<_>>()
+        };
+        assert!(codes(&cpl, St2067_3Edition::V2020).is_empty());
+        assert_eq!(
+            codes(&cpl, St2067_3Edition::V2016),
+            ["ST2067-3:2016:6.11.1/UniqueResourceId"]
+        );
+        let seq = &mut cpl.segment_list.segments[0]
+            .sequence_list
+            .main_image_sequences[0];
+        seq.resource_list.resources[1].intrinsic_duration += 1;
+        assert_eq!(
+            codes(&cpl, St2067_3Edition::V2020),
+            ["ST2067-3:2020:6.11.1/UniqueResourceId"]
+        );
     }
 
     #[test]
@@ -2785,18 +3316,41 @@ mod tests {
     }
 
     #[test]
-    fn get_validators_for_cpl_returns_empty_for_dci_legacy_namespace() {
-        // DCI-era CPLs (ST 429-7:2006) have no matching core validator.
-        let mut cpl = minimal_cpl();
-        cpl.namespace = CplNamespace::Dci429_7;
-        let validators = get_validators_for_cpl(&cpl);
-        // Only the "no application profile validated" notice (photon#407).
-        let ids: Vec<_> = validators.iter().map(|v| v.spec_id()).collect();
-        assert_eq!(
-            ids,
-            vec!["imferno application-profile dispatch"],
-            "DCI namespace should yield no core validator"
-        );
+    fn non_imf_cpl_namespaces_are_bounced_without_other_rules() {
+        // A DCI (ST 429-7) or unknown-namespace CPL is not an IMF CPL: one
+        // finding, and no ST 2067-3, Core Constraints or application rules,
+        // also when the core edition is pinned.
+        for (ns, needle) in [
+            (CplNamespace::Dci429_7, "D-Cinema ST 429-7"),
+            (CplNamespace::Unknown("urn:example".into()), "urn:example"),
+        ] {
+            let mut cpl = minimal_cpl();
+            cpl.namespace = ns;
+            cpl.content_title.text = String::new(); // would be ContentTitleEmpty
+            let pinned = ConfigurableValidatorRegistry::new(ValidatorSelection {
+                core_spec: Some(CoreSpecTarget::St2067_2_2016),
+                ..Default::default()
+            });
+            for issues in [
+                validate_cpl(&cpl),
+                validate_cpl_with_registry(&cpl, &pinned),
+            ] {
+                let bounce: Vec<_> = issues
+                    .iter()
+                    .filter(|i| i.is(&st2067_2::NotImfCompositionPlaylist))
+                    .collect();
+                assert_eq!(bounce.len(), 1, "{issues:#?}");
+                assert_eq!(bounce[0].severity, crate::diagnostics::Severity::Error);
+                assert!(bounce[0].message.contains(needle), "{}", bounce[0].message);
+                assert!(
+                    issues
+                        .iter()
+                        .all(|i| i.is(&st2067_2::NotImfCompositionPlaylist)
+                            || i.is(&imferno::EditionAssumed)),
+                    "{issues:#?}"
+                );
+            }
+        }
     }
 
     #[test]
@@ -2868,10 +3422,10 @@ mod tests {
             ..Default::default()
         });
         let validators = registry.resolve_for_cpl(&cpl);
-        assert_eq!(validators.len(), 2);
-        // The core edition comes from the CPL (no ApplicationIdentification).
-        assert_eq!(validators[0].spec_id(), "ST 2067-2:2016");
-        assert_eq!(validators[1].spec_id(), "ST 2067-21:2023 (App2E)");
+        // The core edition comes from the CPL: nothing in it names one, so
+        // the newest the 2016 namespace allows, announced.
+        let ids: Vec<&str> = validators.iter().map(|v| v.spec_id()).collect();
+        assert_eq!(ids, ["ST 2067-2:2020", "ST 2067-21:2023 (App2E)"]);
     }
 
     // ── ColorSystem Tests ────────────────────────────────────────────────────
@@ -3963,7 +4517,7 @@ mod tests {
 
     fn segment_duration_issues(cpl: &CompositionPlaylist) -> Vec<ValidationIssue> {
         let mut issues = Vec::new();
-        validate_segment_track_durations(cpl, &mut issues);
+        validate_segment_track_durations(cpl, cpl_edition(cpl, None, None).edition, &mut issues);
         issues
             .into_iter()
             .filter(|i| i.code.ends_with("/SegmentDuration"))
@@ -9196,6 +9750,79 @@ mod tests {
             <ResourceList/>
         </cc:MainImageSequence>"#;
 
+    /// 2016 Core Constraints with the ST 2067-3:2016 rules (a 2016-namespace
+    /// CPL alone resolves to ST 2067-3:2020).
+    const CORE_2016_CPL_2016: CoreConstraints = CoreConstraints {
+        edition: St2067_2Edition::V2016,
+        cpl: Some(St2067_3Edition::V2016),
+    };
+
+    /// 2020 §6.11.1 "unless they are identical": Resources that parse the
+    /// same but differ in content imferno does not parse are not identical.
+    #[test]
+    fn identical_resources_are_compared_on_their_raw_xml() {
+        let res = |extra: &str| {
+            format!(
+                r#"<Resource xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="TrackFileResourceType">
+                <Id>urn:uuid:00000000-0000-0000-0000-000000000020</Id>
+                <IntrinsicDuration>24</IntrinsicDuration>{extra}
+                <SourceEncoding>urn:uuid:00000000-0000-0000-0000-000000000021</SourceEncoding>
+                <TrackFileId>urn:uuid:00000000-0000-0000-0000-000000000022</TrackFileId>
+            </Resource>"#
+            )
+        };
+        let seq = |a: &str, b: &str| {
+            format!(
+                r#"<cc:MainImageSequence>
+            <Id>urn:uuid:00000000-0000-0000-0000-000000000010</Id>
+            <TrackId>urn:uuid:00000000-0000-0000-0000-000000000011</TrackId>
+            <ResourceList>{a}{b}</ResourceList>
+        </cc:MainImageSequence>"#
+            )
+        };
+        let codes = |cpl: &CompositionPlaylist| {
+            let mut issues = Vec::new();
+            validate_uuid_uniqueness(cpl, St2067_3Edition::V2020, &mut issues);
+            issues.into_iter().map(|i| i.code).collect::<Vec<_>>()
+        };
+        let same = c1_cpl("2016", "T", &seq(&res(""), &res("")));
+        assert!(codes(&same).is_empty());
+        let differ = c1_cpl(
+            "2016",
+            "T",
+            &seq(&res(""), &res("<x:Ext xmlns:x=\"urn:x\">1</x:Ext>")),
+        );
+        let r = &differ.segment_list.segments[0]
+            .sequence_list
+            .main_image_sequences[0]
+            .resource_list
+            .resources;
+        assert!(r[0] == r[1], "the difference is in unparsed content");
+        assert_eq!(codes(&differ), ["ST2067-3:2020:6.11.1/UniqueResourceId"]);
+
+        // The same content written with CDATA, character and predefined
+        // entity references, another prefix for the same namespace, or an
+        // upper-case Id is identical.
+        let id = |r: String, id: &str| {
+            r.replace(
+                "urn:uuid:00000000-0000-0000-0000-000000000020",
+                &format!("urn:uuid:00000000-0000-0000-0000-0000000000{id}"),
+            )
+        };
+        let a = id(res(r#"<x:Ext xmlns:x="urn:x">A&amp;B</x:Ext>"#), "ab");
+        let b = id(
+            res(r#"<y:Ext xmlns:y="urn:x"><![CDATA[A&B]]></y:Ext>"#),
+            "ab",
+        );
+        let c = id(res(r#"<x:Ext xmlns:x="urn:x">&#65;&amp;B</x:Ext>"#), "AB");
+        let same = c1_cpl("2016", "T", &seq(&a, &format!("{b}{c}")));
+        assert!(codes(&same).is_empty(), "{:?}", codes(&same));
+        // Same local name in another namespace is a different element.
+        let d = id(res(r#"<x:Ext xmlns:x="urn:other">A&amp;B</x:Ext>"#), "ab");
+        let differ = c1_cpl("2016", "T", &seq(&a, &d));
+        assert_eq!(codes(&differ), ["ST2067-3:2020:6.11.1/UniqueResourceId"]);
+    }
+
     fn c1_codes(issues: &[ValidationIssue]) -> Vec<String> {
         issues.iter().map(|i| i.code.clone()).collect()
     }
@@ -9204,7 +9831,7 @@ mod tests {
     fn empty_content_title_is_flagged_in_2013_and_2016() {
         let i13 = CoreConstraints2013.validate_cpl(&c1_cpl("2013", "", ""));
         assert!(c1_codes(&i13).contains(&"ST2067-3:2013:6.1.7/ContentTitleEmpty".to_string()));
-        let i16 = CoreConstraints2016.validate_cpl(&c1_cpl("2016", " ", ""));
+        let i16 = CORE_2016_CPL_2016.validate_cpl(&c1_cpl("2016", " ", ""));
         assert!(c1_codes(&i16).contains(&"ST2067-3:2016:6.1.7/ContentTitleEmpty".to_string()));
         let ok = CoreConstraints2016.validate_cpl(&c1_cpl("2016", "Title", ""));
         assert!(!ok.iter().any(|i| i.is(&st2067_3::ContentTitleEmpty)));
@@ -9218,7 +9845,7 @@ mod tests {
             "{:#?}",
             c1_codes(&i13)
         );
-        let i16 = CoreConstraints2016.validate_cpl(&c1_cpl("2016", "T", C1_IMAGE_EMPTY_RESOURCES));
+        let i16 = CORE_2016_CPL_2016.validate_cpl(&c1_cpl("2016", "T", C1_IMAGE_EMPTY_RESOURCES));
         assert!(c1_codes(&i16).contains(&"ST2067-3:2016:6.10/ResourceListEmpty".to_string()));
     }
 

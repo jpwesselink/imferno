@@ -96,7 +96,7 @@ pub static UnresolvedUuid: Rule<E> = Rule {
     example: Some("PKL `<Asset><Id>urn:uuid:aaa…</Id>` with no AssetMap asset of that Id"),
     editions: &[
         absent(E::V2013).verified(),
-        checked(E::V2016, "8.3", Should).interpret("8.3: assets intended to be ingested should be referenced by both the Packing List and the Asset Map (Note 6: otherwise not ingested).", None),
+        checked(E::V2016, "8.3", Should).interpret("8.3: assets intended to be ingested should be referenced by both the Packing List and the Asset Map.", None),
         checked(E::V2020, "8.3", Should).interpret("8.3: assets intended to be ingested should be referenced by both the Packing List and the Asset Map (Note 6: otherwise not ingested).", None),
     ],
 };
@@ -304,11 +304,11 @@ pub static DigitalSignature: Rule<E> = Rule {
     ],
 };
 
-/// EssenceDescriptorList is required per ST 2067-2 §6.4.2.
+/// EssenceDescriptorList absent although the CPL references Track Files.
 pub static EssenceDescriptorList: Rule<E> = Rule {
     name: "EssenceDescriptorList",
     category: Category::Structure,
-    description: "EssenceDescriptorList is required per ST 2067-2 §6.4.2.",
+    description: "EssenceDescriptorList is absent: the File Descriptor of every Track File the CPL references shall be mapped to an EssenceDescriptor (§6.8).",
     example: Some(
         "CPL with `<SourceEncoding>` references but no top-level `<EssenceDescriptorList>` element",
     ),
@@ -691,8 +691,23 @@ pub static AudioVirtualTrackMissing: Rule<E> = Rule {
     ],
 };
 
+/// The CPL is not an IMF Composition Playlist: its namespace is not an
+/// ST 2067-3 namespace (a D-Cinema ST 429-7 CPL, or an unknown namespace).
+pub static NotImfCompositionPlaylist: Rule<E> = Rule {
+    name: "NotImfCompositionPlaylist",
+    category: Category::Structure,
+    description: "The CPL is not an IMF Composition Playlist: its namespace is not an ST 2067-3 namespace (e.g. a D-Cinema ST 429-7 CPL). No ST 2067-3, Core Constraints or application rules are applied to it.",
+    example: Some("<CompositionPlaylist xmlns=\"http://www.smpte-ra.org/schemas/429-7/2006/CPL\">  <!-- a D-Cinema CPL in an IMP -->"),
+    editions: &[
+        checked(E::V2013, "6.1", Shall).interpret("§6.1: the ExtensionProperties of the Composition Playlist instance shall include ApplicationIdentification, an element only an ST 2067-3 CPL carries; ST 2067-3:2013 §5.1: each CPL instance shall conform to its schema (root element and target namespace, Table 1). A CPL in another namespace cannot satisfy either.", None),
+        checked(E::V2016, "6.1", Shall).interpret("§6.1: the ExtensionProperties of the Composition Playlist instance shall include ApplicationIdentification, an element only an ST 2067-3 CPL carries; ST 2067-3 §5.1: each CPL instance shall conform to its schema (root element and target namespace, Table 1). §6.11 defines a Composition as one CPL as specified in ST 2067-3 (definition).", None),
+        checked(E::V2020, "6.1", Shall).interpret("§6.1: the ExtensionProperties of the Composition Playlist instance shall include ApplicationIdentification, an element only an ST 2067-3 CPL carries; ST 2067-3 §5.1: each CPL instance shall conform to its schema (root element and target namespace, Table 1). §6.11 defines a Composition as one CPL as specified in ST 2067-3 (definition).", None),
+    ],
+};
+
 /// Every rule of this spec.
 pub static ALL: &[&dyn AnyRule] = &[
+    &NotImfCompositionPlaylist,
     &PklMalformedXml,
     &NoCpls,
     &SizeMismatch,

@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.0.0](https://github.com/jpwesselink/imferno/compare/imferno-v3.0.1...imferno-v4.0.0) - 2026-11-08
+
+### Added
+
+- *(validation)* [**breaking**] ST 2067-3:2020 as its own edition, chosen and announced per CPL
+- SARIF 2.1.0 output (core, CLI --format sarif, NAPI/WASM toSarif)
+- *(core)* [**breaking**] report every finding from the rule tables, per edition
+- *(validation)* validate each ST 2067-21 edition against its own text
+
+### Fixed
+
+- *(validation)* [**breaking**] resolve the IAB plug-in edition like every other edition
+- *(catalogue)* ContentKindUnknown is an Error in every edition
+- package edition, 2013 delivery rules, verified rows, rule warnings, SARIF paths
+- *(validation)* audit P2 batch — 9 spec-conformance findings across audio MCA, IAB, ISXD
+
+### Other
+
+- *(deps)* uppsala 0.12, inline dcml types into primary schemas
+
 ## [2.4.0](https://github.com/jpwesselink/imferno/compare/imferno-v2.3.0...imferno-v2.4.0) - 2026-05-11
 
 ### Added

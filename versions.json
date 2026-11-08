@@ -93,6 +93,10 @@
     {
       "label": "#105 docs/homepage-why",
       "path": "/pr-105/"
+    },
+    {
+      "label": "#107 ci/wasm-pack-from-crates",
+      "path": "/pr-107/"
     }
   ],
   "latest": "/v3.0.1/"

@@ -208,6 +208,18 @@ mod tests {
         }
     }
 
+    /// NotImfCompositionPlaylist rests on shall sentences: ST 2067-2 §6.1
+    /// (ApplicationIdentification) and ST 2067-3 §5.1 (schema conformance).
+    #[test]
+    fn not_imf_cpl_cites_its_shall_anchors() {
+        for e in st2067_2::NotImfCompositionPlaylist.editions {
+            assert_eq!(e.clause, Some("6.1"));
+            let text = e.interpretation.unwrap().text;
+            assert!(text.contains("ST 2067-3") && text.contains("§5.1"), "{text}");
+            assert!(!text.contains("JP"), "{text}");
+        }
+    }
+
     #[test]
     fn display_codes_carry_their_own_edition() {
         for r in all() {

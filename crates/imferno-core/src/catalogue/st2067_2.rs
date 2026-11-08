@@ -699,9 +699,9 @@ pub static NotImfCompositionPlaylist: Rule<E> = Rule {
     description: "The CPL is not an IMF Composition Playlist: its namespace is not an ST 2067-3 namespace (e.g. a D-Cinema ST 429-7 CPL). No ST 2067-3, Core Constraints or application rules are applied to it.",
     example: Some("<CompositionPlaylist xmlns=\"http://www.smpte-ra.org/schemas/429-7/2006/CPL\">  <!-- a D-Cinema CPL in an IMP -->"),
     editions: &[
-        checked(E::V2013, "6", Shall).interpret("2013 has no definition sentence: §6 constrains the Composition Playlist instance, whose schema §4.1 imports from the ST 2067-3:2013 namespace. The text has no shall for this; Error per JP (a CPL that is not an ST 2067-3 CPL is not part of a Composition).", None),
-        checked(E::V2016, "6.11", Shall).interpret("§6.11 defines a Composition as one Composition Playlist as specified in ST 2067-3 and the Assets it references. A definition, not a shall sentence; Error per JP.", None),
-        checked(E::V2020, "6.11", Shall).interpret("§6.11 defines a Composition as one Composition Playlist as specified in ST 2067-3 and the Assets it references. A definition, not a shall sentence; Error per JP.", None),
+        checked(E::V2013, "6.1", Shall).interpret("§6.1: the ExtensionProperties of the Composition Playlist instance shall include ApplicationIdentification, an element only an ST 2067-3 CPL carries; ST 2067-3:2013 §5.1: each CPL instance shall conform to its schema (root element and target namespace, Table 1). A CPL in another namespace cannot satisfy either.", None),
+        checked(E::V2016, "6.1", Shall).interpret("§6.1: the ExtensionProperties of the Composition Playlist instance shall include ApplicationIdentification, an element only an ST 2067-3 CPL carries; ST 2067-3 §5.1: each CPL instance shall conform to its schema (root element and target namespace, Table 1). §6.11 defines a Composition as one CPL as specified in ST 2067-3 (definition).", None),
+        checked(E::V2020, "6.1", Shall).interpret("§6.1: the ExtensionProperties of the Composition Playlist instance shall include ApplicationIdentification, an element only an ST 2067-3 CPL carries; ST 2067-3 §5.1: each CPL instance shall conform to its schema (root element and target namespace, Table 1). §6.11 defines a Composition as one CPL as specified in ST 2067-3 (definition).", None),
     ],
 };
 

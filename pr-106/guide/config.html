@@ -6,12 +6,12 @@
 <script src="/imferno/pr-106/version-switcher.js" defer>
   <script>{;const saved = localStorage.getItem('rspress-theme-appearance');const preferDark = window.matchMedia('(prefers-color-scheme: dark)').matches;const defaultTheme = 'auto';const theme = saved === 'light' || saved === 'dark' || saved === 'auto' ? saved : defaultTheme;const isDark = theme === 'auto' ? preferDark : theme === 'dark';document.documentElement.classList.toggle('dark', isDark);document.documentElement.classList.toggle('rp-dark', isDark);document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';}</script>
 <link href="/imferno/pr-106/static/css/styles.b7bd2309ad.css" rel="stylesheet">
-<link rel="preload" href="/imferno/pr-106/static/js/async/route-efdf754be49d.289d70df74.js" as="script">
+<link rel="preload" href="/imferno/pr-106/static/js/async/route-efdf754be49d.1193771ac8.js" as="script">
 <script defer src="/imferno/pr-106/static/js/styles.d57284674d.js"></script>
 <script defer src="/imferno/pr-106/static/js/lib-react.49ca540f5b.js"></script>
 <script defer src="/imferno/pr-106/static/js/lib-router.e520f21483.js"></script>
 <script defer src="/imferno/pr-106/static/js/z.c3732eae2a.js"></script>
-<script defer src="/imferno/pr-106/static/js/index.b453cd33e6.js"></script>
+<script defer src="/imferno/pr-106/static/js/index.0720bda594.js"></script>
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="generator" content="Rspress v2.1.1">
 <link rel="alternate" type="text/markdown" href="/imferno/pr-106/guide/config.md">
@@ -156,8 +156,11 @@ with a suppression, at their original level.</p>
 otherwise the document&#x27;s namespace gives the candidate editions, and evidence
 in the document that only some editions&#x27; text defines narrows them. When one
 edition is left it is applied; otherwise the newest is applied and an
-<code>IMFERNO:Package/EditionAssumed</code> notice names the namespace seen and the
-edition used (one per package, and per CPL).</p>
+<code>IMFERNO:Package/EditionAssumed</code> (Info) notice names the namespace seen and the
+edition used, one per document (package, CPL, MXF file). When the namespace
+allows only one edition but other evidence names another, the namespace&#x27;s
+edition is applied and <code>IMFERNO:Package/EditionConflict</code> (Warning) names both
+editions and the evidence.</p>
 <ul>
 <li><strong>ST 2067-2, package</strong> (Packing List, Asset Map, ingest; <code>--core-spec</code> /
 <code>coreSpec</code>): an ST 429-8 Packing List means 2013; the <code>.../2067-2/2016/PKL</code>
@@ -176,8 +179,12 @@ ST 429-7 (D-Cinema) or unknown namespace is not an IMF Composition Playlist:
 it gets <code>ST2067-2/NotImfCompositionPlaylist</code> (Error) naming the namespace,
 and no ST 2067-3, Core Constraints or application rules.</li>
 <li><strong>ST 2067-201, CPL with IAB</strong> (<code>--iab-spec</code> / <code>iabSpec</code>): every edition
-(2019, 2021, 2026) uses the 2019 namespace and nothing in a CPL tells them
-apart, so the newest is applied and announced. The track files its IAB
+(2019, 2021, 2026) uses the 2019 namespace. ST 2067-201:2019 cites
+ST 2067-2:2016, 2021 and 2026 cite ST 2067-2:2020, so a determined or pinned
+Core Constraints edition names 2019, or leaves 2021 and 2026; an
+<code>IABMaxObjectCount</code> item or <code>IABChannelSubDescriptor</code> in the IAB essence
+descriptor (2026 only) names 2026. Otherwise the newest is applied and
+announced. The track files its IAB
 Virtual Tracks reference get the same edition.</li>
 <li><strong>ST 377-1 / ST 377-4, MXF track file</strong>: MXF has no namespace; the dated
 normative references of the specs that apply to the file decide. Every
